@@ -69,6 +69,7 @@ void print(float32x4_t vec)
 #define FMA_TILE_C(step, a, b, p_cur, W_ob, C_ob) \
     {                                             \
         float *Atmp = a + p_cur;              \
+        float *Bptr = b + p_cur * C_ob;  \
         A0 = vld1q_f32(&Atrow(0, ii, step));            \
         A1 = vld1q_f32(&Atrow(1, ii, step));            \
         A2 = vld1q_f32(&Atrow(2, ii, step));            \
@@ -328,14 +329,39 @@ void print(float32x4_t vec)
 
 // strided loads
 #define LOAD_TILE_C_strided(O, step, _W_ob, _C_ob)       \
-    float c_tile[_W_ob * _C_ob];                         \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)              \
-    {                                                    \
-        for (uint32_t jj = 0; jj < _C_ob; jj++)          \
-        {                                                \
-            c_tile[kk * _C_ob + jj] = O[kk * step + jj]; \
-        }                                                \
-    }
+float32x4_t B0, B1,            \
+    A0, C00, C01, C02, C03,    \
+    A1, C10, C11, C12, C13,    \
+    A2, C20, C21, C22, C23,    \
+    A3, C30, C31, C32, C33,    \
+    A4, C40, C41, C42, C43,    \
+    A5, C50, C51, C52, C53;    \
+    float *Atmp = O;\
+C00 = vld1q_f32(&Atrow(0, 0, step));  \
+C01 = vld1q_f32(&Atrow(0, 4, step));  \
+C02 = vld1q_f32(&Atrow(0, 8, step));  \
+C03 = vld1q_f32(&Atrow(0, 12, step)); \
+C10 = vld1q_f32(&Atrow(1, 0, step));  \
+C11 = vld1q_f32(&Atrow(1, 4, step));  \
+C12 = vld1q_f32(&Atrow(1, 8, step));  \
+C13 = vld1q_f32(&Atrow(1, 12, step)); \
+C20 = vld1q_f32(&Atrow(2, 0, step));  \
+C21 = vld1q_f32(&Atrow(2, 4, step));  \
+C22 = vld1q_f32(&Atrow(2, 8, step));  \
+C23 = vld1q_f32(&Atrow(2, 12, step)); \
+C30 = vld1q_f32(&Atrow(3, 0, step));  \
+C31 = vld1q_f32(&Atrow(3, 4, step));  \
+C32 = vld1q_f32(&Atrow(3, 8, step));  \
+C33 = vld1q_f32(&Atrow(3, 12, step)); \
+C40 = vld1q_f32(&Atrow(4, 0, step));  \
+C41 = vld1q_f32(&Atrow(4, 4, step));  \
+C42 = vld1q_f32(&Atrow(4, 8, step));  \
+C43 = vld1q_f32(&Atrow(4, 12, step)); \
+C50 = vld1q_f32(&Atrow(5, 0, step));  \
+C51 = vld1q_f32(&Atrow(5, 4, step));  \
+C52 = vld1q_f32(&Atrow(5, 8, step));  \
+C53 = vld1q_f32(&Atrow(5, 12, step)); \
+
 
 #define LOAD_LAST_C_strided(O, step, W_ob, C_ob, W_last) \
     float c_tile[W_ob * C_ob];                           \
@@ -408,22 +434,63 @@ void print(float32x4_t vec)
 // Pooling
 //   Max pooling
 
-#define MAX_TILE_C(step, a, W_ob, C_ob)                                                 \
-    float *c_pixel = c_tile;                                                            \
-    float *a_pixel = a;                                                                 \
-    for (uint32_t kk = 0; kk < W_ob; kk++)                                              \
-    {                                                                                   \
-        float *c_channel = c_pixel;                                                     \
-        float *a_channel = a_pixel;                                                     \
-        for (uint32_t jj = 0; jj < C_ob; jj++)                                          \
-        {                                                                               \
-            *(c_channel) = (*(a_channel) > *(c_channel)) ? *(a_channel) : *(c_channel); \
-            c_channel++;                                                                \
-            a_channel++;                                                                \
-        }                                                                               \
-        a_pixel += step;                                                                \
-        c_pixel += C_ob;                                                                \
-    }
+#define MAX_TILE_C(step, a, W_ob, C_ob) \
+float * Atmp = a;                           \
+A0 = vld1q_f32(&Atrow(0, 0, step));         \
+A1 = vld1q_f32(&Atrow(0, 4, step));    \
+A2 = vld1q_f32(&Atrow(0, 8, step));         \
+A3 = vld1q_f32(&Atrow(0, 12, step));    \
+/*Compute row 0*/\
+C00 = vmaxq_f32(A0, C00);                  \
+B0 = vld1q_f32(&Atrow(1, 0, step));\
+C01 = vmaxq_f32(A1, C01);                  \
+B1 = vld1q_f32(&Atrow(1, 4, step));\
+C02 = vmaxq_f32(A2, C02);                  \
+A0 = vld1q_f32(&Atrow(1, 8, step));  \
+C03 = vmaxq_f32(A3, C03);                  \
+A1 = vld1q_f32(&Atrow(1, 12, step));         \
+/*Compute row 1*/\
+C10 = vmaxq_f32(B0, C10);                  \
+A2 = vld1q_f32(&Atrow(2, 0, step));\
+C11 = vmaxq_f32(B1, C11);                  \
+A3 = vld1q_f32(&Atrow(2, 4, step));\
+C12 = vmaxq_f32(A0, C12);                  \
+B0 = vld1q_f32(&Atrow(2, 8, step));  \
+C13 = vmaxq_f32(A1, C13);                  \
+B1 = vld1q_f32(&Atrow(2, 12, step));   \
+/*Compute row 2*/\
+C20 = vmaxq_f32(A2, C20);                  \
+A0 = vld1q_f32(&Atrow(3, 0, step));\
+C21 = vmaxq_f32(A3, C21);                  \
+A1 = vld1q_f32(&Atrow(3, 4, step));\
+C22 = vmaxq_f32(B0, C22);                  \
+A2 = vld1q_f32(&Atrow(3, 8, step));  \
+C23 = vmaxq_f32(B1, C23);                  \
+A3 = vld1q_f32(&Atrow(3, 12, step));   \
+/*Compute row 3*/\
+C30 = vmaxq_f32(A0, C30);                  \
+B0 = vld1q_f32(&Atrow(4, 0, step));\
+C31 = vmaxq_f32(A1, C31);                  \
+B1 = vld1q_f32(&Atrow(4, 4, step));\
+C32 = vmaxq_f32(A2, C32);                  \
+A0 = vld1q_f32(&Atrow(4, 8, step));  \
+C33 = vmaxq_f32(A3, C33);                  \
+A1 = vld1q_f32(&Atrow(4, 12, step));         \
+/*Compute row 4*/\
+C40 = vmaxq_f32(B0, C40);                  \
+A2 = vld1q_f32(&Atrow(5, 0, step));\
+C41 = vmaxq_f32(B1, C41);                  \
+A3 = vld1q_f32(&Atrow(5, 4, step));\
+C42 = vmaxq_f32(A0, C42);                  \
+B0 = vld1q_f32(&Atrow(5, 8, step));  \
+C43 = vmaxq_f32(A1, C43);                  \
+B1 = vld1q_f32(&Atrow(5, 12, step));   \
+/*Compute row 1*/\
+C50 = vmaxq_f32(A2, C50);                  \
+C51 = vmaxq_f32(A3, C51);                  \
+C52 = vmaxq_f32(B0, C52);                  \
+C53 = vmaxq_f32(B1, C53);
+
 
 #define MAX_END_C(step, a, W_last, C_ob)                                                \
     float *c_pixel = c_tile;                                                            \
@@ -598,25 +665,66 @@ void print(float32x4_t vec)
     }
 
 #define DW_TILE_C(step, a, b, W_ob, C_ob)                      \
-    {                                                          \
-        float *c_pixel = c_tile;                               \
-        float *a_pixel = a;                                    \
-        for (uint32_t kk = 0; kk < W_ob; kk++)                 \
-        {                                                      \
-            float *c_channel = c_pixel;                        \
-            float *a_channel = a_pixel;                        \
-            float *b_channel = b;                              \
-            for (uint32_t jj = 0; jj < C_ob; jj++)             \
-            {                                                  \
-                *(c_channel) += (*(a_channel) * *(b_channel)); \
-                c_channel++;                                   \
-                b_channel++;                                   \
-                a_channel++;                                   \
-            }                                                  \
-            a_pixel += step;                                   \
-            c_pixel += C_ob;                                   \
-        }                                                      \
-    }
+B0 = vld1q_f32(b + 0 * SIMD);                                   \
+B1 = vld1q_f32(b + 1 * SIMD);                            \
+A4 = vld1q_f32(b + 2 * SIMD);\
+A5 = vld1q_f32(b + 3 * SIMD);\
+A0 = vld1q_f32(a + (0 * step) + 0 * SIMD);                     \
+A1 = vld1q_f32(a + (0 * step) + 1 * SIMD);              \
+A2 = vld1q_f32(a + (0 * step) + 2 * SIMD);                     \
+A3 = vld1q_f32(a + (0 * step) + 3 * SIMD);              \
+\
+C00 = vfmaq_f32(C00, A0, B0);                         \
+A0 = vld1q_f32(a + (1 * step) + 0 * SIMD);  \
+C01 = vfmaq_f32(C01, A1, B1);                         \
+A1 = vld1q_f32(a + (1 * step) + 1 * SIMD);  \
+C02 = vfmaq_f32(C02, A2, A4);                         \
+A2 = vld1q_f32(a + (1 * step) + 2 * SIMD);  \
+C03 = vfmaq_f32(C03, A3, A5);                         \
+A3 = vld1q_f32(a + (1 * step) + 3 * SIMD);  \
+\
+C10 = vfmaq_f32(C10, A0, B0);                         \
+A0 = vld1q_f32(a + (2 * step) + 0 * SIMD);  \
+C11 = vfmaq_f32(C11, A1, B1);                         \
+A1 = vld1q_f32(a + (2 * step) + 1 * SIMD);  \
+C12 = vfmaq_f32(C12, A2, A4);                         \
+A2 = vld1q_f32(a + (2 * step) + 2 * SIMD);  \
+C13 = vfmaq_f32(C13, A3, A5);                         \
+A3 = vld1q_f32(a + (2 * step) + 3 * SIMD);  \
+\
+C20 = vfmaq_f32(C20, A0, B0);                         \
+A0 = vld1q_f32(a + (3 * step) + 0 * SIMD);  \
+C21 = vfmaq_f32(C21, A1, B1);                         \
+A1 = vld1q_f32(a + (3 * step) + 1 * SIMD);  \
+C22 = vfmaq_f32(C22, A2, A4);                         \
+A2 = vld1q_f32(a + (3 * step) + 2 * SIMD);  \
+C23 = vfmaq_f32(C23, A3, A5);                         \
+A3 = vld1q_f32(a + (3 * step) + 3 * SIMD);  \
+\
+C30 = vfmaq_f32(C30, A0, B0);                         \
+A0 = vld1q_f32(a + (4 * step) + 0 * SIMD);  \
+C31 = vfmaq_f32(C31, A1, B1);                         \
+A1 = vld1q_f32(a + (4 * step) + 1 * SIMD);  \
+C32 = vfmaq_f32(C32, A2, A4);                         \
+A2 = vld1q_f32(a + (4 * step) + 2 * SIMD);  \
+C33 = vfmaq_f32(C33, A3, A5);                         \
+A3 = vld1q_f32(a + (4 * step) + 3 * SIMD);  \
+\
+C40 = vfmaq_f32(C40, A0, B0);                         \
+A0 = vld1q_f32(a + (5 * step) + 0 * SIMD);  \
+C41 = vfmaq_f32(C41, A1, B1);                         \
+A1 = vld1q_f32(a + (5 * step) + 1 * SIMD);  \
+C42 = vfmaq_f32(C42, A2, A4);                         \
+A2 = vld1q_f32(a + (5 * step) + 2 * SIMD);  \
+C43 = vfmaq_f32(C43, A3, A5);                         \
+A3 = vld1q_f32(a + (5 * step) + 3 * SIMD);  \
+\
+C50 = vfmaq_f32(C50, A0, B0);                         \
+C51 = vfmaq_f32(C51, A1, B1);                         \
+C52 = vfmaq_f32(C52, A2, A4);                         \
+C53 = vfmaq_f32(C53, A3, A5);                         \
+
+
 
 #define DW_END_C(step, a, b, W_ob, C_ob)                       \
     {                                                          \

@@ -11,6 +11,9 @@
 #if uarch == ZEN2
 #include "../src/kernels/zen2/params.h"
 #include "kernels/zen2/intrinsics.h"
+#elif uarch == ARM
+#include "../src/kernels/arm/params.h"
+#include "kernels/arm/intrinsics.h"
 #elif uarch == REF
 #include "../src/kernels/reference/params.h"
 #include "kernels/reference/intrinsics.h"

@@ -1,6 +1,6 @@
 // A set of functions to enable testing
 #include <string>
-// We have timing, initialization, allocation, logging and equivalence checking  
+// We have timing, initialization, allocation, logging and equivalence checking
 
 //Timing
 #include <sys/time.h>
@@ -11,13 +11,14 @@
 
 
 //TODO: Change when moving to different architectures
-static __inline__ unsigned long long rdtsc(void)
-{
-  unsigned hi, lo;
-  __asm__ __volatile__("rdtsc"
-                       : "=a"(lo), "=d"(hi));
-  return ((unsigned long long)lo) | (((unsigned long long)hi) << 32);
-}
+
+// static __inline__ unsigned long long rdtsc(void)
+// {
+//   unsigned hi, lo;
+//   __asm__ __volatile__("rdtsc"
+//                        : "=a"(lo), "=d"(hi));
+//   return ((unsigned long long)lo) | (((unsigned long long)hi) << 32);
+// }
 
 #define REDUCE(a, b) \
   {                  \
@@ -29,7 +30,7 @@ static __inline__ unsigned long long rdtsc(void)
         a = (b < a) ? b : a; \
     }
 
-//logging 
+//logging
 #define print_flops(ops, time)              \
   {                                                 \
     printf("%.4lf\t", (ops) / (1.0 * time); \
@@ -60,7 +61,7 @@ void init(float * ptr, uint32_t numel)
   float * cur_ptr = ptr;
   for(uint32_t i = 0 ; i < numel ; i++)
   {
-    *(cur_ptr++) = 2.0*((float) rand()/ RAND_MAX) - 1; 
+    *(cur_ptr++) = 2.0*((float) rand()/ RAND_MAX) - 1;
   }
 }
 
@@ -116,7 +117,7 @@ bool equals(uint32_t numel, float *unfused, float *fused, float tolerance = 1e-8
     if(fabs(diff) > tolerance)
     {
       printf("%d %.4f %.4f %.4f\n", i, *(fused_ptr), *(unfused_ptr), diff);
-      check = 0; 
+      check = 0;
     }
     unfused_ptr++;
     fused_ptr++;

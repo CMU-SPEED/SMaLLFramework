@@ -5,15 +5,24 @@ set(CMAKE_VERBOSE_MAKEFILE off)
 set(CMAKE_CXX_COMPILER g++) #<--- Specify C++ compiler
 set(CMAKE_C_COMPILER gcc) #<--- Specify C compiler
 
-#Compiler Flags 
-SET(GCC_AVX_COMPILE_FLAGS "-fopenmp -mavx2 -mfma -O3 -fpermissive -march=native")
+#Compiler Flags
+
+if(CMAKE_UARCH EQUAL ZEN2)
+  SET(GCC_AVX_COMPILE_FLAGS "-fopenmp -mavx2 -mfma -O3 -fpermissive -march=native")
+elseif(CMAKE_UARCH EQUAL ARM)
+  SET(GCC_AVX_COMPILE_FLAGS " -fopenmp -O3 -fpermissive -mcpu=cortex-a57 ")
+else()
+    SET(GCC_AVX_COMPILE_FLAGS " -fopenmp -O3")
+endif()
 
 SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${GCC_AVX_COMPILE_FLAGS}")
 
 
 
 add_library(check_interface.o STATIC test/interface.cpp)
+target_compile_definitions(check_interface.o PRIVATE uarch=${CMAKE_UARCH})
 add_library(interface.o STATIC src/interface.cpp)
+target_compile_definitions(interface.o PRIVATE uarch=${CMAKE_UARCH})
 
 add_executable(test_interface_relu.x generic_driver.cpp )
 target_link_libraries(test_interface_relu.x check_interface.o interface.o)
@@ -56,7 +65,3 @@ SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS}")
 target_compile_definitions(interface_pool.x PRIVATE LAYER=POOL)
 set_property(TARGET interface_pool.x PROPERTY CXX_STANDARD 14)
 ]]
-
-
-
-

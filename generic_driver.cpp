@@ -87,7 +87,7 @@
 #define RELU 5
 
 // #ifndef LAYER
-// #define LAYER 
+// #define LAYER
 // #endif
 
 int main(int argc, char **argv)
@@ -163,7 +163,7 @@ int main(int argc, char **argv)
                                 sum_conv = ULLONG_MAX;
     std::vector<uint64_t> unfused_timing;
 
-    
+
         // Initialize Outputs to 0
 
         // 3x3 unfused
@@ -172,7 +172,7 @@ int main(int argc, char **argv)
 
 #if LAYER == CONV
         uint32_t filter_dimensions = (C_i * C_o * kernel_size * kernel_size);
-#endif        
+#endif
 #if LAYER < POOL
         float *filter_dc = alloc(filter_dimensions);
 
@@ -205,7 +205,7 @@ int main(int argc, char **argv)
         diff = 0;
         for (int run = 0; run < RUNS; run++)
         {
-            t0 = rdtsc();
+            // t0 = rdtsc();
             clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
 
 #if LAYER == RELU
@@ -220,7 +220,7 @@ int main(int argc, char **argv)
 
             diff = time_difference(time1, time2);
             MIN(sum, diff);
-           
+
         }
 
         print_cycles(sum);
@@ -242,7 +242,7 @@ int main(int argc, char **argv)
             clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
             diff = time_difference(time1, time2);
             MIN(sum, diff);
-           
+
         }
 
         print_cycles(sum);

@@ -8,7 +8,7 @@
 
 
 #ifndef uarch
-#define uarch ZEN2
+#define uarch REF
 #endif
 
 #define RUNS 1000
