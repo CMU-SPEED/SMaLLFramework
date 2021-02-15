@@ -1,23 +1,22 @@
-// this file implements simple direct convolution with no fusion
-
-
+// this is a copy of the original header file modified to explain how things work
+// I would read the 2 files side by side
 #include<stdint.h>
 #include "kernel.h"
 
 void print256_float(__m256 var)
 {
-    float val[8];
-    memcpy(val, &var, sizeof(val));
-    printf("Numerical: %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f \n",
-           val[0], val[1], val[2], val[3], val[4], val[5],
-           val[6], val[7]);
+    /*
+
+    Print the Contents of a vector register
+
+    */
 }
 
+// Macro to get output dims from input config
 #define op_dim(IN_dim, stride, K_dim, OUT_dim){\
   OUT_dim = (IN_dim - K_dim )/stride + 1;\
 }
 
-// Ignore For now
 void direct_convolution_gemm(
   uint32_t C_i,
   uint32_t C_o,
@@ -127,7 +126,6 @@ inline void direct_convolution(
     // These are all 0
     uint32_t input_block_offset = (0/C_ib)*H_i*W_i*C_ib;
     uint32_t filter_i_c_block = (0/C_ib)*H_f*W_f*C_ib*C_ob + filter_o_c_block;
-
     float *filter_block_ptr = F + filter_i_c_block;
 
     for(uint32_t l = 0; l < H_o; l++){
@@ -148,7 +146,7 @@ inline void direct_convolution(
 
       }
     }
-
+    // printf("shata iteration\n");
     for(uint32_t i = C_ib; i < C_i; i += C_ib){
 
       uint32_t input_block_offset = (i/C_ib)*H_i*W_i*C_ib;
@@ -175,6 +173,7 @@ inline void direct_convolution(
     }
   }
 
+  // O[(C_o-C_ob)*H_o*W_o*C_ob +  (H_o - 1)*W_ob*C_ob + (W_ob - 1)*C_ob + (C_ob - 1)] = 1234.567;
 }
 
 
@@ -202,35 +201,35 @@ void fused_direct_convolution(
 
   // buffer is reused for different blocks
 
-  // First output block; don't load the 1x1 output
+  // First 3x3 output block; don't load the 1x1 output (first update)
 
-    // uint32_t block_offset = (j/C_ob)*H_o*W_o*C_ob;
-    // uint32_t filter_o_c_block = (0/C_ob)*(C_i/C_ib)*H_f*W_f*C_ib*C_ob;
+    // First 3x3 input block; dont' load 3x3 output buffer
+    {
+      float *filter_block_ptr = F;  // Using this variable for consistency
+      // Loop over 3x3 output height
+      for(uint32_t l = 0; l < H_o; l++){
+          uint32_t col_offset = l*W_o*C_ob /*+ block_offset*/;
+          uint32_t input_col_offset = (l * stride)*W_i*C_ob;
 
-    //uint32_t filer_1x1_block = (0/C_ob)*C_ob*C_o_1x1;
-    // These are all 0
-    ui  nt32_t input_block_offset = (0/C_ib)*H_i*W_i*C_ib;
-    uint32_t filter_i_c_block = (0/C_ib)*H_f*W_f*C_ib*C_ob /*+ filter_o_c_block*/;
-    float *filter_block_ptr = F + filter_i_c_block;
+          // Loop over 3x3 output width
+          for(uint32_t k = 0; k < W_o; k += W_ob){
+            uint32_t input_row_offset = (k * stride)*C_ob;
+            float * I_ptr = I + input_row_offset + input_col_offset;
+            // Partially update a tile of the output (without loading the tile from memory)
+            //            |           |
+            //            V           V
+            // (W_f*H_f*C_ib times) (W_ob x C_ob)
+            conv_microkernel_start(W_i*C_ib, H_f, W_f, I_ptr, filter_block_ptr, O_buffer + col_offset + k *C_ob);
 
-    for(uint32_t l = 0; l < H_o; l++){
-
-        uint32_t col_offset = l*W_o*C_ob /*+ block_offset*/;
-        uint32_t input_col_offset = (l * stride)*W_i*C_ob + input_block_offset;
-
-        for(uint32_t k = 0; k < W_o; k += W_ob){
-
-          uint32_t input_row_offset = (k * stride)*C_ob;
-          float * I_ptr = I + input_row_offset + input_col_offset;
-
-          conv_microkernel_start(W_i*C_ib, H_f, W_f, I_ptr, filter_block_ptr, O_buffer + col_offset + k *C_ob);
-
+        }
       }
-    }
+    }// end First  3x3 input block
 
+    // Second -> penultimate 3x3 input block
     for(uint32_t i = C_ib; i < C_i-C_ib; i += C_ib){
+      // printf("shata iteration\n");
       uint32_t input_block_offset = (i/C_ib)*H_i*W_i*C_ib;
-      uint32_t filter_i_c_block = (i/C_ib)*H_f*W_f*C_ib*C_ob /*+ filter_o_c_block*/;
+      uint32_t filter_i_c_block = (i/C_ib)*H_f*W_f*C_ib*C_ob;
       float *filter_block_ptr = F + filter_i_c_block;
 
       for(uint32_t l = 0; l < H_o; l++){
@@ -246,48 +245,50 @@ void fused_direct_convolution(
 
         }
       }
-    }
+    }// End Second -> penultimate 3x3 input block
 
-    //for(uint32_t i = C_ib; i < C_i; i += C_ib) (last iteration)
+    // Last 3x3 input
+    {
+      uint32_t input_block_offset = ((C_i - C_ib)/C_ib)*H_i*W_i*C_ib;
+      uint32_t filter_i_c_block = ((C_i - C_ib)/C_ib)*H_f*W_f*C_ib*C_ob;
+      float * filter_block_ptr = F + filter_i_c_block;
+      for(uint32_t l = 0; l < H_o; l++){
 
-    input_block_offset = ((C_i - C_ib)/C_ib)*H_i*W_i*C_ib;
-    filter_i_c_block = ((C_i - C_ib)/C_ib)*H_f*W_f*C_ib*C_ob /*+ filter_o_c_block*/;
-    filter_block_ptr = F + filter_i_c_block;
-    for(uint32_t l = 0; l < H_o; l++){
+          uint32_t col_offset = l*W_o*C_ob /*+ block_offset*/;
+          uint32_t input_col_offset = (l * stride)*W_i*C_ob;
 
-        uint32_t col_offset = l*W_o*C_ob /*+ block_offset*/;
-        uint32_t input_col_offset = (l * stride)*W_i*C_ob + input_block_offset;
+          uint32_t o_1x1_row_offset = l * W_o * C_ob;
+          for(uint32_t k = 0; k < W_o; k += W_ob){
 
-        uint32_t o_1x1_row_offset = l * W_o * C_ob;
-        for(uint32_t k = 0; k < W_o; k += W_ob){
+            uint32_t input_row_offset = (k * stride)*C_ob;
+            float * I_ptr = I + input_row_offset + input_col_offset;
 
-          uint32_t input_row_offset = (k * stride)*C_ob;
-          float * I_ptr = I + input_row_offset + input_col_offset;
+            uint32_t o_1x1_col_offset = k * C_ob + o_1x1_row_offset;
+            conv_microkernel(W_i*C_ib, H_f, W_f, I_ptr, filter_block_ptr, O_buffer + col_offset + k *C_ob);
+            fused_microkernel_start(O_buffer + col_offset + k *C_ob,
+                                    C_o_1x1,
+                                    F_1x1,
+                                    H_o*W_o*C_ob,
+                                    O_1x1 +
+                                    o_1x1_col_offset);
+        }
 
-          uint32_t o_1x1_col_offset = k * C_ob + o_1x1_row_offset;
-          conv_microkernel(W_i*C_ib, H_f, W_f, I_ptr, filter_block_ptr, O_buffer + col_offset + k *C_ob);
-          fused_microkernel_start(O_buffer + col_offset + k *C_ob,
-                                  C_o_1x1,
-                                  F_1x1,
-                                  H_o*W_o*C_ob,
-                                  O_1x1 +
-                                  o_1x1_col_offset);
       }
-
     }
-    //}
 
 
   float * F_1x1_ptr;
+  // printf("filter offset\n");
   for(uint32_t j = C_ob; j < C_o; j += C_ob){
     F_1x1_ptr = F_1x1 + (j/C_ob)*(C_o_1x1/C_ob)*(C_ob)*C_ob;
+    // printf("%d \n", F_1x1_ptr-F);
     uint32_t filter_o_c_block = (j/C_ob)*(C_i/C_ib)*H_f*W_f*C_ib*C_ob;
 
+    // uint32_t filer_1x1_block = (j/C_ob)*C_ob*C_o_1x1;
 
     // These are all 0
     uint32_t input_block_offset = (0/C_ib)*H_i*W_i*C_ib;
     uint32_t filter_i_c_block = (0/C_ib)*H_f*W_f*C_ib*C_ob + filter_o_c_block;
-
     float *filter_block_ptr = F + filter_i_c_block;
 
     for(uint32_t l = 0; l < H_o; l++){
@@ -306,6 +307,7 @@ void fused_direct_convolution(
     }
 
     for(uint32_t i = C_ib; i < C_i-C_ib; i += C_ib){
+      // printf("shata iteration\n");
       uint32_t input_block_offset = (i/C_ib)*H_i*W_i*C_ib;
       uint32_t filter_i_c_block = (i/C_ib)*H_f*W_f*C_ib*C_ob + filter_o_c_block;
       float *filter_block_ptr = F + filter_i_c_block;

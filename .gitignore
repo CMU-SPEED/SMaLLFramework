@@ -1,2 +1,7 @@
 libtorch/
 build/
+CMakeFiles/
+*.txt
+!CMakeLists.txt
+Makefile
+*.cmake
