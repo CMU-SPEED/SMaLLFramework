@@ -4,7 +4,7 @@ This is a working draft of the fusion model.
 # Dependencies
 Libtorch CPU version available here (https://pytorch.org/cppdocs/installing.html) \
 C++ (14)\
-gcc (9.3.0)\
+gcc (9.3.0)
 
 # Directory Structure
 
