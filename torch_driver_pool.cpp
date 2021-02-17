@@ -3,10 +3,12 @@
 #include<math.h>
 #include<assert.h>
 
+// Pooling driver
+
 #define GEMM 0
 #define L 3
 #define RUNS 1000
-#define VERBOSE 0
+#define VERBOSE 1
 //Good Ol' Timing
 static __inline__ unsigned long long rdtsc(void) {
   unsigned hi, lo;
@@ -294,23 +296,23 @@ int main(int argc, char ** argv)
 
   conv_3x3->weight = test_weights;
 
-  auto conv_1x1 = torch::nn::Conv2d( torch::nn::Conv2dOptions(C_o, C_o_1, 1).
+  auto pool = torch::nn::MaxPool2d( torch::nn::MaxPool2dOptions(3).
                                                 stride(1).
                                                 padding(0).
                                                 bias(false));
 
-  conv_1x1->weight = test_weights_1x1;
 
 
   //Run Inference
-  uint64_t sum_pytorch = 0, st, et;
-  torch::Tensor out, out_intermediate;
-  for(uint32_t r = 0; r < 10; r++){
-    st = rdtsc();
-    out_intermediate = conv_3x3(a);
-    out = conv_1x1(out_intermediate);
-    et = rdtsc();
-    sum_pytorch +=(et - st);
+  uint32_t t0, t1;
+  uint64_t sum_pytorch = 0;
+  for(uint32_t r = 0; r < RUNS; r++)
+  {
+    t0 = rdtsc();
+    torch::Tensor out_intermediate = conv_3x3(a);
+    torch::Tensor out = pool(out_intermediate);
+    t1 = rdtsc();
+    sum_pytorch += (t1 - t0;)
   }
 
 
@@ -318,12 +320,10 @@ int main(int argc, char ** argv)
 
   // Copy layer weights to temporaries
   torch::Tensor weights = conv_3x3->weight;
-  torch::Tensor weights_1x1 = conv_1x1-> weight;
 
   std::vector<uint32_t> in_dimensions;
   std::vector<uint32_t> filter_dimensions;
   std::vector<uint32_t> out_intermediate_dimensions;
-  std::vector<uint32_t> filter_1x1_dimensions;
   std::vector<uint32_t> out_dimensions;
 
   std::vector<uint32_t> intermediate_block_dimensions;
@@ -341,12 +341,10 @@ int main(int argc, char ** argv)
   printf("WSS Size In_img : %.2f K/8K elements  dims: %u %u %u\n\
 WSS Size In_filter 3x3: %.2f K/8K elements  dims: %u %u %u %u\n\
 WSS Size Out_img 3x3 : %.2f K/8K elements  dims: %u %u %u\n\
-WSS Size In_filter 1x1: %.2f K/8K elements  dims: %u %u %u %u\n\
-WSS Size Out_img 1x1 : %.2f K/8K elements  dims: %u %u %u\n\
+WSS Size Out_img pool : %.2f K/8K elements  dims: %u %u %u\n\
 ",  a.numel()/1024.0, in_dimensions[1], in_dimensions[2], in_dimensions[3],
        weights.numel()/1024.0, filter_dimensions[0], filter_dimensions[1], filter_dimensions[2], filter_dimensions[3],
        out_intermediate.numel()/1024.0, out_intermediate_dimensions[1], out_intermediate_dimensions[2], out_intermediate_dimensions[3],
-       weights_1x1.numel()/1024.0, filter_1x1_dimensions[0], filter_1x1_dimensions[1], filter_1x1_dimensions[2], filter_1x1_dimensions[3],
        out.numel()/1024.0, out_dimensions[1], out_dimensions[2], out_dimensions[3]
                                                            );
   #endif
@@ -366,7 +364,7 @@ WSS Size Out_img 1x1 : %.2f K/8K elements  dims: %u %u %u\n\
     int j  = 1;
   }
 
-  uint64_t sum=0, t0, t1;
+  uint64_t sum=0;
   // 3x3 unfused
   for (int run = 0; run < RUNS; run++){
     // Copy Inputs to their flat buffers
@@ -437,8 +435,7 @@ WSS Size Out_img 1x1 : %.2f K/8K elements  dims: %u %u %u\n\
     #endif
   }
 
-  printf("%lf %lf %lf %lf\t", ( 2.0*m*n*k + 2.0*m*C_o_1*out_intermediate_dimensions[1])/((sum_fused)/(1.0*RUNS)), ((sum_fused)/(1.0*RUNS)),
-                                ( 2.0*m*n*k + 2.0*m*C_o_1*out_intermediate_dimensions[1])/((sum_pytorch)/(1.0*RUNS)), ((sum_pytorch)/(1.0*RUNS)));
+  printf("%lf %lf\t", ( 2.0*m*n*k + 2.0*m*C_o_1*out_intermediate_dimensions[1])/((sum_fused)/(1.0*RUNS)), ((sum_fused)/(1.0*RUNS)));
   printf("\n");
 
   uint32_t block_size = out_intermediate_dimensions[2]*out_intermediate_dimensions[3]*C_ob;
