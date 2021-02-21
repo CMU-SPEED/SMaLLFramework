@@ -15,7 +15,8 @@
 #define image_seed 1729
 
 
-
+#define POOL_KERNEL 3
+#define POOL_STRIDE 2
 
 
 
@@ -182,6 +183,7 @@ inline void conv_microkernel(
                             uint32_t input_col_stride,
                             uint32_t H_f,
                             uint32_t W_f,
+                            uint32_t stride,
                             float * I,
                             float * F,
                             float * O){
@@ -217,31 +219,31 @@ inline void conv_microkernel(
         // kernel_conv(W_ob,C_ob,rank_k,I + input_stencil_w, F + filter_offset_w, O);
         float *b = F + filter_offset_w;
         float *a = I + input_stencil_w;
-
+        int p_cur = ii ;
         b0 = _mm256_load_ps(b + (ii * C_ob));
         b1 = _mm256_load_ps(b + (ii * C_ob + SIMD));
-        a_reg = _mm256_broadcast_ss(a + (ii));
-        int p_cur = ii + C_ob;
+        a_reg = _mm256_broadcast_ss(a + (p_cur));
+        p_cur += stride*C_ob;
         c0 = _mm256_fmadd_ps(a_reg, b0, c0);
         c1 = _mm256_fmadd_ps(a_reg, b1, c1);
         a_reg = _mm256_broadcast_ss(a + (p_cur));
-        p_cur += C_ob;
+        p_cur += stride*C_ob;
         c2 = _mm256_fmadd_ps(a_reg, b0, c2);
         c3 = _mm256_fmadd_ps(a_reg, b1, c3);
         a_reg = _mm256_broadcast_ss(a +  (p_cur));
-        p_cur += C_ob;
+        p_cur += stride*C_ob;
         c4 = _mm256_fmadd_ps(a_reg, b0, c4);
         c5 = _mm256_fmadd_ps(a_reg, b1, c5);
         a_reg = _mm256_broadcast_ss(a +  (p_cur));
-        p_cur += C_ob;
+        p_cur += stride*C_ob;
         c6 = _mm256_fmadd_ps(a_reg, b0, c6);
         c7 = _mm256_fmadd_ps(a_reg, b1, c7);
         a_reg = _mm256_broadcast_ss(a +  (p_cur));
-        p_cur += C_ob;
+        p_cur += stride*C_ob;
         c8 = _mm256_fmadd_ps(a_reg, b0, c8);
         c9 = _mm256_fmadd_ps(a_reg, b1, c9);
         a_reg = _mm256_broadcast_ss(a +  (p_cur));
-        p_cur += C_ob;
+        p_cur += stride*C_ob;
         c10 = _mm256_fmadd_ps(a_reg, b0, c10);
         c11 = _mm256_fmadd_ps(a_reg, b1, c11);
         // count++;
@@ -271,6 +273,7 @@ inline void conv_microkernel_start(
                             uint32_t input_col_stride,
                             uint32_t H_f,
                             uint32_t W_f,
+                            uint32_t stride,
                             float * I,
                             float * F,
                             float * O){
@@ -289,6 +292,97 @@ inline void conv_microkernel_start(
    c9 = _mm256_setzero_ps();//_mm256_load_ps(O+ (4 * C_ob) + SIMD);
    c10 = _mm256_setzero_ps();//_mm256_load_ps(O+ (5 * C_ob));
    c11 = _mm256_setzero_ps();//_mm256_load_ps(O+ (5 * C_ob) + SIMD);
+  int updates = 0;
+  // int count = 0;
+  for(uint32_t n = 0; n < H_f; n++){
+
+    int filter_offset_h = n*W_f*C_ib*C_ob;
+    int input_stencil_h = /*input_col_offset +*/ n * input_col_stride /*+ input_row_offset*/;
+
+    for(uint32_t m = 0; m < W_f; m++){
+
+      int filter_offset_w = m*C_ib*C_ob + filter_offset_h;
+      int input_stencil_w = m*C_ib + input_stencil_h;
+
+      for(uint32_t ii = 0 ; ii < C_ib; ii++){
+
+        // kernel_conv(W_ob,C_ob,rank_k,I + input_stencil_w, F + filter_offset_w, O);
+        float *b = F + filter_offset_w;
+        float *a = I + input_stencil_w;
+        int p_cur = ii;
+        b0 = _mm256_load_ps(b + (ii * C_ob));
+        b1 = _mm256_load_ps(b + (ii * C_ob + SIMD));
+        a_reg = _mm256_broadcast_ss(a + (ii));
+        p_cur += stride*C_ob;
+        c0 = _mm256_fmadd_ps(a_reg, b0, c0);
+        c1 = _mm256_fmadd_ps(a_reg, b1, c1);
+        a_reg = _mm256_broadcast_ss(a + (p_cur));
+        p_cur += stride*C_ob;
+        c2 = _mm256_fmadd_ps(a_reg, b0, c2);
+        c3 = _mm256_fmadd_ps(a_reg, b1, c3);
+        a_reg = _mm256_broadcast_ss(a +  (p_cur));
+        p_cur += stride*C_ob;
+        c4 = _mm256_fmadd_ps(a_reg, b0, c4);
+        c5 = _mm256_fmadd_ps(a_reg, b1, c5);
+        a_reg = _mm256_broadcast_ss(a +  (p_cur));
+        p_cur += stride*C_ob;
+        c6 = _mm256_fmadd_ps(a_reg, b0, c6);
+        c7 = _mm256_fmadd_ps(a_reg, b1, c7);
+        a_reg = _mm256_broadcast_ss(a +  (p_cur));
+        p_cur += stride*C_ob;
+        c8 = _mm256_fmadd_ps(a_reg, b0, c8);
+        c9 = _mm256_fmadd_ps(a_reg, b1, c9);
+        a_reg = _mm256_broadcast_ss(a +  (p_cur));
+        p_cur += stride*C_ob;
+        c10 = _mm256_fmadd_ps(a_reg, b0, c10);
+        c11 = _mm256_fmadd_ps(a_reg, b1, c11);
+        // count++;
+      }
+    }
+  }
+  // printf("%d updates \n ", count);
+// store_C(C_ob,O+ block_offset + col_offset + k*C_ob);
+
+  _mm256_store_ps(O + (0 * C_ob), c0);
+  _mm256_store_ps(O + (0 * C_ob) + SIMD, c1);
+  _mm256_store_ps(O + (1 * C_ob), c2);
+  _mm256_store_ps(O + (1 * C_ob + SIMD), c3);
+  _mm256_store_ps(O + (2 * C_ob), c4);
+  _mm256_store_ps(O + (2 * C_ob + SIMD), c5);
+  _mm256_store_ps(O + (3 * C_ob), c6);
+  _mm256_store_ps(O + (3 * C_ob + SIMD), c7);
+  _mm256_store_ps(O + (4 * C_ob), c8);
+  _mm256_store_ps(O + (4 * C_ob + SIMD), c9);
+  _mm256_store_ps(O + (5 * C_ob), c10);
+  _mm256_store_ps(O + (5 * C_ob + SIMD), c11);
+
+}
+
+
+inline void conv_microkernel_pool_first_row_start(
+                            uint32_t input_col_stride,
+                            uint32_t H_f,
+                            uint32_t W_f,
+                            float * I,
+                            float * F,
+                            float * O_buffer,
+                            float *O
+                          ){
+
+  __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
+
+  c0 = _mm256_load_ps(O_buffer+ (0 * C_ob));
+   c1 = _mm256_load_ps(O_buffer+ (0 * C_ob) + SIMD);
+   c2 = _mm256_load_ps(O_buffer+ (1 * C_ob));
+   c3 = _mm256_load_ps(O_buffer+ (1 * C_ob) + SIMD);
+   c4 = _mm256_load_ps(O_buffer+ (2 * C_ob));
+   c5 = _mm256_load_ps(O_buffer+ (2 * C_ob) + SIMD);
+   c6 = _mm256_load_ps(O_buffer+ (3 * C_ob));
+   c7 = _mm256_load_ps(O_buffer+ (3 * C_ob) + SIMD);
+   c8 = _mm256_load_ps(O_buffer+ (4 * C_ob));
+   c9 = _mm256_load_ps(O_buffer+ (4 * C_ob) + SIMD);
+   c10 = _mm256_load_ps(O_buffer+ (5 * C_ob));
+   c11 = _mm256_load_ps(O_buffer+ (5 * C_ob) + SIMD);
   int updates = 0;
   // int count = 0;
   for(uint32_t n = 0; n < H_f; n++){
@@ -337,24 +431,570 @@ inline void conv_microkernel_start(
       }
     }
   }
-  // printf("%d updates \n ", count);
-// store_C(C_ob,O+ block_offset + col_offset + k*C_ob);
 
-  _mm256_store_ps(O + (0 * C_ob), c0);
-  _mm256_store_ps(O + (0 * C_ob) + SIMD, c1);
-  _mm256_store_ps(O + (1 * C_ob), c2);
-  _mm256_store_ps(O + (1 * C_ob + SIMD), c3);
-  _mm256_store_ps(O + (2 * C_ob), c4);
-  _mm256_store_ps(O + (2 * C_ob + SIMD), c5);
-  _mm256_store_ps(O + (3 * C_ob), c6);
-  _mm256_store_ps(O + (3 * C_ob + SIMD), c7);
-  _mm256_store_ps(O + (4 * C_ob), c8);
-  _mm256_store_ps(O + (4 * C_ob + SIMD), c9);
-  _mm256_store_ps(O + (5 * C_ob), c10);
-  _mm256_store_ps(O + (5 * C_ob + SIMD), c11);
+  // horizontal pooling
+  c2 = _mm256_max_ps(c2,c0);
+  c3 = _mm256_max_ps(c3,c1);
+  c6 = _mm256_max_ps(c6,c4);
+  c7 = _mm256_max_ps(c7,c5);
+  c10 = _mm256_max_ps(c10,c8);
+  c11 = _mm256_max_ps(c11,c9);
+
+  c2 = _mm256_max_ps(c2,c4);
+  c3 = _mm256_max_ps(c3,c5);
+  c6 = _mm256_max_ps(c6,c8);
+  c7 = _mm256_max_ps(c7,c9);
+
+
+
+  // store to output of pooling layer
+  _mm256_store_ps(O + (0 * C_ob), c2);
+  _mm256_store_ps(O + (0 * C_ob) + SIMD, c3);
+
+  _mm256_store_ps(O + (1 * C_ob), c6);
+  _mm256_store_ps(O + (1 * C_ob + SIMD), c7);
+
+  _mm256_store_ps(O + (2 * C_ob), c10);
+  _mm256_store_ps(O + (2 * C_ob + SIMD), c11);
+
 
 }
 
+inline void conv_microkernel_pool_first_row(
+                            uint32_t input_col_stride,
+                            uint32_t H_f,
+                            uint32_t W_f,
+                            float * I,
+                            float * F,
+                            float * O_buffer,
+                            float *O
+                          ){
+
+  __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
+
+  c0 = _mm256_load_ps(O_buffer+ (0 * C_ob));
+   c1 = _mm256_load_ps(O_buffer+ (0 * C_ob) + SIMD);
+   c2 = _mm256_load_ps(O_buffer+ (1 * C_ob));
+   c3 = _mm256_load_ps(O_buffer+ (1 * C_ob) + SIMD);
+   c4 = _mm256_load_ps(O_buffer+ (2 * C_ob));
+   c5 = _mm256_load_ps(O_buffer+ (2 * C_ob) + SIMD);
+   c6 = _mm256_load_ps(O_buffer+ (3 * C_ob));
+   c7 = _mm256_load_ps(O_buffer+ (3 * C_ob) + SIMD);
+   c8 = _mm256_load_ps(O_buffer+ (4 * C_ob));
+   c9 = _mm256_load_ps(O_buffer+ (4 * C_ob) + SIMD);
+   c10 = _mm256_load_ps(O_buffer+ (5 * C_ob));
+   c11 = _mm256_load_ps(O_buffer+ (5 * C_ob) + SIMD);
+  int updates = 0;
+  // int count = 0;
+  for(uint32_t n = 0; n < H_f; n++){
+
+    int filter_offset_h = n*W_f*C_ib*C_ob;
+    int input_stencil_h = /*input_col_offset +*/ n * input_col_stride /*+ input_row_offset*/;
+
+    for(uint32_t m = 0; m < W_f; m++){
+
+      int filter_offset_w = m*C_ib*C_ob + filter_offset_h;
+      int input_stencil_w = m*C_ib + input_stencil_h;
+
+      for(uint32_t ii = 0 ; ii < C_ib; ii++){
+
+        // kernel_conv(W_ob,C_ob,rank_k,I + input_stencil_w, F + filter_offset_w, O);
+        float *b = F + filter_offset_w;
+        float *a = I + input_stencil_w;
+
+        b0 = _mm256_load_ps(b + (ii * C_ob));
+        b1 = _mm256_load_ps(b + (ii * C_ob + SIMD));
+        a_reg = _mm256_broadcast_ss(a + (ii));
+        int p_cur = ii + C_ob;
+        c0 = _mm256_fmadd_ps(a_reg, b0, c0);
+        c1 = _mm256_fmadd_ps(a_reg, b1, c1);
+        a_reg = _mm256_broadcast_ss(a + (p_cur));
+        p_cur += C_ob;
+        c2 = _mm256_fmadd_ps(a_reg, b0, c2);
+        c3 = _mm256_fmadd_ps(a_reg, b1, c3);
+        a_reg = _mm256_broadcast_ss(a +  (p_cur));
+        p_cur += C_ob;
+        c4 = _mm256_fmadd_ps(a_reg, b0, c4);
+        c5 = _mm256_fmadd_ps(a_reg, b1, c5);
+        a_reg = _mm256_broadcast_ss(a +  (p_cur));
+        p_cur += C_ob;
+        c6 = _mm256_fmadd_ps(a_reg, b0, c6);
+        c7 = _mm256_fmadd_ps(a_reg, b1, c7);
+        a_reg = _mm256_broadcast_ss(a +  (p_cur));
+        p_cur += C_ob;
+        c8 = _mm256_fmadd_ps(a_reg, b0, c8);
+        c9 = _mm256_fmadd_ps(a_reg, b1, c9);
+        a_reg = _mm256_broadcast_ss(a +  (p_cur));
+        p_cur += C_ob;
+        c10 = _mm256_fmadd_ps(a_reg, b0, c10);
+        c11 = _mm256_fmadd_ps(a_reg, b1, c11);
+        // count++;
+      }
+    }
+  }
+
+  // horizontal pooling
+  b0 = _mm256_load_ps(O);
+  b1 = _mm256_load_ps(O + SIMD);
+
+  c2 = _mm256_max_ps(c2,c0);
+  c3 = _mm256_max_ps(c3,c1);
+  c6 = _mm256_max_ps(c6,c4);
+  c7 = _mm256_max_ps(c7,c5);
+  c10 = _mm256_max_ps(c10,c8);
+  c11 = _mm256_max_ps(c11,c9);
+
+  c2 = _mm256_max_ps(c2,c4);
+  c3 = _mm256_max_ps(c3,c5);
+  c6 = _mm256_max_ps(c6,c8);
+  c7 = _mm256_max_ps(c7,c9);
+
+  c0 = _mm256_max_ps(c0, b0);
+  c1 = _mm256_max_ps(c1,b1);
+
+  // store to output of pooling layer
+  _mm256_store_ps(O + (0 * C_ob), c0);
+  _mm256_store_ps(O + (0 * C_ob) + SIMD, c1);
+
+  _mm256_store_ps(O + (1 * C_ob), c2);
+  _mm256_store_ps(O + (1 * C_ob + SIMD), c3);
+
+  _mm256_store_ps(O + (2 * C_ob), c6);
+  _mm256_store_ps(O + (2 * C_ob + SIMD), c7);
+
+  _mm256_store_ps(O + (3 * C_ob), c10);
+  _mm256_store_ps(O + (3 * C_ob + SIMD), c11);
+
+
+}
+
+inline void conv_microkernel_pool_first_row_end(
+                            uint32_t input_col_stride,
+                            uint32_t H_f,
+                            uint32_t W_f,
+                            float * I,
+                            float * F,
+                            float * O_buffer,
+                            float *O
+                          ){
+
+  __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
+
+  c0 = _mm256_load_ps(O_buffer+ (0 * C_ob));
+   c1 = _mm256_load_ps(O_buffer+ (0 * C_ob) + SIMD);
+   c2 = _mm256_load_ps(O_buffer+ (1 * C_ob));
+   c3 = _mm256_load_ps(O_buffer+ (1 * C_ob) + SIMD);
+   c4 = _mm256_load_ps(O_buffer+ (2 * C_ob));
+   c5 = _mm256_load_ps(O_buffer+ (2 * C_ob) + SIMD);
+   c6 = _mm256_load_ps(O_buffer+ (3 * C_ob));
+   c7 = _mm256_load_ps(O_buffer+ (3 * C_ob) + SIMD);
+   c8 = _mm256_load_ps(O_buffer+ (4 * C_ob));
+   c9 = _mm256_load_ps(O_buffer+ (4 * C_ob) + SIMD);
+   c10 = _mm256_load_ps(O_buffer+ (5 * C_ob));
+   c11 = _mm256_load_ps(O_buffer+ (5 * C_ob) + SIMD);
+  int updates = 0;
+  // int count = 0;
+  for(uint32_t n = 0; n < H_f; n++){
+
+    int filter_offset_h = n*W_f*C_ib*C_ob;
+    int input_stencil_h = /*input_col_offset +*/ n * input_col_stride /*+ input_row_offset*/;
+
+    for(uint32_t m = 0; m < W_f; m++){
+
+      int filter_offset_w = m*C_ib*C_ob + filter_offset_h;
+      int input_stencil_w = m*C_ib + input_stencil_h;
+
+      for(uint32_t ii = 0 ; ii < C_ib; ii++){
+
+        // kernel_conv(W_ob,C_ob,rank_k,I + input_stencil_w, F + filter_offset_w, O);
+        float *b = F + filter_offset_w;
+        float *a = I + input_stencil_w;
+
+        b0 = _mm256_load_ps(b + (ii * C_ob));
+        b1 = _mm256_load_ps(b + (ii * C_ob + SIMD));
+        a_reg = _mm256_broadcast_ss(a + (ii));
+        int p_cur = ii + C_ob;
+        c0 = _mm256_fmadd_ps(a_reg, b0, c0);
+        c1 = _mm256_fmadd_ps(a_reg, b1, c1);
+        a_reg = _mm256_broadcast_ss(a + (p_cur));
+        p_cur += C_ob;
+        c2 = _mm256_fmadd_ps(a_reg, b0, c2);
+        c3 = _mm256_fmadd_ps(a_reg, b1, c3);
+        a_reg = _mm256_broadcast_ss(a +  (p_cur));
+        p_cur += C_ob;
+        c4 = _mm256_fmadd_ps(a_reg, b0, c4);
+        c5 = _mm256_fmadd_ps(a_reg, b1, c5);
+        a_reg = _mm256_broadcast_ss(a +  (p_cur));
+        p_cur += C_ob;
+        c6 = _mm256_fmadd_ps(a_reg, b0, c6);
+        c7 = _mm256_fmadd_ps(a_reg, b1, c7);
+        a_reg = _mm256_broadcast_ss(a +  (p_cur));
+        p_cur += C_ob;
+        c8 = _mm256_fmadd_ps(a_reg, b0, c8);
+        c9 = _mm256_fmadd_ps(a_reg, b1, c9);
+        a_reg = _mm256_broadcast_ss(a +  (p_cur));
+        p_cur += C_ob;
+        c10 = _mm256_fmadd_ps(a_reg, b0, c10);
+        c11 = _mm256_fmadd_ps(a_reg, b1, c11);
+        // count++;
+      }
+    }
+  }
+
+  // horizontal pooling
+  b0 = _mm256_load_ps(O);
+  b1 = _mm256_load_ps(O + SIMD);
+
+  c2 = _mm256_max_ps(c2,c0);
+  c3 = _mm256_max_ps(c3,c1);
+  c6 = _mm256_max_ps(c6,c4);
+  c7 = _mm256_max_ps(c7,c5);
+  c10 = _mm256_max_ps(c10,c8);
+  c11 = _mm256_max_ps(c11,c9);
+
+  c2 = _mm256_max_ps(c2,c4);
+  c3 = _mm256_max_ps(c3,c5);
+  c6 = _mm256_max_ps(c6,c8);
+  c7 = _mm256_max_ps(c7,c9);
+
+  c0 = _mm256_max_ps(c0, b0);
+  c1 = _mm256_max_ps(c1,b1);
+
+  // store to output of pooling layer
+  _mm256_store_ps(O + (0 * C_ob), c0);
+  _mm256_store_ps(O + (0 * C_ob) + SIMD, c1);
+
+  _mm256_store_ps(O + (1 * C_ob), c2);
+  _mm256_store_ps(O + (1 * C_ob + SIMD), c3);
+
+  _mm256_store_ps(O + (2 * C_ob), c6);
+  _mm256_store_ps(O + (2 * C_ob + SIMD), c7);
+
+
+
+
+}
+
+inline void conv_microkernel_pool_accum_start(
+                            uint32_t input_col_stride,
+                            uint32_t H_f,
+                            uint32_t W_f,
+                            float * I,
+                            float * F,
+                            float * O_buffer,
+                            float *O
+                          ){
+
+  __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
+
+  c0 = _mm256_load_ps(O_buffer+ (0 * C_ob));
+   c1 = _mm256_load_ps(O_buffer+ (0 * C_ob) + SIMD);
+   c2 = _mm256_load_ps(O_buffer+ (1 * C_ob));
+   c3 = _mm256_load_ps(O_buffer+ (1 * C_ob) + SIMD);
+   c4 = _mm256_load_ps(O_buffer+ (2 * C_ob));
+   c5 = _mm256_load_ps(O_buffer+ (2 * C_ob) + SIMD);
+   c6 = _mm256_load_ps(O_buffer+ (3 * C_ob));
+   c7 = _mm256_load_ps(O_buffer+ (3 * C_ob) + SIMD);
+   c8 = _mm256_load_ps(O_buffer+ (4 * C_ob));
+   c9 = _mm256_load_ps(O_buffer+ (4 * C_ob) + SIMD);
+   c10 = _mm256_load_ps(O_buffer+ (5 * C_ob));
+   c11 = _mm256_load_ps(O_buffer+ (5 * C_ob) + SIMD);
+  int updates = 0;
+  // int count = 0;
+  for(uint32_t n = 0; n < H_f; n++){
+
+    int filter_offset_h = n*W_f*C_ib*C_ob;
+    int input_stencil_h = /*input_col_offset +*/ n * input_col_stride /*+ input_row_offset*/;
+
+    for(uint32_t m = 0; m < W_f; m++){
+
+      int filter_offset_w = m*C_ib*C_ob + filter_offset_h;
+      int input_stencil_w = m*C_ib + input_stencil_h;
+
+      for(uint32_t ii = 0 ; ii < C_ib; ii++){
+
+        // kernel_conv(W_ob,C_ob,rank_k,I + input_stencil_w, F + filter_offset_w, O);
+        float *b = F + filter_offset_w;
+        float *a = I + input_stencil_w;
+
+        b0 = _mm256_load_ps(b + (ii * C_ob));
+        b1 = _mm256_load_ps(b + (ii * C_ob + SIMD));
+        a_reg = _mm256_broadcast_ss(a + (ii));
+        int p_cur = ii + C_ob;
+        c0 = _mm256_fmadd_ps(a_reg, b0, c0);
+        c1 = _mm256_fmadd_ps(a_reg, b1, c1);
+        a_reg = _mm256_broadcast_ss(a + (p_cur));
+        p_cur += C_ob;
+        c2 = _mm256_fmadd_ps(a_reg, b0, c2);
+        c3 = _mm256_fmadd_ps(a_reg, b1, c3);
+        a_reg = _mm256_broadcast_ss(a +  (p_cur));
+        p_cur += C_ob;
+        c4 = _mm256_fmadd_ps(a_reg, b0, c4);
+        c5 = _mm256_fmadd_ps(a_reg, b1, c5);
+        a_reg = _mm256_broadcast_ss(a +  (p_cur));
+        p_cur += C_ob;
+        c6 = _mm256_fmadd_ps(a_reg, b0, c6);
+        c7 = _mm256_fmadd_ps(a_reg, b1, c7);
+        a_reg = _mm256_broadcast_ss(a +  (p_cur));
+        p_cur += C_ob;
+        c8 = _mm256_fmadd_ps(a_reg, b0, c8);
+        c9 = _mm256_fmadd_ps(a_reg, b1, c9);
+        a_reg = _mm256_broadcast_ss(a +  (p_cur));
+        p_cur += C_ob;
+        c10 = _mm256_fmadd_ps(a_reg, b0, c10);
+        c11 = _mm256_fmadd_ps(a_reg, b1, c11);
+        // count++;
+      }
+    }
+  }
+
+  // horizontal pooling
+  c2 = _mm256_max_ps(c2,c0);
+  c3 = _mm256_max_ps(c3,c1);
+  c6 = _mm256_max_ps(c6,c4);
+  c7 = _mm256_max_ps(c7,c5);
+  c10 = _mm256_max_ps(c10,c8);
+  c11 = _mm256_max_ps(c11,c9);
+
+  c2 = _mm256_max_ps(c2,c4);
+  c3 = _mm256_max_ps(c3,c5);
+  c6 = _mm256_max_ps(c6,c8);
+  c7 = _mm256_max_ps(c7,c9);
+
+
+
+  // store to output of pooling layer
+  _mm256_store_ps(O + (0 * C_ob), c2);
+  _mm256_store_ps(O + (0 * C_ob) + SIMD, c3);
+
+  _mm256_store_ps(O + (1 * C_ob), c6);
+  _mm256_store_ps(O + (1 * C_ob + SIMD), c7);
+
+  _mm256_store_ps(O + (2 * C_ob), c10);
+  _mm256_store_ps(O + (2 * C_ob + SIMD), c11);
+
+
+}
+
+inline void conv_microkernel_pool_accum(
+                            uint32_t input_col_stride,
+                            uint32_t H_f,
+                            uint32_t W_f,
+                            float * I,
+                            float * F,
+                            float * O_buffer,
+                            float *O
+                          ){
+
+  __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
+
+  c0 = _mm256_load_ps(O_buffer+ (0 * C_ob));
+   c1 = _mm256_load_ps(O_buffer+ (0 * C_ob) + SIMD);
+   c2 = _mm256_load_ps(O_buffer+ (1 * C_ob));
+   c3 = _mm256_load_ps(O_buffer+ (1 * C_ob) + SIMD);
+   c4 = _mm256_load_ps(O_buffer+ (2 * C_ob));
+   c5 = _mm256_load_ps(O_buffer+ (2 * C_ob) + SIMD);
+   c6 = _mm256_load_ps(O_buffer+ (3 * C_ob));
+   c7 = _mm256_load_ps(O_buffer+ (3 * C_ob) + SIMD);
+   c8 = _mm256_load_ps(O_buffer+ (4 * C_ob));
+   c9 = _mm256_load_ps(O_buffer+ (4 * C_ob) + SIMD);
+   c10 = _mm256_load_ps(O_buffer+ (5 * C_ob));
+   c11 = _mm256_load_ps(O_buffer+ (5 * C_ob) + SIMD);
+  int updates = 0;
+  // int count = 0;
+  for(uint32_t n = 0; n < H_f; n++){
+
+    int filter_offset_h = n*W_f*C_ib*C_ob;
+    int input_stencil_h = /*input_col_offset +*/ n * input_col_stride /*+ input_row_offset*/;
+
+    for(uint32_t m = 0; m < W_f; m++){
+
+      int filter_offset_w = m*C_ib*C_ob + filter_offset_h;
+      int input_stencil_w = m*C_ib + input_stencil_h;
+
+      for(uint32_t ii = 0 ; ii < C_ib; ii++){
+
+        // kernel_conv(W_ob,C_ob,rank_k,I + input_stencil_w, F + filter_offset_w, O);
+        float *b = F + filter_offset_w;
+        float *a = I + input_stencil_w;
+
+        b0 = _mm256_load_ps(b + (ii * C_ob));
+        b1 = _mm256_load_ps(b + (ii * C_ob + SIMD));
+        a_reg = _mm256_broadcast_ss(a + (ii));
+        int p_cur = ii + C_ob;
+        c0 = _mm256_fmadd_ps(a_reg, b0, c0);
+        c1 = _mm256_fmadd_ps(a_reg, b1, c1);
+        a_reg = _mm256_broadcast_ss(a + (p_cur));
+        p_cur += C_ob;
+        c2 = _mm256_fmadd_ps(a_reg, b0, c2);
+        c3 = _mm256_fmadd_ps(a_reg, b1, c3);
+        a_reg = _mm256_broadcast_ss(a +  (p_cur));
+        p_cur += C_ob;
+        c4 = _mm256_fmadd_ps(a_reg, b0, c4);
+        c5 = _mm256_fmadd_ps(a_reg, b1, c5);
+        a_reg = _mm256_broadcast_ss(a +  (p_cur));
+        p_cur += C_ob;
+        c6 = _mm256_fmadd_ps(a_reg, b0, c6);
+        c7 = _mm256_fmadd_ps(a_reg, b1, c7);
+        a_reg = _mm256_broadcast_ss(a +  (p_cur));
+        p_cur += C_ob;
+        c8 = _mm256_fmadd_ps(a_reg, b0, c8);
+        c9 = _mm256_fmadd_ps(a_reg, b1, c9);
+        a_reg = _mm256_broadcast_ss(a +  (p_cur));
+        p_cur += C_ob;
+        c10 = _mm256_fmadd_ps(a_reg, b0, c10);
+        c11 = _mm256_fmadd_ps(a_reg, b1, c11);
+        // count++;
+      }
+    }
+  }
+
+  // horizontal pooling
+  b0 = _mm256_load_ps(O);
+  b1 = _mm256_load_ps(O + SIMD);
+
+  c2 = _mm256_max_ps(c2,c0);
+  c3 = _mm256_max_ps(c3,c1);
+  c6 = _mm256_max_ps(c6,c4);
+  c7 = _mm256_max_ps(c7,c5);
+  c10 = _mm256_max_ps(c10,c8);
+  c11 = _mm256_max_ps(c11,c9);
+
+  c2 = _mm256_max_ps(c2,c4);
+  c3 = _mm256_max_ps(c3,c5);
+  c6 = _mm256_max_ps(c6,c8);
+  c7 = _mm256_max_ps(c7,c9);
+
+  c0 = _mm256_max_ps(c0, b0);
+  c1 = _mm256_max_ps(c1,b1);
+
+  // store to output of pooling layer
+  _mm256_store_ps(O + (0 * C_ob), c0);
+  _mm256_store_ps(O + (0 * C_ob) + SIMD, c1);
+
+  _mm256_store_ps(O + (1 * C_ob), c2);
+  _mm256_store_ps(O + (1 * C_ob + SIMD), c3);
+
+  _mm256_store_ps(O + (2 * C_ob), c6);
+  _mm256_store_ps(O + (2 * C_ob + SIMD), c7);
+
+  _mm256_store_ps(O + (3 * C_ob), c10);
+  _mm256_store_ps(O + (3 * C_ob + SIMD), c11);
+
+
+}
+
+inline void conv_microkernel_pool_accum_end(
+                            uint32_t input_col_stride,
+                            uint32_t H_f,
+                            uint32_t W_f,
+                            float * I,
+                            float * F,
+                            float * O_buffer,
+                            float *O
+                          ){
+
+  __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
+
+  c0 = _mm256_load_ps(O_buffer+ (0 * C_ob));
+   c1 = _mm256_load_ps(O_buffer+ (0 * C_ob) + SIMD);
+   c2 = _mm256_load_ps(O_buffer+ (1 * C_ob));
+   c3 = _mm256_load_ps(O_buffer+ (1 * C_ob) + SIMD);
+   c4 = _mm256_load_ps(O_buffer+ (2 * C_ob));
+   c5 = _mm256_load_ps(O_buffer+ (2 * C_ob) + SIMD);
+   c6 = _mm256_load_ps(O_buffer+ (3 * C_ob));
+   c7 = _mm256_load_ps(O_buffer+ (3 * C_ob) + SIMD);
+   c8 = _mm256_load_ps(O_buffer+ (4 * C_ob));
+   c9 = _mm256_load_ps(O_buffer+ (4 * C_ob) + SIMD);
+   c10 = _mm256_load_ps(O_buffer+ (5 * C_ob));
+   c11 = _mm256_load_ps(O_buffer+ (5 * C_ob) + SIMD);
+  int updates = 0;
+  // int count = 0;
+  for(uint32_t n = 0; n < H_f; n++){
+
+    int filter_offset_h = n*W_f*C_ib*C_ob;
+    int input_stencil_h = /*input_col_offset +*/ n * input_col_stride /*+ input_row_offset*/;
+
+    for(uint32_t m = 0; m < W_f; m++){
+
+      int filter_offset_w = m*C_ib*C_ob + filter_offset_h;
+      int input_stencil_w = m*C_ib + input_stencil_h;
+
+      for(uint32_t ii = 0 ; ii < C_ib; ii++){
+
+        // kernel_conv(W_ob,C_ob,rank_k,I + input_stencil_w, F + filter_offset_w, O);
+        float *b = F + filter_offset_w;
+        float *a = I + input_stencil_w;
+
+        b0 = _mm256_load_ps(b + (ii * C_ob));
+        b1 = _mm256_load_ps(b + (ii * C_ob + SIMD));
+        a_reg = _mm256_broadcast_ss(a + (ii));
+        int p_cur = ii + C_ob;
+        c0 = _mm256_fmadd_ps(a_reg, b0, c0);
+        c1 = _mm256_fmadd_ps(a_reg, b1, c1);
+        a_reg = _mm256_broadcast_ss(a + (p_cur));
+        p_cur += C_ob;
+        c2 = _mm256_fmadd_ps(a_reg, b0, c2);
+        c3 = _mm256_fmadd_ps(a_reg, b1, c3);
+        a_reg = _mm256_broadcast_ss(a +  (p_cur));
+        p_cur += C_ob;
+        c4 = _mm256_fmadd_ps(a_reg, b0, c4);
+        c5 = _mm256_fmadd_ps(a_reg, b1, c5);
+        a_reg = _mm256_broadcast_ss(a +  (p_cur));
+        p_cur += C_ob;
+        c6 = _mm256_fmadd_ps(a_reg, b0, c6);
+        c7 = _mm256_fmadd_ps(a_reg, b1, c7);
+        a_reg = _mm256_broadcast_ss(a +  (p_cur));
+        p_cur += C_ob;
+        c8 = _mm256_fmadd_ps(a_reg, b0, c8);
+        c9 = _mm256_fmadd_ps(a_reg, b1, c9);
+        a_reg = _mm256_broadcast_ss(a +  (p_cur));
+        p_cur += C_ob;
+        c10 = _mm256_fmadd_ps(a_reg, b0, c10);
+        c11 = _mm256_fmadd_ps(a_reg, b1, c11);
+        // count++;
+      }
+    }
+  }
+
+  // horizontal pooling
+  b0 = _mm256_load_ps(O);
+  b1 = _mm256_load_ps(O + SIMD);
+
+  c2 = _mm256_max_ps(c2,c0);
+  c3 = _mm256_max_ps(c3,c1);
+  c6 = _mm256_max_ps(c6,c4);
+  c7 = _mm256_max_ps(c7,c5);
+  c10 = _mm256_max_ps(c10,c8);
+  c11 = _mm256_max_ps(c11,c9);
+
+  c2 = _mm256_max_ps(c2,c4);
+  c3 = _mm256_max_ps(c3,c5);
+  c6 = _mm256_max_ps(c6,c8);
+  c7 = _mm256_max_ps(c7,c9);
+
+  c0 = _mm256_max_ps(c0, b0);
+  c1 = _mm256_max_ps(c1,b1);
+
+  // store to output of pooling layer
+  _mm256_store_ps(O + (0 * C_ob), c0);
+  _mm256_store_ps(O + (0 * C_ob) + SIMD, c1);
+
+  _mm256_store_ps(O + (1 * C_ob), c2);
+  _mm256_store_ps(O + (1 * C_ob + SIMD), c3);
+
+  _mm256_store_ps(O + (2 * C_ob), c6);
+  _mm256_store_ps(O + (2 * C_ob + SIMD), c7);
+
+
+
+
+}
+
+
+
+// TODO: could pack?
+// access to A at a stride of 1
 inline void conv_microkernel_gemm(
                             uint32_t input_col_stride,
                             uint32_t H_f,
@@ -443,7 +1083,7 @@ inline void conv_microkernel_gemm(
 
 }
 
-
+// accesses to A at a stride of 1
 inline void conv_microkernel_start_gemm(
                             uint32_t input_col_stride,
                             uint32_t H_f,
@@ -546,6 +1186,9 @@ inline void conv_microkernel_start_gemm(
 
 }
 
+
+
+// TODO: gemm style to put on Tensor Core
 inline void kernel_conv
 (
  int m,
@@ -686,22 +1329,3 @@ inline void kernel_conv_start
        _mm256_store_ps(c + (5 * n), c10);
        _mm256_store_ps(c + (5 * n + SIMD), c11);
 }
-
-// inline void store_C(
-//   int n,
-//   float * c
-// )
-// {
-//   _mm256_store_ps(c + (0 * n), c0);
-//   _mm256_store_ps(c + (0 * n) + SIMD, c1);
-//   _mm256_store_ps(c + (1 * n), c2);
-//   _mm256_store_ps(c + (1 * n + SIMD), c3);
-//   _mm256_store_ps(c + (2 * n), c4);
-//   _mm256_store_ps(c + (2 * n + SIMD), c5);
-//   _mm256_store_ps(c + (3 * n), c6);
-//   _mm256_store_ps(c + (3 * n + SIMD), c7);
-//   _mm256_store_ps(c + (4 * n), c8);
-//   _mm256_store_ps(c + (4 * n + SIMD), c9);
-//   _mm256_store_ps(c + (5 * n), c10);
-//   _mm256_store_ps(c + (5 * n + SIMD), c11);
-// }
