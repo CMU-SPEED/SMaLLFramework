@@ -30,7 +30,7 @@ int main(int argc, char ** argv)
   int C_o_1 = atoi(argv[3]);
 
   int kernel_size = 3;
-  int stride = 1;
+  int stride = 4;
   int N = (atol(argv[4]) - 1) * stride + kernel_size;
   int M = (atol(argv[5]) - 1) * stride + kernel_size;
   if(atol(argv[5])%6 != 0){
