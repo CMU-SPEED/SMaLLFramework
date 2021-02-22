@@ -5,3 +5,6 @@ CMakeFiles/
 !CMakeLists.txt
 Makefile
 *.cmake
+torch_1x1
+torch_pool
+torch_conv
