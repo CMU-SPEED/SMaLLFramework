@@ -8,3 +8,4 @@ Makefile
 torch_1x1
 torch_pool
 torch_conv
+*.asm

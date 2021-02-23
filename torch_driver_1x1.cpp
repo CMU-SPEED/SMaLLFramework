@@ -29,8 +29,8 @@ int main(int argc, char ** argv)
   int C_o = atoi(argv[2]);
   int C_o_1 = atoi(argv[3]);
 
-  int kernel_size = 3;
-  int stride = 4;
+  constexpr int kernel_size = 3;
+  constexpr int stride = 4;
   int N = (atol(argv[4]) - 1) * stride + kernel_size;
   int M = (atol(argv[5]) - 1) * stride + kernel_size;
   if(atol(argv[5])%6 != 0){
@@ -134,7 +134,7 @@ WSS Size Out_img 1x1 : %.2f K/8K elements  dims: %u %u %u\n\
     copy_torch2dc(a, 'i', in_dimensions, input_dc);
     copy_torch2dc(weights,'f',filter_dimensions,filter_dc);
     t0 = rdtsc();
-    direct_convolution(C_i, C_o, kernel_size, kernel_size, N, M, stride, input_dc, filter_dc, out_intermediate_dc);
+    direct_convolution<stride, kernel_size, kernel_size>(C_i, C_o, N, M, input_dc, filter_dc, out_intermediate_dc);
 
     t1 = rdtsc();
      sum+=(t1-t0);
@@ -159,7 +159,7 @@ WSS Size Out_img 1x1 : %.2f K/8K elements  dims: %u %u %u\n\
   for (int run = 0; run < RUNS; run++){
     copy_torch2dc(weights_1x1, 'f', filter_1x1_dimensions, filter_1x1_dc);
     t0 = rdtsc();
-    direct_convolution(C_o, C_o_1, 1, 1, out_intermediate_dimensions[2], out_intermediate_dimensions[3], 1, out_intermediate_dc, filter_1x1_dc, out_dc);
+    direct_convolution<1, 1, 1>(C_o, C_o_1, out_intermediate_dimensions[2], out_intermediate_dimensions[3], out_intermediate_dc, filter_1x1_dc, out_dc);
     t1 = rdtsc();
      sum_1x1+=(t1-t0);
      #if(L)
@@ -188,7 +188,7 @@ WSS Size Out_img 1x1 : %.2f K/8K elements  dims: %u %u %u\n\
   for(int r = 0; r < RUNS; r++){
     copy_torch2dc(weights_1x1, 'f', filter_1x1_dimensions, filter_1x1_dc, 1);
     t0 = rdtsc();
-    fused_direct_convolution(C_i, C_o, C_o_1, kernel_size,kernel_size,N, M, stride, input_dc,filter_dc, filter_1x1_dc, out_intermediate_buffer, out_dc);
+    fused_direct_convolution<stride, kernel_size, kernel_size>(C_i, C_o, C_o_1,N, M,input_dc,filter_dc, filter_1x1_dc, out_intermediate_buffer, out_dc);
     t1 = rdtsc();
     sum_fused += (t1 - t0);
     #if(L)

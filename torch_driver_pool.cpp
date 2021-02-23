@@ -1,15 +1,19 @@
 #include <torch/torch.h>
 #include<math.h>
 #include<assert.h>
-#include "direct_convolution.h"
-#include "utils.h"
+
 // Pooling driver
 
 #define GEMM 0
-#define L 3
+#define L 0
 #define RUNS 1000
-#define VERBOSE 1
+#define VERBOSE 0
 
+#define STRIDE 1
+
+
+#include "direct_convolution.h"
+#include "utils.h"
 //Good Ol' Timing
 static __inline__ unsigned long long rdtsc(void) {
   unsigned hi, lo;
@@ -20,23 +24,23 @@ static __inline__ unsigned long long rdtsc(void) {
 
 int main(int argc, char ** argv)
 {
-  if(argc!=6)
+  if(argc!=5)
   {
-    printf("USAGE: torch_1x1 < 3x3 Input Channels> <3x3 Output Channels> <1x1 OutputChannels>  <Output Height> <Output Width (multiple of 6)>\n");
+    printf("USAGE: torch_1x1 < 3x3 Input Channels> <3x3 Output Channels> <Output Height> <Output Width (multiple of 6)>\n");
     return 0;
   }
 
   // Setup Problem Size from command line variables
   int C_i = atoi(argv[1]);
   int C_o = atoi(argv[2]);
-  int C_o_1 = atoi(argv[3]);
+  // int C_o_1 = atoi(argv[3]);
 
-  int kernel_size = 3;
-  int stride = 1;
-  int N = (atol(argv[4]) - 1) * stride + kernel_size;
-  int M = atol(argv[5]) + 2*(kernel_size/2);
-  if(M%6 != 2){
-    printf(" Please check that Output Width is a multiple of 6");
+  constexpr int kernel_size = 3;
+  constexpr int stride = 1;
+  int N = (atol(argv[3]) - 1) * stride + kernel_size;
+  int M = atol(argv[4]) + 2*(kernel_size/2);
+  if(M%6 != 2 && M >= 14){
+    printf(" Please check that Output Width is a multiple of 6 >= 12");
     return 0;
   }
 
@@ -45,18 +49,10 @@ int main(int argc, char ** argv)
   torch::manual_seed(1729);
   torch::Tensor a = torch::randn(C_i*N*M).reshape({1,C_i,N, M});
   a = torch::add(a, 0.1);
-  // for(int i = 0; i < C_i; i++){
-  //   for(int j = 1; j < 4; j++){
-  //     for(int k = 6; k < 12; k++){
-  //       // auto cur = a.index({i, j, k});
-  //       a.index_put_({0,i, j, k}, 1.0*(j*M+k));
-  //     }
-  //   }
-  // }
+
   a = torch::mul(a, 0.1);
   torch::Tensor test_weights =  torch::ones(C_o*C_i*kernel_size*kernel_size).reshape({C_o,C_i,kernel_size,kernel_size});
   test_weights = torch::mul(test_weights,1.0/9.0);
-  torch::Tensor test_weights_1x1 = torch::rand(C_o_1*C_o*1*1).reshape({C_o_1,C_o,1,1});
   // float *array;
 
 
@@ -79,7 +75,7 @@ int main(int argc, char ** argv)
   uint32_t t0, t1;
   uint64_t sum_pytorch = 0;
   torch::Tensor out_intermediate, out;
-  for(uint32_t r = 0; r < RUNS; r++)
+  for(uint32_t r = 0; r < RUNS/10; r++)
   {
     t0 = rdtsc();
     out_intermediate = conv_3x3(a);
@@ -136,18 +132,22 @@ WSS Size Out_img pool : %.2f K/8K elements  dims: %u %u %u\n\
     int j  = 1;
   }
 
-  uint64_t sum=0;
-
+  uint64_t sum=0, sum_pool = 0;
+  //
   // 3x3 unfused
   for (int run = 0; run < RUNS; run++){
     // Copy Inputs to their flat buffers
     copy_torch2dc(a, 'i', in_dimensions, input_dc);
     copy_torch2dc(weights,'f',filter_dimensions,filter_dc);
     t0 = rdtsc();
-    direct_convolution(C_i, C_o, kernel_size, kernel_size, N, M, stride, input_dc, filter_dc, out_intermediate_dc);
+    direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc, filter_dc, out_intermediate_dc);
+    // direct_convolution<stride*C_ob,kernel_size, kernel_size >(C_i, C_o, kernel_size, kernel_size, N, M, 1, input_dc, filter_dc, out_intermediate_dc);
+    t1 = rdtsc();
+    sum += (t1 - t0);
+    t0 = rdtsc();
     pooling(C_o, out_intermediate_dimensions[2], out_intermediate_dimensions[3] ,out_intermediate_dc, out_dc);
     t1 = rdtsc();
-     sum+=(t1-t0);
+    sum_pool += (t1 - t0);
      #if(L)
        volatile float check_sum = rand()/(1.0*RAND_MAX);
        for(uint32_t i = 0; i < bomb_size; i++){
@@ -156,44 +156,34 @@ WSS Size Out_img pool : %.2f K/8K elements  dims: %u %u %u\n\
      #endif
   }
 
-  int m=out_dimensions[2]*out_dimensions[3], n=out_intermediate_dimensions[1], k = kernel_size*kernel_size*C_i;
+  int m=out_intermediate_dimensions[2]*out_intermediate_dimensions[3], n=out_intermediate_dimensions[1], k = kernel_size*kernel_size*C_i;
 
 
-  printf("GEMM %d L%d %d %d %d %d %d \t  %lf\t",GEMM, L, kernel_size, m,  C_i,n,C_o_1,
-                          (2.0*m*n*k
+  printf("GEMM %d L%d %d %d %d %d \t  %lf %lf\t %lf %lf\t %lf %lf\t",GEMM, L, kernel_size, m,  C_i,n,
+                          (
+                          2.0*m*n*k
+                          // +
+                          //   out_dimensions[2]*out_dimensions[3]* out_dimensions[1]*9
+                          )/((float)((sum)/(1.0*RUNS))), (float)((sum)/(1.0*RUNS)),
+                          (
+                          // 2.0*m*n*k
+                          // +
+                          out_dimensions[2]*out_dimensions[3]* out_dimensions[1]*9
+                          )/((float)(sum_pool)/(1.0*RUNS)), (float)((sum_pool)/(1.0*RUNS)),
+                          (
+                          2.0*m*n*k
                           +
                           out_dimensions[2]*out_dimensions[3]* out_dimensions[1]*9
-                        )/((float)(sum/(1.0*RUNS))));
-  uint64_t sum_pool = 0;
+                        )/((float)((sum + sum_pool)/(1.0*RUNS))), (float)((sum+sum_pool)/(1.0*RUNS)));
 
 
-  // pooling unfused
-
-
-  // for (int run = 0; run < RUNS; run++){
-  //   // Copy Inputs to their flat buffers
-  //   t0 = rdtsc();
-  //   t1 = rdtsc();
-  //    sum_pool+=(t1-t0);
-  //    #if(L)
-  //      volatile float check_sum = rand()/(1.0*RAND_MAX);
-  //      for(uint32_t i = 0; i < bomb_size; i++){
-  //        check_sum += cache_bomb_array[i];
-  //      }
-  //    #endif
-  // }
-
-  // printf("%lf\t",
-  //                         (out_dimensions[2]*out_dimensions[3]* out_dimensions[1]*9
-  //                         // +
-  //                         // 2.0*m*C_o_1*out_intermediate_dimensions[1]
-  //                       )/((float)(sum/(1.0*RUNS))));
- // printf("%lf\t",  2.0*m*n*k + out_dimensions[2]*out_dimensions[3]* out_dimensions[1]*9)/((sum_fused)/(1.0*RUNS)))
   uint64_t volatile sum_fused = 0;
   // fused
   for(int r = 0; r < RUNS; r++){
+    copy_torch2dc(a, 'i', in_dimensions, input_dc);
+    copy_torch2dc(weights,'f',filter_dimensions,filter_dc);
     t0 = rdtsc();
-    fused_pooling_direct_convolution(C_i, C_o, kernel_size,kernel_size, N, M, stride, input_dc,filter_dc, out_intermediate_buffer, out_dc);
+    fused_pooling_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_buffer, out_dc);
     t1 = rdtsc();
     sum_fused += (t1 - t0);
     #if(L)
