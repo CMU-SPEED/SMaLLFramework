@@ -205,6 +205,7 @@ bool check_eqivalence(torch::Tensor t,
            uint32_t k_offset = k*dim_1*dim_0;
            for(uint32_t l = 0; l < op_block; l++){
              int l_offset = l*dim_2*dim_1*dim_0;
+             // printf("offset: %d\n", offset);fflush(0);
              check &= (fabs(dc_array[offset++]
                           -
                        flat_t[g_offset + l_offset   +
@@ -214,20 +215,30 @@ bool check_eqivalence(torch::Tensor t,
                                ])
 
                            < tolerance);
-             // printf("%d %.4f %.4f %d\n",offset-1, dc_array[offset-1] ,flat_t[g_offset + l_offset   +
-             //                                                  h_offset + k_offset   +
-             //                                                             i_offset   +
-             //                                                             j_offset
-             //                                                   ], (fabs(dc_array[offset-1]
-             //                                                                -
-             //                                                             flat_t[g_offset + l_offset   +
-             //                                                                    h_offset + k_offset   +
-             //                                                                               i_offset   +
-             //                                                                               j_offset
-             //                                                                     ])
-             //
-             //                                                                 < tolerance)
-             //       );
+          if((fabs(dc_array[offset-1]
+                       -
+                    flat_t[g_offset + l_offset   +
+                           h_offset + k_offset   +
+                                      i_offset   +
+                                      j_offset
+                            ])
+
+                        > tolerance))
+            {
+             printf("%d %.4f %.4f %f\n",offset-1, dc_array[offset-1] ,flat_t[g_offset + l_offset   +
+                                                              h_offset + k_offset   +
+                                                                         i_offset   +
+                                                                         j_offset
+                                                               ],
+                                                               (fabs(dc_array[offset-1]
+                                                                            -
+                                                                         flat_t[g_offset + l_offset   +
+                                                                                h_offset + k_offset   +
+                                                                                           i_offset   +
+                                                                                           j_offset
+                                                                                 ]))
+                   );
+            }
            }
          }
        }
