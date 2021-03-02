@@ -51,7 +51,12 @@ int main(int argc, char ** argv)
                            //arange
   a = torch::mul(a, 0.001);
   torch::Tensor test_weights =  torch::ones(C_o*C_i*kernel_size*kernel_size).reshape({C_o,C_i,kernel_size,kernel_size});
-  torch::Tensor test_weights_1x1 = torch::ones(C_o_1*C_o*1*1).reshape({C_o_1,C_o,1,1});
+  torch::Tensor norm_mean = torch::randn(C_o);
+  torch::Tensor norm_variance = torch::randn(C_o);
+  torch::Tensor norm_weight = torch::ones(C_o);
+
+  
+
   // float *array;
 
 
@@ -64,12 +69,12 @@ int main(int argc, char ** argv)
 
   conv_3x3->weight = test_weights;
 
-  auto conv_1x1 = torch::nn::Conv2d( torch::nn::Conv2dOptions(C_o, C_o_1, 1).
-                                                stride(1).
-                                                padding(0).
-                                                bias(false));
+  auto norm = torch::nn::BatchNorm2d( torch::nn::BatchNorm2dOptions(C_o).
+                                                eps(0.5).
+                                                track_running_stats(false));
 
-  conv_1x1->weight = test_weights_1x1;
+  norm->mean = test_weights_1x1;
+
 
 
   //Run Inference

@@ -1,5 +1,4 @@
-// #include <stdio.h>
-// #include <stdlib.h>
+
 #include <immintrin.h>
 
 #define SIMD 8
@@ -214,6 +213,92 @@ inline void conv_microkernel_start(
 
 }
 
+template <uint32_t step, uint32_t H_f, uint32_t W_f>
+inline void conv_microkernel_last(
+                            uint32_t input_col_stride,
+                            float * I,
+                            float * F,
+                            float * norm_weights,
+                            float * O){
+
+  __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
+
+  c0 = _mm256_load_ps(O + (0 * C_ob));
+   c1 = _mm256_load_ps(O + (0 * C_ob) + SIMD);
+   c2 = _mm256_load_ps(O + (1 * C_ob));
+   c3 = _mm256_load_ps(O + (1 * C_ob) + SIMD);
+   c4 = _mm256_load_ps(O + (2 * C_ob));
+   c5 = _mm256_load_ps(O + (2 * C_ob) + SIMD);
+   c6 = _mm256_load_ps(O + (3 * C_ob));
+   c7 = _mm256_load_ps(O + (3 * C_ob) + SIMD);
+   c8 = _mm256_load_ps(O + (4 * C_ob));
+   c9 = _mm256_load_ps(O + (4 * C_ob) + SIMD);
+   c10 = _mm256_load_ps(O + (5 * C_ob));
+   c11 = _mm256_load_ps(O + (5 * C_ob) + SIMD);
+  int updates = 0;
+  // uint32_t step = stride*C_ob;
+  // int count = 0;
+  for(uint32_t n = 0; n < H_f; n++){
+
+    int filter_offset_h = n*W_f*C_ib*C_ob;
+    int input_stencil_h = /*input_col_offset +*/ n * input_col_stride /*+ input_row_offset*/;
+
+    for(uint32_t m = 0; m < W_f; m++){
+
+      int filter_offset_w = m*C_ib*C_ob + filter_offset_h;
+      int input_stencil_w = m*C_ib + input_stencil_h;
+
+      for(uint32_t ii = 0 ; ii < C_ib; ii++){
+
+        // kernel_conv(W_ob,C_ob,rank_k,I + input_stencil_w, F + filter_offset_w, O);
+        float *b = F + filter_offset_w;
+        float *a = I + input_stencil_w;
+        int p_cur = ii ;
+        b0 = _mm256_load_ps(b + (ii * C_ob));
+        b1 = _mm256_load_ps(b + (ii * C_ob + SIMD));
+        a_reg = _mm256_broadcast_ss(a + (p_cur));
+        p_cur += step;
+        c0 = _mm256_fmadd_ps(a_reg, b0, c0);
+        c1 = _mm256_fmadd_ps(a_reg, b1, c1);
+        a_reg = _mm256_broadcast_ss(a + (p_cur));
+        p_cur += step;
+        c2 = _mm256_fmadd_ps(a_reg, b0, c2);
+        c3 = _mm256_fmadd_ps(a_reg, b1, c3);
+        a_reg = _mm256_broadcast_ss(a +  (p_cur));
+        p_cur += step;
+        c4 = _mm256_fmadd_ps(a_reg, b0, c4);
+        c5 = _mm256_fmadd_ps(a_reg, b1, c5);
+        a_reg = _mm256_broadcast_ss(a +  (p_cur));
+        p_cur += step;
+        c6 = _mm256_fmadd_ps(a_reg, b0, c6);
+        c7 = _mm256_fmadd_ps(a_reg, b1, c7);
+        a_reg = _mm256_broadcast_ss(a +  (p_cur));
+        p_cur += step;
+        c8 = _mm256_fmadd_ps(a_reg, b0, c8);
+        c9 = _mm256_fmadd_ps(a_reg, b1, c9);
+        a_reg = _mm256_broadcast_ss(a +  (p_cur));
+        p_cur += step;
+        c10 = _mm256_fmadd_ps(a_reg, b0, c10);
+        c11 = _mm256_fmadd_ps(a_reg, b1, c11);
+      }
+    }
+  }
+
+  //do normalization
+  _mm256_store_ps(O + (0 * C_ob), c0);
+  _mm256_store_ps(O + (0 * C_ob) + SIMD, c1);
+  _mm256_store_ps(O + (1 * C_ob), c2);
+  _mm256_store_ps(O + (1 * C_ob + SIMD), c3);
+  _mm256_store_ps(O + (2 * C_ob), c4);
+  _mm256_store_ps(O + (2 * C_ob + SIMD), c5);
+  _mm256_store_ps(O + (3 * C_ob), c6);
+  _mm256_store_ps(O + (3 * C_ob + SIMD), c7);
+  _mm256_store_ps(O + (4 * C_ob), c8);
+  _mm256_store_ps(O + (4 * C_ob + SIMD), c9);
+  _mm256_store_ps(O + (5 * C_ob), c10);
+  _mm256_store_ps(O + (5 * C_ob + SIMD), c11);
+
+}
 
 
 // No cache hints

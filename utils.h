@@ -215,30 +215,30 @@ bool check_eqivalence(torch::Tensor t,
                                ])
 
                            < tolerance);
-          if((fabs(dc_array[offset-1]
-                       -
-                    flat_t[g_offset + l_offset   +
-                           h_offset + k_offset   +
-                                      i_offset   +
-                                      j_offset
-                            ])
-
-                        > tolerance))
-            {
-             printf("%d %.4f %.4f %f\n",offset-1, dc_array[offset-1] ,flat_t[g_offset + l_offset   +
-                                                              h_offset + k_offset   +
-                                                                         i_offset   +
-                                                                         j_offset
-                                                               ],
-                                                               (fabs(dc_array[offset-1]
-                                                                            -
-                                                                         flat_t[g_offset + l_offset   +
-                                                                                h_offset + k_offset   +
-                                                                                           i_offset   +
-                                                                                           j_offset
-                                                                                 ]))
-                   );
-            }
+          // if((fabs(dc_array[offset-1]
+          //              -
+          //           flat_t[g_offset + l_offset   +
+          //                  h_offset + k_offset   +
+          //                             i_offset   +
+          //                             j_offset
+          //                   ])
+          //
+          //               > tolerance))
+          //   {
+          //    printf("%d %.4f %.4f %f\n",offset-1, dc_array[offset-1] ,flat_t[g_offset + l_offset   +
+          //                                                     h_offset + k_offset   +
+          //                                                                i_offset   +
+          //                                                                j_offset
+          //                                                      ],
+          //                                                      (fabs(dc_array[offset-1]
+          //                                                                   -
+          //                                                                flat_t[g_offset + l_offset   +
+          //                                                                       h_offset + k_offset   +
+          //                                                                                  i_offset   +
+          //                                                                                  j_offset
+          //                                                                        ]))
+          //          );
+          //   }
            }
          }
        }
@@ -259,3 +259,20 @@ bool check_block_eqivalence(uint32_t block_size,
    }
  return check;
 }
+
+// bool interleave_arrays(float * a, float * b, uint32_t length, float * interleaved){
+//
+//   uint32_t offset = 0;
+//
+//   for(uint32_t i = 0; i < length; i+=16){
+//     for(uint32_t j = 0; j < 16; j++){
+//       interleaved[offset] = a[i+j];
+//       offset++;
+//     }
+//     for(uint32_t j = 0; j < 16; j++){
+//       interleaved[offset] = b[i+j];
+//       offset++;
+//     }
+//   }
+//
+// }
