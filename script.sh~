@@ -1,6 +1,0 @@
-#!/bin/bash
-
-for i in `seq 16 16 256`;
-do
-    ./torch_1x1  ${i} 16 16 1 96
-done

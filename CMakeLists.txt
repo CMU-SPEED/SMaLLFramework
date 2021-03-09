@@ -17,3 +17,8 @@ set_property(TARGET torch_1x1 PROPERTY CXX_STANDARD 14)
 add_executable(torch_pool torch_driver_pool.cpp direct_convolution.h kernel.h)
 target_link_libraries(torch_pool "${TORCH_LIBRARIES}")
 set_property(TARGET torch_pool PROPERTY CXX_STANDARD 14)
+
+add_executable(torch_pool_buffered torch_driver_pool.cpp direct_convolution.h kernel.h)
+target_link_libraries(torch_pool_buffered "${TORCH_LIBRARIES}")
+set_property(TARGET torch_pool_buffered PROPERTY CXX_STANDARD 14)
+target_compile_definitions(torch_pool_buffered PRIVATE -DBUFFER=1)

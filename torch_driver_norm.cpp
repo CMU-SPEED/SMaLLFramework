@@ -55,7 +55,15 @@ int main(int argc, char ** argv)
   torch::Tensor norm_variance = torch::randn(C_o);
   torch::Tensor norm_weight = torch::ones(C_o);
 
-  
+  float * alpha, *beta;
+  ret = posix_memalign((void **)&alpha, 64, C_o);
+  ret = posix_memalign((void **)&alpha, 64, C_o);
+
+  for(uint32_t c = 0; c < C_o; c++){
+        DTYPE inv_var = 1.0/sqrt(var[c] + eps);
+        alpha[c] =  inv_var * weight[c];
+        beta[c] = bias[c] - mean[c] * inv_var * weight[c];
+  }
 
   // float *array;
 
@@ -70,7 +78,7 @@ int main(int argc, char ** argv)
   conv_3x3->weight = test_weights;
 
   auto norm = torch::nn::BatchNorm2d( torch::nn::BatchNorm2dOptions(C_o).
-                                                eps(0.5).
+                                                eps(0.0).
                                                 track_running_stats(false));
 
   norm->mean = test_weights_1x1;

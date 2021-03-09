@@ -26,21 +26,6 @@ void print256_float(__m256 var)
            val[6], val[7]);
 }
 
-#define LOAD_C(){\
-  c0 = _mm256_load_ps(O_buffer+ (0 * C_ob));\
-   c1 = _mm256_load_ps(O_buffer+ (0 * C_ob) + SIMD);\
-   c2 = _mm256_load_ps(O_buffer+ (1 * C_ob));\
-   c3 = _mm256_load_ps(O_buffer+ (1 * C_ob) + SIMD);\
-   c4 = _mm256_load_ps(O_buffer+ (2 * C_ob));\
-   c5 = _mm256_load_ps(O_buffer+ (2 * C_ob) + SIMD);\
-   c6 = _mm256_load_ps(O_buffer+ (3 * C_ob));\
-   c7 = _mm256_load_ps(O_buffer+ (3 * C_ob) + SIMD);\
-   c8 = _mm256_load_ps(O_buffer+ (4 * C_ob));\
-   c9 = _mm256_load_ps(O_buffer+ (4 * C_ob) + SIMD);\
-   c10 = _mm256_load_ps(O_buffer+ (5 * C_ob));\
-   c11 = _mm256_load_ps(O_buffer+ (5 * C_ob) + SIMD);\
-}
-
 
 
 template <uint32_t step, uint32_t H_f, uint32_t W_f>
