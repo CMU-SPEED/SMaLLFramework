@@ -124,17 +124,18 @@ inline void direct_convolution_pooling_aware(
 
         uint32_t col_offset = l*W_o*C_ob;
         uint32_t input_col_offset = (l * stride)*W_i*C_ob + input_block_offset;
+        float * I_ptr = I + input_col_offset;
 
-        for(uint32_t k = 0; k < W_o; k += W_ob){
+        for(uint32_t k = 0; k < W_o - W_ob; k += W_ob){
 
-          uint32_t input_row_offset = (k * stride)*C_ob;
-          float * I_ptr = I + input_row_offset + input_col_offset;
 
 
           conv_microkernel_start<stride*C_ob, H_f, W_f>(W_i*C_ib, I_ptr, filter_block_ptr, O + col_offset + k *C_ob);
-
+          I_ptr += (W_ob * stride)*C_ob;
 
       }
+      conv_microkernel_start_end<stride*C_ob, H_f, W_f>(W_i*C_ib, I_ptr, filter_block_ptr, O + col_offset + (W_o - W_ob)*C_ob);
+
     }
 
     for(uint32_t i = C_ib; i < C_i; i += C_ib){
@@ -147,16 +148,17 @@ inline void direct_convolution_pooling_aware(
 
           uint32_t col_offset = l*W_o*C_ob + block_offset;
           uint32_t input_col_offset = (l * stride)*W_i*C_ob + input_block_offset;
+          float * I_ptr = I + input_col_offset;
 
-          for(uint32_t k = 0; k < W_o; k += W_ob){
+          for(uint32_t k = 0; k < W_o - W_ob; k += W_ob){
 
-            uint32_t input_row_offset = (k * stride)*C_ob;
-            float * I_ptr = I + input_row_offset + input_col_offset;
 
             conv_microkernel<stride*C_ob, H_f, W_f>(W_i*C_ib, I_ptr, filter_block_ptr, O + col_offset + k *C_ob);
-
+            I_ptr += (W_ob * stride)*C_ob;
 
         }
+        conv_microkernel_end<stride*C_ob, H_f, W_f>(W_i*C_ib, I_ptr, filter_block_ptr, O + col_offset + (W_o - W_ob)*C_ob);
+
       }
     }
   }

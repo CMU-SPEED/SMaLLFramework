@@ -286,9 +286,9 @@ inline void conv_microkernel_pool_first_row_end(
         c8 = _mm256_fmadd_ps(a_reg, b0, c8);
         c9 = _mm256_fmadd_ps(a_reg, b1, c9);
         a_reg = _mm256_broadcast_ss(a +  (p_cur));
-        p_cur += step;
-        c10 = _mm256_fmadd_ps(a_reg, b0, c10);
-        c11 = _mm256_fmadd_ps(a_reg, b1, c11);
+        // p_cur += step;
+        // c10 = _mm256_fmadd_ps(a_reg, b0, c10);
+        // c11 = _mm256_fmadd_ps(a_reg, b1, c11);
       }
     }
   }
@@ -615,8 +615,8 @@ inline void conv_microkernel_pool_accum_end(
         c9 = _mm256_fmadd_ps(a_reg, b1, c9);
         a_reg = _mm256_broadcast_ss(a +  (p_cur));
         // p_cur += step;
-        c10 = _mm256_fmadd_ps(a_reg, b0, c10);
-        c11 = _mm256_fmadd_ps(a_reg, b1, c11);
+        // c10 = _mm256_fmadd_ps(a_reg, b0, c10);
+        // c11 = _mm256_fmadd_ps(a_reg, b1, c11);
       }
     }
   }
@@ -991,8 +991,8 @@ inline void conv_microkernel_pool_end(
         c9 = _mm256_fmadd_ps(a_reg, b1, c9);
         a_reg = _mm256_broadcast_ss(a +  (p_cur));
         // p_cur += step;
-        c10 = _mm256_fmadd_ps(a_reg, b0, c10);
-        c11 = _mm256_fmadd_ps(a_reg, b1, c11);
+        // c10 = _mm256_fmadd_ps(a_reg, b0, c10);
+        // c11 = _mm256_fmadd_ps(a_reg, b1, c11);
       }
     }
   }
@@ -2141,6 +2141,10 @@ inline void complete_conv_microkernel_pool_end(
 
 }
 
+
+
+
+
 // end fully computed kernels
 
 // asssumes C_i > 32
@@ -2519,16 +2523,21 @@ void parallel_fused_pooling_direct_convolution(
 
           uint32_t col_offset = l*W_o*C_ob ;
           uint32_t input_col_offset = (l * stride)*W_i*C_ob + input_block_offset;
+            float * I_ptr = I + input_col_offset;
           // 3x3 pixel blocks
-          for(uint32_t k = 0; k < W_o; k += W_ob)
+          for(uint32_t k = 0; k < W_o - W_ob; k += W_ob)
           {
 
-            uint32_t input_row_offset = (k * stride)*C_ob;
-            float * I_ptr = I + input_row_offset + input_col_offset;
+            // uint32_t input_row_offset = (k * stride)*C_ob;
+
 
             conv_microkernel_start<stride*C_ob, H_f, W_f>(W_i*C_ib, I_ptr, filter_block_ptr, O_buffer + col_offset + k *C_ob);
-
+            I_ptr += (W_ob * stride) * C_ob;
           }// end 3x3 pixel blocks
+
+          conv_microkernel_start_end<stride*C_ob, H_f, W_f>(W_i*C_ib, I_ptr, filter_block_ptr, O_buffer + col_offset + (W_o - W_ob) *C_ob);
+
+
       }// end 3x3 output rows
     }//end First 3x3 Input Channel Block
 
@@ -2543,14 +2552,14 @@ void parallel_fused_pooling_direct_convolution(
 
           uint32_t col_offset = l*W_o*C_ob /*+ block_offset*/;
           uint32_t input_col_offset = (l * stride)*W_i*C_ob + input_block_offset;
+          float * I_ptr = I + input_col_offset;
+          for(uint32_t k = 0; k < W_o - W_ob; k += W_ob){
 
-          for(uint32_t k = 0; k < W_o; k += W_ob){
-
-            uint32_t input_row_offset = (k * stride)*C_ob;
-            float * I_ptr = I + input_row_offset + input_col_offset;
             conv_microkernel<stride*C_ob, H_f, W_f>(W_i*C_ib, I_ptr, filter_block_ptr, O_buffer + col_offset + k *C_ob);
-
+            I_ptr += (W_ob * stride)*C_ob;
         }
+        conv_microkernel_end<stride*C_ob, H_f, W_f>(W_i*C_ib, I_ptr, filter_block_ptr, O_buffer + col_offset + (W_o - W_ob)*C_ob);
+
       }
     }//end 3x3 Input channel blocks
 
@@ -2847,16 +2856,19 @@ inline void parallel_fused_pooling_direct_convolution_not_buffered(
 
           uint32_t col_offset = l*W_o*C_ob ;
           uint32_t input_col_offset = (l * stride)*W_i*C_ob + input_block_offset;
+          float * I_ptr = I + input_col_offset;
+
           // 3x3 pixel blocks
-          for(uint32_t k = 0; k < W_o; k += W_ob)
+          for(uint32_t k = 0; k < W_o - W_ob; k += W_ob)
           {
 
-            uint32_t input_row_offset = (k * stride)*C_ob;
-            float * I_ptr = I + input_row_offset + input_col_offset;
 
             conv_microkernel_start<stride*C_ob, H_f, W_f>(W_i*C_ib, I_ptr, filter_block_ptr, O_buffer + col_offset + k *C_ob);
-
+            I_ptr += (W_ob*stride)*C_ob;
           }// end 3x3 pixel blocks
+
+          conv_microkernel_start_end<stride*C_ob, H_f, W_f>(W_i*C_ib, I_ptr, filter_block_ptr, O_buffer + col_offset + (W_o - W_ob)*C_ob);
+
       }// end 3x3 output rows
     }//end First 3x3 Input Channel Block
 
@@ -2871,14 +2883,15 @@ inline void parallel_fused_pooling_direct_convolution_not_buffered(
 
           uint32_t col_offset = l*W_o*C_ob /*+ block_offset*/;
           uint32_t input_col_offset = (l * stride)*W_i*C_ob + input_block_offset;
+          float * I_ptr = I + input_col_offset;
 
-          for(uint32_t k = 0; k < W_o; k += W_ob){
+          for(uint32_t k = 0; k < W_o - W_ob; k += W_ob){
 
-            uint32_t input_row_offset = (k * stride)*C_ob;
-            float * I_ptr = I + input_row_offset + input_col_offset;
             conv_microkernel<stride*C_ob, H_f, W_f>(W_i*C_ib, I_ptr, filter_block_ptr, O_buffer + col_offset + k *C_ob);
-
+            I_ptr += (W_ob * stride)*C_ob;
         }
+        conv_microkernel_end<stride*C_ob, H_f, W_f>(W_i*C_ib, I_ptr, filter_block_ptr, O_buffer + col_offset + (W_o - W_ob)*C_ob);
+
       }
     }//end 3x3 Input channel blocks
 

@@ -2,6 +2,8 @@ import torch.nn as nn
 import torch
 
 from hwcounter import count, count_end
+import time
+
 print(torch.__version__)
 torch.set_num_threads(6)
 print(torch.get_num_threads())
@@ -26,9 +28,9 @@ for j in [12, 36, 96, 126, 252, 504]:
     sum_conv = 0
     out_inter = conv(input_tensor)
     for r in range(100):
-        st = count()
+        st = time.time()
         out_inter = conv(input_tensor)
-        et = count_end()
+        et = time.time()
         sum_conv += (et - st)
 
     conv_ops = out_inter.numel()*(3*3*C)*2
@@ -37,9 +39,9 @@ for j in [12, 36, 96, 126, 252, 504]:
     out = pool(out_inter)
     sum_combined = 0
     for i in range(100):
-        st = count()
+        st = time.time()
         out = pool(conv(input_tensor))
-        et = count()
+        et = time.time()
         sum_combined += (et - st)
     pool_ops = out.numel()*9
 
@@ -48,3 +50,6 @@ for j in [12, 36, 96, 126, 252, 504]:
                                                  ((conv_ops + pool_ops)/(sum_combined/100)),
                                                  (sum_combined/100)
                                                  ))
+
+
+                                    
