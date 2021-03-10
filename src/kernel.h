@@ -10,12 +10,10 @@
 #define C_ib rank_k
 
 
-#define filter_seed 2048
-#define image_seed 1729
 
 
-#define POOL_KERNEL 3
-#define POOL_STRIDE 2
+
+
 
 void print256_float(__m256 var)
 {
