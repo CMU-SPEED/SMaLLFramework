@@ -7,7 +7,7 @@
 // Pooling driver
 
 #define GEMM 0
-#define L 0
+#define L 1
 #define RUNS 1000
 #define VERBOSE 0
 #define FUSION 1
@@ -15,12 +15,12 @@
 #define PARALLEL 1
 
 #ifndef BUFFER
-  #define BUFFER 0
+  #define BUFFER 2
 #endif
 
-#include "direct_convolution.h"
-#include "fused_conv_pooling.h"
-#include "utils.h"
+#include "src/direct_convolution.h"
+#include "src/fused_conv_pooling.h"
+#include "src/utils.h"
 //Good Ol' Timing
 static __inline__ unsigned long long rdtsc(void) {
   unsigned hi, lo;
@@ -192,7 +192,7 @@ WSS Size Out_img pool : %.2f K/8K elements  dims: %u %u %u\n\
   for (int run = 0; run < RUNS; run++){
     // Copy Inputs to their flat buffers
     t0 = rdtsc();
-    direct_convolution_pooling_aware<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc, filter_dc, out_intermediate_dc);
+    direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc, filter_dc, out_intermediate_dc);
     // direct_convolution<stride*C_ob,kernel_size, kernel_size >(C_i, C_o, kernel_size, kernel_size, N, M, 1, input_dc, filter_dc, out_intermediate_dc);
     t1 = rdtsc();
     sum += (t1 - t0);

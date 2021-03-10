@@ -1,6 +1,8 @@
 // Header File For different Versions of Fusing Pooling with a Convolution
 #define POOL_UNROLL 8
 
+#define POOL_KERNEL 3
+#define POOL_STRIDE 2
 
 #define LOAD_C(){\
   c0 = _mm256_load_ps(O_buffer+ (0 * C_ob));\
@@ -3188,16 +3190,18 @@ inline void parallel_fused_pooling_direct_convolution_complete(
 
           uint32_t col_offset = l*W_o*C_ob ;
           uint32_t input_col_offset = (l * stride)*W_i*C_ob + input_block_offset;
+          float * I_ptr = I + input_col_offset;
           // 3x3 pixel blocks
-          for(uint32_t k = 0; k < W_o; k += W_ob)
+          for(uint32_t k = 0; k < W_o - W_ob; k += W_ob)
           {
 
-            uint32_t input_row_offset = (k * stride)*C_ob;
-            float * I_ptr = I + input_row_offset + input_col_offset;
 
             conv_microkernel_start<stride*C_ob, H_f, W_f>(W_i*C_ib, I_ptr, filter_block_ptr, O_buffer + col_offset + k *C_ob);
-
+            I_ptr += (W_ob*stride)*C_ob;
           }// end 3x3 pixel blocks
+
+          conv_microkernel_start_end<stride*C_ob, H_f, W_f>(W_i*C_ib, I_ptr, filter_block_ptr, O_buffer + col_offset + (W_o - W_ob)*C_ob);
+
       }// end 3x3 output rows
     }//end First 3x3 Input Channel Block
 
@@ -3211,15 +3215,15 @@ inline void parallel_fused_pooling_direct_convolution_complete(
       for(uint32_t l = 0; l < H_o; l++){
 
           uint32_t col_offset = l*W_o*C_ob /*+ block_offset*/;
-          uint32_t input_col_offset = (l * stride)*W_i*C_ob + input_block_offset;
+          float * I_ptr = I + input_col_offset;
 
-          for(uint32_t k = 0; k < W_o; k += W_ob){
+          for(uint32_t k = 0; k < W_o - W_ob; k += W_ob){
 
-            uint32_t input_row_offset = (k * stride)*C_ob;
-            float * I_ptr = I + input_row_offset + input_col_offset;
             conv_microkernel<stride*C_ob, H_f, W_f>(W_i*C_ib, I_ptr, filter_block_ptr, O_buffer + col_offset + k *C_ob);
-
+            I_ptr += (W_ob * stride)*C_ob;
         }
+        conv_microkernel_end<stride*C_ob, H_f, W_f>(W_i*C_ib, I_ptr, filter_block_ptr, O_buffer + col_offset + (W_o - W_ob)*C_ob);
+
       }
     }//end 3x3 Input channel blocks
 

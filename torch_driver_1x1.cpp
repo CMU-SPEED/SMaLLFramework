@@ -1,13 +1,13 @@
 #include <torch/torch.h>
 // unfused
-#include "direct_convolution.h"
+#include "src/direct_convolution.h"
 // conv fused 1x1 conv
-#include "fused_conv_conv.h"
+#include "src/fused_conv_conv.h"
 
 #include<math.h>
 #include<assert.h>
 
-#include "utils.h"
+#include "src/utils.h"
 
 #define GEMM 0
 #define L 0
