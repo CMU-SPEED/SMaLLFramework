@@ -7,13 +7,13 @@
 // Pooling driver
 
 #define GEMM 0
-#define L 1
+#define L 0
 #define RUNS 1000
 #define VERBOSE 0
 #define FUSION 1
 #define STRIDE 1
 #define PARALLEL 1
-
+#define COMB 0
 #ifndef BUFFER
   #define BUFFER 2
 #endif
@@ -31,7 +31,7 @@ static __inline__ unsigned long long rdtsc(void) {
 
 int main(int argc, char ** argv)
 {
-  printf("%d\t", BUFFER);
+  printf("%d %d\t", BUFFER,COMB);
   if(argc!=5)
   {
     printf("USAGE: torch_pool < 3x3 Input Channels> <3x3 Output Channels> <Output Height> <Output Width (multiple of 6)>\n");
@@ -50,6 +50,8 @@ int main(int argc, char ** argv)
   // printf("%d %d", output_rows, output_cols);
   int N = (output_rows - 1) * stride + kernel_size;
   int M = (output_cols - 1) * stride + kernel_size;
+  printf("%d %d", N, M);
+
   if(atol(argv[4])%6 != 0 || atol(argv[4]) < 12){
     printf(" Please check that Output Width is a multiple of 6 >= 12\n");
     return 0;
@@ -79,7 +81,7 @@ int main(int argc, char ** argv)
                                                 stride(2).
                                                 padding(0));
 
-
+  printf("\t L%d \t %d\t%d\t ", L, kernel_size,  C_i);
   //Run Inference
   uint32_t t0, t1;
   uint64_t sum_pytorch = 1;
@@ -95,16 +97,16 @@ int main(int argc, char ** argv)
 
   }
 
-  printf("\t%lf\t%lf",
-                      (
-                        2.0*out_intermediate.numel()*(kernel_size*kernel_size*C_i)
-                         + (out.numel()*(9))
-                      )
-                    /(sum_pytorch*1.0/(RUNS/10)),
-
-                    (sum_pytorch*1.0/(RUNS/10))
-
-                  );
+  // printf("\t%lf\t%lf",
+  //                     (
+  //                       2.0*out_intermediate.numel()*(kernel_size*kernel_size*C_i)
+  //                        + (out.numel()*(9))
+  //                     )
+  //                   /(sum_pytorch*1.0/(RUNS/10)),
+  //
+  //                   (sum_pytorch*1.0/(RUNS/10))
+  //
+  //                 );
 
   //Direct Convolution Setup
 
@@ -173,14 +175,14 @@ WSS Size Out_img pool : %.2f K/8K elements  dims: %u %u %u\n\
 
 
   // Initialize Outputs to 0
-  for (int i = 0; i != out_dimensions[2] * out_dimensions[3] * out_dimensions[1] ; ++i){
-    out_dc[i] = 0.0;
-    int j  = 1;
-  }
+  memset(out_intermediate_dc, 0, out_intermediate.numel()*sizeof(float));
+  memset(out_dc, 0, out.numel()*sizeof(float));
 
+  #if COMB == 1
+  {
   uint64_t sum=0, sum_pool = 0;
-  //
-  // 3x3 unfused
+
+  //3x3 unfused
   copy_torch2dc(a, 'i', in_dimensions, input_dc);
   copy_torch2dc(weights,'f',filter_dimensions,filter_dc);
   #if(L)
@@ -192,14 +194,13 @@ WSS Size Out_img pool : %.2f K/8K elements  dims: %u %u %u\n\
   for (int run = 0; run < RUNS; run++){
     // Copy Inputs to their flat buffers
     t0 = rdtsc();
-    direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc, filter_dc, out_intermediate_dc);
-    // direct_convolution<stride*C_ob,kernel_size, kernel_size >(C_i, C_o, kernel_size, kernel_size, N, M, 1, input_dc, filter_dc, out_intermediate_dc);
+    direct_convolution_pooling_aware<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc, filter_dc, out_intermediate_dc);
     t1 = rdtsc();
     sum += (t1 - t0);
-    t0 = rdtsc();
-    pooling(C_o, out_intermediate_dimensions[2], out_intermediate_dimensions[3] ,out_intermediate_dc, out_dc);
-    t1 = rdtsc();
-    sum_pool += (t1 - t0);
+    // t0 = rdtsc();
+    // // pooling(C_o, out_intermediate_dimensions[2], out_intermediate_dimensions[3] ,out_intermediate_dc, out_dc);
+    // t1 = rdtsc();
+    // sum_pool += (t1 - t0);
      #if(L)
     { volatile float check_sum = rand()/(1.0*RAND_MAX);
        for(uint32_t i = 0; i < bomb_size; i++){
@@ -208,7 +209,7 @@ WSS Size Out_img pool : %.2f K/8K elements  dims: %u %u %u\n\
      }
      #endif
   }
-
+  // printf("\n%d\n", check_eqivalence(out_intermediate,'o', out_intermediate_dimensions, out_intermediate_dc, 1e-3));
   // __volatile__ uint32_t c = 0;
   // for(c = 0; c < out.numel(); c++){
   //   out_dc[c] = 0.0;
@@ -217,33 +218,39 @@ WSS Size Out_img pool : %.2f K/8K elements  dims: %u %u %u\n\
   // for(c = 0; c < out_intermediate.numel(); c++){
   //   out_intermediate_dc[c] = 0.0;
   // }
-  memset(out_intermediate_dc, 0, out_intermediate.numel()*sizeof(float));
-  memset(out_dc, 0, out.numel()*sizeof(float));
-  assert(fabs(out_intermediate_dc[rand()%out_intermediate.numel()] - 0.0) < 1e-5);
+  // memset(out_intermediate_dc, 0, out_intermediate.numel()*sizeof(float));
+  // memset(out_dc, 0, out.numel()*sizeof(float));
+  // assert(fabs(out_intermediate_dc[rand()%out_intermediate.numel()] - 0.0) < 1e-5);
 
   // %lf \t %lf\
   // \t %lf \t%lf
-  printf("\t L%d \t %d\t%d\t %lf \t%lf\t%lf \t%lf\t%lf \t%lf\t", L, kernel_size,  C_i,
-                          (
-                          2.0*m*n*(k)
-                          // +
-                          //   out_dimensions[2]*out_dimensions[3]* out_dimensions[1]*9
-                          )/((float)((sum)/(1.0*RUNS))), (float)((sum)/(1.0*RUNS)),
-                          (
-                          // 2.0*m*n*k
-                          // +
-                          out_dimensions[2]*out_dimensions[3]* out_dimensions[1]*9
-                          )/((float)(sum_pool)/(1.0*RUNS)), (float)((sum_pool)/(1.0*RUNS)),
-                          (
-                          2.0*m*n*k
-                          +
-                          out_dimensions[2]*out_dimensions[3]* out_dimensions[1]*9
-                        )/((float)((sum + sum_pool)/(1.0*RUNS))), (float)((sum+sum_pool)/(1.0*RUNS)));
+
+  // printf(" %lf \t%lf\t%lf \t%lf\t%lf \t%lf\t",
+  //                         (
+  //                         2.0*m*n*(k)
+  //                         // +
+  //                         //   out_dimensions[2]*out_dimensions[3]* out_dimensions[1]*9
+  //                         )/((float)((sum)/(1.0*RUNS))), (float)((sum)/(1.0*RUNS)),
+  //                         (
+  //                         // 2.0*m*n*k
+  //                         // +
+  //                         out_dimensions[2]*out_dimensions[3]* out_dimensions[1]*9
+  //                         )/((float)(sum_pool)/(1.0*RUNS)), (float)((sum_pool)/(1.0*RUNS)),
+  //                         (
+  //                         2.0*m*n*k
+  //                         +
+  //                         out_dimensions[2]*out_dimensions[3]* out_dimensions[1]*9
+  //                       )/((float)((sum + sum_pool)/(1.0*RUNS))), (float)((sum+sum_pool)/(1.0*RUNS)));
 
   double torch_ops = 2.0*out_intermediate.numel()*(kernel_size*kernel_size*C_i) + (out.numel()*(9));
   double cpp_ops =   (2.0*m*n*k + out_dimensions[2]*out_dimensions[3]* out_dimensions[1]*9);
   assert(torch_ops == cpp_ops);
-  uint64_t volatile sum_fused = 0;
+  printf("%lf\n", (sum)/(1.0*RUNS));
+  }
+#else
+  {
+    uint64_t volatile sum_fused = 0;
+
   // fused
   copy_torch2dc(a, 'i', in_dimensions, input_dc);
   copy_torch2dc(weights,'f',filter_dimensions,filter_dc);
@@ -284,15 +291,18 @@ WSS Size Out_img pool : %.2f K/8K elements  dims: %u %u %u\n\
       }
     #endif
   }
-
-  printf("%lf\t %lf\t", ( 2.0*m*n*(k)
-                          + out_dimensions[2]*out_dimensions[3]* out_dimensions[1]*9
-                        )/((sum_fused)/(1.0*RUNS)), ((sum_fused)/(1.0*RUNS)));
-  assert((2.0*m*n*k + out_dimensions[2]*out_dimensions[3]* out_dimensions[1]*9) == cpp_ops);
-  printf("\n");
+  //
+  // printf("%lf\t %lf\t %lf", ( 2.0*m*n*(k)
+  //                         + out_dimensions[2]*out_dimensions[3]* out_dimensions[1]*9
+  //                       )/((sum_fused)/(1.0*RUNS)), ((sum_fused)/(1.0*RUNS)) , ((sum)/(1.0*RUNS))/((sum_fused)/(1.0*RUNS)));
+  // assert((2.0*m*n*k + out_dimensions[2]*out_dimensions[3]* out_dimensions[1]*9) == cpp_ops);
+  // printf("\n");
   // printf("%lf %lf %lf\n", torch_ops, cpp_ops, 2.0*m*n*k + out_dimensions[2]*out_dimensions[3]* out_dimensions[1]*9);
+
+
   uint32_t block_size = out_intermediate_dimensions[2]*out_intermediate_dimensions[3]*C_ob;
   uint32_t offset = ((C_o - C_ob)/C_ob)*block_size; //last block
+
 
   // bool correctness = check_eqivalence(out_intermediate,'o', out_intermediate_dimensions, out_intermediate_dc, 1e-3);
   // printf("%d\n", correctness);
@@ -312,9 +322,10 @@ WSS Size Out_img pool : %.2f K/8K elements  dims: %u %u %u\n\
 
   //Make sure all outputs match pytorch
   assert(inter_correctness&correctness==1);
+  printf("%lf\n", (sum_fused)/(1.0*RUNS));
 
-
-
+  }
+  #endif
 
 
   free(input_dc);

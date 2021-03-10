@@ -2834,7 +2834,7 @@ inline void parallel_fused_pooling_direct_convolution_not_buffered(
   assert(W_o >POOL_KERNEL);
   op_dim(W_o, POOL_STRIDE, POOL_KERNEL, W_o_pool);
   op_dim(H_o, POOL_STRIDE, POOL_KERNEL, H_o_pool);
-
+  H_o -= (H_o % 2 == 0);
   //3x3 Output Channel Block
   #pragma omp parallel for
   for(uint32_t j = 0; j < C_o; j += C_ob)
@@ -3166,7 +3166,7 @@ inline void parallel_fused_pooling_direct_convolution_complete(
   assert(W_o >POOL_KERNEL);
   op_dim(W_o, POOL_STRIDE, POOL_KERNEL, W_o_pool);
   op_dim(H_o, POOL_STRIDE, POOL_KERNEL, H_o_pool);
-
+  H_o -= (H_o % 2 == 0);
   //3x3 Output Channel Block
   #pragma omp parallel for
   for(uint32_t j = 0; j < C_o; j += C_ob)
@@ -3188,21 +3188,24 @@ inline void parallel_fused_pooling_direct_convolution_complete(
 
           uint32_t col_offset = l*W_o*C_ob ;
           uint32_t input_col_offset = (l * stride)*W_i*C_ob + input_block_offset;
+          float * I_ptr = I + input_col_offset;
+
           // 3x3 pixel blocks
-          for(uint32_t k = 0; k < W_o; k += W_ob)
+          for(uint32_t k = 0; k < W_o - W_ob; k += W_ob)
           {
 
-            uint32_t input_row_offset = (k * stride)*C_ob;
-            float * I_ptr = I + input_row_offset + input_col_offset;
 
             conv_microkernel_start<stride*C_ob, H_f, W_f>(W_i*C_ib, I_ptr, filter_block_ptr, O_buffer + col_offset + k *C_ob);
-
+            I_ptr += (W_ob*stride)*C_ob;
           }// end 3x3 pixel blocks
+
+          conv_microkernel_start_end<stride*C_ob, H_f, W_f>(W_i*C_ib, I_ptr, filter_block_ptr, O_buffer + col_offset + (W_o - W_ob)*C_ob);
+
       }// end 3x3 output rows
     }//end First 3x3 Input Channel Block
 
     // 3x3 Input channel blocks (N-2*C_ib updates)
-    for(uint32_t i = C_ib; i < C_i-C_ib; i += C_ib)
+    for(uint32_t i = C_ib; i < C_i; i += C_ib)
     {
       uint32_t input_block_offset = (i/C_ib)*H_i*W_i*C_ib;
       uint32_t filter_i_c_block = (i/C_ib)*H_f*W_f*C_ib*C_ob + filter_o_c_block;
@@ -3212,260 +3215,262 @@ inline void parallel_fused_pooling_direct_convolution_complete(
 
           uint32_t col_offset = l*W_o*C_ob /*+ block_offset*/;
           uint32_t input_col_offset = (l * stride)*W_i*C_ob + input_block_offset;
+          float * I_ptr = I + input_col_offset;
 
-          for(uint32_t k = 0; k < W_o; k += W_ob){
+          for(uint32_t k = 0; k < W_o - W_ob; k += W_ob){
 
-            uint32_t input_row_offset = (k * stride)*C_ob;
-            float * I_ptr = I + input_row_offset + input_col_offset;
             conv_microkernel<stride*C_ob, H_f, W_f>(W_i*C_ib, I_ptr, filter_block_ptr, O_buffer + col_offset + k *C_ob);
-
+            I_ptr += (W_ob * stride)*C_ob;
         }
+        conv_microkernel_end<stride*C_ob, H_f, W_f>(W_i*C_ib, I_ptr, filter_block_ptr, O_buffer + col_offset + (W_o - W_ob)*C_ob);
+
       }
     }//end 3x3 Input channel blocks
 
     // fused pooling
     //Last 3x3 Input Channel Block
-    {
-      uint32_t input_block_offset = ((C_i - C_ib)/C_ib)*H_i*W_i*C_ib;
-      uint32_t filter_i_c_block = ((C_i - C_ib)/C_ib)*H_f*W_f*C_ib*C_ob + filter_o_c_block;
-      float * filter_block_ptr = F + filter_i_c_block;
-
-      //First 3x3 Output Row
-      {
-        uint32_t col_offset = 0*W_o*C_ob;
-        uint32_t input_col_offset = (0 * stride)*W_i*C_ob + input_block_offset;
-
-        float * I_ptr = I + input_col_offset;
-
-        //first tile
-        {
-          complete_conv_microkernel_pool_first_row_start<stride*C_ob, H_f, W_f>(W_i*C_ib,
-                                                                        I_ptr, filter_block_ptr,
-                                                                         O_buffer + col_offset + 0 *C_ob,
-                                                                        O + pool_block_offset
-                                                                      );
-        }//end first tile
-
-        uint32_t pool_col_offset = pool_block_offset + 2*C_ob;
-        I_ptr += (W_ob*stride)*C_ob;
-
-        // Second to Penultimate tile
-        for(uint32_t k = W_ob; k < (W_o - W_ob) ; k += W_ob)
-        {
-
-          complete_conv_microkernel_pool_first_row<stride*C_ob, H_f, W_f>(W_i*C_ib,
-                                      I_ptr,filter_block_ptr,
-                                      O_buffer + col_offset + k *C_ob,
-                                      O + pool_col_offset
-                                    );
-          pool_col_offset += 3*C_ob;
-          I_ptr += (W_ob*stride)*C_ob;
-        }
-        // end Second to Penultimate tile
-
-        //last tile
-        {
-
-
-          complete_conv_microkernel_pool_first_row_end<stride*C_ob, H_f, W_f>(W_i*C_ib,
-                                      I_ptr, filter_block_ptr,
-                                      O_buffer + col_offset + (W_o - W_ob)*C_ob,
-                                      O + pool_col_offset
-                                    );
-
-        }//end last tile
-
-      }//end First 3x3 Output Row
-
-      //Second 3x3 Output Row
-      {
-        // 3x3 params
-        uint32_t col_offset = 1*W_o*C_ob;
-        uint32_t input_col_offset = (1 * stride)*W_i*C_ob + input_block_offset;
-        float * I_ptr = I + input_col_offset;
-
-        //first tile
-        {
-          complete_conv_microkernel_pool_accum_start<stride*C_ob, H_f, W_f>(W_i*C_ib,
-                                          I_ptr, filter_block_ptr,
-                                          O_buffer + col_offset + 0*C_ob,
-                                          O + pool_block_offset
-                                        );
-        }//end first tile
-
-        uint32_t pool_col_offset = pool_block_offset + 2*C_ob;
-        I_ptr += (W_ob*stride)*C_ob;
-
-        //Second to Penultimate tile
-        for(uint32_t k = W_ob; k < (W_o - W_ob) ; k += W_ob)
-        {
-          complete_conv_microkernel_pool_accum<stride*C_ob, H_f, W_f>(W_i*C_ib,
-                                      I_ptr,filter_block_ptr,
-                                      O_buffer + col_offset + k *C_ob,
-                                      O + pool_col_offset
-                                    );
-          pool_col_offset += 3*C_ob;
-          I_ptr += (W_ob*stride)*C_ob;
-        }
-        //end Second to Penultimate Tile
-
-        //last tile
-        {
-
-          complete_conv_microkernel_pool_accum_end<stride*C_ob, H_f, W_f>(W_i*C_ib,
-                                      I_ptr,filter_block_ptr,
-                                      O_buffer + col_offset + (W_o - W_ob)*C_ob,
-                                      O + pool_col_offset
-                                    );
-
-        }//end last tile
-      }//end Second 3x3 Output Row
-
-      uint32_t pool_row_offset = 0 + pool_block_offset;
-      uint32_t pool_row = 0;
-      //Third to Penultimate 3x3 Output Rows
-      for(uint32_t l = POOL_STRIDE; l < H_o-(POOL_KERNEL-1); l+= POOL_STRIDE)
-      {
-        //Even 3x3 Output Row
-        {
-          uint32_t col_offset = l*W_o*C_ob;
-          uint32_t input_col_offset = (l * stride)*W_i*C_ob + input_block_offset;
-
-          float * I_ptr = I + input_col_offset;
-
-          //first tile
-          {
-            complete_conv_microkernel_pool_start<stride*C_ob, H_f, W_f>(W_i*C_ib,
-                                                               W_o_pool*C_ob,
-                                                                I_ptr, filter_block_ptr,
-                                                                O_buffer + col_offset + 0 *C_ob,
-                                                                O + pool_row_offset
-                                                                  );
-          }//end first tile
-
-          uint32_t pool_col_offset = pool_row_offset + 2*C_ob;
-          I_ptr += (W_ob*stride)*C_ob;
-
-          //Second to Penultimate tile
-          for(uint32_t k = W_ob; k < (W_o - W_ob) ; k += W_ob)
-          {
-
-            complete_conv_microkernel_pool<stride*C_ob, H_f, W_f>(W_i*C_ib,
-                                                         W_o_pool*C_ob,
-                                        I_ptr,filter_block_ptr, O_buffer + col_offset + k *C_ob,
-                                        O + pool_col_offset
-                                      );
-            pool_col_offset += 3*C_ob;
-            I_ptr += (W_ob*stride)*C_ob;
-          }
-          //end Second to Penultimate tile
-
-          //last tile
-          {
-
-            complete_conv_microkernel_pool_end<stride*C_ob, H_f, W_f>(W_i*C_ib,
-                                      W_o_pool*C_ob,
-                                        I_ptr, filter_block_ptr, O_buffer + col_offset + (W_o - W_ob)*C_ob,
-                                        O + pool_col_offset
-                                      );
-
-          }
-          //end last tile
-        }//end Even 3x3 Output Row
-
-        pool_row_offset += W_o_pool*C_ib;
-        pool_row++;
-
-        //Odd 3x3 Output Row This should be the same as the Last row
-        {
-          // 3x3 params
-          uint32_t col_offset = (l + 1)*W_o*C_ob;
-          uint32_t input_col_offset = ((l + 1) * stride)*W_i*C_ob + input_block_offset;
-          float * I_ptr = I + input_col_offset;
-
-          //first tile
-          {
-            complete_conv_microkernel_pool_accum_start<stride*C_ob, H_f, W_f>(W_i*C_ib,
-
-                                            I_ptr, filter_block_ptr, O_buffer + col_offset + 0*C_ob,
-                                            O + pool_row_offset
-                                          );
-          }//end first tile
-
-          uint32_t pool_col_offset = pool_row_offset + 2*C_ob;
-          I_ptr += (W_ob*stride)*C_ob;
-
-          //Second to Penultimate tile
-          for(uint32_t k = W_ob; k < (W_o - W_ob) ; k += W_ob)
-          {
-
-            complete_conv_microkernel_pool_accum<stride*C_ob, H_f, W_f>(W_i*C_ib,
-                                        I_ptr,
-                                        filter_block_ptr, O_buffer + col_offset + k *C_ob,
-                                        O + pool_col_offset
-                                      );
-            pool_col_offset += 3*C_ob;
-            I_ptr += (W_ob*stride)*C_ob;
-          }
-          //end Second to Penultimate Tile
-
-          //last tile
-          {
-            complete_conv_microkernel_pool_accum_end<stride*C_ob, H_f, W_f>(W_i*C_ib,
-                                        I_ptr,filter_block_ptr, O_buffer + col_offset + (W_o - W_ob)*C_ob,
-                                        O + pool_col_offset
-                                      );
-
-          }//end last tile
-        }//end Odd 3x3 Output Row
-
-      }// end Third to Penultimate 3x3 Output Rows
-
-      // Last 3x3 Output Row
-      {// 3x3 params
-        uint32_t col_offset = (pool_row*POOL_STRIDE + POOL_STRIDE)*W_o*C_ob;
-        uint32_t input_col_offset = ((pool_row*POOL_STRIDE + POOL_STRIDE) * stride)*W_i*C_ob + input_block_offset;
-
-        float * I_ptr = I + input_col_offset;
-        //first tile
-        {
-          complete_conv_microkernel_pool_accum_start<stride*C_ob, H_f, W_f>(W_i*C_ib,
-                                          I_ptr, filter_block_ptr, O_buffer + col_offset + 0 *C_ob,
-                                          O + pool_row_offset
-                                        );
-        }
-        //end first tile
-
-        uint32_t pool_col_offset = pool_row_offset + 2*C_ob;
-        I_ptr += (W_ob*stride)*C_ob;
-
-        //Second to Penultimate tile
-        for(uint32_t k = W_ob; k < (W_o - W_ob) ; k += W_ob)
-        {
-
-          complete_conv_microkernel_pool_accum<stride*C_ob, H_f, W_f>(W_i*C_ib,
-
-                                      I_ptr,
-                                      filter_block_ptr, O_buffer + col_offset + k *C_ob,
-                                      O + pool_col_offset
-                                    );
-          pool_col_offset += 3*C_ob;
-          I_ptr += (W_ob*stride)*C_ob;
-        }
-        //end Second to Penultimate Tile
-
-        //last tile
-        {
-
-          complete_conv_microkernel_pool_accum_end<stride*C_ob, H_f, W_f>(W_i*C_ib,
-
-                                      I_ptr,filter_block_ptr, O_buffer + col_offset + (W_o - W_ob)*C_ob,
-                                      O + pool_col_offset
-                                    );
-
-        }//end last tile
-      }// end Last 3x3 Output Row
-    }// end Last 3x3 Input Channel Block
+    // {
+    //   uint32_t input_block_offset = ((C_i - C_ib)/C_ib)*H_i*W_i*C_ib;
+    //   uint32_t filter_i_c_block = ((C_i - C_ib)/C_ib)*H_f*W_f*C_ib*C_ob + filter_o_c_block;
+    //   float * filter_block_ptr = F + filter_i_c_block;
+    //
+    //   //First 3x3 Output Row
+    //   {
+    //     uint32_t col_offset = 0*W_o*C_ob;
+    //     uint32_t input_col_offset = (0 * stride)*W_i*C_ob + input_block_offset;
+    //
+    //     float * I_ptr = I + input_col_offset;
+    //
+    //     //first tile
+    //     {
+    //       complete_conv_microkernel_pool_first_row_start<stride*C_ob, H_f, W_f>(W_i*C_ib,
+    //                                                                     I_ptr, filter_block_ptr,
+    //                                                                      O_buffer + col_offset + 0 *C_ob,
+    //                                                                     O + pool_block_offset
+    //                                                                   );
+    //     }//end first tile
+    //
+    //     uint32_t pool_col_offset = pool_block_offset + 2*C_ob;
+    //     I_ptr += (W_ob*stride)*C_ob;
+    //
+    //     // Second to Penultimate tile
+    //     for(uint32_t k = W_ob; k < (W_o - W_ob) ; k += W_ob)
+    //     {
+    //
+    //       complete_conv_microkernel_pool_first_row<stride*C_ob, H_f, W_f>(W_i*C_ib,
+    //                                   I_ptr,filter_block_ptr,
+    //                                   O_buffer + col_offset + k *C_ob,
+    //                                   O + pool_col_offset
+    //                                 );
+    //       pool_col_offset += 3*C_ob;
+    //       I_ptr += (W_ob*stride)*C_ob;
+    //     }
+    //     // end Second to Penultimate tile
+    //
+    //     //last tile
+    //     {
+    //
+    //
+    //       complete_conv_microkernel_pool_first_row_end<stride*C_ob, H_f, W_f>(W_i*C_ib,
+    //                                   I_ptr, filter_block_ptr,
+    //                                   O_buffer + col_offset + (W_o - W_ob)*C_ob,
+    //                                   O + pool_col_offset
+    //                                 );
+    //
+    //     }//end last tile
+    //
+    //   }//end First 3x3 Output Row
+    //
+    //   //Second 3x3 Output Row
+    //   {
+    //     // 3x3 params
+    //     uint32_t col_offset = 1*W_o*C_ob;
+    //     uint32_t input_col_offset = (1 * stride)*W_i*C_ob + input_block_offset;
+    //     float * I_ptr = I + input_col_offset;
+    //
+    //     //first tile
+    //     {
+    //       complete_conv_microkernel_pool_accum_start<stride*C_ob, H_f, W_f>(W_i*C_ib,
+    //                                       I_ptr, filter_block_ptr,
+    //                                       O_buffer + col_offset + 0*C_ob,
+    //                                       O + pool_block_offset
+    //                                     );
+    //     }//end first tile
+    //
+    //     uint32_t pool_col_offset = pool_block_offset + 2*C_ob;
+    //     I_ptr += (W_ob*stride)*C_ob;
+    //
+    //     //Second to Penultimate tile
+    //     for(uint32_t k = W_ob; k < (W_o - W_ob) ; k += W_ob)
+    //     {
+    //       complete_conv_microkernel_pool_accum<stride*C_ob, H_f, W_f>(W_i*C_ib,
+    //                                   I_ptr,filter_block_ptr,
+    //                                   O_buffer + col_offset + k *C_ob,
+    //                                   O + pool_col_offset
+    //                                 );
+    //       pool_col_offset += 3*C_ob;
+    //       I_ptr += (W_ob*stride)*C_ob;
+    //     }
+    //     //end Second to Penultimate Tile
+    //
+    //     //last tile
+    //     {
+    //
+    //       complete_conv_microkernel_pool_accum_end<stride*C_ob, H_f, W_f>(W_i*C_ib,
+    //                                   I_ptr,filter_block_ptr,
+    //                                   O_buffer + col_offset + (W_o - W_ob)*C_ob,
+    //                                   O + pool_col_offset
+    //                                 );
+    //
+    //     }//end last tile
+    //   }//end Second 3x3 Output Row
+    //
+    //   uint32_t pool_row_offset = 0 + pool_block_offset;
+    //   uint32_t pool_row = 0;
+    //   //Third to Penultimate 3x3 Output Rows
+    //   for(uint32_t l = POOL_STRIDE; l < H_o-(POOL_KERNEL-1); l+= POOL_STRIDE)
+    //   {
+    //     //Even 3x3 Output Row
+    //     {
+    //       uint32_t col_offset = l*W_o*C_ob;
+    //       uint32_t input_col_offset = (l * stride)*W_i*C_ob + input_block_offset;
+    //
+    //       float * I_ptr = I + input_col_offset;
+    //
+    //       //first tile
+    //       {
+    //         complete_conv_microkernel_pool_start<stride*C_ob, H_f, W_f>(W_i*C_ib,
+    //                                                            W_o_pool*C_ob,
+    //                                                             I_ptr, filter_block_ptr,
+    //                                                             O_buffer + col_offset + 0 *C_ob,
+    //                                                             O + pool_row_offset
+    //                                                               );
+    //       }//end first tile
+    //
+    //       uint32_t pool_col_offset = pool_row_offset + 2*C_ob;
+    //       I_ptr += (W_ob*stride)*C_ob;
+    //
+    //       //Second to Penultimate tile
+    //       for(uint32_t k = W_ob; k < (W_o - W_ob) ; k += W_ob)
+    //       {
+    //
+    //         complete_conv_microkernel_pool<stride*C_ob, H_f, W_f>(W_i*C_ib,
+    //                                                      W_o_pool*C_ob,
+    //                                     I_ptr,filter_block_ptr, O_buffer + col_offset + k *C_ob,
+    //                                     O + pool_col_offset
+    //                                   );
+    //         pool_col_offset += 3*C_ob;
+    //         I_ptr += (W_ob*stride)*C_ob;
+    //       }
+    //       //end Second to Penultimate tile
+    //
+    //       //last tile
+    //       {
+    //
+    //         complete_conv_microkernel_pool_end<stride*C_ob, H_f, W_f>(W_i*C_ib,
+    //                                   W_o_pool*C_ob,
+    //                                     I_ptr, filter_block_ptr, O_buffer + col_offset + (W_o - W_ob)*C_ob,
+    //                                     O + pool_col_offset
+    //                                   );
+    //
+    //       }
+    //       //end last tile
+    //     }//end Even 3x3 Output Row
+    //
+    //     pool_row_offset += W_o_pool*C_ib;
+    //     pool_row++;
+    //
+    //     //Odd 3x3 Output Row This should be the same as the Last row
+    //     {
+    //       // 3x3 params
+    //       uint32_t col_offset = (l + 1)*W_o*C_ob;
+    //       uint32_t input_col_offset = ((l + 1) * stride)*W_i*C_ob + input_block_offset;
+    //       float * I_ptr = I + input_col_offset;
+    //
+    //       //first tile
+    //       {
+    //         complete_conv_microkernel_pool_accum_start<stride*C_ob, H_f, W_f>(W_i*C_ib,
+    //
+    //                                         I_ptr, filter_block_ptr, O_buffer + col_offset + 0*C_ob,
+    //                                         O + pool_row_offset
+    //                                       );
+    //       }//end first tile
+    //
+    //       uint32_t pool_col_offset = pool_row_offset + 2*C_ob;
+    //       I_ptr += (W_ob*stride)*C_ob;
+    //
+    //       //Second to Penultimate tile
+    //       for(uint32_t k = W_ob; k < (W_o - W_ob) ; k += W_ob)
+    //       {
+    //
+    //         complete_conv_microkernel_pool_accum<stride*C_ob, H_f, W_f>(W_i*C_ib,
+    //                                     I_ptr,
+    //                                     filter_block_ptr, O_buffer + col_offset + k *C_ob,
+    //                                     O + pool_col_offset
+    //                                   );
+    //         pool_col_offset += 3*C_ob;
+    //         I_ptr += (W_ob*stride)*C_ob;
+    //       }
+    //       //end Second to Penultimate Tile
+    //
+    //       //last tile
+    //       {
+    //         complete_conv_microkernel_pool_accum_end<stride*C_ob, H_f, W_f>(W_i*C_ib,
+    //                                     I_ptr,filter_block_ptr, O_buffer + col_offset + (W_o - W_ob)*C_ob,
+    //                                     O + pool_col_offset
+    //                                   );
+    //
+    //       }//end last tile
+    //     }//end Odd 3x3 Output Row
+    //
+    //   }// end Third to Penultimate 3x3 Output Rows
+    //
+    //   // Last 3x3 Output Row
+    //   {// 3x3 params
+    //     uint32_t col_offset = (pool_row*POOL_STRIDE + POOL_STRIDE)*W_o*C_ob;
+    //     uint32_t input_col_offset = ((pool_row*POOL_STRIDE + POOL_STRIDE) * stride)*W_i*C_ob + input_block_offset;
+    //
+    //     float * I_ptr = I + input_col_offset;
+    //     //first tile
+    //     {
+    //       complete_conv_microkernel_pool_accum_start<stride*C_ob, H_f, W_f>(W_i*C_ib,
+    //                                       I_ptr, filter_block_ptr, O_buffer + col_offset + 0 *C_ob,
+    //                                       O + pool_row_offset
+    //                                     );
+    //     }
+    //     //end first tile
+    //
+    //     uint32_t pool_col_offset = pool_row_offset + 2*C_ob;
+    //     I_ptr += (W_ob*stride)*C_ob;
+    //
+    //     //Second to Penultimate tile
+    //     for(uint32_t k = W_ob; k < (W_o - W_ob) ; k += W_ob)
+    //     {
+    //
+    //       complete_conv_microkernel_pool_accum<stride*C_ob, H_f, W_f>(W_i*C_ib,
+    //
+    //                                   I_ptr,
+    //                                   filter_block_ptr, O_buffer + col_offset + k *C_ob,
+    //                                   O + pool_col_offset
+    //                                 );
+    //       pool_col_offset += 3*C_ob;
+    //       I_ptr += (W_ob*stride)*C_ob;
+    //     }
+    //     //end Second to Penultimate Tile
+    //
+    //     //last tile
+    //     {
+    //
+    //       complete_conv_microkernel_pool_accum_end<stride*C_ob, H_f, W_f>(W_i*C_ib,
+    //
+    //                                   I_ptr,filter_block_ptr, O_buffer + col_offset + (W_o - W_ob)*C_ob,
+    //                                   O + pool_col_offset
+    //                                 );
+    //
+    //     }//end last tile
+    //   }// end Last 3x3 Output Row
+    // }
+    // end Last 3x3 Input Channel Block
   }//end 3x3 Output Channel Blocks
 }
 
