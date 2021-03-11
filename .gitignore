@@ -13,3 +13,4 @@ torch_pool_fused
 torch_pool_complete
 torch_pool_incomplete
 *.asm
+*.pdf
