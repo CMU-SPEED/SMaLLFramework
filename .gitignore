@@ -14,3 +14,6 @@ torch_pool_complete
 torch_pool_incomplete
 *.asm
 *.pdf
+perf*
+torch_pool*
+seq_torch_pool*
