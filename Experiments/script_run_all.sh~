@@ -1,0 +1,19 @@
+#!/bin/bash
+
+./Experiments/script.sh ./torch_pool_unfused > ./Results/unfused_sizes_March11.txt
+./Experiments/script.sh ./torch_pool_fused > ./Results/fused_sizes_March11.txt
+./Experiments/script.sh ./torch_pool_not_buffered > ./Results/not_buffered_sizes_March11.txt
+./Experiments/script.sh ./torch_pool_complete > ./Results/complete_sizes_March11.txt
+
+./Experiments/script_VGG.sh ./torch_pool_unfused > ./Results/unfused_sizes_March11.txt
+./Experiments/script_VGG.sh ./torch_pool_fused > ./Results/fused_sizes_March11.txt
+./Experiments/script_VGG.sh ./torch_pool_not_buffered > ./Results/not_buffered_sizes_March11.txt
+./Experiments/script_VGG.sh ./torch_pool_complete > ./Results/complete_sizes_March11.txt
+
+
+./Experiments/varyK_pool_script.sh ./torch_pool_unfused > ./Results/unfused_varyK_March11.txt
+./Experiments/varyK_pool_script.sh ./torch_pool_fused > ./Results/fused_varyK_March11.txt
+
+./Experiments/varyC_pool_script.sh ./torch_pool_unfused > ./Results/unfused_varyC_March11.txt
+./Experiments/varyC_pool_script.sh ./torch_pool_fused > ./Results/fused_varyC_March11.txt
+

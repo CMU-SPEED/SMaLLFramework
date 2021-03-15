@@ -7,13 +7,13 @@
 // Pooling driver
 
 #define GEMM 0
-#define L 3
+#define L 0
 #define RUNS 1000
 #define VERBOSE 0
 #define FUSION 1
 #define STRIDE 1
-#define PARALLEL 1
-#define COMB 1
+#define PARALLEL 0
+#define COMB 0
 #ifndef BUFFER
   #define BUFFER 0
 #endif
@@ -192,7 +192,7 @@ int main(int argc, char ** argv)
 
 
 
-  // #if COMB == 1
+  #if COMB == 1
   {
     // Initialize Outputs to 0
     memset(out_intermediate_dc, 0, out_intermediate.numel()*sizeof(float));
@@ -239,17 +239,14 @@ int main(int argc, char ** argv)
     }
     // printf("\n%d\n", check_eqivalence(out,'o', out_dimensions, out_dc, 1e-3));
     assert(check_eqivalence(out,'o', out_dimensions, out_dc, 1e-3)==1);
-    print_flops(conv_ops, sum, RUNS);
+    print_flops(effective_conv_ops, sum, RUNS);
     print_cycles(sum, RUNS);
 
-    print_flops(pool_ops, sum_pool, RUNS);
-    print_cycles(sum_pool, RUNS);
-
-    print_flops(conv_ops+pool_ops, sum+sum_pool, RUNS);
+    print_flops(effective_conv_ops+pool_ops, sum+sum_pool, RUNS);
     print_cycles(sum+sum_pool, RUNS);
 
   }
-// #else
+#else
   {
     memset(out_intermediate_dc, 0, out_intermediate.numel()*sizeof(float));
     memset(out_dc, 0, out.numel()*sizeof(float));
@@ -320,7 +317,7 @@ int main(int argc, char ** argv)
   // printf("%lf\n", (sum_fused)/(1.0*RUNS));
 
   }
-  // #endif
+  #endif
   printf("\n");
 
   free(input_dc);

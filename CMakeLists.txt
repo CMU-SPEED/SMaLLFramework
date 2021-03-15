@@ -22,6 +22,34 @@ add_executable(torch_pool torch_driver_pool.cpp )
 target_link_libraries(torch_pool "${TORCH_LIBRARIES}")
 set_property(TARGET torch_pool PROPERTY CXX_STANDARD 14)
 
+add_executable(torch_pool_fused torch_driver_pool_fused.cpp )
+target_link_libraries(torch_pool_fused "${TORCH_LIBRARIES}")
+set_property(TARGET torch_pool_fused PROPERTY CXX_STANDARD 14)
+
+add_executable(torch_pool_not_buffered torch_driver_pool_not_buffered.cpp )
+target_link_libraries(torch_pool_not_buffered "${TORCH_LIBRARIES}")
+set_property(TARGET torch_pool_not_buffered PROPERTY CXX_STANDARD 14)
+
+add_executable(torch_pool_complete torch_driver_pool_complete.cpp )
+target_link_libraries(torch_pool_complete "${TORCH_LIBRARIES}")
+set_property(TARGET torch_pool PROPERTY CXX_STANDARD 14)
+
+add_executable(seq_torch_pool torch_driver_pool_seq.cpp )
+target_link_libraries(seq_torch_pool "${TORCH_LIBRARIES}")
+set_property(TARGET seq_torch_pool PROPERTY CXX_STANDARD 14)
+
+add_executable(seq_torch_pool_fused torch_driver_pool_fused_seq.cpp )
+target_link_libraries(seq_torch_pool_fused "${TORCH_LIBRARIES}")
+set_property(TARGET seq_torch_pool_fused PROPERTY CXX_STANDARD 14)
+
+add_executable(seq_torch_pool_not_buffered torch_driver_pool_not_buffered_seq.cpp )
+target_link_libraries(seq_torch_pool_not_buffered "${TORCH_LIBRARIES}")
+set_property(TARGET seq_torch_pool_not_buffered PROPERTY CXX_STANDARD 14)
+
+add_executable(seq_torch_pool_complete torch_driver_pool_complete_seq.cpp )
+target_link_libraries(seq_torch_pool_complete "${TORCH_LIBRARIES}")
+set_property(TARGET seq_torch_pool PROPERTY CXX_STANDARD 14)
+
 add_executable(torch_pool_buffered torch_driver_pool.cpp )
 target_link_libraries(torch_pool_buffered "${TORCH_LIBRARIES}")
 set_property(TARGET torch_pool_buffered PROPERTY CXX_STANDARD 14)

@@ -12,10 +12,11 @@
 #define VERBOSE 0
 #define FUSION 1
 #define STRIDE 1
-#define PARALLEL 1
-#define COMB 1
+#define PARALLEL 0
+#define PARALLEL 0
+#define COMB 0
 #ifndef BUFFER
-  #define BUFFER 0
+  #define BUFFER 1
 #endif
 
 #include "src/direct_convolution.h"
