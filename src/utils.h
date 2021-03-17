@@ -23,6 +23,27 @@ float * alloc_dc(torch::Tensor t, std::vector<uint32_t> &dimensions)
   return ptr_dc;
 }
 
+float * alloc_dc_pooling_aware(torch::Tensor t, std::vector<uint32_t> &dimensions, uint32_t * numel)
+{
+  uint32_t total_elements = 1;
+  total_elements *= t.size(1);
+  total_elements *= (t.size(2) - (t.size(2)%2==0));
+  total_elements *= (t.size(3) - (t.size(3)%2==0));
+  // for(int i = 0; i < t.dim(); i++){
+  //   total_elements *= t.size(i);
+  //   dimensions.push_back(t.size(i));
+  // }
+  float * ptr_dc;
+
+  int ret = posix_memalign((void**) &ptr_dc, 4096, total_elements * sizeof(float));
+  *numel = total_elements;
+  if(ret){
+    return NULL;
+  }
+  return ptr_dc;
+}
+
+
 // copey elements of the torch tensor into the flat buffer allocated above in the
 // direct conv data layout
 int copy_torch2dc(torch::Tensor t,

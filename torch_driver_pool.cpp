@@ -4,18 +4,20 @@
 #include<omp.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
+#include<climits>
 // Pooling driver
 
 #define GEMM 0
 #define L 3
-#define RUNS 1000
+#define RUNS 100
 #define VERBOSE 0
 #define FUSION 1
 #define STRIDE 1
-#define PARALLEL 1
+#define PARALLEL 0
 #define COMB 1
 #ifndef BUFFER
-  #define BUFFER 0
+  #define BUFFER 2
 #endif
 
 #include "src/direct_convolution.h"
@@ -72,7 +74,7 @@ int main(int argc, char ** argv)
   int C_o = atoi(argv[2]);
   // int C_o_1 = atoi(argv[3]);
 
-  constexpr int kernel_size = 3;
+  constexpr int kernel_size = 1;
   constexpr int stride = 1;
   int output_rows = atol(argv[3]);
   int output_cols = atol(argv[4]);
@@ -108,8 +110,8 @@ int main(int argc, char ** argv)
                                                 padding(0));
 
   //Run Inference
-  uint32_t t0, t1;
-  uint64_t sum_pytorch = 1 << 30;
+  unsigned long long t0, t1;
+  unsigned long long sum_pytorch = ULLONG_MAX;
   torch::Tensor out_intermediate, out;
   for(uint32_t r = 0; r < 10; r++)
   {
@@ -126,8 +128,8 @@ int main(int argc, char ** argv)
   uint64_t pool_ops = out.numel()              * (3*3);
 
 
-  print_flops(conv_ops+pool_ops, sum_pytorch, (10));
-  print_cycles(sum_pytorch, 10);
+  // print_flops(conv_ops+pool_ops, sum_pytorch, (10));
+  // print_cycles(sum_pytorch, 10);
 
 
   uint64_t effective_conv_h = (out.size(2) - 1) * 2 + 3;
@@ -197,7 +199,7 @@ int main(int argc, char ** argv)
     // Initialize Outputs to 0
     memset(out_intermediate_dc, 0, out_intermediate.numel()*sizeof(float));
     memset(out_dc, 0, out.numel()*sizeof(float));
-    uint64_t sum=1 << 30, sum_pool = 1 << 30;
+    unsigned long long sum=ULLONG_MAX, sum_pool = ULLONG_MAX;
 
     //3x3 unfused
     copy_torch2dc(a, 'i', in_dimensions, input_dc);
@@ -210,25 +212,17 @@ int main(int argc, char ** argv)
     #endif
     for (int run = 0; run < RUNS; run++){
       // Copy Inputs to their flat buffers
-      #if PARALLEL == 1
+
       t0 = rdtsc();
-      parallel_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc, filter_dc, out_intermediate_dc);
+      direct_convolution_pooling_aware<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc, filter_dc, out_intermediate_dc);
       t1 = rdtsc();
       MIN(sum,(t1 - t0));
       t0 = rdtsc();
-      parallel_pooling(C_o, out_intermediate_dimensions[2], out_intermediate_dimensions[3] ,out_intermediate_dc, out_dc);
+      pooling(C_o, out_intermediate_dimensions[2]-1, out_intermediate_dimensions[3] ,out_intermediate_dc, out_dc);
       t1 = rdtsc();
       MIN(sum_pool,(t1 - t0));
-      #else
-      t0 = rdtsc();
-      direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc, filter_dc, out_intermediate_dc);
-      t1 = rdtsc();
-      MIN(sum,(t1 - t0));
-      t0 = rdtsc();
-      pooling(C_o, out_intermediate_dimensions[2], out_intermediate_dimensions[3] ,out_intermediate_dc, out_dc);
-      t1 = rdtsc();
-      MIN(sum_pool,(t1 - t0));
-      #endif
+
+
        #if(L)
       { volatile float check_sum = rand()/(1.0*RAND_MAX);
          for(uint32_t i = 0; i < bomb_size; i++){
@@ -237,23 +231,26 @@ int main(int argc, char ** argv)
        }
        #endif
     }
-    // printf("\n%d\n", check_eqivalence(out,'o', out_dimensions, out_dc, 1e-3));
     assert(check_eqivalence(out,'o', out_dimensions, out_dc, 1e-3)==1);
-    print_flops(conv_ops, sum, RUNS);
+    print_flops(effective_conv_ops, sum, RUNS);
     print_cycles(sum, RUNS);
 
     print_flops(pool_ops, sum_pool, RUNS);
     print_cycles(sum_pool, RUNS);
 
-    print_flops(conv_ops+pool_ops, sum+sum_pool, RUNS);
+    print_flops(effective_conv_ops+pool_ops, sum+sum_pool, RUNS);
     print_cycles(sum+sum_pool, RUNS);
+
 
   }
 // #else
   {
     memset(out_intermediate_dc, 0, out_intermediate.numel()*sizeof(float));
     memset(out_dc, 0, out.numel()*sizeof(float));
-    uint64_t volatile sum_fused = 1 << 30;
+    volatile  unsigned long long sum_fused = ULLONG_MAX,
+                                 sum_conv = ULLONG_MAX,
+                                 sum = ULLONG_MAX,
+                                 sum_pool = ULLONG_MAX;
 
     // fused
     copy_torch2dc(a, 'i', in_dimensions, input_dc);
@@ -269,18 +266,6 @@ int main(int argc, char ** argv)
     for(int r = 0; r < RUNS; r++){
 
       t0 = rdtsc();
-      #if PARALLEL
-        #if BUFFER==1
-          // printf("missing final update\n");
-          parallel_fused_pooling_direct_convolution_not_buffered<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_dc, out_dc);
-        #elif BUFFER==2
-          // printf("full\n");
-          parallel_fused_pooling_direct_convolution_complete<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_dc, out_dc);
-        #else
-          // printf("buffered\n");
-          parallel_fused_pooling_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_buffer, out_dc);
-        #endif
-      #else
         #if BUFFER==1
           // printf("missing final update\n");
           fused_pooling_direct_convolution_not_buffered<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_dc, out_dc);
@@ -291,10 +276,9 @@ int main(int argc, char ** argv)
           // printf("buffered\n");
           fused_pooling_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_buffer, out_dc);
         #endif
-      #endif
-
       t1 = rdtsc();
       MIN(sum_fused,(t1 - t0));
+
 
       #if(L)
       // __asm__ __volatile__ ("cache_bomb:");
@@ -306,18 +290,16 @@ int main(int argc, char ** argv)
   }
   print_flops(effective_conv_ops+pool_ops, sum_fused, RUNS);
   print_cycles( sum_fused, RUNS);
-  // printf("%lf \t%lf\t", (conv_ops+pool_ops)/(1.0*(sum_fused/RUNS)), (1.0*sum_fused/RUNS));
   bool correctness = check_eqivalence(out, 'o', out_dimensions, out_dc, 1e-3);
 
 
   #if(VERBOSE)
     printf("%d %d\n", inter_correctness, correctness);
   #endif
-  // printf("%d %d\n", inter_correctness, correctness);
+
 
   //Make sure all outputs match pytorch
   assert(correctness==1);
-  // printf("%lf\n", (sum_fused)/(1.0*RUNS));
 
   }
   // #endif

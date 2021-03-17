@@ -7,7 +7,7 @@
 #define DW_KERNEL 3
 #define DW_STRIDE 1
 
-#define LOAD_C(){\
+#define LOAD_12_C(O_buffer){\
   c0 = _mm256_load_ps(O_buffer+ (0 * C_ob));\
    c1 = _mm256_load_ps(O_buffer+ (0 * C_ob) + SIMD);\
    c2 = _mm256_load_ps(O_buffer+ (1 * C_ob));\
@@ -50,7 +50,7 @@ inline void conv_microkernel_pool_first_row_start(
 
   __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
 
-  LOAD_C();
+  LOAD_12_C(O_buffer);
   int updates = 0;
   // uint32_t step = stride*C_ob;
   // int count = 0;
@@ -145,7 +145,7 @@ inline void conv_microkernel_pool_first_row(
 
   __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
 
-  LOAD_C();
+  LOAD_12_C(O_buffer);
   int updates = 0;
   // uint32_t step = stride*C_ob;
   // int count = 0;
@@ -247,7 +247,7 @@ inline void conv_microkernel_pool_first_row_end(
 
   __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
 
-  LOAD_C();
+  LOAD_12_C(O_buffer);
   int updates = 0;
   // uint32_t step = stride*C_ob;
   // int count = 0;
@@ -346,7 +346,7 @@ inline void conv_microkernel_pool_accum_start(
 
   __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
 
-  LOAD_C();
+  LOAD_12_C(O_buffer);
   int updates = 0;
   // uint32_t step = stride*C_ob;
   // int count = 0;
@@ -455,7 +455,7 @@ inline void conv_microkernel_pool_accum(
 
   __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
 
-  LOAD_C();
+  LOAD_12_C(O_buffer);
   int updates = 0;
   // uint32_t step = stride*C_ob;
   // int count = 0;
@@ -575,7 +575,7 @@ inline void conv_microkernel_pool_accum_end(
 
   __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
 
-  LOAD_C();
+  LOAD_12_C(O_buffer);
   int updates = 0;
   // uint32_t step = stride*C_ob;
   // int count = 0;
@@ -693,7 +693,7 @@ inline void conv_microkernel_pool_start(
 
   __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
   float * O_next_row = O + pool_col_stride;
-  LOAD_C();
+  LOAD_12_C(O_buffer);
   int updates = 0;
   // uint32_t step = stride*C_ob;
   // int count = 0;
@@ -811,7 +811,7 @@ inline void conv_microkernel_pool(
 
   __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
   float * O_next_row = O + pool_col_stride;
-  LOAD_C();
+  LOAD_12_C(O_buffer);
   int updates = 0;
   // uint32_t step = stride*C_ob;
   // int count = 0;
@@ -951,7 +951,7 @@ inline void conv_microkernel_pool_end(
 
   __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
   float * O_next_row = O + pool_col_stride;
-  LOAD_C();
+  LOAD_12_C(O_buffer);
   int updates = 0;
   // uint32_t step = stride*C_ob;
   // int count = 0;
@@ -1112,7 +1112,7 @@ inline void complete_conv_microkernel_pool_first_row_start(
 
   __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
 
-  LOAD_C();
+  LOAD_12_C(O_buffer);
   int updates = 0;
   // uint32_t step = stride*C_ob;
   // int count = 0;
@@ -1208,7 +1208,7 @@ inline void complete_conv_microkernel_pool_first_row(
 
   __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
 
-  LOAD_C();
+  LOAD_12_C(O_buffer);
   int updates = 0;
   // uint32_t step = stride*C_ob;
   // int count = 0;
@@ -1311,7 +1311,7 @@ inline void complete_conv_microkernel_pool_first_row_end(
 
   __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
 
-  LOAD_C();
+  LOAD_12_C(O_buffer);
   int updates = 0;
   // uint32_t step = stride*C_ob;
   // int count = 0;
@@ -1412,7 +1412,7 @@ inline void complete_conv_microkernel_pool_accum_start(
 
   __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
 
-  LOAD_C();
+  LOAD_12_C(O_buffer);
   int updates = 0;
   // uint32_t step = stride*C_ob;
   // int count = 0;
@@ -1522,7 +1522,7 @@ inline void complete_conv_microkernel_pool_accum(
 
   __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
 
-  LOAD_C();
+  LOAD_12_C(O_buffer);
   int updates = 0;
   // uint32_t step = stride*C_ob;
   // int count = 0;
@@ -1643,7 +1643,7 @@ inline void complete_conv_microkernel_pool_accum_end(
 
   __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
 
-  LOAD_C();
+  LOAD_12_C(O_buffer);
   int updates = 0;
   // uint32_t step = stride*C_ob;
   // int count = 0;
@@ -1763,7 +1763,7 @@ inline void complete_conv_microkernel_pool_start(
 
   __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
   float * O_next_row = O + pool_col_stride;
-  LOAD_C();
+  LOAD_12_C(O_buffer);
   int updates = 0;
   // uint32_t step = stride*C_ob;
   // int count = 0;
@@ -1882,7 +1882,7 @@ inline void complete_conv_microkernel_pool(
 
   __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
   float * O_next_row = O + pool_col_stride;
-  LOAD_C();
+  LOAD_12_C(O_buffer);
   int updates = 0;
   // uint32_t step = stride*C_ob;
   // int count = 0;
@@ -2023,7 +2023,7 @@ inline void complete_conv_microkernel_pool_end(
 
   __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
   float * O_next_row = O + pool_col_stride;
-  LOAD_C();
+  LOAD_12_C(O_buffer);
   int updates = 0;
   // uint32_t step = stride*C_ob;
   // int count = 0;

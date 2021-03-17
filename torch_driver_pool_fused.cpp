@@ -18,6 +18,7 @@
   #define BUFFER 0
 #endif
 
+#include "src/intrinsics.h"
 #include "src/direct_convolution.h"
 #include "src/fused_conv_pooling.h"
 #include "src/utils.h"
@@ -210,25 +211,15 @@ int main(int argc, char ** argv)
     #endif
     for (int run = 0; run < RUNS; run++){
       // Copy Inputs to their flat buffers
-      #if PARALLEL == 1
+
       t0 = rdtsc();
-      parallel_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc, filter_dc, out_intermediate_dc);
-      t1 = rdtsc();
-      MIN(sum,(t1 - t0));
-      t0 = rdtsc();
-      parallel_pooling(C_o, out_intermediate_dimensions[2], out_intermediate_dimensions[3] ,out_intermediate_dc, out_dc);
-      t1 = rdtsc();
-      MIN(sum_pool,(t1 - t0));
-      #else
-      t0 = rdtsc();
-      direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc, filter_dc, out_intermediate_dc);
+      direct_convolution_pooling_aware<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc, filter_dc, out_intermediate_dc);
       t1 = rdtsc();
       MIN(sum,(t1 - t0));
       t0 = rdtsc();
       pooling(C_o, out_intermediate_dimensions[2], out_intermediate_dimensions[3] ,out_intermediate_dc, out_dc);
       t1 = rdtsc();
       MIN(sum_pool,(t1 - t0));
-      #endif
        #if(L)
       { volatile float check_sum = rand()/(1.0*RAND_MAX);
          for(uint32_t i = 0; i < bomb_size; i++){
@@ -269,18 +260,6 @@ int main(int argc, char ** argv)
     for(int r = 0; r < RUNS; r++){
 
       t0 = rdtsc();
-      #if PARALLEL
-        #if BUFFER==1
-          // printf("missing final update\n");
-          parallel_fused_pooling_direct_convolution_not_buffered<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_dc, out_dc);
-        #elif BUFFER==2
-          // printf("full\n");
-          parallel_fused_pooling_direct_convolution_complete<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_dc, out_dc);
-        #else
-          // printf("buffered\n");
-          parallel_fused_pooling_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_buffer, out_dc);
-        #endif
-      #else
         #if BUFFER==1
           // printf("missing final update\n");
           fused_pooling_direct_convolution_not_buffered<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_dc, out_dc);
@@ -291,7 +270,7 @@ int main(int argc, char ** argv)
           // printf("buffered\n");
           fused_pooling_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_buffer, out_dc);
         #endif
-      #endif
+  
 
       t1 = rdtsc();
       MIN(sum_fused,(t1 - t0));

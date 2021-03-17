@@ -30,6 +30,9 @@ void direct_convolution(
   op_dim(H_i, stride,H_f,H_o);
   uint32_t W_o = 0;
   op_dim(W_i, stride,W_f,W_o);
+  #if PARALLEL==1
+  #pragma omp parallel for
+  #endif
   for(uint32_t j = 0; j < C_o ; j += C_ob){
 
     uint32_t block_offset = (j/C_ob)*H_o*W_o*C_ob;
@@ -257,7 +260,9 @@ void direct_convolution_pooling_aware(
 
   uint32_t W_o = 0;
   op_dim(W_i, stride,W_f,W_o);
+  #if PARALLEL==1
   #pragma omp parallel for
+  #endif
   for(uint32_t j = 0; j < C_o ; j += C_ob)
   {
 

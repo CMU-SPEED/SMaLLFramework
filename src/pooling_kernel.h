@@ -203,7 +203,7 @@ inline void pool(
   ACCUM(O);
 
   // store to output of pooling layer
-  STORE_8_C(O, c0, c1, c2, c3, c6, c7, c10, c11);
+  STORE_6_C(O, c0, c1, c2, c3, c6, c7;
 
 
 
