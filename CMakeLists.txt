@@ -29,3 +29,7 @@ set_property(TARGET torch_pool PROPERTY CXX_STANDARD 14)
 add_executable(torch_pool_unaware torch_driver_pool_unaware.cpp )
 target_link_libraries(torch_pool_unaware "${TORCH_LIBRARIES}")
 set_property(TARGET torch_pool_unaware PROPERTY CXX_STANDARD 14)
+
+add_executable(torch_avg_pool torch_driver_avg_pool.cpp )
+target_link_libraries(torch_avg_pool "${TORCH_LIBRARIES}")
+set_property(TARGET torch_avg_pool PROPERTY CXX_STANDARD 14)

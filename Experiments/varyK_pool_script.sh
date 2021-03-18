@@ -1,14 +1,14 @@
 #!/bin/bash
 
 echo "Parallelizing over output channels, square panels"
-export OMP_NUM_THREADS=6;
+export OMP_NUM_THREADS=$2;
 echo $OMP_NUM_THREADS;
-for i in 504;
+for i in 12 30 54 114 222 504;
 do
 
     for j in 64;
 	     do
-		 for k in 32 48 64 96 128 144 192 256 384 512 768 1024 ;
+		 for k in 32 64 128  256  512  1024 ;
 		 do
 		     echo -n  ${i},  ${k}, " "
 		     $1  ${j} ${k} ${i} ${i}

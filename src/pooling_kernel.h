@@ -203,7 +203,7 @@ inline void pool(
   ACCUM(O);
 
   // store to output of pooling layer
-  STORE_6_C(O, c0, c1, c2, c3, c6, c7;
+  STORE_8_C(O, c0, c1, c2, c3, c6, c7,c10,c11);
 
 
 
@@ -228,6 +228,7 @@ inline void pool_end(
   STORE_6_C(O_next_row, c0, c1, c2, c3, c6, c7);
 
   // accumulate with previous row
+  // printf("Accumm\n");
   ACCUM_END(O);
 
   // store to output of pooling layer
@@ -638,7 +639,7 @@ inline void conv_microkernel_pool(
   ACCUM(O);
 
   // store to output of pooling layer
-  STORE_8_C(O, c0, c1, c2, c3, c6, c7, c10, c11);
+  STORE_6_C(O, c0, c1, c2, c3, c6, c7);
 
 
 

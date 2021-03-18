@@ -17,7 +17,7 @@
 #define PARALLEL 0
 #define COMB 1
 #ifndef BUFFER
-  #define BUFFER 2
+  #define BUFFER 0
 #endif
 
 #include "src/direct_convolution.h"

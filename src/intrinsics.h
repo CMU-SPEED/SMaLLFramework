@@ -1,3 +1,4 @@
+
 #define LOAD_12_C(O) \
   c0 = _mm256_load_ps(O + (0 * C_ob));\
    c1 = _mm256_load_ps(O + (0 * C_ob) + SIMD);\
@@ -12,6 +13,49 @@
    c10 = _mm256_load_ps(O + (5 * C_ob));\
    c11 = _mm256_load_ps(O + (5 * C_ob) + SIMD);\
 
+ #define LOAD_14_C(O) \
+   c0 = _mm256_load_ps(O + (0 * C_ob));\
+    c1 = _mm256_load_ps(O + (0 * C_ob) + SIMD);\
+    c2 = _mm256_load_ps(O + (1 * C_ob));\
+    c3 = _mm256_load_ps(O + (1 * C_ob) + SIMD);\
+    c4 = _mm256_load_ps(O + (2 * C_ob));\
+    c5 = _mm256_load_ps(O + (2 * C_ob) + SIMD);\
+    c6 = _mm256_load_ps(O + (3 * C_ob));\
+    c7 = _mm256_load_ps(O + (3 * C_ob) + SIMD);\
+    c8 = _mm256_load_ps(O + (4 * C_ob));\
+    c9 = _mm256_load_ps(O + (4 * C_ob) + SIMD);\
+    c10 = _mm256_load_ps(O + (5 * C_ob));\
+    c11 = _mm256_load_ps(O + (5 * C_ob) + SIMD);\
+    b0 = _mm256_load_ps(O + (6 * C_ob));\
+    b1 = _mm256_load_ps(O + (6 * C_ob) + SIMD);\
+
+//not doing partial Updates
+//reduce stores
+#define MAX_3() \
+c2 = _mm256_max_ps(c2,c0);\
+c3 = _mm256_max_ps(c3,c1);\
+c6 = _mm256_max_ps(c6,c4);\
+c7 = _mm256_max_ps(c7,c5);\
+c10 = _mm256_max_ps(c10,c8);\
+c11 = _mm256_max_ps(c11,c9);\
+/**/\
+c2 = _mm256_max_ps(c2,c4);\
+c3 = _mm256_max_ps(c3,c5);\
+c6 = _mm256_max_ps(c6,c8);\
+c7 = _mm256_max_ps(c7,c9);\
+c10 = _mm256_max_ps(c10,b0);\
+c11 = _mm256_max_ps(c11,b1);\
+
+#define MAX_2() \
+c2 = _mm256_max_ps(c2,c0);\
+c3 = _mm256_max_ps(c3,c1);\
+c6 = _mm256_max_ps(c6,c4);\
+c7 = _mm256_max_ps(c7,c5);\
+/**/\
+c2 = _mm256_max_ps(c2,c4);\
+c3 = _mm256_max_ps(c3,c5);\
+c6 = _mm256_max_ps(c6,c8);\
+c7 = _mm256_max_ps(c7,c9);\
 
 #define ZERO_12_C() \
   c0 = _mm256_setzero_ps();\
@@ -341,4 +385,208 @@
   c2 = _mm256_max_ps(c2, b0);\
   c3 = _mm256_max_ps(c3, a_reg);\
   c6 = _mm256_max_ps(c6, b1);\
-  c7 = _mm256_max_ps(c7, temp);\
+  c7 = _mm256_max_ps(c7, temp);
+
+
+
+  #define FMA_START() \
+    /*Local Max */\
+    b0 = _mm256_broadcast_ss(&weight);\
+    /*multiply with 1/9*/\
+    c0 = _mm256_mul_ps(c0, b0);    c1 = _mm256_mul_ps(c1, b0);\
+    c4 = _mm256_mul_ps(c4, b0);    c5 = _mm256_mul_ps(c5, b0);\
+    c8 = _mm256_mul_ps(c8, b0);    c9 = _mm256_mul_ps(c9, b0);\
+    /*FMA the scaled*/\
+    c2 = _mm256_fmadd_ps(c2,b0, c0);    c3 = _mm256_fmadd_ps(c3,c1, b0);\
+    c6 = _mm256_fmadd_ps(c6,c4, b0);    c7 = _mm256_fmadd_ps(c7,c5, b0);\
+    c10 = _mm256_fmadd_ps(c10,c8, b0);  c11 = _mm256_fmadd_ps(c11,c9,b0);\
+    /*Add the second Update*/\
+    c2 = _mm256_add_ps(c2,c4);    c3 = _mm256_add_ps(c3,c5);\
+    c6 = _mm256_add_ps(c6,c8);    c7 = _mm256_add_ps(c7,c9);\
+
+
+  #define FMA(O) \
+    /*Load Updates from previous tile*/\
+    b0 = _mm256_load_ps(O);\
+    b1 = _mm256_load_ps(O + SIMD);\
+    a_reg = _mm256_broadcast_ss(&weight);\
+    /*multiply with 1/9*/\
+    c0 = _mm256_mul_ps(c0, a_reg);    c1 = _mm256_mul_ps(c1, a_reg);\
+    c4 = _mm256_mul_ps(c4, a_reg);    c5 = _mm256_mul_ps(c5, a_reg);\
+    c8 = _mm256_mul_ps(c8, a_reg);    c9 = _mm256_mul_ps(c9, a_reg);\
+    /**/\
+    c2 = _mm256_fmadd_ps(c2,a_reg, c0);    c3 = _mm256_fmadd_ps(c3,a_reg, c1);\
+    c6 = _mm256_fmadd_ps(c6,a_reg, c4);     c7 = _mm256_fmadd_ps(c7,a_reg, c5);\
+    c10 = _mm256_fmadd_ps(c10,a_reg, c8);    c11 = _mm256_fmadd_ps(c11,a_reg, c9);\
+    /**/\
+    c2 = _mm256_add_ps(c2,c4);    c3 = _mm256_add_ps(c3,c5);\
+    c6 = _mm256_add_ps(c6,c8);    c7 = _mm256_add_ps(c7,c9);\
+    /*update previous tile*/\
+    c0 = _mm256_add_ps(c0, b0);     c1 = _mm256_add_ps(c1,b1);\
+
+
+  #define FMA_END(O) \
+    /*load the partial update from the previous tile*/\
+    b0 = _mm256_load_ps(O);\
+    b1 = _mm256_load_ps(O + SIMD);\
+    a_reg = _mm256_broadcast_ss(&weight);\
+    /*multiply with 1/9*/\
+    c0 = _mm256_mul_ps(c0, a_reg);    c1 = _mm256_mul_ps(c1, a_reg);\
+    c4 = _mm256_mul_ps(c4, a_reg);    c5 = _mm256_mul_ps(c5, a_reg);\
+    c8 = _mm256_mul_ps(c8, a_reg);    c9 = _mm256_mul_ps(c9, a_reg);\
+    /**/\
+    c2 = _mm256_fmadd_ps(c2,a_reg, c0);    c3 = _mm256_fmadd_ps(c3,a_reg, c1);\
+    c6 = _mm256_fmadd_ps(c6,a_reg, c4);     c7 = _mm256_fmadd_ps(c7,a_reg, c5);\
+    c10 = _mm256_fmadd_ps(c10,a_reg, c8);    c11 = _mm256_fmadd_ps(c11,a_reg, c9);\
+    /**/\
+    c2 = _mm256_add_ps(c2,c4);    c3 = _mm256_add_ps(c3,c5);\
+    c6 = _mm256_add_ps(c6,c8);    c7 = _mm256_add_ps(c7,c9);\
+    /*Accumulate with previous tile*/\
+    c0 = _mm256_add_ps(c0, b0);     c1 = _mm256_add_ps(c1,b1);\
+
+
+  #define ACCUM_AVG_START(O) \
+    /*Load Previous*/\
+    b0 = _mm256_load_ps(O + (0 * C_ob));\
+    b1 = _mm256_load_ps(O + (0 * C_ob) + SIMD);\
+    a_reg = _mm256_load_ps(O + (1 * C_ob));\
+    __m256 temp = _mm256_load_ps(O + (1 * C_ob) + SIMD);\
+    /*accumulate with previous rows*/\
+    c2 = _mm256_add_ps(c2, b0);    c3 = _mm256_add_ps(c3, b1);\
+    /**/\
+    c6 = _mm256_add_ps(c6, a_reg); c7 = _mm256_add_ps(c7, temp);\
+
+
+  #define ACCUM_AVG(O) \
+    /*Load partial outputs from previous row*/\
+    a_reg = _mm256_load_ps(O + (1 * C_ob));\
+    __m256 temp = _mm256_load_ps(O + (1 * C_ob) + SIMD);\
+    c4 = _mm256_load_ps(O + (2 * C_ob));\
+    c5 = _mm256_load_ps(O + (2 * C_ob) + SIMD);\
+    c8 = _mm256_load_ps(O + (3 * C_ob));\
+    c9 = _mm256_load_ps(O + (3 * C_ob) + SIMD);\
+    b0 = _mm256_load_ps(O);\
+    b1 = _mm256_load_ps(O + SIMD);\
+    /*accumulate with previous row*/\
+    c2 = _mm256_add_ps(c2, a_reg);  c3 = _mm256_add_ps(c3, temp);\
+    c6 = _mm256_add_ps(c6,c4);      c7 = _mm256_add_ps(c7,c5);\
+    c0 = _mm256_add_ps(c0, b0);     c1 = _mm256_add_ps(c1, b1);\
+
+
+
+  #define ACCUM_AVG_END(O) \
+      /*load partial updates from previous row*/\
+      b0 = _mm256_broadcast_ss(&weight);\
+      a_reg = _mm256_load_ps(O);\
+      __m256 temp = _mm256_load_ps(O + SIMD);\
+      c4 = _mm256_load_ps(O + (1 * C_ob));\
+      c8 = _mm256_load_ps(O + (2 * C_ob));\
+      c5 = _mm256_load_ps(O + (1 * C_ob) + SIMD);\
+      c9 = _mm256_load_ps(O + (2 * C_ob) + SIMD);\
+      /**/\
+      c2 = _mm256_fmadd_ps(c2, c4, b0);\
+      c3 = _mm256_fmadd_ps(c3, c5, b0);\
+      /**/\
+      c6 = _mm256_fmadd_ps(c6, c8, b0);\
+      c7 = _mm256_fmadd_ps(c7, c9, b0);\
+      /**/\
+      c0 = _mm256_fmadd_ps(c0,a_reg, b0);\
+      c1 = _mm256_fmadd_ps(c1, temp, b0);\
+
+
+  #define ACCUM_FMA_START(O) \
+      /*Load Updates from Previous Row */\
+    b1 = _mm256_load_ps(O + (1 * C_ob));\
+    a_reg = _mm256_load_ps(O + (2 * C_ob));\
+    __m256 temp = _mm256_load_ps(O + (0 * C_ob) + SIMD);\
+    /*Multiply with 1/9*/\
+    c0 = _mm256_mul_ps(c0, b0);    c1 = _mm256_mul_ps(c1, b0);\
+    c4 = _mm256_mul_ps(c4, b0);    c5 = _mm256_mul_ps(c5, b0);\
+    c8 = _mm256_mul_ps(c8, b0);    c9 = _mm256_mul_ps(c9, a_reg);\
+    /* */\
+    c2 = _mm256_fmadd_ps(c2,b0, c0);    c3 = _mm256_fmadd_ps(c3,b0, c1);\
+    c6 = _mm256_fmadd_ps(c6,b0, c4);     c7 = _mm256_fmadd_ps(c7,b0, c5);\
+    c10 = _mm256_fmadd_ps(c10,b0, c8);    c11 = _mm256_fmadd_ps(c11,b0, c9);\
+    b0 = _mm256_load_ps(O + (0 * C_ob));\
+    /*Load Updates from Previous Row */\
+    c0 = _mm256_load_ps(O + (1 * C_ob) + SIMD);\
+    c1 = _mm256_load_ps(O + (2 * C_ob) + SIMD);\
+    /* */\
+    c2 = _mm256_add_ps(c2,c4);    c3 = _mm256_add_ps(c3,c5);\
+    c6 = _mm256_add_ps(c6,c8);    c7 = _mm256_add_ps(c7,c9);\
+    /**/\
+    /*accumulate with previous rows*/\
+    c2 = _mm256_add_ps(c2, b0);    c3 = _mm256_add_ps(c3, temp);\
+    /**/\
+    c6 = _mm256_add_ps(c6, b1);    c7 = _mm256_add_ps(c7, c0);\
+    /**/\
+    c10 = _mm256_add_ps(c10, a_reg);    c11 = _mm256_add_ps(c11, c1);\
+
+
+  #define ACCUM_FMA(O) \
+  /*Load Previous Tile Updates*/\
+  b0 = _mm256_broadcast_ss(&weight);\
+  b0 = _mm256_load_ps(O);\
+  b1 = _mm256_load_ps(O + SIMD);\
+  a_reg = _mm256_load_ps(O + (1 * C_ob));\
+  __m256 temp = _mm256_load_ps(O + (1 * C_ob) + SIMD);\
+  /*Multiply with 1/9*/\
+  c0 = _mm256_mul_ps(c0, b0);    c1 = _mm256_mul_ps(c1, b0);\
+  c4 = _mm256_mul_ps(c4, b0);    c5 = _mm256_mul_ps(c5, b0);\
+  c8 = _mm256_mul_ps(c8, b0);    c9 = _mm256_mul_ps(c9, a_reg);\
+  /* */\
+  c2 = _mm256_fmadd_ps(c2,b0, c0);    c3 = _mm256_fmadd_ps(c3,b0, c1);\
+  c6 = _mm256_fmadd_ps(c6,b0, c4);     c7 = _mm256_fmadd_ps(c7,b0, c5);\
+  c10 = _mm256_fmadd_ps(c10,b0, c8);    c11 = _mm256_fmadd_ps(c11,b0, c9);\
+  /**/\
+  b0 = _mm256_load_ps(O + (0 * C_ob));\
+  /* */\
+  c2 = _mm256_add_ps(c2,c4);    c3 = _mm256_add_ps(c3,c5);\
+  c6 = _mm256_add_ps(c6,c8);    c7 = _mm256_add_ps(c7,c9);\
+  /*Load Previous Row Updates*/\
+  b0 = _mm256_load_ps(O + (0 * C_ob));\
+  c4 = _mm256_load_ps(O + (2 * C_ob));\
+  c5 = _mm256_load_ps(O + (2 * C_ob) + SIMD);\
+  c8 = _mm256_load_ps(O + (3 * C_ob));\
+  c9 = _mm256_load_ps(O + (3 * C_ob) + SIMD);\
+  /* accumulate with previous tile*/\
+  c0 = _mm256_add_ps(c0, b0);\
+  c1 = _mm256_add_ps(c1,b1);\
+  /*accumulate with previous row*/\
+  c2 = _mm256_add_ps(c2, a_reg);\
+  c3 = _mm256_add_ps(c3, temp);\
+  c6 = _mm256_add_ps(c6,c4);\
+  c7 = _mm256_add_ps(c7,c5);\
+  c10 = _mm256_add_ps(c10,c8);\
+  c11 = _mm256_add_ps(c11,c9);\
+
+
+  #define ACCUM_FMA_END(O) \
+    /*Load Updates from previous tile*/\
+    a_reg = _mm256_broadcast_ss(&weight);\
+    b0 = _mm256_load_ps(O);\
+    b1 = _mm256_load_ps(O + SIMD);\
+    /*Multiply with 1/9*/\
+    c0 = _mm256_mul_ps(c0, b0);    c1 = _mm256_mul_ps(c1, b0);\
+    c4 = _mm256_mul_ps(c4, b0);    c5 = _mm256_mul_ps(c5, b0);\
+    c8 = _mm256_mul_ps(c8, b0);    c9 = _mm256_mul_ps(c9, a_reg);\
+    /* */\
+    c2 = _mm256_fmadd_ps(c2,b0, c0);    c3 = _mm256_fmadd_ps(c3,b0, c1);\
+    c6 = _mm256_fmadd_ps(c6,b0, c4);     c7 = _mm256_fmadd_ps(c7,b0, c5);\
+    c10 = _mm256_fmadd_ps(c10,b0, c8);    c11 = _mm256_fmadd_ps(c11,b0, c9);\
+    /**/\
+    c2 = _mm256_add_ps(c2,c4);    c3 = _mm256_add_ps(c3,c5);\
+    c6 = _mm256_add_ps(c6,c8);    c7 = _mm256_add_ps(c7,c9);\
+    /*Accumulate with previous tile*/\
+    c0 = _mm256_add_ps(c0, b0);\
+    c1 = _mm256_add_ps(c1,b1);\
+    /*load updates from previous row*/\
+    b0 = _mm256_load_ps(O + (1 * C_ob));\
+    b1 = _mm256_load_ps(O + (2 * C_ob));\
+    a_reg = _mm256_load_ps(O + (1 * C_ob) + SIMD);\
+    __m256 temp = _mm256_load_ps(O + (2 * C_ob) + SIMD);\
+    /*Accumulate with previous row*/\
+    c2 = _mm256_add_ps(c2, b0);\
+    c3 = _mm256_add_ps(c3, a_reg);\
+    c6 = _mm256_add_ps(c6, b1);\
+    c7 = _mm256_add_ps(c7, temp);

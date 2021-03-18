@@ -7,10 +7,10 @@
 #include <stdint.h>
 #include<climits>
 // Pooling driver
-
+//average
 #define GEMM 0
 #define L 3
-#define RUNS 1000
+#define RUNS 1
 #define VERBOSE 0
 #define FUSION 1
 #define STRIDE 1
@@ -62,7 +62,7 @@ WSS Size Out_img pool : %.2f K/8K elements  dims: %u %u %u\n\
 
 int main(int argc, char ** argv)
 {
-  printf("%d \t %d\t ", BUFFER,PREFETCH);
+  printf("%d \t %d\t %f ", BUFFER,PREFETCH, weight);
   if(argc!=5)
   {
     printf("USAGE: torch_pool < 3x3 Input Channels> <3x3 Output Channels> <Output Height> <Output Width (multiple of 6)>\n");
@@ -105,7 +105,7 @@ int main(int argc, char ** argv)
 
   conv_3x3->weight = test_weights;
 
-  auto pool = torch::nn::MaxPool2d( torch::nn::MaxPool2dOptions(3).
+  auto pool = torch::nn::AvgPool2d( torch::nn::AvgPool2dOptions(3).
                                                 stride(2).
                                                 padding(0));
 
@@ -273,7 +273,7 @@ int main(int argc, char ** argv)
           fused_pooling_direct_convolution_complete<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_dc, out_dc);
         #else
           // printf("buffered\n");
-          l_fused_pooling_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_buffer, out_dc);
+          fused_pooling_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_buffer, out_dc);
         #endif
       t1 = rdtsc();
       MIN(sum_fused,(t1 - t0));
