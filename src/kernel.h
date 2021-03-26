@@ -9,12 +9,6 @@
 #define C_ob 16
 #define C_ib rank_k
 
-
-
-#include "intrinsics.h"
-
-
-
 void print256_float(__m256 var)
 {
     float val[8];
@@ -23,6 +17,10 @@ void print256_float(__m256 var)
            val[0], val[1], val[2], val[3], val[4], val[5],
            val[6], val[7]);
 }
+
+
+#include "intrinsics.h"
+
 
 
 

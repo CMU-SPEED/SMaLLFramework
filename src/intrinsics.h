@@ -13,38 +13,137 @@
    c10 = _mm256_load_ps(O + (5 * C_ob));\
    c11 = _mm256_load_ps(O + (5 * C_ob) + SIMD);\
 
- #define LOAD_14_C(O) \
-   c0 = _mm256_load_ps(O + (0 * C_ob));\
-    c1 = _mm256_load_ps(O + (0 * C_ob) + SIMD);\
-    c2 = _mm256_load_ps(O + (1 * C_ob));\
-    c3 = _mm256_load_ps(O + (1 * C_ob) + SIMD);\
-    c4 = _mm256_load_ps(O + (2 * C_ob));\
-    c5 = _mm256_load_ps(O + (2 * C_ob) + SIMD);\
-    c6 = _mm256_load_ps(O + (3 * C_ob));\
-    c7 = _mm256_load_ps(O + (3 * C_ob) + SIMD);\
-    c8 = _mm256_load_ps(O + (4 * C_ob));\
-    c9 = _mm256_load_ps(O + (4 * C_ob) + SIMD);\
-    c10 = _mm256_load_ps(O + (5 * C_ob));\
-    c11 = _mm256_load_ps(O + (5 * C_ob) + SIMD);\
-    b0 = _mm256_load_ps(O + (6 * C_ob));\
-    b1 = _mm256_load_ps(O + (6 * C_ob) + SIMD);\
+
+#define LOAD_14_C(O) \
+ c0 = _mm256_load_ps(O + (0 * C_ob));\
+  c1 = _mm256_load_ps(O + (0 * C_ob) + SIMD);\
+  c2 = _mm256_load_ps(O + (1 * C_ob));\
+  c3 = _mm256_load_ps(O + (1 * C_ob) + SIMD);\
+  c4 = _mm256_load_ps(O + (2 * C_ob));\
+  c5 = _mm256_load_ps(O + (2 * C_ob) + SIMD);\
+  c6 = _mm256_load_ps(O + (3 * C_ob));\
+  c7 = _mm256_load_ps(O + (3 * C_ob) + SIMD);\
+  c8 = _mm256_load_ps(O + (4 * C_ob));\
+  c9 = _mm256_load_ps(O + (4 * C_ob) + SIMD);\
+  c10 = _mm256_load_ps(O + (5 * C_ob));\
+  c11 = _mm256_load_ps(O + (5 * C_ob) + SIMD);\
+  b0 = _mm256_load_ps(O + (6 * C_ob));\
+  b1 = _mm256_load_ps(O + (6 * C_ob) + SIMD);\
+
+
+#define LOAD_10_C(O)\
+ c0 = _mm256_load_ps(O + (0 * C_ob));\
+ c1 = _mm256_load_ps(O + (0 * C_ob) + SIMD);\
+ c2 = _mm256_load_ps(O + (1 * C_ob));\
+ c3 = _mm256_load_ps(O + (1 * C_ob) + SIMD);\
+ c4 = _mm256_load_ps(O + (2 * C_ob));\
+ c5 = _mm256_load_ps(O + (2 * C_ob) + SIMD);\
+ c6 = _mm256_load_ps(O + (3 * C_ob));\
+ c7 = _mm256_load_ps(O + (3 * C_ob) + SIMD);\
+ c8 = _mm256_load_ps(O + (4 * C_ob));\
+ c9 = _mm256_load_ps(O + (4 * C_ob) + SIMD);
+
+ #define LOAD_6_C(O, step)\
+  c0 = _mm256_load_ps(O + (0 * step));\
+  c1 = _mm256_load_ps(O + (0 * step) + SIMD);\
+  c2 = _mm256_load_ps(O + (1 * step));\
+  c3 = _mm256_load_ps(O + (1 * step) + SIMD);\
+  c4 = _mm256_load_ps(O + (2 * step));\
+  c5 = _mm256_load_ps(O + (2 * step) + SIMD);\
+
+#define LOAD_4_C(O, step)\
+ c0 = _mm256_load_ps(O + (0 * step));\
+ c1 = _mm256_load_ps(O + (0 * step) + SIMD);\
+ c2 = _mm256_load_ps(O + (1 * step));\
+ c3 = _mm256_load_ps(O + (1 * step) + SIMD);\
+
+#define LOAD_W(W, f00, f01)\
+  f00 = _mm256_load_ps(W);\
+  f01 = _mm256_load_ps(W + SIMD);\
+
+#define MAX_3_row(O, step)\
+  c6 = _mm256_load_ps(O + (0 * step));\
+  c7 = _mm256_load_ps(O + (0 * step) + SIMD);\
+  c8 = _mm256_load_ps(O + (1 * step));\
+  c9 = _mm256_load_ps(O + (1 * step) + SIMD);\
+  c10 = _mm256_load_ps(O + (2 * step));\
+  c11 = _mm256_load_ps(O + (2 * step) + SIMD);\
+  c0 = _mm256_max_ps(c6, c0);\
+  c1 = _mm256_max_ps(c7, c1);\
+  c2 = _mm256_max_ps(c8, c2);\
+  c3 = _mm256_max_ps(c9, c3);\
+  c4 = _mm256_max_ps(c10, c4);\
+  c5 = _mm256_max_ps(c11, c5);\
+
+  #define MAX_2_row(O, step)\
+    c6 = _mm256_load_ps(O + (0 * step));\
+    c7 = _mm256_load_ps(O + (0 * step) + SIMD);\
+    c8 = _mm256_load_ps(O + (1 * step));\
+    c9 = _mm256_load_ps(O + (1 * step) + SIMD);\
+    c0 = _mm256_max_ps(c6, c0);\
+    c1 = _mm256_max_ps(c7, c1);\
+    c2 = _mm256_max_ps(c8, c2);\
+    c3 = _mm256_max_ps(c9, c3);
+
+#define DW_FMA_2(W) \
+  LOAD_W(W, f00, f01);\
+  c10 = _mm256_mul_ps(c0, f00); c11 = _mm256_mul_ps(c1, f01)\
+  c12 = _mm256_mul_ps(c4, f00); c13 = _mm256_mul_ps(c5, f01);\
+  LOAD_W(W + C_ob, f00, f01);\
+  c10 = _mm256_fmadd_ps(c2, f00, c10); c11 = _mm256_fmadd_ps(f01, c3, c11);\
+  c12 = _mm256_fmadd_ps(c6, f00, c12); c13 = _mm256_fmadd_ps(f01, c7, c13);\
+  LOAD_W(W + 2 * C_ob, f00, f01);\
+  c10 = _mm256_fmadd_ps(c6, f00, c10); c11 = _mm256_fmadd_ps(f01, c7, c11);\
+  c12 = _mm256_fmadd_ps(c8, f00, c12); c13 = _mm256_fmadd_ps(f01, c8, c13);
+
+
+
 
 //not doing partial Updates
 //reduce stores
 #define MAX_3() \
-c2 = _mm256_max_ps(c2,c0);\
-c3 = _mm256_max_ps(c3,c1);\
-c6 = _mm256_max_ps(c6,c4);\
-c7 = _mm256_max_ps(c7,c5);\
-c10 = _mm256_max_ps(c10,c8);\
-c11 = _mm256_max_ps(c11,c9);\
+  c2 = _mm256_max_ps(c2,c0);\
+  c3 = _mm256_max_ps(c3,c1);\
+  c6 = _mm256_max_ps(c6,c4);\
+  c7 = _mm256_max_ps(c7,c5);\
+  c10 = _mm256_max_ps(c10,c8);\
+  c11 = _mm256_max_ps(c11,c9);\
+  /**/\
+  c2 = _mm256_max_ps(c2,c4);\
+  c3 = _mm256_max_ps(c3,c5);\
+  c6 = _mm256_max_ps(c6,c8);\
+  c7 = _mm256_max_ps(c7,c9);\
+  c10 = _mm256_max_ps(c10,b0);\
+  c11 = _mm256_max_ps(c11,b1);\
+
+
+#define AVG_3()\
+/*Initialize a variable to multiply with 1/9*/\
+a_reg = _mm256_broadcast_ss(&weight);\
+/*Multiply with the reused*/\
+c0 = _mm256_mul_ps(c0, a_reg);\
+c1 = _mm256_mul_ps(c1, a_reg);\
+c4 = _mm256_mul_ps(c4, a_reg);\
+c5 = _mm256_mul_ps(c5, a_reg);\
+c8 = _mm256_mul_ps(c8, a_reg);\
+c9 = _mm256_mul_ps(c9, a_reg);\
+b0 = _mm256_mul_ps(b0, a_reg);\
+b1 = _mm256_mul_ps(b1, a_reg);\
 /**/\
-c2 = _mm256_max_ps(c2,c4);\
-c3 = _mm256_max_ps(c3,c5);\
-c6 = _mm256_max_ps(c6,c8);\
-c7 = _mm256_max_ps(c7,c9);\
-c10 = _mm256_max_ps(c10,b0);\
-c11 = _mm256_max_ps(c11,b1);\
+c2 = _mm256_fmadd_ps(a_reg,c2,c0);\
+c3 = _mm256_fmadd_ps(a_reg,c3,c1);\
+c6 = _mm256_fmadd_ps(a_reg,c6,c4);\
+c7 = _mm256_fmadd_ps(a_reg,c7,c5);\
+c10 = _mm256_fmadd_ps(a_reg,c10,c8);\
+c11 = _mm256_fmadd_ps(a_reg,c11,c9);\
+/**/\
+c2 = _mm256_add_ps(c2,c4);\
+c3 = _mm256_add_ps(c3,c5);\
+c6 = _mm256_add_ps(c6,c8);\
+c7 = _mm256_add_ps(c7,c9);\
+c10 = _mm256_add_ps(c10,b0);\
+c11 = _mm256_add_ps(c11,b1);\
+
 
 #define MAX_2() \
 c2 = _mm256_max_ps(c2,c0);\
@@ -56,6 +155,80 @@ c2 = _mm256_max_ps(c2,c4);\
 c3 = _mm256_max_ps(c3,c5);\
 c6 = _mm256_max_ps(c6,c8);\
 c7 = _mm256_max_ps(c7,c9);\
+
+#define AVG_2() \
+/*Initialize a variable to multiply with 1/9*/\
+a_reg = _mm256_broadcast_ss(&weight);\
+/*Multiply with the reused*/\
+c0 = _mm256_mul_ps(c0, a_reg);\
+c1 = _mm256_mul_ps(c1, a_reg);\
+c4 = _mm256_mul_ps(c4, a_reg);\
+c5 = _mm256_mul_ps(c5, a_reg);\
+c8 = _mm256_mul_ps(c8, a_reg);\
+c9 = _mm256_mul_ps(c9, a_reg);\
+/**/\
+c2 = _mm256_fmadd_ps(a_reg,c2,c0);\
+c3 = _mm256_fmadd_ps(a_reg,c3,c1);\
+c6 = _mm256_fmadd_ps(a_reg,c6,c4);\
+c7 = _mm256_fmadd_ps(a_reg,c7,c5);\
+/**/\
+c2 = _mm256_add_ps(c2,c4);\
+c3 = _mm256_add_ps(c3,c5);\
+c6 = _mm256_add_ps(c6,c8);\
+c7 = _mm256_add_ps(c7,c9);\
+
+#define ACCUM_3(O)\
+ c0 = _mm256_load_ps(O + (0 * C_ob));\
+ c1 = _mm256_load_ps(O + (0 * C_ob) + SIMD);\
+ c4 = _mm256_load_ps(O + (1 * C_ob));\
+ c5 = _mm256_load_ps(O + (1 * C_ob) + SIMD);\
+ c8 = _mm256_load_ps(O + (2 * C_ob));\
+ c9 = _mm256_load_ps(O + (2 * C_ob) + SIMD);\
+ /*Accumulate with updates from previous row*/\
+ c2 = _mm256_max_ps(c2,c0);\
+ c3 = _mm256_max_ps(c3,c1);\
+ c6 = _mm256_max_ps(c6,c4);\
+ c7 = _mm256_max_ps(c7,c5);\
+ c10 = _mm256_max_ps(c10,c8);\
+ c11 = _mm256_max_ps(c11,c9);
+
+ #define ACCUM_AVG_3(O)\
+  c0 = _mm256_load_ps(O + (0 * C_ob));\
+  c1 = _mm256_load_ps(O + (0 * C_ob) + SIMD);\
+  c4 = _mm256_load_ps(O + (1 * C_ob));\
+  c5 = _mm256_load_ps(O + (1 * C_ob) + SIMD);\
+  c8 = _mm256_load_ps(O + (2 * C_ob));\
+  c9 = _mm256_load_ps(O + (2 * C_ob) + SIMD);\
+  /*Accumulate with updates from previous row*/\
+  c2 = _mm256_add_ps(c2,c0);\
+  c3 = _mm256_add_ps(c3,c1);\
+  c6 = _mm256_add_ps(c6,c4);\
+  c7 = _mm256_add_ps(c7,c5);\
+  c10 = _mm256_add_ps(c10,c8);\
+  c11 = _mm256_add_ps(c11,c9);
+
+#define ACCUM_2(O)\
+  c0 = _mm256_load_ps(O + (0 * C_ob));\
+  c1 = _mm256_load_ps(O + (0 * C_ob) + SIMD);\
+  c4 = _mm256_load_ps(O + (1 * C_ob));\
+  c5 = _mm256_load_ps(O + (1 * C_ob) + SIMD);\
+  /*Accumulate with updates from previous row*/\
+  c2 = _mm256_max_ps(c2,c0);\
+  c3 = _mm256_max_ps(c3,c1);\
+  c6 = _mm256_max_ps(c6,c4);\
+  c7 = _mm256_max_ps(c7,c5);\
+
+
+#define ACCUM_AVG_2(O)\
+ c0 = _mm256_load_ps(O + (0 * C_ob));\
+ c1 = _mm256_load_ps(O + (0 * C_ob) + SIMD);\
+ c4 = _mm256_load_ps(O + (1 * C_ob));\
+ c5 = _mm256_load_ps(O + (1 * C_ob) + SIMD);\
+ /*Accumulate with updates from previous row*/\
+ c2 = _mm256_add_ps(c2,c0);\
+ c3 = _mm256_add_ps(c3,c1);\
+ c6 = _mm256_add_ps(c6,c4);\
+ c7 = _mm256_add_ps(c7,c5);
 
 #define ZERO_12_C() \
   c0 = _mm256_setzero_ps();\
