@@ -10,18 +10,18 @@
 
 #define GEMM 0
 #define L 0
-#define RUNS 1
+#define RUNS 1000
 #define VERBOSE 0
 #define FUSION 1
 #define STRIDE 1
-#define PARALLEL 1
+#define PARALLEL 0
 #define COMB 0
 #ifndef BUFFER
   #define BUFFER 0
 #endif
 #define PREFETCH 1
 
-#define H_TILE 1
+#define H_TILE 0
 #define POOLING 1
 #include "src/direct_convolution.h"
 #include "src/fused_conv_pooling.h"
@@ -223,11 +223,12 @@ int main(int argc, char ** argv)
       // Copy Inputs to their flat buffers
 
       t0 = rdtsc();
-      direct_convolution_pooling_aware<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc, filter_dc, out_intermediate_dc);
+      direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc, filter_dc, out_intermediate_dc);
+      // direct_convolution_pooling_aware<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc, filter_dc, out_intermediate_dc);
       t1 = rdtsc();
       MIN(sum,(t1 - t0));
       t0 = rdtsc();
-      H_tile_pooling(C_o, out_intermediate_dimensions[2]-1, out_intermediate_dimensions[3] ,out_intermediate_dc, out_dc);
+      pooling(C_o, out_intermediate_dimensions[2], out_intermediate_dimensions[3] ,out_intermediate_dc, out_dc);
       t1 = rdtsc();
       MIN(sum_pool,(t1 - t0));
 
@@ -250,7 +251,7 @@ int main(int argc, char ** argv)
     print_flops(effective_conv_ops+pool_ops, sum+sum_pool, RUNS);
     print_cycles(sum+sum_pool, RUNS);
 
-    printf("\n\n %f %f %f\n\n", out_intermediate_dc[2*out_intermediate_dimensions[3]*C_ob], out_intermediate_dc[3*out_intermediate_dimensions[3]*C_ob], out_intermediate_dc[4*out_intermediate_dimensions[3]*C_ob]);
+    // printf("\n\n %f %f %f\n\n", out_intermediate_dc[2*out_intermediate_dimensions[3]*C_ob], out_intermediate_dc[3*out_intermediate_dimensions[3]*C_ob], out_intermediate_dc[4*out_intermediate_dimensions[3]*C_ob]);
   }
 // #else
   {
@@ -281,9 +282,13 @@ int main(int argc, char ** argv)
         #else
           // printf("buffered\n");
 
-          H_loop_fused_pooling_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_buffer, out_dc);
+          // fused_pooling_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_buffer, out_dc);
+          l_fused_pooling_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_buffer, out_dc);
+          // H_tile_fused_pooling_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_buffer, out_dc);
+          // j_fused_H_tile_pooling_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_buffer, out_dc);
+
           // direct_convolution_pooling_aware<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc, filter_dc, out_intermediate_dc);
-          // H_tile_pooling(C_o, out_intermediate_dimensions[2]-1, out_intermediate_dimensions[3] ,out_intermediate_dc, out_dc);
+          // pooling(C_o, out_intermediate_dimensions[2]-1, out_intermediate_dimensions[3] ,out_intermediate_dc, out_dc);
         #endif
       t1 = rdtsc();
       MIN(sum_fused,(t1 - t0));
