@@ -10,7 +10,7 @@
 
 #define GEMM 0
 #define L 0
-#define RUNS 1000
+#define RUNS 100
 #define VERBOSE 0
 #define FUSION 1
 #define STRIDE 1
@@ -41,10 +41,10 @@ static __inline__ unsigned long long rdtsc(void) {
 // }
 
 #define print_flops( ops,  time,  trials){\
-  printf("%lf\t", (ops)/(1.0 * time));\
+  printf("%.4lf\t", (ops)/(1.0 * time));\
 }
 #define print_cycles(time,  trials){\
-  printf("%lf\t", 1.0*(time));\
+  printf("%.0lf\t", 1.0*(time));\
 }
 
 #define MIN(a, b){\
@@ -282,8 +282,8 @@ int main(int argc, char ** argv)
         #else
           // printf("buffered\n");
 
-          // fused_pooling_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_buffer, out_dc);
-          l_fused_pooling_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_buffer, out_dc);
+          fused_pooling_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_buffer, out_dc);
+          // l_fused_pooling_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_buffer, out_dc);
           // H_tile_fused_pooling_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_buffer, out_dc);
           // j_fused_H_tile_pooling_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_buffer, out_dc);
 
@@ -302,9 +302,152 @@ int main(int argc, char ** argv)
         }
     #endif
   }
-  print_flops(effective_conv_ops+pool_ops, sum_fused, RUNS);
+  // print_flops(effective_conv_ops+pool_ops, sum_fused, RUNS);
   print_cycles( sum_fused, RUNS);
+  printf("%.4f \t",(1.0*(sum+sum_pool)/sum_fused)*100.0);
   bool correctness = check_eqivalence(out, 'o', out_dimensions, out_dc, 1e-3);
+  assert(correctness==1);
+
+  sum_fused = ULLONG_MAX;
+  #if(L)
+  {
+    volatile float check_sum = rand()/(1.0*RAND_MAX);
+    for(uint32_t i = 0; i < bomb_size; i++){
+      check_sum += cache_bomb_array[i];
+    }
+  }
+  #endif
+  for(int r = 0; r < RUNS; r++){
+
+    t0 = rdtsc();
+      #if BUFFER==1
+        // printf("missing final update\n");
+        fused_pooling_direct_convolution_not_buffered<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_dc, out_dc);
+      #elif BUFFER==2
+        // printf("full\n");
+        fused_pooling_direct_convolution_complete<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_dc, out_dc);
+      #else
+        // printf("buffered\n");
+
+        // fused_pooling_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_buffer, out_dc);
+        l_fused_pooling_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_buffer, out_dc);
+        // H_tile_fused_pooling_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_buffer, out_dc);
+        // j_fused_H_tile_pooling_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_buffer, out_dc);
+
+        // direct_convolution_pooling_aware<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc, filter_dc, out_intermediate_dc);
+        // pooling(C_o, out_intermediate_dimensions[2]-1, out_intermediate_dimensions[3] ,out_intermediate_dc, out_dc);
+      #endif
+    t1 = rdtsc();
+    MIN(sum_fused,(t1 - t0));
+
+
+    #if(L)
+    // __asm__ __volatile__ ("cache_bomb:");
+      volatile float check_sum = rand()/(1.0*RAND_MAX);
+      for(uint32_t i = 0; i < bomb_size; i++){
+        check_sum += cache_bomb_array[i];
+      }
+  #endif
+}
+// print_flops(effective_conv_ops+pool_ops, sum_fused, RUNS);
+print_cycles( sum_fused, RUNS);
+printf("%.4f \t",(1.0*(sum+sum_pool)/sum_fused)*100.0);
+correctness = check_eqivalence(out, 'o', out_dimensions, out_dc, 1e-3);
+assert(correctness==1);
+
+
+sum_fused = ULLONG_MAX;
+#if(L)
+{
+  volatile float check_sum = rand()/(1.0*RAND_MAX);
+  for(uint32_t i = 0; i < bomb_size; i++){
+    check_sum += cache_bomb_array[i];
+  }
+}
+#endif
+for(int r = 0; r < RUNS; r++){
+
+  t0 = rdtsc();
+    #if BUFFER==1
+      // printf("missing final update\n");
+      fused_pooling_direct_convolution_not_buffered<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_dc, out_dc);
+    #elif BUFFER==2
+      // printf("full\n");
+      fused_pooling_direct_convolution_complete<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_dc, out_dc);
+    #else
+      // printf("buffered\n");
+
+      // fused_pooling_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_buffer, out_dc);
+      // l_fused_pooling_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_buffer, out_dc);
+      H_tile_fused_pooling_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_buffer, out_dc);
+      // j_fused_H_tile_pooling_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_buffer, out_dc);
+
+      // direct_convolution_pooling_aware<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc, filter_dc, out_intermediate_dc);
+      // pooling(C_o, out_intermediate_dimensions[2]-1, out_intermediate_dimensions[3] ,out_intermediate_dc, out_dc);
+    #endif
+  t1 = rdtsc();
+  MIN(sum_fused,(t1 - t0));
+
+
+  #if(L)
+  // __asm__ __volatile__ ("cache_bomb:");
+    volatile float check_sum = rand()/(1.0*RAND_MAX);
+    for(uint32_t i = 0; i < bomb_size; i++){
+      check_sum += cache_bomb_array[i];
+    }
+#endif
+}
+// print_flops(effective_conv_ops+pool_ops, sum_fused, RUNS);
+print_cycles( sum_fused, RUNS);
+printf("%.4f \t",(1.0*(sum+sum_pool)/sum_fused)*100.0);
+correctness = check_eqivalence(out, 'o', out_dimensions, out_dc, 1e-3);
+assert(correctness==1);
+
+sum_fused = ULLONG_MAX;
+#if(L)
+{
+  volatile float check_sum = rand()/(1.0*RAND_MAX);
+  for(uint32_t i = 0; i < bomb_size; i++){
+    check_sum += cache_bomb_array[i];
+  }
+}
+#endif
+for(int r = 0; r < RUNS; r++){
+
+  t0 = rdtsc();
+    #if BUFFER==1
+      // printf("missing final update\n");
+      fused_pooling_direct_convolution_not_buffered<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_dc, out_dc);
+    #elif BUFFER==2
+      // printf("full\n");
+      fused_pooling_direct_convolution_complete<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_dc, out_dc);
+    #else
+      // printf("buffered\n");
+
+      // fused_pooling_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_buffer, out_dc);
+      // l_fused_pooling_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_buffer, out_dc);
+      // H_tile_fused_pooling_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_buffer, out_dc);
+      j_fused_H_tile_pooling_direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc,filter_dc, out_intermediate_buffer, out_dc);
+
+      // direct_convolution_pooling_aware<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc, filter_dc, out_intermediate_dc);
+      // pooling(C_o, out_intermediate_dimensions[2]-1, out_intermediate_dimensions[3] ,out_intermediate_dc, out_dc);
+    #endif
+  t1 = rdtsc();
+  MIN(sum_fused,(t1 - t0));
+
+
+  #if(L)
+  // __asm__ __volatile__ ("cache_bomb:");
+    volatile float check_sum = rand()/(1.0*RAND_MAX);
+    for(uint32_t i = 0; i < bomb_size; i++){
+      check_sum += cache_bomb_array[i];
+    }
+#endif
+}
+// print_flops(effective_conv_ops+pool_ops, sum_fused, RUNS);
+print_cycles( sum_fused, RUNS);
+correctness = check_eqivalence(out, 'o', out_dimensions, out_dc, 1e-3);
+assert(correctness==1);
 
 
   #if(VERBOSE)
@@ -317,7 +460,7 @@ int main(int argc, char ** argv)
 
   }
   // #endif
-  printf("%.4f\t %.4f \t", (1.0*sum/sum_fused)*100.0, (1.0*(sum+sum_pool)/sum_fused)*100.0);
+  printf("%.4f \t",(1.0*(sum+sum_pool)/sum_fused)*100.0);
   printf("\n");
 
   free(input_dc);

@@ -1126,6 +1126,7 @@ template <uint32_t stride, uint32_t H_f, uint32_t W_f>
   }//end 3x3 Output Channel Blocks
 }
 
+//TODO: This is buggy
 template <uint32_t stride, uint32_t H_f, uint32_t W_f>
  void H_tile_fused_pooling_direct_convolution(
   uint32_t C_i,
@@ -1422,7 +1423,7 @@ template <uint32_t stride, uint32_t H_f, uint32_t W_f>
       uint32_t buffer_offset_0 = (pool_row+1)%3;
       offsets[0] = (pool_row+2)%3;
       offsets[1] = (pool_row+3)%3;
-      printf("\n%d %d %d\n", buffer_offset_0, offsets[0], offsets[1]);
+      // printf("\n%d %d %d\n", buffer_offset_0, offsets[0], offsets[1]);
       //First 3x3 Input Channel Block
       {
         // These are all 0
@@ -1480,7 +1481,7 @@ template <uint32_t stride, uint32_t H_f, uint32_t W_f>
       float * conv_row_0 = O_buffer + buffer_offset_0*W_o*C_ob;
       float * conv_row_1 = O_buffer + offsets[0]*W_ob*C_ob;
       float * conv_row_2 = O_buffer + offsets[1]*W_ob*C_ob;
-      printf("\n\n%f %f %f\n\n",conv_row_0[0], conv_row_1[0], conv_row_2[0]);
+      // printf("\n\n%f %f %f\n\n",conv_row_0[0], conv_row_1[0], conv_row_2[0]);
       pool_3_rows_strided<POOL_STRIDE*C_ob>(conv_row_0, conv_row_1, conv_row_2, W_o, O_pool_row);
       O_pool_row += W_o_pool*C_ob;
       pool_row++;
