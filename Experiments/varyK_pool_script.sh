@@ -3,12 +3,12 @@
 echo "Parallelizing over output channels, square panels"
 export OMP_NUM_THREADS=$2;
 echo $OMP_NUM_THREADS;
-for i in 12 30 54 114 222 504;
+for i in 12 30 504;
 do
 
     for j in 64;
 	     do
-		 for k in 16 32 64 128  256  512  1024 ;
+		 for k in 32 64 128  256  512  1024 ;
 		 do
 		     echo -n  ${i},  ${k}, " "
 		     $1  ${j} ${k} ${i} ${i}

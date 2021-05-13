@@ -1,3 +1,103 @@
+#define DW_START(F, I)\
+  float * I_ptr = I;\
+  f0 = _mm256_load_ps(F);\
+  f1 = _mm256_load_ps(F + SIMD);\
+                /**/      \
+  i0 = _mm256_load_ps(I_ptr);\
+  i1 = _mm256_load_ps(I_ptr + SIMD);\
+  /**/\
+  c0 = _mm256_mul_ps(f0,i0);\
+  c1 = _mm256_mul_ps(f1, i1);\
+  /**/\
+  I_ptr += DW_STRIDE*C_ob;\
+ /**/                \
+  i0 = _mm256_load_ps(I_ptr);\
+  i1 = _mm256_load_ps(I_ptr + SIMD);\
+  /**/\
+  c2 = _mm256_mul_ps(f0,i0);\
+  c3 = _mm256_mul_ps(f1, i1);\
+  /**/\
+  I_ptr += DW_STRIDE*C_ob;\
+  /**/                \
+  i0 = _mm256_load_ps(I_ptr);\
+  i1 = _mm256_load_ps(I_ptr + SIMD);\
+  /**/\
+  c4 = _mm256_mul_ps(f0,i0);\
+  c5 = _mm256_mul_ps(f1, i1);\
+  /**/\
+  I_ptr += DW_STRIDE*C_ob;\
+  /**/                \
+  i0 = _mm256_load_ps(I_ptr);\
+  i1 = _mm256_load_ps(I_ptr + SIMD);\
+  /**/\
+  c6 = _mm256_mul_ps(f0,i0);\
+  c7 = _mm256_mul_ps(f1, i1);\
+  /**/\
+  I_ptr += DW_STRIDE*C_ob;\
+  /**/                \
+  i0 = _mm256_load_ps(I_ptr);\
+  i1 = _mm256_load_ps(I_ptr + SIMD);\
+  /**/\
+  c8 = _mm256_mul_ps(f0,i0);\
+  c9 = _mm256_mul_ps(f1, i1);\
+
+
+#define DW_FMA(F, I)\
+  float * I_ptr = I;\
+  f0 = _mm256_load_ps(F);\
+  f1 = _mm256_load_ps(F + SIMD);\
+                /**/      \
+  i0 = _mm256_load_ps(I_ptr);\
+  i1 = _mm256_load_ps(I_ptr + SIMD);\
+  /**/\
+  c0 = _mm256_fmadd_ps(f0, i0, c0);\
+  c1 = _mm256_fmadd_ps(f1, i1, c1);\
+  /**/\
+  I_ptr += DW_STRIDE*C_ob;\
+ /**/                \
+  i0 = _mm256_load_ps(I_ptr);\
+  i1 = _mm256_load_ps(I_ptr + SIMD);\
+  /**/\
+  c2 = _mm256_fmadd_ps(f0, i0, c2);\
+  c3 = _mm256_fmadd_ps(f1, i1, c3);\
+  /**/\
+  I_ptr += DW_STRIDE*C_ob;\
+  /**/                \
+  i0 = _mm256_load_ps(I_ptr);\
+  i1 = _mm256_load_ps(I_ptr + SIMD);\
+  /**/\
+  c4 = _mm256_fmadd_ps(f0, i0, c4);\
+  c5 = _mm256_fmadd_ps(f1, i1, c5);\
+  /**/\
+  I_ptr += DW_STRIDE*C_ob;\
+  /**/                \
+  i0 = _mm256_load_ps(I_ptr);\
+  i1 = _mm256_load_ps(I_ptr + SIMD);\
+  /**/\
+  c6 = _mm256_fmadd_ps(f0, i0, c6);\
+  c7 = _mm256_fmadd_ps(f1, i1, c7);\
+  /**/\
+  I_ptr += DW_STRIDE*C_ob;\
+  /**/                \
+  i0 = _mm256_load_ps(I_ptr);\
+  i1 = _mm256_load_ps(I_ptr + SIMD);\
+  /**/\
+  c8 = _mm256_fmadd_ps(f0, i0, c8);\
+  c9 = _mm256_fmadd_ps(f1, i1, c9);\
+
+
+
+#define STORE_10_DW(O, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9)\
+ _mm256_store_ps(O + (0 * C_ob), c0);\
+ _mm256_store_ps(O + (0 * C_ob) + SIMD, c1);\
+ _mm256_store_ps(O + (1 * C_ob), c2);\
+ _mm256_store_ps(O + (1 * C_ob) + SIMD, c3);\
+ _mm256_store_ps(O + (2 * C_ob), c4);\
+ _mm256_store_ps(O + (2 * C_ob) + SIMD, c5);\
+ _mm256_store_ps(O + (3 * C_ob), c6);\
+ _mm256_store_ps(O + (3 * C_ob) + SIMD, c7);\
+ _mm256_store_ps(O + (4 * C_ob), c8);\
+ _mm256_store_ps(O + (4 * C_ob) + SIMD, c9);\
 
 #define LOAD_12_C(O) \
   c0 = _mm256_load_ps(O + (0 * C_ob));\

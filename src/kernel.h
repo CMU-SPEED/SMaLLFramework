@@ -13,7 +13,7 @@ void print256_float(__m256 var)
 {
     float val[8];
     memcpy(val, &var, sizeof(val));
-    printf("Numerical: %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f \n",
+    printf("Numerical: %.5f %.5f %.5f %.5f %.5f %.5f %.5f %.5f \n",
            val[0], val[1], val[2], val[3], val[4], val[5],
            val[6], val[7]);
 }

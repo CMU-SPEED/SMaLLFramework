@@ -1,11 +1,11 @@
 #include <torch/torch.h>
-#include<math.h>
-#include<assert.h>
-#include<omp.h>
+#include <math.h>
+#include <assert.h>
+#include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include<climits>
+#include <climits>
 // Pooling driver
 
 #define GEMM 0
@@ -39,6 +39,7 @@ static __inline__ unsigned long long rdtsc(void) {
 // #define print_cycles(time,  trials){\
 //   printf("%lf\t", 1.0*(time/trials));\
 // }
+
 
 #define print_flops( ops,  time,  trials){\
   printf("%.4lf\t", (ops)/(1.0 * time));\
@@ -206,8 +207,7 @@ int main(int argc, char ** argv)
   // #if COMB == 1
   {
     // Initialize Outputs to 0
-    memset(out_intermediate_dc, 0, out_intermediate.numel()*sizeof(float));
-    memset(out_dc, 0, out.numel()*sizeof(float));
+
 
 
     //3x3 unfused
@@ -228,7 +228,7 @@ int main(int argc, char ** argv)
       t1 = rdtsc();
       MIN(sum,(t1 - t0));
       t0 = rdtsc();
-      pooling(C_o, out_intermediate_dimensions[2], out_intermediate_dimensions[3] ,out_intermediate_dc, out_dc);
+      H_tile_pooling(C_o, out_intermediate_dimensions[2], out_intermediate_dimensions[3] ,out_intermediate_dc, out_dc);
       t1 = rdtsc();
       MIN(sum_pool,(t1 - t0));
 
@@ -241,6 +241,7 @@ int main(int argc, char ** argv)
        }
        #endif
     }
+    assert(check_eqivalence(out_intermediate,'o', out_intermediate_dimensions, out_intermediate_dc, 1e-3)==1);
     assert(check_eqivalence(out,'o', out_dimensions, out_dc, 1e-3)==1);
     print_flops(effective_conv_ops, sum, RUNS);
     print_cycles(sum, RUNS);

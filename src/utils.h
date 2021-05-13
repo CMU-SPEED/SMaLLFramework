@@ -90,6 +90,17 @@ int copy_torch2dc(torch::Tensor t,
        reshape_tensor = reshape_tensor.permute({0,2,4,5,3,1});
      }
    }
+   else if(type == 'd'){
+     //filter
+     if(fused){
+       reshape_tensor = t.reshape({dim_sizes[0]/C_ob, C_ob, dim_sizes[1]/C_ib, C_ib, dim_sizes[2], dim_sizes[3]});
+       reshape_tensor = reshape_tensor.permute({2,0,4,5,3,1});
+     }
+     else{
+       reshape_tensor = t.reshape({dim_sizes[1]/C_ob, C_ob, dim_sizes[2], dim_sizes[3]});
+       reshape_tensor = reshape_tensor.permute({0,2,3,1});
+     }
+   }
    else{
      printf("unsupported type. Use one of:\n  \'i\' = input \n \'f\' = filter \n \'o\'  = output \n");
      return 0;
