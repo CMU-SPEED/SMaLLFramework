@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "Parallelizing over output channels, square panels"
-export OMP_NUM_THREADS=6;
+export OMP_NUM_THREADS=1;
 echo $OMP_NUM_THREADS;
 
 #for i in 222 114 54 30 12 6;

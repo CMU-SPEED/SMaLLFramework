@@ -8,7 +8,7 @@ do
 
     for j in 64;
 	     do
-		 for k in 16 32 64 128  256  512  1024 ;
+		 for k in 64 ;
 		 do
 		     echo -n  ${i},  ${k}, " "
 		     $1  ${j} ${k} ${i} ${i}
