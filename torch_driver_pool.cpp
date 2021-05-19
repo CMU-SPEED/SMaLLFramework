@@ -1,16 +1,16 @@
 #include <torch/torch.h>
-#include<math.h>
-#include<assert.h>
-#include<omp.h>
+#include <math.h>
+#include <assert.h>
+#include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include<climits>
+#include <climits>
 // Pooling driver
 
 #define GEMM 0
 #define L 0
-#define RUNS 100
+#define RUNS 1000
 #define VERBOSE 0
 #define FUSION 1
 #define STRIDE 1
@@ -40,15 +40,23 @@ static __inline__ unsigned long long rdtsc(void) {
 //   printf("%lf\t", 1.0*(time/trials));\
 // }
 
-#define print_flops( ops,  time,  trials){\
+
+#define print_flops( ops,  time){\
   printf("%.4lf\t", (ops)/(1.0 * time));\
 }
-#define print_cycles(time,  trials){\
+#define print_cycles(time){\
   printf("%.0lf\t", 1.0*(time));\
+}
+
+#define AVG(accum, trials, avg){\
+  avg = (1.0*accum)/trials;\
 }
 
 #define MIN(a, b){\
   a = (b < a)?b:a;\
+}
+#define ACCUM_time(a, b){\
+  a += b;\
 }
 #define MEMORY_SIZES_LOG  {\
   printf("Testing %d runs, clearing the upto the L%d cache of the output each time\n", RUNS, L);\
@@ -116,6 +124,8 @@ int main(int argc, char ** argv)
   unsigned long long t0, t1;
   unsigned long long sum_pytorch = ULLONG_MAX;
   torch::Tensor out_intermediate, out;
+  float avg;
+
   for(uint32_t r = 0; r < 10; r++)
   {
     t0 = rdtsc();
@@ -124,15 +134,14 @@ int main(int argc, char ** argv)
     t1 = rdtsc();
     MIN(sum_pytorch, (t1 - t0));
 
-
   }
 
   uint64_t conv_ops = out_intermediate.numel() * (kernel_size*kernel_size*C_i * 2.0);
   uint64_t pool_ops = out.numel()              * (3*3);
 
 
-  // print_flops(conv_ops+pool_ops, sum_pytorch, (10));
-  // print_cycles(sum_pytorch, 10);
+  // print_flops(conv_ops+pool_ops, sum_pytorch);
+  // print_cycles(sum_pytorch);
 
 
   uint64_t effective_conv_h = (out.size(2) - 1) * 2 + 3;
@@ -200,14 +209,13 @@ int main(int argc, char ** argv)
 
 
 
-  unsigned long long sum=ULLONG_MAX, sum_pool = ULLONG_MAX;
+  unsigned long long sum = ULLONG_MAX, sum_pool = ULLONG_MAX;
   volatile  unsigned long long sum_fused = ULLONG_MAX,
                                sum_conv = ULLONG_MAX;
   // #if COMB == 1
   {
     // Initialize Outputs to 0
-    memset(out_intermediate_dc, 0, out_intermediate.numel()*sizeof(float));
-    memset(out_dc, 0, out.numel()*sizeof(float));
+
 
 
     //3x3 unfused
@@ -232,7 +240,6 @@ int main(int argc, char ** argv)
       t1 = rdtsc();
       MIN(sum_pool,(t1 - t0));
 
-
        #if(L)
       { volatile float check_sum = rand()/(1.0*RAND_MAX);
          for(uint32_t i = 0; i < bomb_size; i++){
@@ -241,15 +248,13 @@ int main(int argc, char ** argv)
        }
        #endif
     }
+    assert(check_eqivalence(out_intermediate,'o', out_intermediate_dimensions, out_intermediate_dc, 1e-3)==1);
     assert(check_eqivalence(out,'o', out_dimensions, out_dc, 1e-3)==1);
-    print_flops(effective_conv_ops, sum, RUNS);
-    print_cycles(sum, RUNS);
+    print_cycles(sum);
 
-    print_flops(pool_ops, sum_pool, RUNS);
-    print_cycles(sum_pool, RUNS);
+    print_cycles(sum_pool);
 
-    print_flops(effective_conv_ops+pool_ops, sum+sum_pool, RUNS);
-    print_cycles(sum+sum_pool, RUNS);
+    print_cycles(sum+sum_pool);
 
     // printf("\n\n %f %f %f\n\n", out_intermediate_dc[2*out_intermediate_dimensions[3]*C_ob], out_intermediate_dc[3*out_intermediate_dimensions[3]*C_ob], out_intermediate_dc[4*out_intermediate_dimensions[3]*C_ob]);
   }
@@ -293,7 +298,6 @@ int main(int argc, char ** argv)
       t1 = rdtsc();
       MIN(sum_fused,(t1 - t0));
 
-
       #if(L)
       // __asm__ __volatile__ ("cache_bomb:");
         volatile float check_sum = rand()/(1.0*RAND_MAX);
@@ -302,8 +306,7 @@ int main(int argc, char ** argv)
         }
     #endif
   }
-  // print_flops(effective_conv_ops+pool_ops, sum_fused, RUNS);
-  print_cycles( sum_fused, RUNS);
+  print_cycles( sum_fused);
   printf("%.4f \t",(1.0*(sum+sum_pool)/sum_fused)*100.0);
   bool correctness = check_eqivalence(out, 'o', out_dimensions, out_dc, 1e-3);
   assert(correctness==1);
@@ -340,7 +343,6 @@ int main(int argc, char ** argv)
     t1 = rdtsc();
     MIN(sum_fused,(t1 - t0));
 
-
     #if(L)
     // __asm__ __volatile__ ("cache_bomb:");
       volatile float check_sum = rand()/(1.0*RAND_MAX);
@@ -349,8 +351,7 @@ int main(int argc, char ** argv)
       }
   #endif
 }
-// print_flops(effective_conv_ops+pool_ops, sum_fused, RUNS);
-print_cycles( sum_fused, RUNS);
+print_cycles( sum_fused);
 printf("%.4f \t",(1.0*(sum+sum_pool)/sum_fused)*100.0);
 correctness = check_eqivalence(out, 'o', out_dimensions, out_dc, 1e-3);
 assert(correctness==1);
@@ -388,7 +389,6 @@ for(int r = 0; r < RUNS; r++){
   t1 = rdtsc();
   MIN(sum_fused,(t1 - t0));
 
-
   #if(L)
   // __asm__ __volatile__ ("cache_bomb:");
     volatile float check_sum = rand()/(1.0*RAND_MAX);
@@ -397,8 +397,7 @@ for(int r = 0; r < RUNS; r++){
     }
 #endif
 }
-// print_flops(effective_conv_ops+pool_ops, sum_fused, RUNS);
-print_cycles( sum_fused, RUNS);
+print_cycles( sum_fused);
 printf("%.4f \t",(1.0*(sum+sum_pool)/sum_fused)*100.0);
 correctness = check_eqivalence(out, 'o', out_dimensions, out_dc, 1e-3);
 assert(correctness==1);
@@ -435,7 +434,6 @@ for(int r = 0; r < RUNS; r++){
   t1 = rdtsc();
   MIN(sum_fused,(t1 - t0));
 
-
   #if(L)
   // __asm__ __volatile__ ("cache_bomb:");
     volatile float check_sum = rand()/(1.0*RAND_MAX);
@@ -444,9 +442,9 @@ for(int r = 0; r < RUNS; r++){
     }
 #endif
 }
-// print_flops(effective_conv_ops+pool_ops, sum_fused, RUNS);
-print_cycles( sum_fused, RUNS);
-correctness = check_eqivalence(out, 'o', out_dimensions, out_dc, 1e-3);
+print_cycles( sum_fused);
+printf("%.4f \t",(1.0*(sum+sum_pool)/sum_fused)*100.0);
+// correctness = check_eqivalence(out, 'o', out_dimensions, out_dc, 1e-3);
 assert(correctness==1);
 
 
@@ -460,7 +458,7 @@ assert(correctness==1);
 
   }
   // #endif
-  printf("%.4f \t",(1.0*(sum+sum_pool)/sum_fused)*100.0);
+
   printf("\n");
 
   free(input_dc);

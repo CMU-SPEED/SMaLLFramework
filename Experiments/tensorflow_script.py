@@ -21,9 +21,14 @@ conv =  nn.Conv2D(
     K, 3, strides=(1, 1), padding='valid',
     use_bias=False
 )
-# pool = nn.MaxPooling2D(pool_size=(3,3), strides=(2,2), padding="valid")
-pool = nn.Activation('relu')
-
+pool = nn.MaxPooling2D(pool_size=(3,3), strides=(2,2), padding="valid")
+# pool = nn.Activation('relu')
+pool = nn.DepthwiseConv2D(
+    3, strides=(2, 2), padding='valid', depth_multiplier=1,
+    data_format=None, dilation_rate=(1, 1), activation=None, use_bias=False, depthwise_regularizer=None,
+    bias_regularizer=None, activity_regularizer=None, depthwise_constraint=None,
+    bias_constraint=None
+)
 @tf.function(experimental_compile=True)
 def custom_conv(input_tensor):
     out = conv(input_tensor)
@@ -34,8 +39,8 @@ def custom_block(input_tensor):
     out = conv(input_tensor)
     pool_out = pool(out)
     return pool_out
-
-for j in [12, 36, 96, 126]:
+ULLONG_MAX=2**63
+for (j, ck) in [(504,64), (222, 64), (114, 128), (54, 256), (30, 512), (12, 512)]:
     i = j+2
     input_tensor  = np.random.randn(i*i*C).reshape(1,i, i, C)
     print("{:d}\t{:d}\t{:d}".format(j, K, C), end="\t")
@@ -43,33 +48,33 @@ for j in [12, 36, 96, 126]:
 
 
 
-    sum_conv = 0
+    sum_conv = ULLONG_MAX
     out = custom_conv(input_tensor)
 
     # out_inter = conv(input_tensor)
-    for r in range(100):
+    for r in range(1000):
         st = count()
         out = custom_conv(input_tensor)
         et = count_end()
-        sum_conv += (et - st)
+        sum_conv = min(sum_conv, (et - st))
 
     conv_ops = out.numpy().size*(3*3*C)*2
     # print(out.size(),conv_ops)
     # out_inter = conv(input_tensor)
     # out = pool(out_inter)
     pool_out = custom_block(input_tensor)
-    sum_combined = 0
+    sum_combined = ULLONG_MAX
     for i in range(100):
         st = count()
         out_block = custom_block(input_tensor)
         et = count()
-        sum_combined += (et - st)
+        sum_combined = min(sum_combined,(et - st))
     pool_ops = pool_out.numpy().size*9
 
-    print("{:.4f}\t{:.4f}\t{:.4f}\t{:.4f}".format(((conv_ops)/(sum_conv/100)),
-                                                 (sum_conv/100),
-                                                 ((conv_ops + pool_ops)/(sum_combined/100)),
-                                                 (sum_combined/100)
+    print("{:.4f}\t{:.4f}\t{:.4f}\t{:.4f}".format(((conv_ops)/(sum_conv)),
+                                                 (sum_conv),
+                                                 ((conv_ops + pool_ops)/(sum_combined)),
+                                                 (sum_combined)
                                                  ))
 
 print(tf.__version__)
