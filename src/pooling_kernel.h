@@ -4,8 +4,54 @@
 #define POOL_KERNEL 3
 #define POOL_STRIDE 2
 
+#define GPOOL_W_ob 6
 
 #include "intrinsics.h"
+
+
+inline void global_pool(
+                          float * I,
+                          __m256 &o0, __m256 &o1,
+                          __m256 &o2, __m256 &o3,
+                          __m256 &o4, __m256 &o5
+                       )
+{
+    __m256 c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11;
+  LOAD_12_C(I);
+  // print256_float(c0);
+  // printf("\t");print256_float(o0);
+  ADD_12_C();
+  // printf("\t");print256_float(o0);
+
+}
+
+
+inline void global_pool_reduce(
+                              uint32_t w_final,
+                              float *I,
+                              __m256 o0, __m256 o1,
+                              __m256 o2, __m256 o3,
+                              __m256 o4, __m256 o5,
+                              float *O
+                                )
+{
+      __m256 c0,c1,c2,c3,c4,c5,c6,c7,c8,c9;
+    //
+    // printf("pool reduce \t\t");print256_float(o0);
+    // printf("pool reduce \t\t");print256_float(o2);
+    // printf("pool reduce \t\t");print256_float(o4);
+    REDUCE_2_C();
+    for(uint32_t i = 0; i < w_final; i++)
+    {
+      LOAD_2_C(I, o2, o3);
+      REDUCE_2_C();
+    }
+    // printf("\t\t\t\t");print256_float(o0);
+
+
+    STORE_2_C(O, o0, o1);
+
+}
 
 // kernels
 #if POOLING == 1

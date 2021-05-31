@@ -22,6 +22,10 @@ add_executable(torch_dw torch_driver_dw.cpp )
 target_link_libraries(torch_dw "${TORCH_LIBRARIES}")
 set_property(TARGET torch_dw PROPERTY CXX_STANDARD 14)
 
+add_executable(torch_gpool torch_driver_gpool.cpp )
+target_link_libraries(torch_gpool "${TORCH_LIBRARIES}")
+set_property(TARGET torch_gpool PROPERTY CXX_STANDARD 14)
+
 
 
 

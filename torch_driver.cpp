@@ -10,11 +10,11 @@
 
 #define GEMM 0
 #define L 0
-#define RUNS 100
+#define RUNS 1000
 #define VERBOSE 0
 #define FUSION 1
 #define STRIDE 1
-#define PARALLEL 0
+#define PARALLEL 1
 #define COMB 0
 #ifndef BUFFER
   #define BUFFER 0
@@ -77,7 +77,7 @@ int main(int argc, char ** argv)
   int C_o = atoi(argv[2]);
   // int C_o_1 = atoi(argv[3]);
 
-  constexpr int kernel_size =   1;
+  constexpr int kernel_size =   3;
   constexpr int stride = 1;
   int output_rows = atol(argv[3]);
   int output_cols = atol(argv[4]);
@@ -113,7 +113,7 @@ int main(int argc, char ** argv)
   unsigned long long t0, t1;
   unsigned long long sum_pytorch = ULLONG_MAX;
   torch::Tensor out_intermediate, out;
-  for(uint32_t r = 0; r < 10; r++)
+  for(uint32_t r = 0; r < 100; r++)
   {
     t0 = rdtsc();
     out = conv_3x3(a);
@@ -219,7 +219,7 @@ int main(int argc, char ** argv)
 
 
   // #endif
-  printf("%.4f \t",(1.0*(sum+sum_pool)/sum_fused)*100.0);
+  // printf("%.4f \t",(1.0*(sum+sum_pool)/sum_fused)*100.0);
   printf("\n");
 
   free(input_dc);

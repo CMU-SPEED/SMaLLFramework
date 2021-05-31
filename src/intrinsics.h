@@ -1,3 +1,55 @@
+#define DIVIDE(O, divisor)\
+  o0 = _mm256_load_ps(O + (0 * C_ob));\
+  o1 = _mm256_load_ps(O + (0 * C_ob) + SIMD);\
+  o2 = _mm256_broadcast_ss(&divisor);\
+  o0 = _mm256_mul_ps(o0, o2);\
+  o1 = _mm256_mul_ps(o1, o2);\
+  _mm256_store_ps(O + (0 * C_ob), o0);\
+  _mm256_store_ps(O + (0 * C_ob) + SIMD, o1);\
+
+
+#define ADD_12_C()\
+ o0 = _mm256_add_ps(c0, o0);\
+ o1 = _mm256_add_ps(c1, o1);\
+ o2 = _mm256_add_ps(c2, o2);\
+ o3 = _mm256_add_ps(c3, o3);\
+ o4 = _mm256_add_ps(c4, o4);\
+ o5 = _mm256_add_ps(c5, o5);\
+ o0 = _mm256_add_ps(c6, o0);\
+ o1 = _mm256_add_ps(c7, o1);\
+ o2 = _mm256_add_ps(c8, o2);\
+ o3 = _mm256_add_ps(c9, o3);\
+ o4 = _mm256_add_ps(c10, o4);\
+ o5 = _mm256_add_ps(c11, o5);\
+
+#define REDUCE_1_C()\
+ o0 = _mm256_add_ps(o0, o2);\
+ o1 = _mm256_add_ps(o1, o3);\
+
+#define REDUCE_2_C()\
+o0 = _mm256_add_ps(o0, o2);\
+o1 = _mm256_add_ps(o1, o3);\
+o0 = _mm256_add_ps(o0, o4);\
+o1 = _mm256_add_ps(o1, o5);\
+
+#define ZERO_4_C() \
+   o2 = _mm256_setzero_ps();\
+   o3 = _mm256_setzero_ps();\
+   o4 = _mm256_setzero_ps();\
+   o5 = _mm256_setzero_ps();\
+
+#define ZERO_2_C() \
+  o0 = _mm256_setzero_ps();\
+  o1 = _mm256_setzero_ps();\
+
+#define LOAD_2_C(O, c0, c1) \
+  c0 = _mm256_load_ps(O + (0 * C_ob));\
+  c1 = _mm256_load_ps(O + (0 * C_ob) + SIMD);\
+
+#define STORE_2_C(O, c0, c1)\
+ _mm256_store_ps(O + (0 * C_ob), c0);\
+ _mm256_store_ps(O + (0 * C_ob) + SIMD, c1);\
+
 #define DW_START(F, I)\
   float * I_ptr = I;\
   f0 = _mm256_load_ps(F);\
