@@ -10,11 +10,11 @@
 
 #define GEMM 0
 #define L 0
-#define RUNS 1000
+#define RUNS 100
 #define VERBOSE 0
 #define FUSION 1
 #define STRIDE 1
-#define PARALLEL 1
+#define PARALLEL 0
 #define COMB 0
 #ifndef BUFFER
   #define BUFFER 0
@@ -24,7 +24,7 @@
 #define H_TILE 0
 #define POOLING 1
 #include "src/direct_convolution.h"
-#include "src/fused_conv_pooling.h"
+
 #include "src/utils.h"
 //Good Ol' Timing
 static __inline__ unsigned long long rdtsc(void) {
@@ -91,9 +91,22 @@ int main(int argc, char ** argv)
 
   // Create and Initialize Pytorch tensors
   torch::manual_seed(1729);
-  torch::Tensor a = torch::randn(C_i*N*M).reshape({1,C_i,N, M});
-  torch::Tensor test_weights =  torch::randn(C_o*C_i*kernel_size*kernel_size).reshape({C_o,C_i,kernel_size,kernel_size});
-
+  torch::Tensor a = torch::ones(C_i*N*M).reshape({1,C_i,N, M});
+  torch::Tensor test_weights =  torch::ones(C_o*C_i*kernel_size*kernel_size).reshape({C_o,C_i,kernel_size,kernel_size});
+  // a = torch::mul(a, 1.p);
+  test_weights = torch::mul(test_weights, 1.0/(1.0*kernel_size*kernel_size*C_i));
+  // float * w_ptr = test_weights.data_ptr<float>();
+  //
+  // for(uint32_t b = 0; b < C_o;b++){
+  //   for(uint32_t c = 0 ; c < C_i; c++){
+  //     for(uint32_t h = 0; h < 3; h++){
+  //       for(uint32_t w = 0; w < 3; w++){
+  //         *w_ptr *= (1+b)*1.0; /*+ (1)*0.1 + (0)*3*0.1*/;
+  //         w_ptr++;
+  //       }
+  //     }
+  //   }
+  // }
 
 
   //Create PyTorch Convolution layers
@@ -202,7 +215,10 @@ int main(int argc, char ** argv)
          }
        }
        #endif
+       memset(out_dc, 0, out.numel()*sizeof(float));
+
     }
+    direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc, filter_dc, out_dc);
     assert(check_eqivalence(out,'o', out_dimensions, out_dc, 1e-3)==1);
     print_flops(conv_ops, sum, RUNS);
     print_cycles(sum, RUNS);

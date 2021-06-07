@@ -19,7 +19,7 @@ void print256_float(__m256 var)
 }
 
 
-#include "intrinsics.h"
+#include "scalar_intrinsics.h"
 
 
 

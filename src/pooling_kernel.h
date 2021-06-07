@@ -6,7 +6,7 @@
 
 #define GPOOL_W_ob 6
 
-#include "intrinsics.h"
+#include "scalar_intrinsics.h"
 
 
 inline void global_pool(
