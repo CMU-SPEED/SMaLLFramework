@@ -22,28 +22,20 @@
   c1 = _mm256_load_ps(O + (0 * C_ob) + SIMD);\
 
 #define LOAD_12_C(O)\
-float c_tile[W_ob*C_ob];\
-for (int kk = 0; kk < W_ob; kk++) {\
-    for (int jj = 0; jj < C_ob; jj++) {\
-      c_tile[kk*C_ob + jj] = O[kk*C_ob + jj];\
-    }\
-}\
+  float c_tile[W_ob*C_ob];\
+  for (int kk = 0; kk < W_ob; kk++) {\
+      for (int jj = 0; jj < C_ob; jj++) {\
+        c_tile[kk*C_ob + jj] = O[kk*C_ob + jj];\
+      }\
+  }\
 
 #define LOAD_14_C(O) \
-  c0 = _mm256_load_ps(O + (0 * C_ob));\
-  c1 = _mm256_load_ps(O + (0 * C_ob) + SIMD);\
-  c2 = _mm256_load_ps(O + (1 * C_ob));\
-  c3 = _mm256_load_ps(O + (1 * C_ob) + SIMD);\
-  c4 = _mm256_load_ps(O + (2 * C_ob));\
-  c5 = _mm256_load_ps(O + (2 * C_ob) + SIMD);\
-  c6 = _mm256_load_ps(O + (3 * C_ob));\
-  c7 = _mm256_load_ps(O + (3 * C_ob) + SIMD);\
-  c8 = _mm256_load_ps(O + (4 * C_ob));\
-  c9 = _mm256_load_ps(O + (4 * C_ob) + SIMD);\
-  c10 = _mm256_load_ps(O + (5 * C_ob));\
-  c11 = _mm256_load_ps(O + (5 * C_ob) + SIMD);\
-  b0 = _mm256_load_ps(O + (6 * C_ob));\
-  b1 = _mm256_load_ps(O + (6 * C_ob) + SIMD);\
+  float c_tile[POOL_W_ib*C_ob];\
+  for (int kk = 0; kk < POOL_W_ib; kk++) {\
+      for (int jj = 0; jj < C_ob; jj++) {\
+        c_tile[kk*C_ob + jj] = O[kk*C_ob + jj];\
+      }\
+  }\
 
 
 #define LOAD_10_C(O)\
@@ -126,13 +118,16 @@ for (int kk = 0; kk < W_ob; kk++) {\
   _mm256_store_ps(O + (3 * C_ob), c10);\
   _mm256_store_ps(O + (3 * C_ob + SIMD), c11);\
 
-#define STORE_6_C(O, c2, c3, c6, c7, c10, c11) \
-  _mm256_store_ps(O + (0 * C_ob), c2);\
-  _mm256_store_ps(O + (0 * C_ob) + SIMD, c3);\
-  _mm256_store_ps(O + (1 * C_ob), c6);\
-  _mm256_store_ps(O + (1 * C_ob + SIMD), c7);\
-  _mm256_store_ps(O + (2 * C_ob), c10);\
-  _mm256_store_ps(O + (2 * C_ob + SIMD), c11);\
+#define STORE_6_C(O, store_indices) \
+  _Pragma("GCC ivdep")\
+  for(uint32_t kk_p = 0; kk_p < W_ob; kk_p++){\
+    float * pixel = store_indices[kk_p];\
+    _Pragma("omp simd")\
+    for(uint32_t jj = 0; jj < C_ob; jj++){\
+      O[kk_p*C_ob + jj] = *(pixel + jj);\
+    }\
+  }\
+
 
 #define STORE_4_C(O, c2, c3, c6, c7) \
   _mm256_store_ps(O + (0 * C_ob), c2);\
@@ -374,17 +369,29 @@ c7 = _mm256_max_ps(c7,c9);\
 
 #define MAX_START() \
  /*Local Max */\
- c2 = _mm256_max_ps(c2,c0);\
- c3 = _mm256_max_ps(c3,c1);\
- c6 = _mm256_max_ps(c6,c4);\
- c7 = _mm256_max_ps(c7,c5);\
- c10 = _mm256_max_ps(c10,c8);\
- c11 = _mm256_max_ps(c11,c9);\
- /**/\
- c2 = _mm256_max_ps(c2,c4);\
- c3 = _mm256_max_ps(c3,c5);\
- c6 = _mm256_max_ps(c6,c8);\
- c7 = _mm256_max_ps(c7,c9);\
+ _Pragma("GCC ivdep")\
+ for(uint32_t kk_p = 0; kk_p < POOL_W_ob - 1; kk_p++){\
+   float * p_pixel = c_tile + kk_p*POOL_STRIDE + C_ob;
+   float * c_left = c_tile + kk_p*POOL_STRIDE;
+   float * c_right = c_tile + kk_p*POOL_STRIDE + 2*C_ob;
+   _Pragma("omp simd")\
+   for(uint32_t jj = 0; jj < C_ob; jj++){\
+     *(p_pixel + jj) = (*(p_pixel + jj) > *(c_left + jj)? *(p_pixel + jj) : *(c_left + jj));
+     *(p_pixel + jj) = (*(p_pixel + jj) > *(c_right + jj)? *(p_pixel + jj) : *(c_right + jj));
+
+   }\
+
+ float * p_pixel = c_tile + (POOL_W_ob - 1)*POOL_STRIDE + C_ob;
+ float * c_left = c_tile + (POOL_W_ob - 1)*POOL_STRIDE;
+
+ _Pragma("omp simd")\
+ for(uint32_t jj = 0; jj < C_ob; jj++){\
+   *(p_pixel + jj) = (*(p_pixel + jj) > *(c_left + jj)? *(p_pixel + jj) : *(c_left + jj));
+
+
+   store_indices[kk_p] = p_pixel;
+ }\
+
 
 #define MAX(O) \
  /*Load Updates from previous tile*/\
