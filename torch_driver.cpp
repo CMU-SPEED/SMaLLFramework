@@ -79,6 +79,7 @@ int main(int argc, char ** argv)
 
   constexpr int kernel_size =   3;
   constexpr int stride = 1;
+  constexpr int padding = 0;(kernel_size - 1)/2;
   int output_rows = atol(argv[3]);
   int output_cols = atol(argv[4]);
   // printf("%d %d", output_rows, output_cols);
@@ -113,14 +114,11 @@ int main(int argc, char ** argv)
   //set weights to generated values
   auto conv_3x3 = torch::nn::Conv2d( torch::nn::Conv2dOptions(C_i, C_o, kernel_size).
                                                 stride(stride).
-                                                padding(0).
+                                                padding(padding).
                                                 bias(false));
 
   conv_3x3->weight = test_weights;
 
-  auto pool = torch::nn::MaxPool2d( torch::nn::MaxPool2dOptions(3).
-                                                stride(2).
-                                                padding(0));
 
   //Run Inference
   unsigned long long t0, t1;
@@ -203,7 +201,7 @@ int main(int argc, char ** argv)
       // Copy Inputs to their flat buffers
 
       t0 = rdtsc();
-      direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc, filter_dc, out_dc);
+      direct_convolution_padding<stride,padding,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc, filter_dc, out_dc);
       // direct_convolution_pooling_aware<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc, filter_dc, out_intermediate_dc);
       t1 = rdtsc();
       MIN(sum,(t1 - t0));
@@ -218,7 +216,7 @@ int main(int argc, char ** argv)
        memset(out_dc, 0, out.numel()*sizeof(float));
 
     }
-    direct_convolution<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc, filter_dc, out_dc);
+    direct_convolution_padding<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc, filter_dc, out_dc);
     assert(check_eqivalence(out,'o', out_dimensions, out_dc, 1e-3)==1);
     print_flops(conv_ops, sum, RUNS);
     print_cycles(sum, RUNS);
