@@ -28,7 +28,9 @@ set_property(TARGET torch_gpool PROPERTY CXX_STANDARD 14)
 
 
 
-
+add_executable(torch_pool_scalar torch_driver_pool_scalar.cpp )
+target_link_libraries(torch_pool_scalar "${TORCH_LIBRARIES}")
+set_property(TARGET torch_pool_scalar PROPERTY CXX_STANDARD 14)
 
 add_executable(torch_pool torch_driver_pool.cpp )
 target_link_libraries(torch_pool "${TORCH_LIBRARIES}")

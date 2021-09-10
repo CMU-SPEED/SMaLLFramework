@@ -33,7 +33,7 @@ inline void conv_kernel(
 
   __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
 
-  LOAD_TILE_C(O);
+  LOAD_TILE_C(O, W_ob, C_ob);
 
   int updates = 0;
   // uint32_t step = stride*C_ob;
@@ -56,14 +56,14 @@ inline void conv_kernel(
 
         int p_cur = ii ;
 
-        FMA_TILE_C(step, a, b, p_cur);
+        FMA_TILE_C(step, a, b, p_cur, W_ob, C_ob);
 
       }
     }
   }
 
 
-STORE_TILE_C(O);
+STORE_TILE_C(O, W_ob, C_ob);
 
 }
 
@@ -76,7 +76,7 @@ inline void conv_kernel_start(
 
   __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
 
-  ZERO_TILE_C();
+  ZERO_TILE_C(W_ob, C_ob);
 
   int updates = 0;
   // uint32_t step = C_ob;//stride*C_ob;
@@ -99,14 +99,14 @@ inline void conv_kernel_start(
 
         int p_cur = ii;
 
-        FMA_TILE_C(step, a, b, p_cur);
+        FMA_TILE_C(step, a, b, p_cur, W_ob, C_ob);
 
       }
     }
   }
 
 
-STORE_TILE_C(O);
+STORE_TILE_C(O,W_ob, C_ob);
 
 }
 
@@ -123,7 +123,7 @@ inline void conv_kernel_start_end(
 
   __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
 
-  ZERO_TILE_C();
+  ZERO_TILE_C(W_ob, C_ob);
 
   int updates = 0;
   // uint32_t step = C_ob;//stride*C_ob;
@@ -146,13 +146,13 @@ inline void conv_kernel_start_end(
 
         int p_cur = ii;
 
-        FMA_END_C(step, a, b, p_cur, W_last);
+        FMA_END_C(step, a, b, p_cur, W_ob, C_ob, W_last);
 
       }
     }
   }
 
-  STORE_END_C(O, W_last);
+  STORE_END_C(O, W_ob, C_ob, W_last);
 
 
 }
@@ -168,7 +168,7 @@ inline void conv_kernel_end(
 
   __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
 
-  LOAD_LAST_C(O, W_last);
+  LOAD_LAST_C(O, W_ob, C_ob, W_last);
 
   int updates = 0;
   // uint32_t step = stride*C_ob;
@@ -191,68 +191,13 @@ inline void conv_kernel_end(
 
         int p_cur = ii ;
 
-        FMA_END_C(step, a, b, p_cur, W_last);
+        FMA_END_C(step, a, b, p_cur, W_ob, C_ob, W_last);
       }
     }
   }
 
-  STORE_END_C(O, W_last);
+  STORE_END_C(O, W_ob, C_ob, W_last);
 
 
 }
 
-
-//padding kernels
-template <uint32_t step, uint32_t padding, H_f, uint32_t W_f>
-inline void padded_conv_kernel_row(
-                            uint32_t input_col_stride,
-                            float * I,
-                            float * F,
-                            float * O,
-                            uint32_t W_o_full
-                           ){
-
-  __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
-  float * O_ptr = O;
-  ZERO_TILE_C();
-
-  int updates = 0;
-  // uint32_t step = C_ob;//stride*C_ob;
-  // int count = 0;
-  float * b = padding*W_f*C_ib*C_ob;
-  float * a = padding*input_col_stride;
-  for(uint32_t n = padding; n < H_f ; n++){
-
-    int filter_offset_h = n*W_f*C_ib*C_ob;
-    int input_stencil_h = /*input_col_offset +*/ n * input_col_stride /*+ input_row_offset*/;
-
-    for(uint32_t m = padding; m < W_f; m++){
-
-      int filter_offset_w = m*C_ib*C_ob + filter_offset_h;
-      int input_stencil_w = m*C_ib + input_stencil_h;
-
-      float *b = F + filter_offset_w;
-      float *a = I + input_stencil_w;
-      for(uint32_t ii = 0 ; ii < C_ib; ii++){
-
-        // kernel_conv(W_ob,C_ob,rank_k,I + input_stencil_w, F + filter_offset_w, O);
-
-        int p_cur = ii;
-
-        FMA_END_C(step, a, b, p_cur, W_last);
-
-      }
-    }
-  }
-
-  STORE_END_C(O_ptr, W_last);
-
-
-  //most of the row
-
-  for(uint32_t k = padding; k < W_o_full - padding; k++){
-
-  }
-
-}
-// No cache hints
