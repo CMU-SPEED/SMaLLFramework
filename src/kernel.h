@@ -31,8 +31,6 @@ inline void conv_kernel(
                             float * F,
                             float * O){
 
-  __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
-
   LOAD_TILE_C(O, W_ob, C_ob);
 
   int updates = 0;
@@ -73,8 +71,6 @@ inline void conv_kernel_start(
                             float * I,
                             float * F,
                             float * O){
-
-  __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
 
   ZERO_TILE_C(W_ob, C_ob);
 
@@ -121,8 +117,6 @@ inline void conv_kernel_start_end(
                             uint32_t W_last
                            ){
 
-  __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
-
   ZERO_TILE_C(W_ob, C_ob);
 
   int updates = 0;
@@ -166,10 +160,7 @@ inline void conv_kernel_end(
                             uint32_t W_last
                           ){
 
-  __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
-
   LOAD_LAST_C(O, W_ob, C_ob, W_last);
-
   int updates = 0;
   // uint32_t step = stride*C_ob;
   // int count = 0;
@@ -190,7 +181,6 @@ inline void conv_kernel_end(
         // kernel_conv(W_ob,C_ob,rank_k,I + input_stencil_w, F + filter_offset_w, O);
 
         int p_cur = ii ;
-
         FMA_END_C(step, a, b, p_cur, W_ob, C_ob, W_last);
       }
     }

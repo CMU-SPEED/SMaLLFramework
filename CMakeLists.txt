@@ -3,7 +3,7 @@ project(ContextDependentFusion)
 set(CMAKE_VERBOSE_MAKEFILE off)
 set(CMAKE_CXX_COMPILER /usr/bin/g++)
 set(CMAKE_C_COMPILER gcc)
-SET(GCC_AVX_COMPILE_FLAGS "-fopenmp -mavx2 -mfma -O3  -march=native")
+SET(GCC_AVX_COMPILE_FLAGS "-fopenmp -mavx2 -mfma -O3 -march=native")
 SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${GCC_AVX_COMPILE_FLAGS}")
 
 
@@ -14,32 +14,17 @@ add_executable(torch_conv torch_driver.cpp )
 target_link_libraries(torch_conv "${TORCH_LIBRARIES}")
 set_property(TARGET torch_conv PROPERTY CXX_STANDARD 14)
 
-add_executable(torch_1x1 torch_driver_1x1.cpp )
-target_link_libraries(torch_1x1 "${TORCH_LIBRARIES}")
-set_property(TARGET torch_1x1 PROPERTY CXX_STANDARD 14)
 
-add_executable(torch_dw torch_driver_dw.cpp )
+add_executable(torch_dw torch_driver_dw_scalar.cpp )
 target_link_libraries(torch_dw "${TORCH_LIBRARIES}")
 set_property(TARGET torch_dw PROPERTY CXX_STANDARD 14)
 
-add_executable(torch_gpool torch_driver_gpool.cpp )
-target_link_libraries(torch_gpool "${TORCH_LIBRARIES}")
-set_property(TARGET torch_gpool PROPERTY CXX_STANDARD 14)
 
-
-
-add_executable(torch_pool_scalar torch_driver_pool_scalar.cpp )
-target_link_libraries(torch_pool_scalar "${TORCH_LIBRARIES}")
-set_property(TARGET torch_pool_scalar PROPERTY CXX_STANDARD 14)
-
-add_executable(torch_pool torch_driver_pool.cpp )
+add_executable(torch_pool torch_driver_pool_scalar.cpp )
 target_link_libraries(torch_pool "${TORCH_LIBRARIES}")
 set_property(TARGET torch_pool PROPERTY CXX_STANDARD 14)
 
-add_executable(torch_pool_unaware torch_driver_pool_unaware.cpp )
-target_link_libraries(torch_pool_unaware "${TORCH_LIBRARIES}")
-set_property(TARGET torch_pool_unaware PROPERTY CXX_STANDARD 14)
+add_executable(torch_1x1 torch_driver_1x1_scalar.cpp )
+target_link_libraries(torch_1x1 "${TORCH_LIBRARIES}")
+set_property(TARGET torch_1x1 PROPERTY CXX_STANDARD 14)
 
-add_executable(torch_avg_pool torch_driver_avg_pool.cpp )
-target_link_libraries(torch_avg_pool "${TORCH_LIBRARIES}")
-set_property(TARGET torch_avg_pool PROPERTY CXX_STANDARD 14)

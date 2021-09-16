@@ -29,9 +29,10 @@ void direct_convolution(
   op_dim(H_i, stride,H_f,H_o);
   uint32_t W_o_full = 0;
   op_dim(W_i, stride,W_f,W_o_full);
-
   uint32_t W_o = (W_o_full/W_ob)*W_ob;
   uint32_t W_last = W_o_full % W_ob;
+  // printf("W_of_full: %d W_o : %d W_last: %d\n ", W_o_full, W_o, W_last);
+
   #if PARALLEL==1
   #pragma omp parallel for
   #endif
@@ -85,8 +86,8 @@ void direct_convolution(
 
           for(uint32_t k = 0; k < W_o; k += W_ob){
 
-            uint32_t input_row_offset = (k * stride)*C_ob;
-            float * I_ptr = I + input_row_offset + input_col_offset;
+            // uint32_t input_row_offset = (k * stride)*C_ob;
+            // float * I_ptr = I + input_row_offset + input_col_offset;
 
             conv_kernel<stride*C_ob, H_f, W_f>(W_i*C_ib, I_ptr, filter_block_ptr, O_ptr);
 

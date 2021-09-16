@@ -259,17 +259,17 @@ bool check_eqivalence(torch::Tensor t,
             {
              printf("%d %.4f %.4f %f\n",offset-1, dc_array[offset-1] ,flat_t[g_offset + l_offset   +
                                                               h_offset + k_offset   +
-                                                                         i_offset   +
-                                                                         j_offset
-                                                               ],
-                                                               (fabs(dc_array[offset-1]
-                                                                            -
-                                                                         flat_t[g_offset + l_offset   +
-                                                                                h_offset + k_offset   +
-                                                                                           i_offset   +
-                                                                                           j_offset
-                                                                                 ]))
-                   );
+                                                                        i_offset   +
+                                                                        j_offset
+                                                              ],
+                                                              (fabs(dc_array[offset-1]
+                                                                          -
+                                                                        flat_t[g_offset + l_offset   +
+                                                                              h_offset + k_offset   +
+                                                                                          i_offset   +
+                                                                                          j_offset
+                                                                                ]))
+                  );
             }
            }
          }

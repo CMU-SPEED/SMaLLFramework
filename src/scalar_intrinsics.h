@@ -1,5 +1,7 @@
 //scalar versions of all the microkernels for platform portability
 
+// __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
+
 // Initializations
 
 
@@ -82,15 +84,17 @@ for (uint32_t kk = 0; kk < W_last; kk++) {\
 #define FMA_END_C(step, a, b, p_cur, W_ob, C_ob, W_last)\
 {\
   float *c_pixel;\
+  float *a_channel = a + p_cur ;\
   for(uint32_t kk = 0; kk < W_last; kk++)\
   {\
-    float a_val = *(a + p_cur + kk*step);\
+    float a_val = *(a_channel);\
     c_pixel = c_tile + kk*C_ob;\
     for(uint32_t jj = 0; jj < C_ob; jj++) \
     {\
       float b_val = *(b + p_cur*C_ob + jj);\
       *(c_pixel+jj) += a_val*b_val;\
     }\
+    a_channel += step;\
   }\
 }
 
@@ -135,3 +139,68 @@ for (uint32_t kk = 0; kk < W_last; kk++) {\
     c_pixel += C_ob;\
   }\
 }
+
+#define MAX_TILE_IP(pool_col_stride,W_ob, C_ob, pool_stride, pool_H_f, pool_W_f, O_row, O_col, O_pool, H_o, W_o_full)\
+{\
+  float * c_pixel = c_tile;\
+  for(uint32_t kk = 0; kk < W_ob ; kk++)\
+  {\
+    if(O_row %pool_stride ==  0 && (O_row+ pool_H_f - 1))\
+    {\
+      float * p_row = O_pool + ((O_row)/pool_stride)*pool_col_stride;\
+      if(O_col%pool_stride == 0 && (O_col + pool_W_f - 1) < W_o_full)\
+      {\
+        float * p_pixel = p_row + ((O_col)/pool_stride)*C_ob;\
+        float * p_channel = p_pixel;\
+        float * c_channel = c_pixel;\
+        for(uint32_t jj = 0; jj < C_ob; jj++)\
+        {\
+          *(p_channel) =  *(c_channel);\
+          p_channel++;\
+          c_channel++;\
+        }\
+      }\
+      for(uint32_t m_p = 1; m_p < pool_W_f; m_p++)\
+      {\
+        if((O_col - m_p)%pool_stride == 0 && (int)(O_col - m_p) >= 0 && (O_col + pool_W_f - (m_p + 1)) < W_o_full)\
+        {\
+          float * p_pixel = p_row + ((O_col - m_p)/pool_stride)*C_ob;\
+          float * p_channel = p_pixel;\
+          float * c_channel = c_pixel;\
+          for(uint32_t jj = 0; jj < C_ob; jj++)\
+          {\
+            *(p_channel) = (*(c_channel)> *(p_channel))? *(c_channel) : *(p_channel) ;\
+            p_channel++;\
+            c_channel++;\
+          }\
+        }\
+      }\
+    }\
+    for(uint32_t n_p = 1; n_p < pool_H_f; n_p++)\
+    {\
+      if((O_row - n_p)% pool_stride == 0 && (int)(O_row - n_p) >= 0 && (O_row + pool_H_f - (n_p + 1)) < H_o)\
+      {\
+      float * p_row = O_pool + ((O_row - n_p)/pool_stride)*pool_col_stride;\
+        for(uint32_t m_p = 0; m_p < pool_W_f; m_p++)\
+        {\
+          if((O_col - m_p)%pool_stride == 0 && (int)(O_col - m_p) >= 0 && (O_col + pool_W_f - (m_p + 1)) < W_o_full)\
+          {\
+            float * p_pixel = p_row + ((O_col - m_p)/pool_stride)*C_ob;\
+            float * p_channel = p_pixel;\
+            float * c_channel = c_pixel;\
+            for(uint32_t jj = 0; jj < C_ob; jj++)\
+            {\
+              *(p_channel) = (*(c_channel)> *(p_channel))? *(c_channel) : *(p_channel) ;\
+              p_channel++;\
+              c_channel++;\
+            }\
+          }\
+        }\
+      }\
+    }\
+    c_pixel += C_ob;\
+    O_col++;\
+  }\
+}
+
+
