@@ -292,6 +292,25 @@ bool check_block_eqivalence(uint32_t block_size,
  return check;
 }
 
+void write_results(std::string file, std::vector<std::vector<uint64_t>> implementations)
+{
+  std::string path = "Results/";
+  std::string path_to_log_file = path + file;
+  // char * file_path = (char *) path_to_log_file;
+  FILE *logFile = fopen(path_to_log_file.c_str(), "w");
+  for (const auto &e : implementations)
+  {
+    for (const auto &t : e)
+    {
+      // logFile << t << "\n";
+      fprintf(logFile, "%lu\n", t);
+    }
+    // logFile << "\n";
+    fprintf(logFile, "\n");
+  }
+  fclose(logFile);
+}
+
 // bool check_eqivalence(torch::Tensor t,
 //                       char type,
 //                       std::vector<uint32_t> dim_sizes,

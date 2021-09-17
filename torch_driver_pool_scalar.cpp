@@ -6,15 +6,19 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <climits>
+#include<vector>
+#include<string>
+#include<fstream>
+
 // Pooling driver
 
 #define GEMM 0
 #define L 0
-#define RUNS 10
+#define RUNS 1
 #define VERBOSE 0
 #define FUSION 1
 #define STRIDE 1
-#define PARALLEL 1
+#define PARALLEL 0
 #define COMB 0
 #ifndef BUFFER
   #define BUFFER 0
@@ -71,12 +75,15 @@ WSS Size Out_img pool : %.2f K/8K elements  dims: %u %u %u\n\
      );\
   }
 
+
+#define LIMIT 1e-3
+
 int main(int argc, char ** argv)
 {
   printf("%d \t %d\t ", BUFFER,PREFETCH);
-  if(argc!=5)
+  if(argc < 5)
   {
-    printf("USAGE: torch_pool < 3x3 Input Channels> <3x3 Output Channels> <Output Height> <Output Width (multiple of 6)>\n");
+    printf("USAGE: torch_pool < 3x3 Input Channels> <3x3 Output Channels> <Output Height> <Output Width (multiple of 6) <logfilename>>\n");
     return 0;
   }
 
@@ -107,21 +114,23 @@ int main(int argc, char ** argv)
   // Create and Initialize Pytorch tensors
   torch::manual_seed(1729);
   torch::Tensor a = torch::randn(C_i*N*M).reshape({1,C_i,N, M});
+  // a = torch::mul(a, 0.01);
   torch::Tensor test_weights =  torch::randn(C_o*C_i*kernel_size*kernel_size).reshape({C_o,C_i,kernel_size,kernel_size});
   
   test_weights = torch::mul(test_weights, 1.0/(1.0*kernel_size*kernel_size*C_i));
-  float * w_ptr = test_weights.data_ptr<float>();
-  
-//   for(uint32_t b = 0; b < C_o;b++){
-//     for(uint32_t c = 0 ; c < C_i; c++){
-//       for(uint32_t h = 0; h < 3; h++){
-//         for(uint32_t w = 0; w < 3; w++){
-//           *w_ptr *= (1+b)*1.0; + (0)*1.0 + (0)*1.0;
-//           w_ptr++;
-//         }
-//       }
-//     }
-//   }
+  // float * w_ptr = a.data_ptr<float>();
+
+  // // for(uint32_t b = 0; b < C_o;b++){
+  //   for(uint32_t c = 0 ; c < C_i; c++){
+  //     for(uint32_t h = 0; h < N; h++){
+  //       for(uint32_t w = 0; w < M; w++){
+  //         *w_ptr *= (1+w)*1.0; + (0)*1.0 + (1+h)*1.0;
+  //         w_ptr++;
+  //       }
+  //     }
+  //   }
+  // // }
+  std::vector<std::vector<uint64_t>> implementations;
 
   //Create PyTorch Convolution layers
   //set weights to generated values
@@ -136,12 +145,12 @@ int main(int argc, char ** argv)
                                                 stride(pool_stride).
                                                 padding(0));
 
-  //Run Inference
+  //Run Inference with LibTorch
   unsigned long long t0, t1;
   unsigned long long sum_pytorch = ULLONG_MAX;
   torch::Tensor out_intermediate, out;
   float avg;
-
+  std::vector<uint64_t> pytorch_timing;
   for(uint32_t r = 0; r < 10; r++)
   {
     t0 = rdtsc();
@@ -149,16 +158,13 @@ int main(int argc, char ** argv)
     out = pool(out_intermediate);
     t1 = rdtsc();
     MIN(sum_pytorch, (t1 - t0));
-
+    pytorch_timing.push_back((t1-t0));
   }
+
+  implementations.push_back(pytorch_timing);
 
   uint64_t conv_ops = out_intermediate.numel() * (kernel_size*kernel_size*C_i * 2.0);
   uint64_t pool_ops = out.numel()              * (3*3);
-
-
-  // print_flops(conv_ops+pool_ops, sum_pytorch);
-  // print_cycles(sum_pytorch);
-
 
   uint64_t effective_conv_h = (out.size(2) - 1) * 2 + 3;
   uint64_t effective_conv_w = (out.size(3) - 1) * 2 + 3;
@@ -166,6 +172,8 @@ int main(int argc, char ** argv)
   uint64_t effective_conv_ops = effective_conv_h*effective_conv_w*C_o
                                                 *
                                 (kernel_size*kernel_size*C_i*2.0);
+
+
   //Direct Convolution Setup
   // Copy layer weights to temporaries
   torch::Tensor weights = test_weights;//conv_3x3->weight;
@@ -203,12 +211,6 @@ int main(int argc, char ** argv)
   else{
     printf("Output channels must be >= 32");
     return 0;
-    printf("6x16 intermediate size\n");
-    #if PARALLEL
-    int ret = posix_memalign((void**)&out_intermediate_buffer, 4096, W_ob*C_ob*sizeof(float)*(num_threads));
-    #else
-    int ret = posix_memalign((void**)&out_intermediate_buffer, 4096, W_ob*C_ob*sizeof(float));
-    #endif
   }
   #endif
   #if(VERBOSE)
@@ -217,17 +219,10 @@ int main(int argc, char ** argv)
 
 
 
-  #if(L)
-  uint32_t bomb_size = 16*1024*1024/4 *(L==3) + 512*1024/4 *(L==2) + 32*1024/4*(L==1);
-  torch::Tensor cache_bomb= torch::randn(bomb_size); //L3
-  float * cache_bomb_array = cache_bomb.data_ptr<float>();
-  #endif
-
-
 
   unsigned long long sum = ULLONG_MAX, sum_pool = ULLONG_MAX;
   volatile  unsigned long long sum_fused = ULLONG_MAX,
-                               sum_conv = ULLONG_MAX;
+                                sum_conv = ULLONG_MAX;
   // #if COMB == 1
   {
     // Initialize Outputs to 0
@@ -256,26 +251,102 @@ int main(int argc, char ** argv)
       t1 = rdtsc();
       MIN(sum_pool,(t1 - t0));
 
-       #if(L)
-      { volatile float check_sum = rand()/(1.0*RAND_MAX);
-         for(uint32_t i = 0; i < bomb_size; i++){
-           check_sum += cache_bomb_array[i];
-         }
-       }
-       #endif
     }
-    assert(check_eqivalence(out_intermediate,'o', out_intermediate_dimensions, out_intermediate_dc, 1e-3)==1);
-    assert(check_eqivalence(out,'o', out_dimensions, out_dc, 1e-3)==1);
+    assert(check_eqivalence(out_intermediate,'o', out_intermediate_dimensions, out_intermediate_dc, LIMIT)==1);
+    assert(check_eqivalence(out,'o', out_dimensions, out_dc, LIMIT)==1);
     print_cycles(sum);
 
     print_cycles(sum_pool);
 
     print_cycles(sum+sum_pool);
 
-    // printf("\n\n %f %f %f\n\n", out_intermediate_dc[2*out_intermediate_dimensions[3]*C_ob], out_intermediate_dc[3*out_intermediate_dimensions[3]*C_ob], out_intermediate_dc[4*out_intermediate_dimensions[3]*C_ob]);
+
   }
 
+  const int NUM_IMPLEMENTATIONS = 2;
+
+  
+
+
+  for (int implementation = 0; implementation < NUM_IMPLEMENTATIONS; implementation++)
+  {
+      // Initialize Outputs to 0
+      std::vector<uint64_t> timings;
+      memset(out_intermediate_dc, 0, out_intermediate.numel()*sizeof(float));
+      memset(out_dc, 0, out.numel()*sizeof(float));
+
+      //3x3 unfused
+      copy_torch2dc(a, 'i', in_dimensions, input_dc);
+      copy_torch2dc(weights,'f',filter_dimensions,filter_dc);
+      #if(L)
+        volatile float check_sum = rand()/(1.0*RAND_MAX);
+        for(uint32_t i = 0; i < bomb_size; i++){
+          check_sum += cache_bomb_array[i];
+        }
+      #endif
+      sum_pool = ULLONG_MAX;
+      for (int run = 0; run < RUNS; run++){
+        // Copy Inputs to their flat buffers
+
+        switch (implementation) {
+          case 0:
+            t0 = rdtsc();
+            pixel_block_fused_pooling<stride,
+                                      kernel_size, kernel_size,
+                                      pool_stride, pool_kernel_size,
+                                      pool_kernel_size>(
+                C_i,
+                C_o,
+                N,
+                M,
+                input_dc,
+                filter_dc,
+                out_intermediate_dc,
+                out_dc);
+            t1 = rdtsc();
+            break;
+          case 1:
+            t0 = rdtsc();
+            channel_block_fused_pooling<stride,
+                                      kernel_size, kernel_size,
+                                      pool_stride, pool_kernel_size,
+                                      pool_kernel_size>(
+                                                        C_i,
+                                                        C_o,
+                                                        N,
+                                                        M,
+                                                        input_dc,
+                                                        filter_dc,
+                                                        out_intermediate_dc,
+                                                        out_dc
+                                                        );
+            t1 = rdtsc();
+            break;
+        }
+        MIN(sum_pool,(t1 - t0));
+        timings.push_back((t1-t0));
+      }
+      assert(check_eqivalence(out,'o', out_dimensions, out_dc, LIMIT)==1);
+      printf("%d\t", implementation);
+      print_cycles(sum_pool);
+    implementations.push_back(timings);
+  }
   printf("\n");
+
+  //output log file
+
+
+  std::string file;
+  if (argc == 6)
+  {
+    file = argv[5];
+  }
+  else
+  {
+    file = "log.txt";
+  }
+
+  write_results(file, implementations);
 
   free(input_dc);
   free(filter_dc);

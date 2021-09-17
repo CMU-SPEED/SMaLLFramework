@@ -10,7 +10,7 @@
 
 #define GEMM 0
 #define L 0
-#define RUNS 100
+#define RUNS 1
 #define VERBOSE 0
 #define FUSION 1
 #define STRIDE 1
@@ -93,16 +93,17 @@ int main(int argc, char ** argv)
   // Create and Initialize Pytorch tensors
   torch::manual_seed(1729);
   torch::Tensor a = torch::randn(C_i*N*M).reshape({1,C_i,N, M});
+  // a = torch::mul(a, 0.01);
   torch::Tensor test_weights =  torch::randn(C_o*C_i*kernel_size*kernel_size).reshape({C_o,C_i,kernel_size,kernel_size});
-  // a = torch::mul(a, 1.p);
-  // test_weights = torch::mul(test_weights, 1.0/(1.0*kernel_size*kernel_size*C_i));
+  // a = torch::mul(a, 1.0);
+  test_weights = torch::mul(test_weights, 1.0/(1.0*kernel_size*kernel_size*C_i));
   // float * w_ptr = test_weights.data_ptr<float>();
   
   // for(uint32_t b = 0; b < C_o;b++){
   //   for(uint32_t c = 0 ; c < C_i; c++){
   //     for(uint32_t h = 0; h < 3; h++){
   //       for(uint32_t w = 0; w < 3; w++){
-  //         *w_ptr *= (1+b)*1.0; + (0)*1.0 + (0)*1.0;
+  //         *w_ptr *= (1+w)*1.0; + (1+c)*1.0 + (1+h)*1.0;
   //         w_ptr++;
   //       }
   //     }

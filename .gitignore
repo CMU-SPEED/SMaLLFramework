@@ -17,3 +17,5 @@ torch_pool_incomplete
 perf*
 torch_pool*
 seq_torch_pool*
+.vscode/
+Results/

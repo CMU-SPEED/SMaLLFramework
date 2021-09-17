@@ -1,163 +1,297 @@
-// header file for implementations of depthwise convolution and fusion
-// a la MobileNet
+#include "dw_kernel.h"
 
-// Header File For different Versions of Fusing Pooling with a Convolution
-#define POOL_UNROLL 8
-
-#define DW_KERNEL 3
-// to stay consistent with the pooling example
-#define DW_STRIDE 2
-
-#defin W_o_dw 3
-template <uint32_t stride, uint32_t H_f, uint32_t W_f>
-void inline dw_microkernel(uint32_t row_in,float * I, float * F, float * O)
+template <uint32_t pool_stride, uint32_t pool_H_f, uint32_t pool_W_f>
+void pooling(
+    uint32_t C,
+    uint32_t H_o,
+    uint32_t W_o,
+    float *I,
+    float * F_dw,
+    float *O)
 {
-  __m256 r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15;
-  //mul filter 0,1 and input 0,1
-  r0 = _mm256_load_ps(F + 1*C_ob);
-  r1 = _mm256_load_ps(F + 1*C_ob + SIMD);
-
-  r2 = _mm256_load_ps(I + 1*C_ob);
-  r3 = _mm256_load_ps(I + 1*C_ob + SIMD);
-
-  r4 = _mm256_load_ps(I + 1*stride + 1*C_ob);
-  r5 = _mm256_load_ps(I + 1*stride + 1*C_ob + SIMD);
-
-  r6 = _mm256_load_ps(I + 2*stride + 1*C_ob);
-  r7 = _mm256_load_ps(I + 2*stride + 1*C_ob + SIMD);
-
-  r2 = _mm256_mul_ps(r2, r0);
-  r3 = _mm256_mul_ps(r3, r1);
-
-  r4 = _mm256_mul_ps(r4, r0);
-  r5 = _mm256_mul_ps(r5, r1);
-
-  r6 = _mm256_mul_ps(r6, r0);
-  r7 = _mm256_mul_ps(r7, r1);
-
-  r0 = _mm256_load_ps(F + 0*C_ob);
-  r1 = _mm256_load_ps(F + 0*C_ob + SIMD);
-
-  r8 = _mm256_load_ps(I + 0*C_ob);
-  r9 = _mm256_load_ps(I + 0*C_ob + SIMD);
-
-  r10 = _mm256_load_ps(I + 1*stride + 0*C_ob);
-  r11 = _mm256_load_ps(I + 1*stride + 0*C_ob + SIMD);
-
-  r12 = _mm256_load_ps(I + 2*stride + 0*C_ob);
-  r13 = _mm256_load_ps(I + 2*stride + 0*C_ob + SIMD);
-
-  r2 = _mm256_fmadd_ps(r8, r0, r2);
-  r3 = _mm256_fmadd_ps(r9, r1, r3);
-
-  r4 = _mm256_fmadd_ps(r10, r0, r4);
-  r5 = _mm256_fmadd_ps(r11, r1, r5);
-
-  r6 = _mm256_fmadd_ps(r12, r0, r6);
-  r7 = _mm256_fmadd_ps(r13, r1, r7);
-
-  r0 = _mm256_load_ps(F + 2*C_ob);
-  r1 = _mm256_load_ps(F + 2*C_ob + SIMD);
-
-  r14 = _mm256_load_ps(I + 2*stride + 2*C_ob);
-  r15 = _mm256_load_ps(I + 2*stride + 2*C_ob + SIMD);
-
-  r2 = _mm256_fmadd_ps(r10, r0, r2);
-  r3 = _mm256_fmadd_ps(r11, r1, r3);
-
-  r4 = _mm256_fmadd_ps(r12, r0, r4);
-  r5 = _mm256_fmadd_ps(r13, r1, r5);
-
-  r6 = _mm256_fmadd_ps(r14, r0, r6);
-  r7 = _mm256_fmadd_ps(r15, r1, r7);
-
-  //compute this tile in SIMD
-  float * F_ptr = F + W_f * C_ob;
-  float * I_ptr = I + row_in * C_ob;
-  for(uint32_t n = 1; n < H_f; n++)
+  uint32_t W_o_pool_full, H_o_pool;
+  op_dim(W_o, pool_stride, pool_W_f, W_o_pool_full);
+  op_dim(H_o, pool_stride, pool_H_f, H_o_pool);
+  uint32_t W_o_pool = (W_o_pool_full / W_ob_dw) * W_ob_dw;
+  uint32_t W_pool_last = W_o_pool_full - W_o_pool;
+  // printf("\n %d %d to %d %d\n",H_o, W_o,H_o_pool, W_o_pool_full);
+  // printf("s: %d k: %d", pool_stride, pool_H_f);
+  // H_o -= (H_o%2==0);
+  uint32_t offset = 0;
+#if PARALLEL == 1
+#pragma omp parallel for
+#endif
+  for (uint32_t j = 0; j < C; j += C_ob)
   {
-    #pragma GCC unroll
-    for(uint32_t m = 0; m < W_f; m++)
+    float *I_block_ptr = I + (j / C_ob) * H_o * W_o * C_ob;
+    float *O_block_ptr = O + (j / C_ob) * H_o_pool * W_o_pool_full * C_ob;
+    float *F_dw_block_ptr = F_dw + (j / C_ob) * pool_H_f * pool_W_f *C_ob;
+    float *I_row_ptr = I_block_ptr;
+    float *O_row_ptr = O_block_ptr;
+    uint32_t input_row_pool_stride = W_o * C_ob;
+    for (uint32_t l = 0; l < H_o_pool; l++)
     {
-      r0 = _mm256_load_ps(F_ptr + m*C_ob);
-      r1 = _mm256_load_ps(F_ptr + m*C_ob + SIMD);
-
-      r8 = _mm256_load_ps(I_ptr + m*C_ob);
-      r9 = _mm256_load_ps(I_ptr + m*C_ob + SIMD);
-
-      r10 = _mm256_load_ps(I_ptr + 1*stride + 0*C_ob);
-      r11 = _mm256_load_ps(I_ptr + 1*stride + 0*C_ob + SIMD);
-
-      r12 = _mm256_load_ps(I_ptr + 2*stride + 0*C_ob);
-      r13 = _mm256_load_ps(I_ptr + 2*stride + 0*C_ob + SIMD);
-
-      r2 = _mm256_fmadd_ps(r8, r0, r2);
-      r3 = _mm256_fmadd_ps(r9, r1, r3);
-
-      r4 = _mm256_fmadd_ps(r10, r0, r4);
-      r5 = _mm256_fmadd_ps(r11, r1, r5);
-
-      r6 = _mm256_fmadd_ps(r12, r0, r6);
-      r7 = _mm256_fmadd_ps(r13, r1, r7);
-    }
-    I_ptr += row_in * C_ob;
-    F_ptr += W_f * C_ob;
-  }
-
-  //store Tile
-  _mm256_store_ps(O, r2);
-  _mm256_store_ps(O + SIMD, r3);
-
-  _mm256_store_ps(O + 1*C_ob , r4);
-  _mm256_store_ps(O + 1*C_ob + SIMD, r5);
-
-  _mm256_store_ps(O + 2*C_ob , r4);
-  _mm256_store_ps(O + 2*C_ob + SIMD, r5);
-
-}
-//unfused depthwise convolution
-template <uint32_t stride, uint32_t H_f, uint32_t W_f>
-void dwise_convolution(
-  uint32_t C_i,
-  uint32_t C_o,
-  uint32_t H_i,
-  uint32_t W_i,
-  float * I,
-  float * F,
-  float * O
-)
-{
-  uint32_t H_o, W_o, W_o_int;
-  op_dim(H_i, stride,H_f,H_o);
-  op_dim(W_i, stride,W_f,W_o);
-  W_o_int = (W_o_int/W_o_dw)*(W_o_dw);
-  printf("%u %u\n", W_o, W_o_int);
-  float *in_ptr = I,
-        *out_ptr = O,
-        *filter_ptr = F;
-  for(uint32_t j = 0; j < C_o; j++)
-  {
-    for(uint32_t i = 0; i < C_i; i+= C_ib)
-    {
-      float * O_ptr_row = O + i * W_o * H_o * C_ob;
-      float * I_ptr_row = I + i * W_i * H_i * C_ob;
-      float * F_ptr = F + i * W_f * H_f * C_ob
-      for(uint32_t l = 0; l < H_o; l++)
+      float *I_ptr = I_row_ptr;
+      float *O_ptr = O_row_ptr;
+      for (uint32_t k = 0; k < W_o_pool; k += W_ob_dw)
       {
-        float * O_ptr_col = O_ptr_row;
-        for(uint32_t k = 0; k < W_o_int; k+= W_o_dw)
-        {
-
-          dw_microkernel(I_ptr_col, F_ptr, O_ptr_col);
-          O_ptr_col += W_o_dw * C_ob;
-          I_ptr_col += stride * W_o_dw * C_ob;
-        }
-        //clean up tile
-
-        O_ptr_row += W_o*C_ob;
-        I_ptr_row += stride*W_i*C_ob;
-
+        dw_kernel<pool_stride * C_ob, pool_H_f, pool_W_f>(input_row_pool_stride, I_ptr, F_dw_block_ptr, O_ptr);
+        I_ptr += pool_stride * W_ob_dw * C_ob;
+        O_ptr += W_ob_dw * C_ob;
       }
+      dw_kernel_end<pool_stride * C_ob, pool_H_f, pool_W_f>(input_row_pool_stride, I_ptr, F_dw_block_ptr, O_ptr, W_pool_last);
+      I_row_ptr += pool_stride * W_o * C_ob;
+      O_row_ptr += W_o_pool_full * C_ob;
     }
   }
 }
+
+// template <uint32_t stride, uint32_t H_f, uint32_t W_f, uint32_t pool_stride, uint32_t pool_H_f, uint32_t pool_W_f>
+// void channel_block_fused_pooling(
+//     uint32_t C_i,
+//     uint32_t C_o,
+//     // uint32_t H_f,
+//     // uint32_t W_f,
+//     uint32_t H_i,
+//     uint32_t W_i,
+//     // uint32_t stride,
+//     float *I,
+//     float *F,
+//     float *O_buffers,
+//     float *O)
+// {
+//   uint32_t H_o = 0;
+//   op_dim(H_i, stride, H_f, H_o);
+//   uint32_t W_o_full = 0;
+//   op_dim(W_i, stride, W_f, W_o_full);
+
+//   uint32_t W_o = (W_o_full / W_ob) * W_ob;
+//   uint32_t W_last = W_o_full % W_ob;
+//   uint32_t W_o_pool_full, H_o_pool;
+//   op_dim(W_o_full, pool_stride, pool_W_f, W_o_pool_full);
+//   op_dim(H_o, pool_stride, pool_H_f, H_o_pool);
+//   uint32_t W_o_pool = (W_o_pool_full / W_ob_dw) * W_ob_dw;
+//   uint32_t W_pool_last = W_o_pool_full - W_o_pool;
+
+// #if PARALLEL == 1
+// #pragma omp parallel for
+// #endif
+//   for (uint32_t j = 0; j < C_o; j += C_ob)
+//   {
+// #if PARALLEL == 1
+//     int tid = omp_get_thread_num();
+//     float *O_buffer = O_buffers + (tid) * (H_o * W_o_full * (C_ob));
+// #else
+//     float *O_buffer = O_buffers;
+// #endif
+//     uint32_t filter_o_c_block = (j / C_ob) * (C_i / C_ib) * H_f * W_f * C_ib * C_ob;
+
+//     //First Input Channel Block
+//     // These are all 0
+//     uint32_t input_block_offset = (0 / C_ib) * H_i * W_i * C_ib;
+//     uint32_t filter_i_c_block = (0 / C_ib) * H_f * W_f * C_ib * C_ob + filter_o_c_block;
+
+//     float *filter_block_ptr = F + filter_i_c_block;
+
+//     for (uint32_t l = 0; l < H_o; l++)
+//     {
+
+//       uint32_t col_offset = l * W_o_full * C_ob;
+//       uint32_t input_col_offset = (l * stride) * W_i * C_ob + input_block_offset;
+
+//       uint32_t input_row_offset = 0;
+//       float *I_ptr = I + input_col_offset;
+
+//       float *O_ptr = O_buffer + col_offset;
+//       for (uint32_t k = 0; k < W_o; k += W_ob)
+//       {
+
+//         conv_kernel_start<stride * C_ob, H_f, W_f>(W_i * C_ib, I_ptr, filter_block_ptr, O_ptr);
+
+//         I_ptr += stride * W_ob * C_ob;
+//         O_ptr += W_ob * C_ob;
+//       }
+
+//       conv_kernel_start_end<stride * C_ob, H_f, W_f>(W_i * C_ib, I_ptr, filter_block_ptr, O_ptr, W_last);
+//     }
+
+//     //Second - Last Channel Block
+//     for (uint32_t i = C_ib; i < (C_i); i += C_ib)
+//     {
+
+//       uint32_t input_block_offset = (i / C_ib) * H_i * W_i * C_ib;
+//       uint32_t filter_i_c_block = (i / C_ib) * H_f * W_f * C_ib * C_ob + filter_o_c_block;
+//       float *filter_block_ptr = F + filter_i_c_block;
+
+//       for (uint32_t l = 0; l < H_o; l++)
+//       {
+
+//         uint32_t col_offset = l * W_o_full * C_ob;
+//         uint32_t input_col_offset = (l * stride) * W_i * C_ob + input_block_offset;
+
+//         float *I_ptr = I + input_col_offset;
+//         float *O_ptr = O_buffer + col_offset;
+
+//         for (uint32_t k = 0; k < W_o; k += W_ob)
+//         {
+
+//           // uint32_t input_row_offset = (k * stride)*C_ob;
+//           // float * I_ptr = I + input_row_offset + input_col_offset;
+
+//           conv_kernel<stride * C_ob, H_f, W_f>(W_i * C_ib, I_ptr, filter_block_ptr, O_ptr);
+
+//           I_ptr += stride * W_ob * C_ob;
+//           O_ptr += W_ob * C_ob;
+//         }
+//         conv_kernel_end<stride * C_ob, H_f, W_f>(W_i * C_ib, I_ptr, filter_block_ptr, O_ptr, W_last);
+//       }
+//     }
+//     //Fused Pooling
+//     float *O_block_ptr = O + (j / C_ob) * H_o_pool * W_o_pool_full * C_ob;
+//     float *I_row_ptr = O_buffer;
+//     float *O_row_ptr = O_block_ptr;
+//     uint32_t input_row_pool_stride = W_o * C_ob;
+//     for (uint32_t l = 0; l < H_o_pool; l++)
+//     {
+//       float *I_ptr = I_row_ptr;
+//       float *O_ptr = O_row_ptr;
+//       for (uint32_t k = 0; k < W_o_pool; k += W_ob_dw)
+//       {
+//         dw_kernel<pool_stride * C_ob, pool_H_f, pool_W_f>(input_row_pool_stride, I_ptr, O_ptr);
+//         I_ptr += pool_stride * W_ob_dw * C_ob;
+//         O_ptr += W_ob_dw * C_ob;
+//       }
+//       dw_kernel_end<pool_stride * C_ob, pool_H_f, pool_W_f>(input_row_pool_stride, I_ptr, O_ptr, W_pool_last);
+//       I_row_ptr += pool_stride * W_o_full * C_ob;
+//       O_row_ptr += W_o_pool_full * C_ob;
+//     }
+//   }
+// }
+
+// template <uint32_t stride, uint32_t H_f, uint32_t W_f, uint32_t pool_stride, uint32_t pool_H_f, uint32_t pool_W_f>
+// void pixel_block_fused_pooling(
+//     uint32_t C_i,
+//     uint32_t C_o,
+//     // uint32_t H_f,
+//     // uint32_t W_f,
+//     uint32_t H_i,
+//     uint32_t W_i,
+//     // uint32_t stride,
+//     float *I,
+//     float *F,
+//     float *O_buffers,
+//     float *F_dw,
+//     float *O)
+// {
+//   uint32_t H_o = 0;
+//   op_dim(H_i, stride, H_f, H_o);
+//   uint32_t W_o_full = 0;
+//   op_dim(W_i, stride, W_f, W_o_full);
+
+//   uint32_t W_o = (W_o_full / W_ob) * W_ob;
+//   uint32_t W_last = W_o_full % W_ob;
+//   uint32_t W_o_pool_full, H_o_pool;
+//   op_dim(W_o_full, pool_stride, pool_W_f, W_o_pool_full);
+//   op_dim(H_o, pool_stride, pool_H_f, H_o_pool);
+//   uint32_t W_o_pool = (W_o_pool_full / W_ob_dw) * W_ob_dw;
+//   uint32_t W_pool_last = W_o_pool_full - W_o_pool;
+
+// #if PARALLEL == 1
+// #pragma omp parallel for
+// #endif
+//   for (uint32_t j = 0; j < C_o; j += C_ob)
+//   {
+// #if PARALLEL == 1
+//     int tid = omp_get_thread_num();
+//     float *O_buffer = O_buffers + (tid) * (H_o * W_o_full * (C_ob));
+// #else
+//     float *O_buffer = O_buffers;
+// #endif
+//     uint32_t filter_o_c_block = (j / C_ob) * (C_i / C_ib) * H_f * W_f * C_ib * C_ob;
+
+//     //First Input Channel Block
+//     // These are all 0
+//     uint32_t input_block_offset = (0 / C_ib) * H_i * W_i * C_ib;
+//     uint32_t filter_i_c_block = (0 / C_ib) * H_f * W_f * C_ib * C_ob + filter_o_c_block;
+
+//     float *filter_block_ptr = F + filter_i_c_block;
+
+//     for (uint32_t l = 0; l < H_o; l++)
+//     {
+
+//       uint32_t col_offset = l * W_o_full * C_ob;
+//       uint32_t input_col_offset = (l * stride) * W_i * C_ob + input_block_offset;
+
+//       uint32_t input_row_offset = 0;
+//       float *I_ptr = I + input_col_offset;
+
+//       float *O_ptr = O_buffer + col_offset;
+//       for (uint32_t k = 0; k < W_o; k += W_ob)
+//       {
+
+//         conv_kernel_start<stride * C_ob, H_f, W_f>(W_i * C_ib, I_ptr, filter_block_ptr, O_ptr);
+
+//         I_ptr += stride * W_ob * C_ob;
+//         O_ptr += W_ob * C_ob;
+//       }
+
+//       conv_kernel_start_end<stride * C_ob, H_f, W_f>(W_i * C_ib, I_ptr, filter_block_ptr, O_ptr, W_last);
+//     }
+
+//     //Second - Penultimate Input Channel Block
+//     for (uint32_t i = C_ib; i < (C_i - C_ib); i += C_ib)
+//     {
+
+//       uint32_t input_block_offset = (i / C_ib) * H_i * W_i * C_ib;
+//       uint32_t filter_i_c_block = (i / C_ib) * H_f * W_f * C_ib * C_ob + filter_o_c_block;
+//       float *filter_block_ptr = F + filter_i_c_block;
+
+//       for (uint32_t l = 0; l < H_o; l++)
+//       {
+
+//         uint32_t col_offset = l * W_o_full * C_ob;
+//         uint32_t input_col_offset = (l * stride) * W_i * C_ob + input_block_offset;
+
+//         float *I_ptr = I + input_col_offset;
+//         float *O_ptr = O_buffer + col_offset;
+
+//         for (uint32_t k = 0; k < W_o; k += W_ob)
+//         {
+
+//           // uint32_t input_row_offset = (k * stride)*C_ob;
+//           // float * I_ptr = I + input_row_offset + input_col_offset;
+
+//           conv_kernel<stride * C_ob, H_f, W_f>(W_i * C_ib, I_ptr, filter_block_ptr, O_ptr);
+
+//           I_ptr += stride * W_ob * C_ob;
+//           O_ptr += W_ob * C_ob;
+//         }
+//         conv_kernel_end<stride * C_ob, H_f, W_f>(W_i * C_ib, I_ptr, filter_block_ptr, O_ptr, W_last);
+//       }
+//     }
+
+//     //Last Input Channel Block
+//     input_block_offset = ((C_i - C_ib) / C_ib) * H_i * W_i * C_ib;
+//     filter_i_c_block = ((C_i - C_ib) / C_ib) * H_f * W_f * C_ib * C_ob + filter_o_c_block;
+//     filter_block_ptr = F + filter_i_c_block;
+
+//     float *O_pool_block = O + (j / C_ob) * H_o_pool * W_o_pool_full * C_ob;
+//     uint32_t pool_col_stride = W_o_pool_full * C_ob;
+//     float *O_pool_ptr = O_pool_block;
+//     for (uint32_t l = 0; l < H_o; l++)
+//     {
+//       uint32_t col_offset = l * W_o_full * C_ob;
+//       uint32_t input_col_offset = (l * stride) * W_i * C_ob + input_block_offset;
+//       float *I_ptr = I + input_col_offset;
+//       float *O_ptr = O_buffer + col_offset;
+
+//       for (uint32_t k = 0; k < W_o; k += W_ob)
+//       {
+//         fused_conv_dw_kernel<stride * C_ob, H_f, W_f, pool_stride, pool_H_f, pool_W_f>(W_i * C_ib, I_ptr, filter_block_ptr, O_ptr, l, k, pool_col_stride, O_pool_ptr, H_o, W_o_full);
+//         I_ptr += stride * W_ob * C_ob;
+//         O_ptr += W_ob * C_ob;
+//       }
+//       fused_conv_dw_kernel_end<stride * C_ob, H_f, W_f, pool_stride, pool_H_f, pool_W_f>(W_i * C_ib, I_ptr, filter_block_ptr, O_ptr, W_last, l, W_o, pool_col_stride, O_pool_ptr, H_o, W_o_full);
+//     }
+//   }
+// }

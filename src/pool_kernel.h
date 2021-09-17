@@ -2,9 +2,6 @@
 //scalar version
 #define POOL_UNROLL 8
 
-#define POOL_KERNEL 3
-#define POOL_STRIDE 2
-
 #define GPOOL_W_ob 6
 
 #define W_ob_pool 3
@@ -193,7 +190,7 @@ inline void fused_conv_pool_kernel_end(
         }
     }
 
-    MAX_TILE_IP(pool_col_stride, W_last, C_ob, pool_stride, pool_H_f, pool_W_f, O_row, O_col, O_pool, H_o, W_o_full) ;
+    MAX_END_IP(pool_col_stride, W_last, C_ob, pool_stride, pool_H_f, pool_W_f, O_row, O_col, O_pool, H_o, W_o_full) ;
 
 
 }
