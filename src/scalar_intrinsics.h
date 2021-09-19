@@ -29,8 +29,29 @@
     }                                             \
   }
 
-// strided loads
+#define LOAD_TILE_C_POOL(O, W_ob_pool, C_ob)      \
+  float c_tile[W_ob_pool * C_ob];                 \
+  for (uint32_t kk = 0; kk < W_ob_pool; kk++)     \
+  {                                               \
+    for (uint32_t jj = 0; jj < C_ob; jj++)        \
+    {                                             \
+      c_tile[kk * C_ob + jj] = O[kk * C_ob + jj]; \
+    }                                             \
+  }
 
+#define LOAD_LAST_C_POOL(O, W_ob_pool, C_ob, W_last) \
+  float c_tile[W_ob_pool * C_ob];                   \
+  for (uint32_t kk = 0; kk < W_last; kk++)          \
+  {                                                 \
+    for (uint32_t jj = 0; jj < C_ob; jj++)          \
+    {                                               \
+      c_tile[kk * C_ob + jj] = O[kk * C_ob + jj];   \
+    }                                               \
+  }
+
+
+
+// strided loads
 #define LOAD_TILE_C_strided(O, step, W_ob, C_ob)  \
   float c_tile[W_ob * C_ob];                      \
   for (uint32_t kk = 0; kk < W_ob; kk++)          \
@@ -71,6 +92,23 @@
     }                                             \
   }
 
+#define STORE_TILE_C_POOL(O, W_ob_pool, C_ob)               \
+  for (uint32_t kk = 0; kk < W_ob_pool; kk++)          \
+  {                                               \
+    for (uint32_t jj = 0; jj < C_ob; jj++)        \
+    {                                             \
+      O[kk * C_ob + jj] = c_tile[kk * C_ob + jj]; \
+    }                                             \
+  }
+
+#define STORE_END_C_POOL(O, W_ob_pool, C_ob, W_last)        \
+  for (uint32_t kk = 0; kk < W_last; kk++)        \
+  {                                               \
+    for (uint32_t jj = 0; jj < C_ob; jj++)        \
+    {                                             \
+      O[kk * C_ob + jj] = c_tile[kk * C_ob + jj]; \
+    }                                             \
+  }
 //Convolution Computation
 //(Strided GEMM)
 // Pouint32_ter to C defined in the outer scope
@@ -122,7 +160,8 @@
     c_pixel += C_ob;                                                              \
   }
 
-#define MAX_END_C(step, a, W_ob, C_ob, W_last)                                    \
+
+#define MAX_END_C(step, a, W_last, C_ob)                                          \
   float *c_pixel = c_tile;                                                        \
   float *a_pixel = a;                                                             \
   for (uint32_t kk = 0; kk < W_last; kk++)                                        \
@@ -143,7 +182,7 @@
   float *c_pixel = c_tile;                                                                                              \
   for (uint32_t kk = 0; kk < W_ob; kk++)                                                                                \
   {                                                                                                                     \
-    if (O_row % pool_stride == 0 && (O_row + pool_H_f - 1))                                                             \
+    if (O_row % pool_stride == 0 && (O_row + pool_H_f - 1) < H_o)                                                             \
     {                                                                                                                   \
       float *p_row = O_pool + ((O_row) / pool_stride) * pool_col_stride;                                                \
       if (O_col % pool_stride == 0 && (O_col + pool_W_f - 1) < W_o_full)                                                \
@@ -200,10 +239,11 @@
     O_col++;                                                                                                            \
   }
 
-#define MAX_END_IP(pool_col_stride, W_ob, C_ob, pool_stride, pool_H_f, pool_W_f, O_row, O_col, O_pool, H_o, W_o_full)  \
+#define MAX_END_IP(pool_col_stride, W_last, C_ob, pool_stride, pool_H_f, pool_W_f, O_row, O_col, O_pool, H_o, W_o_full) \
   float *c_pixel = c_tile;                                                                                              \
-  for (uint32_t kk = 0; kk < W_ob; kk++)                                                                                \
+  for (uint32_t kk = 0; kk < W_last; kk++)                                                                              \
   {                                                                                                                     \
+    c_pixel = c_tile + kk * C_ob;                                                                                       \
     if (O_row % pool_stride == 0 && (O_row + pool_H_f - 1))                                                             \
     {                                                                                                                   \
       float *p_row = O_pool + ((O_row) / pool_stride) * pool_col_stride;                                                \
@@ -257,8 +297,6 @@
         }                                                                                                               \
       }                                                                                                                 \
     }                                                                                                                   \
-    c_pixel += C_ob;                                                                                                    \
-    O_col++;                                                                                                            \
   }
 
 //DW Convolution

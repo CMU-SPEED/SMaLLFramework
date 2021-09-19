@@ -114,22 +114,22 @@ int main(int argc, char ** argv)
   // Create and Initialize Pytorch tensors
   torch::manual_seed(1729);
   torch::Tensor a = torch::randn(C_i*N*M).reshape({1,C_i,N, M});
-  // a = torch::mul(a, 0.01);
+  a = torch::mul(a, 1.0);
   torch::Tensor test_weights =  torch::randn(C_o*C_i*kernel_size*kernel_size).reshape({C_o,C_i,kernel_size,kernel_size});
-  
+  // a = torch::mul(a, 0.01);
   test_weights = torch::mul(test_weights, 1.0/(1.0*kernel_size*kernel_size*C_i));
   // float * w_ptr = a.data_ptr<float>();
+  // float * c_ptr = test_weights.data_ptr<float>();
 
-  // // for(uint32_t b = 0; b < C_o;b++){
   //   for(uint32_t c = 0 ; c < C_i; c++){
   //     for(uint32_t h = 0; h < N; h++){
   //       for(uint32_t w = 0; w < M; w++){
-  //         *w_ptr *= (1+w)*1.0; + (0)*1.0 + (1+h)*1.0;
+  //         *w_ptr *= (h+1);
   //         w_ptr++;
   //       }
   //     }
   //   }
-  // // }
+  
   std::vector<std::vector<uint64_t>> implementations;
 
   //Create PyTorch Convolution layers
@@ -160,9 +160,9 @@ int main(int argc, char ** argv)
     MIN(sum_pytorch, (t1 - t0));
     pytorch_timing.push_back((t1-t0));
   }
-
+  fflush(0);
   implementations.push_back(pytorch_timing);
-
+  print_cycles(sum_pytorch)
   uint64_t conv_ops = out_intermediate.numel() * (kernel_size*kernel_size*C_i * 2.0);
   uint64_t pool_ops = out.numel()              * (3*3);
 
@@ -223,7 +223,8 @@ int main(int argc, char ** argv)
   unsigned long long sum = ULLONG_MAX, sum_pool = ULLONG_MAX;
   volatile  unsigned long long sum_fused = ULLONG_MAX,
                                 sum_conv = ULLONG_MAX;
-  // #if COMB == 1
+  std::vector<uint64_t> unfused_timing;
+
   {
     // Initialize Outputs to 0
 
@@ -232,38 +233,32 @@ int main(int argc, char ** argv)
     //3x3 unfused
     copy_torch2dc(a, 'i', in_dimensions, input_dc);
     copy_torch2dc(weights,'f',filter_dimensions,filter_dc);
-    #if(L)
-      volatile float check_sum = rand()/(1.0*RAND_MAX);
-      for(uint32_t i = 0; i < bomb_size; i++){
-        check_sum += cache_bomb_array[i];
-      }
-    #endif
+
+
     for (int run = 0; run < RUNS; run++){
       // Copy Inputs to their flat buffers
-
+    
       t0 = rdtsc();
       direct_convolution<stride, kernel_size, kernel_size >(C_i, C_o, N, M, input_dc, filter_dc, out_intermediate_dc);
-      // direct_convolution_pooling_aware<stride,kernel_size, kernel_size >(C_i, C_o, N, M, input_dc, filter_dc, out_intermediate_dc);
-      t1 = rdtsc();
-      MIN(sum,(t1 - t0));
-      t0 = rdtsc();
+      // t1 = rdtsc();
+      // MIN(sum,(t1 - t0));
+      // t0 = rdtsc();
       pooling<pool_stride, pool_kernel_size, pool_kernel_size>(C_o, out_intermediate_dimensions[2], out_intermediate_dimensions[3] ,out_intermediate_dc, out_dc);
       t1 = rdtsc();
       MIN(sum_pool,(t1 - t0));
-
+      unfused_timing.push_back((t1 - t0));
     }
     assert(check_eqivalence(out_intermediate,'o', out_intermediate_dimensions, out_intermediate_dc, LIMIT)==1);
     assert(check_eqivalence(out,'o', out_dimensions, out_dc, LIMIT)==1);
-    print_cycles(sum);
+    // print_cycles(sum);
 
     print_cycles(sum_pool);
 
-    print_cycles(sum+sum_pool);
-
-
+    fflush(0);
   }
 
-  const int NUM_IMPLEMENTATIONS = 2;
+  implementations.push_back(unfused_timing);
+  const int NUM_IMPLEMENTATIONS = 3;
 
   
 
@@ -289,7 +284,7 @@ int main(int argc, char ** argv)
         // Copy Inputs to their flat buffers
 
         switch (implementation) {
-          case 0:
+          case 2:
             t0 = rdtsc();
             pixel_block_fused_pooling<stride,
                                       kernel_size, kernel_size,
@@ -322,13 +317,47 @@ int main(int argc, char ** argv)
                                                         );
             t1 = rdtsc();
             break;
+          case 0:
+            t0 = rdtsc();
+            row_full_fused_pooling<stride,
+                                        kernel_size, kernel_size,
+                                        pool_stride, pool_kernel_size,
+                                        pool_kernel_size>(
+                C_i,
+                C_o,
+                N,
+                M,
+                input_dc,
+                filter_dc,
+                out_intermediate_dc,
+                out_dc);
+            t1 = rdtsc();
+            break;
+          // case 0:
+          //   t0 = rdtsc();
+          //   row_full_fused_pooling<stride,
+          //                          kernel_size, kernel_size,
+          //                          pool_stride, pool_kernel_size,
+          //                          pool_kernel_size>(
+          //       C_i,
+          //       C_o,
+          //       N,
+          //       M,
+          //       input_dc,
+          //       filter_dc,
+          //       out_intermediate_dc,
+          //       out_dc);
+          //   t1 = rdtsc();
+          //   break;
         }
         MIN(sum_pool,(t1 - t0));
         timings.push_back((t1-t0));
       }
+      // assert(check_eqivalence(out_intermediate, 'o', out_intermediate_dimensions, out_intermediate_dc, LIMIT) == 1);
       assert(check_eqivalence(out,'o', out_dimensions, out_dc, LIMIT)==1);
       printf("%d\t", implementation);
       print_cycles(sum_pool);
+      fflush(0);
     implementations.push_back(timings);
   }
   printf("\n");
