@@ -119,16 +119,17 @@ int main(int argc, char ** argv)
   // a = torch::mul(a, 0.01);
   test_weights = torch::mul(test_weights, 1.0/(1.0*kernel_size*kernel_size*C_i));
   // float * w_ptr = a.data_ptr<float>();
-  // float * c_ptr = test_weights.data_ptr<float>();
-
+  float * c_ptr = test_weights.data_ptr<float>();
+  // for(uint32_t b  = 0; b  < C_o; b ++){
   //   for(uint32_t c = 0 ; c < C_i; c++){
-  //     for(uint32_t h = 0; h < N; h++){
-  //       for(uint32_t w = 0; w < M; w++){
-  //         *w_ptr *= (h+1);
-  //         w_ptr++;
+  //     for(uint32_t h = 0; h < kernel_size; h++){
+  //       for(uint32_t w = 0; w < kernel_size ; w++){
+  //         *c_ptr *= (b+1);
+  //         c_ptr++;
   //       }
   //     }
   //   }
+  // }
   
   std::vector<std::vector<uint64_t>> implementations;
 

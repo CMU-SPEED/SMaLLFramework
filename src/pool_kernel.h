@@ -32,7 +32,7 @@ inline void pool_kernel(
 
         
     }
-    for(uint32_t n = 0; n < H_f; n++){
+    for(uint32_t n = 1; n < H_f; n++){
 
         int input_stencil_h = n * input_col_stride;
 
@@ -72,7 +72,7 @@ inline void pool_kernel_end(
         float *a = I + input_stencil_w;
         MAX_END_C(step, a, W_last, C_ob);
     }
-        for(uint32_t n = 0; n < H_f; n++){
+        for(uint32_t n = 1; n < H_f; n++){
 
 
         int input_stencil_h =  n * input_col_stride;
@@ -226,7 +226,7 @@ void fused_conv_pool_kernel(
             }
         }
     }
-
+    STORE_TILE_C(O, W_ob, C_ob);
     //Fused pooling
     MAX_TILE_IP(pool_col_stride, W_ob, C_ob, pool_stride, pool_H_f, pool_W_f, O_row, O_col, O_pool, H_o, W_o_full) ;
 }
@@ -274,6 +274,7 @@ inline void fused_conv_pool_kernel_end(
             }
         }
     }
+    STORE_END_C(O, W_ob, C_ob, W_last);
 
     MAX_END_IP(pool_col_stride, W_last, C_ob, pool_stride, pool_H_f, pool_W_f, O_row, O_col, O_pool, H_o, W_o_full) ;
 
