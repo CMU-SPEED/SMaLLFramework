@@ -3,6 +3,7 @@
 
 
 
+
 #include "scalar_intrinsics.h"
 
 
@@ -13,8 +14,8 @@ inline void dw_kernel(
                             float * F,
                             float * O){
     float *b = F;
-    LOAD_TILE_C_strided(I, step, W_ob_pool, C_ob);
-    MUL_TILE_C(b, W_ob_pool, C_ob);
+    LOAD_TILE_C_strided(I, step, W_ob_dw, C_ob);
+    MUL_TILE_C(b, W_ob_dw, C_ob);
     int updates = 0;
     // uint32_t step = stride*C_ob;
     // int count = 0;
@@ -22,7 +23,7 @@ inline void dw_kernel(
     for(uint32_t m = 1; m < W_f; m++){
         int input_stencil_w = m*C_ib;
         float *a = I + input_stencil_w;
-        DW_TILE_C(step, a, b, W_ob_pool, C_ob);
+        DW_TILE_C(step, a, b, W_ob_dw, C_ob);
         b += C_ob;
         
     }
@@ -31,12 +32,12 @@ inline void dw_kernel(
         for(uint32_t m = 0; m < W_f; m++){
             int input_stencil_w = m*C_ib + input_stencil_h;
             float *a = I + input_stencil_w;
-            DW_TILE_C(step, a, b, W_ob_pool, C_ob);
+            DW_TILE_C(step, a, b, W_ob_dw, C_ob);
             b += C_ob;
             
         }
     }
-    STORE_TILE_C(O, W_ob_pool, C_ob);
+    STORE_TILE_C(O, W_ob_dw, C_ob);
 }
 
 template <uint32_t step, uint32_t H_f, uint32_t W_f>
@@ -49,7 +50,7 @@ inline void dw_kernel_end(
                            ){
 
     float * b = F; 
-    LOAD_LAST_C_strided(I, step, W_ob_pool, C_ob, W_last);
+    LOAD_LAST_C_strided(I, step, W_ob_dw, C_ob, W_last);
     MUL_END_C(b, W_last, C_ob);
 
     b += C_ob;
@@ -81,7 +82,7 @@ inline void dw_kernel_end(
         }
     }
 
-    STORE_END_C(O, W_ob_pool, C_ob, W_last);
+    STORE_END_C(O, W_ob_dw, C_ob, W_last);
 
 }
 
@@ -105,17 +106,17 @@ inline void dw_kernel_end(
 //                                      (O_pool_col) * C_ob;
 
 //         float *b = F_dw;
-//         LOAD_TILE_C_strided(I, step, W_ob_pool, C_ob);
-//         MUL_TILE_C(b, W_ob_pool, C_ob);
+//         LOAD_TILE_C_strided(I, step, W_ob_dw, C_ob);
+//         MUL_TILE_C(b, W_ob_dw, C_ob);
 //         b+=C_ob;
 //         for (uint32_t m = 1; m < pool_W_f; m++)
 //         {
 //             int input_stencil_w = m * C_ob;
 //             float *a = I + input_stencil_w;
-//             DW_TILE_C(step, a, b, W_ob_pool, C_ob);
+//             DW_TILE_C(step, a, b, W_ob_dw, C_ob);
 //             b+=C_ob;
 //         }
-//         STORE_TILE_C_POOL(O_pool_ptr, W_ob_pool, C_ob);
+//         STORE_TILE_C_POOL(O_pool_ptr, W_ob_dw, C_ob);
 //     }
 //     for(uint32_t n_p = 1; n_p < pool_H_f; n_p++)
 //     {
@@ -126,15 +127,15 @@ inline void dw_kernel_end(
 //                                     ((O_row - n_p) / pool_stride) * pool_col_stride +
 //                                         (O_pool_col) * C_ob;
 //             float * b = F_dw + n_p*(pool_W_f)*C_ob;
-//             LOAD_TILE_C_POOL(O_pool_ptr, W_ob_pool, C_ob);
+//             LOAD_TILE_C_POOL(O_pool_ptr, W_ob_dw, C_ob);
 //             for (uint32_t m = 0; m < pool_W_f; m++)
 //             {
 //                 int input_stencil_w = m * C_ob;
 //                 float *a = I + input_stencil_w;
-//                 DW_TILE_C(step, a, b, W_ob_pool, C_ob);
+//                 DW_TILE_C(step, a, b, W_ob_dw, C_ob);
 //                 b += C_ob;
 //             }
-//             STORE_TILE_C_POOL(O_pool_ptr, W_ob_pool, C_ob);
+//             STORE_TILE_C_POOL(O_pool_ptr, W_ob_dw, C_ob);
 //         }
 //     }
 // }
@@ -158,7 +159,7 @@ inline void dw_kernel_end(
 //                             (O_pool_col)*C_ob;
 
 //         float *b = F_dw;
-//         LOAD_END_C_strided(I, step, W_ob_pool, C_ob, W_last);
+//         LOAD_END_C_strided(I, step, W_ob_dw, C_ob, W_last);
 //         MUL_END_C(b, W_last, C_ob);
 //         b += C_ob;
 //         for (uint32_t m = 1; m < pool_W_f; m++)
@@ -168,7 +169,7 @@ inline void dw_kernel_end(
 //             DW_END_C(step, a, b, W_last, C_ob);
 //             b += C_ob;
 //         }
-//         STORE_END_C_POOL(O_pool_ptr, W_ob_pool, C_ob, W_last);
+//         STORE_END_C_POOL(O_pool_ptr, W_ob_dw, C_ob, W_last);
 //     }
 //     for (uint32_t n_p = 1; n_p < pool_H_f; n_p++)
 //     {
@@ -179,7 +180,7 @@ inline void dw_kernel_end(
 //                             ((O_row - n_p) / pool_stride) * pool_col_stride +
 //                             (O_pool_col)*C_ob;
 //             float *b = F_dw + n_p * (pool_W_f)*C_ob;
-//             LOAD_END_C_POOL(O_pool_ptr, W_ob_pool, C_ob);
+//             LOAD_END_C_POOL(O_pool_ptr, W_ob_dw, C_ob);
 //             for (uint32_t m = 0; m < pool_W_f; m++)
 //             {
 //                 int input_stencil_w = m * C_ob;
@@ -187,7 +188,7 @@ inline void dw_kernel_end(
 //                 DW_END_C(step, a, b, W_last, C_ob);
 //                 b += C_ob;
 //             }
-//             STORE_END_C_POOL(O_pool_ptr, W_ob_pool, C_ob, W_last);
+//             STORE_END_C_POOL(O_pool_ptr, W_ob_dw, C_ob, W_last);
 //         }
 //     }
     

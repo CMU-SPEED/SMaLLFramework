@@ -1,30 +1,50 @@
 //scalar versions of all the microkernels for platform portability
 
+
 //Architecture specific tiling params
+#define SIMD 8
 #define W_ob_dw 5
 #define W_ob_pool 3
 #define W_ob 6
 #define C_ob 16
 #define C_ib 16
 
-// __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
+
 
 // Initializations
 
-#define ZERO_TILE_C(W_ob, C_ob) \
-  float c_tile[W_ob * C_ob] = {0};
+#define ZERO_TILE_C(W_ob, C_ob)                                                     \
+  __m256 a_reg, b0, b1, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13; \
+  float c_tile[W_ob * C_ob] = {0};                                                         \
+  c0 = _mm256_setzero_ps();                                                         \
+  c1 = _mm256_setzero_ps();                                                         \
+  c2 = _mm256_setzero_ps();                                                         \
+  c3 = _mm256_setzero_ps();                                                         \
+  c4 = _mm256_setzero_ps();                                                         \
+  c5 = _mm256_setzero_ps();                                                         \
+  c6 = _mm256_setzero_ps();                                                         \
+  c7 = _mm256_setzero_ps();                                                         \
+  c8 = _mm256_setzero_ps();                                                         \
+  c9 = _mm256_setzero_ps();                                                         \
+  c10 = _mm256_setzero_ps();                                                        \
+  c11 = _mm256_setzero_ps();
 
 // Loads
 
-#define LOAD_TILE_C(O, W_ob, C_ob)                \
-  float c_tile[W_ob * C_ob];                      \
-  for (uint32_t kk = 0; kk < W_ob; kk++)          \
-  {                                               \
-    for (uint32_t jj = 0; jj < C_ob; jj++)        \
-    {                                             \
-      c_tile[kk * C_ob + jj] = O[kk * C_ob + jj]; \
-    }                                             \
-  }
+#define LOAD_TILE_C(O, W_ob, C_ob)                                                  \
+  __m256 a_reg, b0, b1, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13; \
+  c0 = _mm256_load_ps(O + (0 * C_ob));                                              \
+  c1 = _mm256_load_ps(O + (0 * C_ob) + SIMD);                                       \
+  c2 = _mm256_load_ps(O + (1 * C_ob));                                              \
+  c3 = _mm256_load_ps(O + (1 * C_ob) + SIMD);                                       \
+  c4 = _mm256_load_ps(O + (2 * C_ob));                                              \
+  c5 = _mm256_load_ps(O + (2 * C_ob) + SIMD);                                       \
+  c6 = _mm256_load_ps(O + (3 * C_ob));                                              \
+  c7 = _mm256_load_ps(O + (3 * C_ob) + SIMD);                                       \
+  c8 = _mm256_load_ps(O + (4 * C_ob));                                              \
+  c9 = _mm256_load_ps(O + (4 * C_ob) + SIMD);                                       \
+  c10 = _mm256_load_ps(O + (5 * C_ob));                                             \
+  c11 = _mm256_load_ps(O + (5 * C_ob) + SIMD);
 
 #define LOAD_LAST_C(O, W_ob, C_ob, W_last)        \
   float c_tile[W_ob * C_ob];                      \
@@ -36,10 +56,9 @@
     }                                             \
   }
 
-
 //Pooling Loads
 
-#define LOAD_TILE_C_POOL(O, W_ob, C_ob)      \
+#define LOAD_TILE_C_POOL(O, W_ob, C_ob)           \
   float c_tile[W_ob * C_ob];                      \
   for (uint32_t kk = 0; kk < W_ob; kk++)          \
   {                                               \
@@ -82,7 +101,21 @@
 
 //Stores
 
-#define STORE_TILE_C(O, W_ob, C_ob)               \
+#define STORE_TILE_C(O, W_ob, C_ob)           \
+  _mm256_store_ps(O + (0 * C_ob), c0);        \
+  _mm256_store_ps(O + (0 * C_ob) + SIMD, c1); \
+  _mm256_store_ps(O + (1 * C_ob), c2);        \
+  _mm256_store_ps(O + (1 * C_ob + SIMD), c3); \
+  _mm256_store_ps(O + (2 * C_ob), c4);        \
+  _mm256_store_ps(O + (2 * C_ob + SIMD), c5); \
+  _mm256_store_ps(O + (3 * C_ob), c6);        \
+  _mm256_store_ps(O + (3 * C_ob + SIMD), c7); \
+  _mm256_store_ps(O + (4 * C_ob), c8);        \
+  _mm256_store_ps(O + (4 * C_ob + SIMD), c9); \
+  _mm256_store_ps(O + (5 * C_ob), c10);       \
+  _mm256_store_ps(O + (5 * C_ob + SIMD), c11);
+
+#define STORE_TILE_C_DW(O, W_ob, C_ob)               \
   for (uint32_t kk = 0; kk < W_ob; kk++)          \
   {                                               \
     for (uint32_t jj = 0; jj < C_ob; jj++)        \
@@ -100,8 +133,8 @@
     }                                             \
   }
 
-#define STORE_TILE_C_POOL(O, W_ob_pool, C_ob)               \
-  for (uint32_t kk = 0; kk < W_ob_pool; kk++)          \
+#define STORE_TILE_C_POOL(O, W_ob_pool, C_ob)     \
+  for (uint32_t kk = 0; kk < W_ob_pool; kk++)     \
   {                                               \
     for (uint32_t jj = 0; jj < C_ob; jj++)        \
     {                                             \
@@ -109,29 +142,45 @@
     }                                             \
   }
 
-#define STORE_END_C_POOL(O, W_ob_pool, C_ob, W_last)        \
-  for (uint32_t kk = 0; kk < W_last; kk++)        \
-  {                                               \
-    for (uint32_t jj = 0; jj < C_ob; jj++)        \
-    {                                             \
-      O[kk * C_ob + jj] = c_tile[kk * C_ob + jj]; \
-    }                                             \
+#define STORE_END_C_POOL(O, W_ob_pool, C_ob, W_last) \
+  for (uint32_t kk = 0; kk < W_last; kk++)           \
+  {                                                  \
+    for (uint32_t jj = 0; jj < C_ob; jj++)           \
+    {                                                \
+      O[kk * C_ob + jj] = c_tile[kk * C_ob + jj];    \
+    }                                                \
   }
+
 //Convolution Computation
 //(Strided GEMM)
 // Pouint32_ter to C defined in the outer scope
 #define FMA_TILE_C(step, a, b, p_cur, W_ob, C_ob) \
-  float *c_pixel;                                 \
-  for (uint32_t kk = 0; kk < W_ob; kk++)          \
-  {                                               \
-    float a_val = *(a + p_cur + kk * step);       \
-    c_pixel = c_tile + kk * C_ob;                 \
-    for (uint32_t jj = 0; jj < C_ob; jj++)        \
-    {                                             \
-      float b_val = *(b + p_cur * C_ob + jj);     \
-      *(c_pixel + jj) += a_val * b_val;           \
-    }                                             \
-  }
+  b0 = _mm256_load_ps(b + (p_cur * C_ob));        \
+  b1 = _mm256_load_ps(b + (p_cur * C_ob + SIMD)); \
+  a_reg = _mm256_broadcast_ss(a + (p_cur));       \
+  p_cur += step;                                  \
+  c0 = _mm256_fmadd_ps(a_reg, b0, c0);            \
+  c1 = _mm256_fmadd_ps(a_reg, b1, c1);            \
+  a_reg = _mm256_broadcast_ss(a + (p_cur));       \
+  p_cur += step;                                  \
+  c2 = _mm256_fmadd_ps(a_reg, b0, c2);            \
+  c3 = _mm256_fmadd_ps(a_reg, b1, c3);            \
+  a_reg = _mm256_broadcast_ss(a + (p_cur));       \
+  p_cur += step;                                  \
+  c4 = _mm256_fmadd_ps(a_reg, b0, c4);            \
+  c5 = _mm256_fmadd_ps(a_reg, b1, c5);            \
+  a_reg = _mm256_broadcast_ss(a + (p_cur));       \
+  p_cur += step;                                  \
+  c6 = _mm256_fmadd_ps(a_reg, b0, c6);            \
+  c7 = _mm256_fmadd_ps(a_reg, b1, c7);            \
+  a_reg = _mm256_broadcast_ss(a + (p_cur));       \
+  p_cur += step;                                  \
+  c8 = _mm256_fmadd_ps(a_reg, b0, c8);            \
+  c9 = _mm256_fmadd_ps(a_reg, b1, c9);            \
+  a_reg = _mm256_broadcast_ss(a + (p_cur));       \
+  p_cur += step;                                  \
+  c10 = _mm256_fmadd_ps(a_reg, b0, c10);          \
+  c11 = _mm256_fmadd_ps(a_reg, b1, c11);
 
 #define FMA_END_C(step, a, b, p_cur, W_ob, C_ob, W_last) \
   float *c_pixel;                                        \
@@ -168,7 +217,6 @@
     c_pixel += C_ob;                                                              \
   }
 
-
 #define MAX_END_C(step, a, W_last, C_ob)                                          \
   float *c_pixel = c_tile;                                                        \
   float *a_pixel = a;                                                             \
@@ -190,7 +238,7 @@
   float *c_pixel = c_tile;                                                                                              \
   for (uint32_t kk = 0; kk < W_ob; kk++)                                                                                \
   {                                                                                                                     \
-    if (O_row % pool_stride == 0 && (O_row + pool_H_f - 1) < H_o)                                                             \
+    if (O_row % pool_stride == 0 && (O_row + pool_H_f - 1) < H_o)                                                       \
     {                                                                                                                   \
       float *p_row = O_pool + ((O_row) / pool_stride) * pool_col_stride;                                                \
       if (O_col % pool_stride == 0 && (O_col + pool_W_f - 1) < W_o_full)                                                \
@@ -253,7 +301,7 @@
   for (uint32_t kk = 0; kk < W_last; kk++)                                                                                          \
   {                                                                                                                                 \
     c_pixel = c_tile + kk * C_ob;                                                                                                   \
-    if (O_row % pool_stride == 0 && (O_row + pool_H_f - 1)< H_o)                                                                         \
+    if (O_row % pool_stride == 0 && (O_row + pool_H_f - 1) < H_o)                                                                   \
     {                                                                                                                               \
       float *p_row = O_pool + ((O_row) / pool_stride) * pool_col_stride;                                                            \
       if (O_col_cur % pool_stride == 0 && (O_col_cur + pool_W_f - 1) < W_o_full)                                                    \

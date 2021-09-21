@@ -18,7 +18,7 @@
 #define VERBOSE 0
 #define FUSION 1
 #define STRIDE 1
-#define PARALLEL 0
+#define PARALLEL 1
 #define COMB 0
 #ifndef BUFFER
 #define BUFFER 0
@@ -257,7 +257,7 @@ int main(int argc, char **argv)
   }
 
   implementations.push_back(unfused_timing);
-  const int NUM_IMPLEMENTATIONS = 1;
+  const int NUM_IMPLEMENTATIONS = 3;
 
   for (int implementation = 0; implementation < NUM_IMPLEMENTATIONS; implementation++)
   {

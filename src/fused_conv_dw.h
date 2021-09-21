@@ -12,7 +12,7 @@ void pooling(
   uint32_t W_o_pool_full, H_o_pool;
   op_dim(W_o, pool_stride, pool_W_f, W_o_pool_full);
   op_dim(H_o, pool_stride, pool_H_f, H_o_pool);
-  uint32_t W_o_pool = (W_o_pool_full / W_ob_pool) * W_ob_pool;
+  uint32_t W_o_pool = (W_o_pool_full / W_ob_dw) * W_ob_dw;
   uint32_t W_pool_last = W_o_pool_full - W_o_pool;
   // printf("\n %d %d to %d %d\n",H_o, W_o,H_o_pool, W_o_pool_full);
   // printf("s: %d k: %d", pool_stride, pool_H_f);
@@ -33,11 +33,11 @@ void pooling(
     {
       float *I_ptr = I_row_ptr;
       float *O_ptr = O_row_ptr;
-      for (uint32_t k = 0; k < W_o_pool; k += W_ob_pool)
+      for (uint32_t k = 0; k < W_o_pool; k += W_ob_dw)
       {
         dw_kernel<pool_stride * C_ob, pool_H_f, pool_W_f>(input_row_pool_stride, I_ptr, F_ptr, O_ptr);
-        I_ptr += pool_stride * W_ob_pool * C_ob;
-        O_ptr += W_ob_pool * C_ob;
+        I_ptr += pool_stride * W_ob_dw * C_ob;
+        O_ptr += W_ob_dw * C_ob;
       }
       dw_kernel_end<pool_stride * C_ob, pool_H_f, pool_W_f>(input_row_pool_stride, I_ptr, F_ptr, O_ptr, W_pool_last);
       I_row_ptr += pool_stride * W_o * C_ob;
@@ -71,7 +71,7 @@ void channel_block_fused_pooling(
   uint32_t W_o_pool_full, H_o_pool;
   op_dim(W_o_full, pool_stride, pool_W_f, W_o_pool_full);
   op_dim(H_o, pool_stride, pool_H_f, H_o_pool);
-  uint32_t W_o_pool = (W_o_pool_full / W_ob_pool) * W_ob_pool;
+  uint32_t W_o_pool = (W_o_pool_full / W_ob_dw) * W_ob_dw;
   uint32_t W_pool_last = W_o_pool_full - W_o_pool;
 #if PARALLEL == 1
 #pragma omp parallel for
@@ -158,11 +158,11 @@ void channel_block_fused_pooling(
     {
       float *I_ptr = I_row_ptr;
       float *O_ptr = O_row_ptr;
-      for (uint32_t k = 0; k < W_o_pool; k += W_ob_pool)
+      for (uint32_t k = 0; k < W_o_pool; k += W_ob_dw)
       {
         dw_kernel<pool_stride * C_ob, pool_H_f, pool_W_f>(input_row_pool_stride, I_ptr, F_ptr, O_ptr);
-        I_ptr += pool_stride * W_ob_pool * C_ob;
-        O_ptr += W_ob_pool * C_ob;
+        I_ptr += pool_stride * W_ob_dw * C_ob;
+        O_ptr += W_ob_dw * C_ob;
       }
       dw_kernel_end<pool_stride * C_ob, pool_H_f, pool_W_f>(input_row_pool_stride, I_ptr, F_ptr, O_ptr, W_pool_last);
       I_row_ptr += pool_stride * W_o_full * C_ob;
@@ -196,7 +196,7 @@ void row_full_fused_pooling(
   uint32_t W_o_pool_full, H_o_pool;
   op_dim(W_o_full, pool_stride, pool_W_f, W_o_pool_full);
   op_dim(H_o, pool_stride, pool_H_f, H_o_pool);
-  uint32_t W_o_pool = (W_o_pool_full / W_ob_pool) * W_ob_pool;
+  uint32_t W_o_pool = (W_o_pool_full / W_ob_dw) * W_ob_dw;
   uint32_t W_pool_last = W_o_pool_full - W_o_pool;
 
 #if PARALLEL == 1
@@ -306,12 +306,12 @@ void row_full_fused_pooling(
       //fused pooling
       float *I_ptr = pool_I_row_ptr;
       float *O_ptr = O_row_ptr;
-      for (uint32_t k = 0; k < W_o_pool; k += W_ob_pool)
+      for (uint32_t k = 0; k < W_o_pool; k += W_ob_dw)
       {
 
         dw_kernel<pool_stride * C_ob, pool_H_f, pool_W_f>(input_row_pool_stride, I_ptr, F_ptr, O_ptr);
-        I_ptr += pool_stride * W_ob_pool * C_ob;
-        O_ptr += W_ob_pool * C_ob;
+        I_ptr += pool_stride * W_ob_dw * C_ob;
+        O_ptr += W_ob_dw * C_ob;
       }
       dw_kernel_end<pool_stride * C_ob, pool_H_f, pool_W_f>(input_row_pool_stride, I_ptr, F_ptr, O_ptr, W_pool_last);
       pool_I_row_ptr += pool_stride * W_o_full * C_ob;
@@ -345,7 +345,7 @@ void row_full_fused_pooling(
 // 	uint32_t W_o_pool_full, H_o_pool;
 // 	op_dim(W_o_full, pool_stride, pool_W_f, W_o_pool_full);
 // 	op_dim(H_o, pool_stride, pool_H_f, H_o_pool);
-// 	uint32_t W_o_pool = (W_o_pool_full / W_ob_pool) * W_ob_pool;
+// 	uint32_t W_o_pool = (W_o_pool_full / W_ob_dw) * W_ob_dw;
 // 	uint32_t W_pool_last = W_o_pool_full - W_o_pool;
 
 // #if PARALLEL == 1
@@ -439,7 +439,7 @@ void row_full_fused_pooling(
 // 			}
 // 			float *O_conv_ptr = O_buffer + col_offset;
 // 			conv_kernel_end<stride * C_ob, H_f, W_f>(W_i * C_ib, I_ptr, filter_block_ptr, O_ptr, W_last);
-// 			for (uint32_t k = 0; k < W_o_pool; k += W_ob_pool)
+// 			for (uint32_t k = 0; k < W_o_pool; k += W_ob_dw)
 // 			{
 // 				row_dw_kernel<pool_stride * C_ob, pool_stride, pool_H_f, pool_W_f>(O_conv_ptr, l, k, F_ptr, pool_col_stride, O_pool_ptr, H_o);
 // 				O_conv_ptr += pool_stride*W_ob*C_ob;
@@ -474,7 +474,7 @@ void pixel_block_fused_pooling(
   uint32_t W_o_pool_full, H_o_pool;
   op_dim(W_o_full, pool_stride, pool_W_f, W_o_pool_full);
   op_dim(H_o, pool_stride, pool_H_f, H_o_pool);
-  uint32_t W_o_pool = (W_o_pool_full / W_ob_pool) * W_ob_pool;
+  uint32_t W_o_pool = (W_o_pool_full / W_ob_dw) * W_ob_dw;
   uint32_t W_pool_last = W_o_pool_full - W_o_pool;
 #if PARALLEL == 1
 #pragma omp parallel for

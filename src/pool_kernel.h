@@ -1,10 +1,7 @@
 // Header File For different Versions of Fusing Pooling with a Convolution
 //scalar version
-#define POOL_UNROLL 8
 
-#define GPOOL_W_ob 6
 
-#define W_ob_pool 3
 
 #include "scalar_intrinsics.h"
 
