@@ -226,7 +226,7 @@ void fused_conv_pool_kernel(
             }
         }
     }
-    STORE_TILE_C(O, W_ob, C_ob);
+    // STORE_TILE_C(O, W_ob, C_ob);
     //Fused pooling
     MAX_TILE_IP(pool_col_stride, W_ob, C_ob, pool_stride, pool_H_f, pool_W_f, O_row, O_col, O_pool, H_o, W_o_full) ;
 }
@@ -274,7 +274,7 @@ inline void fused_conv_pool_kernel_end(
             }
         }
     }
-    STORE_END_C(O, W_ob, C_ob, W_last);
+    // STORE_END_C(O, W_ob, C_ob, W_last);
 
     MAX_END_IP(pool_col_stride, W_last, C_ob, pool_stride, pool_H_f, pool_W_f, O_row, O_col, O_pool, H_o, W_o_full) ;
 
