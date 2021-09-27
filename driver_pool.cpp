@@ -78,12 +78,12 @@ int main(int argc, char **argv)
 
 
 
-  unsigned long long sum = ULLONG_MAX, sum_pool = ULLONG_MAX;
-  volatile unsigned long long sum_fused = ULLONG_MAX,
-                              sum_conv = ULLONG_MAX;
+  unsigned long long sum = TIME_ZERO;
+  volatile unsigned long long sum_fused = TIME_ZERO;
+
 
   //set up log file to capture all the timing
-  constexpr int NUM_IMPLEMENTATIONS = 3;
+  constexpr int NUM_IMPLEMENTATIONS = 4;
   uint64_t combined_timing[(NUM_IMPLEMENTATIONS + 1) * RUNS];
   uint64_t *timing = combined_timing;
   uint64_t t0, t1;
@@ -110,7 +110,6 @@ int main(int argc, char **argv)
   // print_flops(conv_ops, sum, RUNS);
 
   print_cycles(sum, RUNS);
-  fflush(0);
   //Test Fused implementations
 
   uint64_t *fused_timing = combined_timing + RUNS;
@@ -122,7 +121,7 @@ int main(int argc, char **argv)
 
     //3x3 unfused
 
-    sum_pool = ULLONG_MAX;
+    sum_fused = TIME_ZERO;
     for (int run = 0; run < RUNS; run++)
     {
       // Copy Inputs to their flat buffers
@@ -161,7 +160,7 @@ int main(int argc, char **argv)
                                     out_fused_dc);
         t1 = rdtsc();
         break;
-      case 0:
+      case 3:
         t0 = rdtsc();
         row_full_fused_pooling<stride,
                               kernel_size, kernel_size,
@@ -177,45 +176,35 @@ int main(int argc, char **argv)
                               out_fused_dc);
         t1 = rdtsc();
         break;
-        // case 0:
-        //   t0 = rdtsc();
-        //   row_full_fused_pooling<stride,
-        //                          kernel_size, kernel_size,
-        //                          pool_stride, pool_kernel_size,
-        //                          pool_kernel_size>(
-                        //       C_i,
-                        //       C_o,
-                        //       N,
-                        //       M,
-                        //       input_dc,
-                        //       filter_dc,
-                        //       out_intermediate_buffer,
-                        //       out_fused_dc);
-        //   t1 = rdtsc();
-        //   break;
+        case 0:
+          t0 = rdtsc();
+          row_full_fused_pooling<stride,
+                                 kernel_size, kernel_size,
+                                 pool_stride, pool_kernel_size,
+                                 pool_kernel_size>(
+                              C_i,
+                              C_o,
+                              N,
+                              M,
+                              input_dc,
+                              filter_dc,
+                              out_intermediate_buffer,
+                              out_fused_dc);
+          t1 = rdtsc();
+          break;
       }
-      REDUCE(sum_pool, (t1 - t0));
+      REDUCE(sum_fused, (t1 - t0));
     }
     // assert(check_eqivalence(out_intermediate, 'o', out_intermediate_dimensions, out_intermediate_dc, LIMIT) == 1);
     assert(equals(out_dimensions, out_dc, out_fused_dc, LIMIT) == 1);
     printf("%d\t", implementation);
-    print_cycles(sum_pool, RUNS);
+    print_cycles(sum_fused, RUNS);
   }
 
-  // 
-  // std::string file;
-  // if (argc == 6)
-  // {
-  //   file = argv[5];
-  // }
-  // else
-  // {
-  //   file = "pool_log.txt";
-  // }
-
-  // write_results<NUM_IMPLEMENTATIONS, RUNS>(file, combined_timing);
-
   printf("\n");
+
+  //write detailed timing to stderr
+  write_results<NUM_IMPLEMENTATIONS, RUNS>(combined_timing);
 
   free(input_dc);
   free(filter_dc);

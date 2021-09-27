@@ -100,7 +100,7 @@ void direct_convolution(
       }
     }
   }
-
-}
+  
+} 
 
 

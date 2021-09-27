@@ -86,113 +86,113 @@ inline void dw_kernel_end(
 
 }
 
-//fused pooling kernels
-// template <uint32_t step, uint32_t pool_stride, uint32_t pool_H_f, uint32_t pool_W_f>
-// void row_dw_kernel(
-//     float *I,
-//     uint32_t O_row,
-//     uint32_t O_pool_col,
-//     uint32_t pool_col_stride,
-//     float * F_dw,
-//     float *O_pool,
-//     uint32_t H_o
-//     )
-// {
-//     //write to as many rows as required
-//     if(O_row %(pool_stride) == 0 && (O_row + pool_H_f - 1) < H_o)
-//     {
-//         float *O_pool_ptr = O_pool +
-//                                 ((O_row) / pool_stride) * pool_col_stride +
-//                                      (O_pool_col) * C_ob;
+//Sub Stencil used pooling kernels
+template <uint32_t step, uint32_t pool_stride, uint32_t pool_H_f, uint32_t pool_W_f>
+void row_dw_kernel(
+    float *I,
+    uint32_t O_row,
+    uint32_t O_pool_col,
+    uint32_t pool_col_stride,
+    float * F_dw,
+    float *O_pool,
+    uint32_t H_o
+    )
+{
+    //write to as many rows as required
+    if(O_row %(pool_stride) == 0 && (O_row + pool_H_f - 1) < H_o)
+    {
+        float *O_pool_ptr = O_pool +
+                                ((O_row) / pool_stride) * pool_col_stride +
+                                     (O_pool_col) * C_ob;
 
-//         float *b = F_dw;
-//         LOAD_TILE_C_strided(I, step, W_ob_dw, C_ob);
-//         MUL_TILE_C(b, W_ob_dw, C_ob);
-//         b+=C_ob;
-//         for (uint32_t m = 1; m < pool_W_f; m++)
-//         {
-//             int input_stencil_w = m * C_ob;
-//             float *a = I + input_stencil_w;
-//             DW_TILE_C(step, a, b, W_ob_dw, C_ob);
-//             b+=C_ob;
-//         }
-//         STORE_TILE_C_POOL(O_pool_ptr, W_ob_dw, C_ob);
-//     }
-//     for(uint32_t n_p = 1; n_p < pool_H_f; n_p++)
-//     {
-//         if ((O_row - n_p) % pool_stride == 0 && (int)(O_row - n_p) >= 0 && (O_row + pool_H_f - (n_p + 1)) < H_o)
-//         {
-//             //Load the partial updates
-//             float O_pool_ptr = O_pool +
-//                                     ((O_row - n_p) / pool_stride) * pool_col_stride +
-//                                         (O_pool_col) * C_ob;
-//             float * b = F_dw + n_p*(pool_W_f)*C_ob;
-//             LOAD_TILE_C_POOL(O_pool_ptr, W_ob_dw, C_ob);
-//             for (uint32_t m = 0; m < pool_W_f; m++)
-//             {
-//                 int input_stencil_w = m * C_ob;
-//                 float *a = I + input_stencil_w;
-//                 DW_TILE_C(step, a, b, W_ob_dw, C_ob);
-//                 b += C_ob;
-//             }
-//             STORE_TILE_C_POOL(O_pool_ptr, W_ob_dw, C_ob);
-//         }
-//     }
-// }
+        float *b = F_dw;
+        LOAD_TILE_C_strided(I, step, W_ob_dw, C_ob);
+        MUL_TILE_C(b, W_ob_dw, C_ob);
+        b+=C_ob;
+        for (uint32_t m = 1; m < pool_W_f; m++)
+        {
+            int input_stencil_w = m * C_ob;
+            float *a = I + input_stencil_w;
+            DW_TILE_C(step, a, b, W_ob_dw, C_ob);
+            b+=C_ob;
+        }
+        STORE_TILE_C_POOL(O_pool_ptr, W_ob_dw, C_ob);
+    }
+    for(uint32_t n_p = 1; n_p < pool_H_f; n_p++)
+    {
+        if ((O_row - n_p) % pool_stride == 0 && (int)(O_row - n_p) >= 0 && (O_row + pool_H_f - (n_p + 1)) < H_o)
+        {
+            //Load the partial updates
+            float * O_pool_ptr = O_pool +
+                                    ((O_row - n_p) / pool_stride) * pool_col_stride +
+                                        (O_pool_col) * C_ob;
+            float * b = F_dw + n_p*(pool_W_f)*C_ob;
+            LOAD_TILE_C_POOL(O_pool_ptr, W_ob_dw, C_ob);
+            for (uint32_t m = 0; m < pool_W_f; m++)
+            {
+                int input_stencil_w = m * C_ob;
+                float *a = I + input_stencil_w;
+                DW_TILE_C(step, a, b, W_ob_dw, C_ob);
+                b += C_ob;
+            }
+            STORE_TILE_C_POOL(O_pool_ptr, W_ob_dw, C_ob);
+        }
+    }
+}
 
-// template <uint32_t step, uint32_t pool_stride, uint32_t pool_H_f, uint32_t pool_W_f>
-// void row_dw_kernel_end(
-//     float *I,
-//     uint32_t O_row,
-//     uint32_t O_pool_col,
-//     uint32_t pool_col_stride,
-//     float *F_dw,
-//     float *O_pool,
-//     uint32_t H_o,
-//     uint32_t W_last)
-// {
-//         //write to as many rows as required
-//         if (O_row % (pool_stride) == 0 && (O_row + pool_H_f - 1) < H_o)
-//     {
-//         float *O_pool_ptr = O_pool +
-//                             ((O_row) / pool_stride) * pool_col_stride +
-//                             (O_pool_col)*C_ob;
+template <uint32_t step, uint32_t pool_stride, uint32_t pool_H_f, uint32_t pool_W_f>
+void row_dw_kernel_end(
+    float *I,
+    uint32_t O_row,
+    uint32_t O_pool_col,
+    uint32_t pool_col_stride,
+    float *F_dw,
+    float *O_pool,
+    uint32_t H_o,
+    uint32_t W_last)
+{
+        //write to as many rows as required
+        if (O_row % (pool_stride) == 0 && (O_row + pool_H_f - 1) < H_o)
+    {
+        float *O_pool_ptr = O_pool +
+                            ((O_row) / pool_stride) * pool_col_stride +
+                            (O_pool_col)*C_ob;
 
-//         float *b = F_dw;
-//         LOAD_END_C_strided(I, step, W_ob_dw, C_ob, W_last);
-//         MUL_END_C(b, W_last, C_ob);
-//         b += C_ob;
-//         for (uint32_t m = 1; m < pool_W_f; m++)
-//         {
-//             int input_stencil_w = m * C_ob;
-//             float *a = I + input_stencil_w;
-//             DW_END_C(step, a, b, W_last, C_ob);
-//             b += C_ob;
-//         }
-//         STORE_END_C_POOL(O_pool_ptr, W_ob_dw, C_ob, W_last);
-//     }
-//     for (uint32_t n_p = 1; n_p < pool_H_f; n_p++)
-//     {
-//         if ((O_row - n_p) % pool_stride == 0 && (int)(O_row - n_p) >= 0 && (O_row + pool_H_f - (n_p + 1)) < H_o)
-//         {
-//             //Load the partial updates
-//             float O_pool_ptr = O_pool +
-//                             ((O_row - n_p) / pool_stride) * pool_col_stride +
-//                             (O_pool_col)*C_ob;
-//             float *b = F_dw + n_p * (pool_W_f)*C_ob;
-//             LOAD_END_C_POOL(O_pool_ptr, W_ob_dw, C_ob);
-//             for (uint32_t m = 0; m < pool_W_f; m++)
-//             {
-//                 int input_stencil_w = m * C_ob;
-//                 float *a = I + input_stencil_w;
-//                 DW_END_C(step, a, b, W_last, C_ob);
-//                 b += C_ob;
-//             }
-//             STORE_END_C_POOL(O_pool_ptr, W_ob_dw, C_ob, W_last);
-//         }
-//     }
+        float *b = F_dw;
+        LOAD_LAST_C_strided(I, step, W_ob_dw, C_ob, W_last);
+        MUL_END_C(b, W_last, C_ob);
+        b += C_ob;
+        for (uint32_t m = 1; m < pool_W_f; m++)
+        {
+            int input_stencil_w = m * C_ob;
+            float *a = I + input_stencil_w;
+            DW_END_C(step, a, b, W_last, C_ob);
+            b += C_ob;
+        }
+        STORE_END_C_POOL(O_pool_ptr, W_ob_dw, C_ob, W_last);
+    }
+    for (uint32_t n_p = 1; n_p < pool_H_f; n_p++)
+    {
+        if ((O_row - n_p) % pool_stride == 0 && (int)(O_row - n_p) >= 0 && (O_row + pool_H_f - (n_p + 1)) < H_o)
+        {
+            //Load the partial updates
+            float * O_pool_ptr = O_pool +
+                            ((O_row - n_p) / pool_stride) * pool_col_stride +
+                            (O_pool_col)*C_ob;
+            float *b = F_dw + n_p * (pool_W_f)*C_ob;
+            LOAD_LAST_C_POOL(O_pool_ptr, W_ob_dw, C_ob, W_last);
+            for (uint32_t m = 0; m < pool_W_f; m++)
+            {
+                int input_stencil_w = m * C_ob;
+                float *a = I + input_stencil_w;
+                DW_END_C(step, a, b, W_last, C_ob);
+                b += C_ob;
+            }
+            STORE_END_C_POOL(O_pool_ptr, W_ob_dw, C_ob, W_last);
+        }
+    }
     
-// }
+}
 
 // work on the Convolution Register Tile size: W_ob x C_ob
 template <uint32_t step, uint32_t H_f, uint32_t W_f, uint32_t pool_stride, uint32_t pool_H_f, uint32_t pool_W_f>

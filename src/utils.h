@@ -25,11 +25,11 @@ static __inline__ unsigned long long rdtsc(void)
 //logging 
 #define print_flops(ops, time, trials)              \
   {                                                 \
-    printf("%lf\t", (ops) / (1.0 * time / trials)); \
+    printf("%.4lf\t", (ops) / (1.0 * time / trials)); \
   }
 #define print_cycles(time, trials)          \
   {                                         \
-    printf("%lf\t", 1.0 * (time / trials)); \
+    printf("%.2lf\t", 1.0 * (time / trials)); \
   }
 //Allocation
 
@@ -53,7 +53,7 @@ void init(float * ptr, uint32_t numel)
   float * cur_ptr = ptr;
   for(uint32_t i = 0 ; i < numel ; i++)
   {
-    *(cur_ptr) = ((float) rand()/ RAND_MAX) + 1; 
+    *(cur_ptr++) = ((float) rand()/ RAND_MAX) + 1; 
   }
 }
 
@@ -62,7 +62,7 @@ void init_ones(float *ptr, uint32_t numel)
   float *cur_ptr = ptr;
   for (uint32_t i = 0; i < numel; i++)
   {
-    *(cur_ptr) = 1;
+    *(cur_ptr++) = 1;
   }
 }
 
@@ -72,7 +72,7 @@ void init_norm(float *ptr, uint32_t numel, uint32_t C_o)
   float norm = (1.0*C_o)/(1.0*numel);
   for (uint32_t i = 0; i < numel; i++)
   {
-    *(cur_ptr) = norm;
+    *(cur_ptr++) = norm;
   }
 }
 bool equals(uint32_t numel, float *unfused, float *fused, float tolerance = 1e-8)
@@ -84,11 +84,9 @@ bool equals(uint32_t numel, float *unfused, float *fused, float tolerance = 1e-8
   for (uint32_t i = 0; i < numel; i++)
   {
     float diff = *(fused_ptr) - *(unfused_ptr);
-    // printf("%d %.4f %.4f %.4f\n", i, *(fused_ptr), *(unfused_ptr), diff);
-
     if(fabs( diff > tolerance))
     {
-      // printf("%d %.4f %.4f %.4f\n", i, *(fused_ptr), *(unfused_ptr), diff);
+      printf("%d %.4f %.4f %.4f\n", i, *(fused_ptr), *(unfused_ptr), diff);
       check = 0; 
     }
     unfused_ptr++;
@@ -99,26 +97,26 @@ bool equals(uint32_t numel, float *unfused, float *fused, float tolerance = 1e-8
 
 
 template<uint32_t num_ops, uint32_t trials>
-void write_results(std::string file, uint64_t * fused_timing)
+void write_results(uint64_t * fused_timing)
 {
-  std::string path = "Results/";
-  std::string path_to_log_file = path + file;
-  FILE *outfile = fopen(path_to_log_file.c_str(), "w");
+  // std::string path = "Results/logfile";
+  // std::string path_to_log_file = path + file;
+  // FILE *outfile = fopen(path.c_str(), "w");
 
-  fprintf(outfile, "Unfused \t");
+  fprintf(stderr, "Unfused ");
   for (uint32_t j = 0; j < num_ops; j++)
   {
-    fprintf(outfile, "Fused %d\t", j);
+    fprintf(stderr, "Fused %d\t", j);
   }
-  fprintf(outfile, "\n");
+  fprintf(stderr, "\n");
   for (uint32_t i = 0; i < trials; i++)
   {
-    // fprintf(outfile, "%lu\t", timing[i]);
+    // fprintf(stderr, "%lu\t", timing[i]);
     for (uint32_t j = 0; j < num_ops + 1 ; j++)
     {
-      fprintf(outfile, "%lu\t", fused_timing[j*trials + i]);
+      fprintf(stderr, "%lu\t", fused_timing[j*trials + i]);
     }
-    fprintf(outfile, "\n");
+    fprintf(stderr, "\n");
   }
 }
 

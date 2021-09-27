@@ -60,13 +60,13 @@
   }
 
 // strided loads
-#define LOAD_TILE_C_strided(O, step, W_ob, C_ob)  \
-  float c_tile[W_ob * C_ob];                      \
-  for (uint32_t kk = 0; kk < W_ob; kk++)          \
+#define LOAD_TILE_C_strided(O, step, _W_ob, _C_ob)  \
+  float c_tile[_W_ob * _C_ob];                      \
+  for (uint32_t kk = 0; kk < _W_ob; kk++)          \
   {                                               \
-    for (uint32_t jj = 0; jj < C_ob; jj++)        \
+    for (uint32_t jj = 0; jj < _C_ob; jj++)        \
     {                                             \
-      c_tile[kk * C_ob + jj] = O[kk * step + jj]; \
+      c_tile[kk * _C_ob + jj] = O[kk * step + jj]; \
     }                                             \
   }
 

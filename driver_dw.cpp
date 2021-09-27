@@ -18,35 +18,7 @@
 #include "src/direct_convolution.h"
 #include "src/fused_conv_dw.h"
 #include "src/utils.h"
-//Good Ol' Timing
-static __inline__ unsigned long long rdtsc(void)
-{
-  unsigned hi, lo;
-  __asm__ __volatile__("rdtsc"
-                       : "=a"(lo), "=d"(hi));
-  return ((unsigned long long)lo) | (((unsigned long long)hi) << 32);
-}
 
-#define print_flops(ops, time, trials)              \
-  {                                                 \
-    printf("%lf\t", (ops) / (1.0 * time / trials)); \
-  }
-#define print_cycles(time, trials)          \
-  {                                         \
-    printf("%lf\t", 1.0 * (time / trials)); \
-  }
-
-// #define print_flops( ops,  time,  trials){\
-//   printf("%.4lf\t", (ops)/(1.0 * time));\
-// }
-// #define print_cycles(time,  trials){\
-//   printf("%.0lf\t", 1.0*(time));\
-// }
-
-#define MIN(a, b)        \
-  {                      \
-    a = (b < a) ? b : a; \
-  }
 
 int main(int argc, char **argv)
 {
@@ -75,39 +47,48 @@ int main(int argc, char **argv)
   int N = (output_rows - 1) * stride + kernel_size;
   int M = (output_cols - 1) * stride + kernel_size;
 
+// SET UP
   uint32_t pool_H = (output_rows - pool_kernel_size)/pool_stride + 1;
   uint32_t pool_W = (output_cols - pool_kernel_size) / pool_stride + 1;
+
+#if PARALLEL
+  uint32_t num_threads = atoi(std::getenv("OMP_NUM_THREADS"));
+#else
+  uint32_t num_threads = 1;
+#endif
 
   uint32_t in_dimensions = (C_i * N * M);
   uint32_t filter_dimensions = (C_i * C_o * kernel_size * kernel_size);
   uint32_t out_intermediate_dimensions = (C_o * output_rows * output_cols);
-  uint32_t out_intermediate_buffer_dimensions = (C_ob * output_rows * output_cols);
+  uint32_t out_intermediate_buffer_dimensions = (C_ob * output_rows * output_cols * num_threads);
   uint32_t filter_dw_dimensions = (C_o * pool_kernel_size* pool_kernel_size);
   uint32_t out_dimensions = (C_o * pool_H * pool_W);
 
   float *input_dc = alloc(in_dimensions);
   float *filter_dc = alloc(filter_dimensions);
+
   float *out_intermediate_dc = alloc(out_intermediate_dimensions);
   float *out_intermediate_buffer = alloc(out_intermediate_buffer_dimensions);
+
   float * filter_dw_dc = alloc(filter_dw_dimensions);
+
   float *out_dc = alloc(out_dimensions);
   float *out_fused_dc = alloc(out_dimensions);
+//END SET UP
 
   //init
   init(input_dc, in_dimensions);
-  init(filter_dc, filter_dimensions);
-  init(filter_dw_dc, filter_dw_dimensions);
+  init_norm(filter_dc, filter_dimensions, C_o);
+  init_norm(filter_dw_dc, filter_dw_dimensions, 1);
 
-#if PARALLEL
-  uint32_t num_threads = atoi(std::getenv("OMP_NUM_THREADS"));
-#endif
 
-  unsigned long long sum = ULLONG_MAX, sum_pool = ULLONG_MAX;
-  volatile unsigned long long sum_fused = ULLONG_MAX,
-                              sum_conv = ULLONG_MAX;
+
+  unsigned long long sum = TIME_ZERO;
 
   //set up log file to capture all the timing
-  uint64_t timing[RUNS];
+  constexpr int NUM_IMPLEMENTATIONS = 4;
+  uint64_t combined_timing[(NUM_IMPLEMENTATIONS + 1) * RUNS];
+  uint64_t * timing = combined_timing;
   uint64_t t0, t1;
 
   // Initialize Outputs to 0
@@ -121,19 +102,21 @@ int main(int argc, char **argv)
     direct_convolution<stride, kernel_size, kernel_size>(C_i, C_o, N, M, input_dc, filter_dc, out_intermediate_dc);
     pooling<pool_stride, pool_kernel_size, pool_kernel_size>(C_o, output_rows, output_cols, out_intermediate_dc, filter_dw_dc, out_dc);
     t1 = rdtsc();
-    MIN(sum, (t1 - t0));
+    REDUCE(sum, (t1 - t0));
     timing[run] = t1-t0;
 
   }
-  direct_convolution<stride, kernel_size, kernel_size>(C_i, C_o, N, M, input_dc, filter_dc, out_dc);
+  print_cycles(sum, RUNS);
+
+  // direct_convolution<stride, kernel_size, kernel_size>(C_i, C_o, N, M, input_dc, filter_dc, out_dc);
+  direct_convolution<stride, kernel_size, kernel_size>(C_i, C_o, N, M, input_dc, filter_dc, out_intermediate_dc);
+  pooling<pool_stride, pool_kernel_size, pool_kernel_size>(C_o, output_rows, output_cols, out_intermediate_dc, filter_dw_dc, out_dc);
   // assert(equals(out,'o', out_dimensions, out_dc, 1e-3)==1);
   // print_flops(conv_ops, sum, RUNS);
 
-  print_cycles(sum, RUNS);
-
   //Test Fused implementations
-  constexpr int NUM_IMPLEMENTATIONS = 1;
-  uint64_t fused_timing[NUM_IMPLEMENTATIONS][RUNS];
+
+  uint64_t *  fused_timing = combined_timing + RUNS;
   for (int implementation = 0; implementation < NUM_IMPLEMENTATIONS; implementation++)
   {
     // Initialize Outputs to 0
@@ -142,7 +125,7 @@ int main(int argc, char **argv)
 
     //3x3 unfused
 
-    sum_pool = ULLONG_MAX;
+    uint64_t sum_pool = TIME_ZERO;
     for (int run = 0; run < RUNS; run++)
     {
       // Copy Inputs to their flat buffers
@@ -166,7 +149,7 @@ int main(int argc, char **argv)
             out_fused_dc);
         t1 = rdtsc();
         break;
-      case 0:
+      case 3:
         t0 = rdtsc();
         channel_block_fused_pooling<stride,
                                     kernel_size, kernel_size,
@@ -200,51 +183,39 @@ int main(int argc, char **argv)
             out_fused_dc);
         t1 = rdtsc();
         break;
-        // case 0:
-        //   t0 = rdtsc();
-        //   row_full_fused_pooling<stride,
-        //                          kernel_size, kernel_size,
-        //                          pool_stride, pool_kernel_size,
-        //                          pool_kernel_size>(
-        //       C_i,
-        //       C_o,
-        //       N,
-        //       M,
-        //       input_dc,
-        //       filter_dc,
-        //       out_intermediate_buffer,
-        //        filter_dw_dc,
-        //       out_fused_dc);
-        //   t1 = rdtsc();
-        //   break;
+        case 0:
+          t0 = rdtsc();
+          row_full_fused_pooling<stride,
+                                 kernel_size, kernel_size,
+                                 pool_stride, pool_kernel_size,
+                                 pool_kernel_size>(
+              C_i,
+              C_o,
+              N,
+              M,
+              input_dc,
+              filter_dc,
+              out_intermediate_buffer,
+               filter_dw_dc,
+              out_fused_dc);
+          t1 = rdtsc();
+          break;
       }
-      MIN(sum_pool, (t1 - t0));
+      REDUCE(sum_pool, (t1 - t0));
+      fused_timing[implementation*RUNS +  run] = (t1 - t0);
     }
-    // assert(check_eqivalence(out_intermediate, 'o', out_intermediate_dimensions, out_intermediate_dc, LIMIT) == 1);
-    assert(equals(out_dimensions, out_dc, out_fused_dc, LIMIT) == 1);
     printf("%d\t", implementation);
+    assert(equals(out_dimensions, out_dc, out_fused_dc, LIMIT) == 1);
     print_cycles(sum_pool, RUNS);
   }
 
 
 
-  FILE *outfile = fopen("dw_logfile.txt", "w");
-  fprintf(outfile, "Unfused \t");
-  for(uint32_t j = 0 ; j < NUM_IMPLEMENTATIONS; j++)
-  {
-    fprintf(outfile, "Fused %d\t", j);
-  }
-  fprintf(outfile, "\n");
-  for (uint32_t i = 0; i < RUNS; i++)
-  {
-    fprintf(outfile, "%lu\t", timing[i]);
-    for(uint32_t j = 0; j < NUM_IMPLEMENTATIONS; j++){
-      fprintf(outfile, "%lu\t", fused_timing[j][i]);
-    }
-    fprintf(outfile, "\n");
-  }
-
   printf("\n");
+
+  //write detailed timing to stderr
+  write_results<NUM_IMPLEMENTATIONS, RUNS>(combined_timing);
+
 
   free(input_dc);
   free(filter_dc);
