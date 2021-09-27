@@ -221,6 +221,7 @@ int main(int argc, char **argv)
   free(filter_dc);
   free(out_intermediate_dc);
   free(out_intermediate_buffer);
+  free(filter_dw_dc);
   free(out_dc);
   free(out_fused_dc);
 
