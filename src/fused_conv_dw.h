@@ -4,17 +4,17 @@ template <uint32_t pool_stride, uint32_t pool_H_f, uint32_t pool_W_f>
 void pooling(
     uint32_t C,
     uint32_t H_o,
-    uint32_t W_o,
+    uint32_t W_o_full,
     float *I,
-    float *F,
+    float *F_dw,
     float *O)
 {
   uint32_t W_o_pool_full, H_o_pool;
-  op_dim(W_o, pool_stride, pool_W_f, W_o_pool_full);
+  op_dim(W_o_full, pool_stride, pool_W_f, W_o_pool_full);
   op_dim(H_o, pool_stride, pool_H_f, H_o_pool);
   uint32_t W_o_pool = (W_o_pool_full / W_ob_dw) * W_ob_dw;
   uint32_t W_pool_last = W_o_pool_full - W_o_pool;
-  // printf("\n %d %d to %d %d\n",H_o, W_o,H_o_pool, W_o_pool_full);
+  // printf("\n %d %d to %d %d\n",H_o, W_o_full,H_o_pool, W_o_pool_full);
   // printf("s: %d k: %d", pool_stride, pool_H_f);
   // H_o -= (H_o%2==0);
   uint32_t offset = 0;
@@ -23,12 +23,12 @@ void pooling(
 #endif
   for (uint32_t j = 0; j < C; j += C_ob)
   {
-    float *I_block_ptr = I + (j / C_ob) * H_o * W_o * C_ob;
+    float *I_block_ptr = I + (j / C_ob) * H_o * W_o_full * C_ob;
     float *O_block_ptr = O + (j / C_ob) * H_o_pool * W_o_pool_full * C_ob;
     float *I_row_ptr = I_block_ptr;
     float *O_row_ptr = O_block_ptr;
-    float *F_ptr = F + (j/C_ob) * pool_H_f * pool_W_f * C_ob;
-    uint32_t input_row_pool_stride = W_o * C_ob;
+    float *F_ptr = F_dw + (j/C_ob) * pool_H_f * pool_W_f * C_ob;
+    uint32_t input_row_pool_stride = W_o_full * C_ob;
     for (uint32_t l = 0; l < H_o_pool; l++)
     {
       float *I_ptr = I_row_ptr;
@@ -40,7 +40,7 @@ void pooling(
         O_ptr += W_ob_dw * C_ob;
       }
       dw_kernel_end<pool_stride * C_ob, pool_H_f, pool_W_f>(input_row_pool_stride, I_ptr, F_ptr, O_ptr, W_pool_last);
-      I_row_ptr += pool_stride * W_o * C_ob;
+      I_row_ptr += pool_stride * W_o_full * C_ob;
       O_row_ptr += W_o_pool_full * C_ob;
     }
   }
@@ -135,8 +135,8 @@ void channel_block_fused_pooling(
         for (uint32_t k = 0; k < W_o; k += W_ob)
         {
 
-          uint32_t input_row_offset = (k * stride) * C_ob;
-          float *I_ptr = I + input_row_offset + input_col_offset;
+          // uint32_t input_row_offset = (k * stride) * C_ob;
+          // float *I_ptr = I + input_row_offset + input_col_offset;
 
           conv_kernel<stride * C_ob, H_f, W_f>(W_i * C_ib, I_ptr, filter_block_ptr, O_ptr);
 
@@ -255,8 +255,8 @@ void row_full_fused_pooling(
         float *O_ptr = O_buffer + col_offset;
         for (uint32_t k = 0; k < W_o; k += W_ob)
         {
-          uint32_t input_row_offset = (k * stride) * C_ob;
-          float *I_ptr = I + input_row_offset + input_col_offset;
+          // uint32_t input_row_offset = (k * stride) * C_ob;
+          // float *I_ptr = I + input_row_offset + input_col_offset;
           conv_kernel<stride * C_ob, H_f, W_f>(W_i * C_ib, I_ptr, filter_block_ptr, O_ptr);
           I_ptr += stride * W_ob * C_ob;
           O_ptr += W_ob * C_ob;
@@ -294,8 +294,8 @@ void row_full_fused_pooling(
         float *O_ptr = O_buffer + col_offset;
         for (uint32_t k = 0; k < W_o; k += W_ob)
         {
-          uint32_t input_row_offset = (k * stride) * C_ob;
-          float *I_ptr = I + input_row_offset + input_col_offset;
+          // uint32_t input_row_offset = (k * stride) * C_ob;
+          // float *I_ptr = I + input_row_offset + input_col_offset;
           conv_kernel<stride * C_ob, H_f, W_f>(W_i * C_ib, I_ptr, filter_block_ptr, O_ptr);
           I_ptr += stride * W_ob * C_ob;
           O_ptr += W_ob * C_ob;
@@ -538,8 +538,8 @@ void pixel_block_fused_pooling(
         for (uint32_t k = 0; k < W_o; k += W_ob)
         {
 
-          uint32_t input_row_offset = (k * stride) * C_ob;
-          float *I_ptr = I + input_row_offset + input_col_offset;
+          // uint32_t input_row_offset = (k * stride) * C_ob;
+          // float *I_ptr = I + input_row_offset + input_col_offset;
 
           conv_kernel<stride * C_ob, H_f, W_f>(W_i * C_ib, I_ptr, filter_block_ptr, O_ptr);
 

@@ -29,7 +29,7 @@
 #define POOLING 1
 #include "src/direct_convolution.h"
 #include "src/fused_conv_dw.h"
-#include "src/utils.h"
+#include "src/torch_utils.h"
 //Good Ol' Timing
 static __inline__ unsigned long long rdtsc(void)
 {
@@ -103,7 +103,7 @@ int main(int argc, char **argv)
   constexpr int stride = 1;
 
   constexpr int pool_kernel_size = 3;
-  constexpr int pool_stride = 2;
+  constexpr int pool_stride = 1;
 
   int output_rows = atol(argv[3]);
   int output_cols = atol(argv[4]);
@@ -131,7 +131,7 @@ int main(int argc, char **argv)
   //   for(uint32_t c = 0 ; c < C_i; c++){
   //     for(uint32_t h = 0; h < N; h++){
   //       for(uint32_t w = 0; w < M; w++){
-  //         *w_ptr *= (h+1);
+  //         *w_ptr *= (0)*M + (w+1);
   //         w_ptr++;
   //       }
   //     }
@@ -263,7 +263,7 @@ int main(int argc, char **argv)
   {
     // Initialize Outputs to 0
     std::vector<uint64_t> timings;
-    memset(out_intermediate_dc, 0, out_intermediate.numel() * sizeof(float));
+    memset(out_intermediate_buffer, 0, output_rows*output_cols*C_ob * sizeof(float));
     memset(out_dc, 0, out.numel() * sizeof(float));
 
     //3x3 unfused
@@ -295,7 +295,7 @@ int main(int argc, char **argv)
             M,
             input_dc,
             filter_dc,
-            out_intermediate_dc,
+            out_intermediate_buffer,
             filter_dw_dc,
             out_dc);
         t1 = rdtsc();
@@ -312,7 +312,7 @@ int main(int argc, char **argv)
             M,
             input_dc,
             filter_dc,
-            out_intermediate_dc,
+            out_intermediate_buffer,
             filter_dw_dc,
             out_dc);
         t1 = rdtsc();
@@ -329,14 +329,14 @@ int main(int argc, char **argv)
             M,
             input_dc,
             filter_dc,
-            out_intermediate_dc,
+            out_intermediate_buffer,
             filter_dw_dc,
             out_dc);
         t1 = rdtsc();
         break;
         // case 0:
         //   t0 = rdtsc();
-        //   row_full_fused_pooling<stride,
+        //   row_partial_fused_pooling<stride,
         //                          kernel_size, kernel_size,
         //                          pool_stride, pool_kernel_size,
         //                          pool_kernel_size>(
@@ -346,7 +346,7 @@ int main(int argc, char **argv)
         //       M,
         //       input_dc,
         //       filter_dc,
-        //       out_intermediate_dc,
+        //       out_intermediate_buffer,
         //       out_dc);
         //   t1 = rdtsc();
         //   break;
@@ -354,9 +354,9 @@ int main(int argc, char **argv)
       MIN(sum_pool, (t1 - t0));
       timings.push_back((t1 - t0));
     }
-    // assert(check_eqivalence(out_intermediate, 'o', out_intermediate_dimensions, out_intermediate_dc, LIMIT) == 1);
-    assert(check_eqivalence(out, 'o', out_dimensions, out_dc, LIMIT) == 1);
     printf("%d\t", implementation);
+    // assert(check_eqivalence(out_intermediate, 'o', out_intermediate_dimensions, out_intermediate_buffer, LIMIT) == 1);
+    assert(check_eqivalence(out, 'o', out_dimensions, out_dc, LIMIT) == 1);
     print_cycles(sum_pool);
     fflush(0);
     implementations.push_back(timings);

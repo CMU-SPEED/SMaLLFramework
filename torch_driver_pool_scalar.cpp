@@ -14,7 +14,7 @@
 
 #define GEMM 0
 #define L 0
-#define RUNS 1
+#define RUNS 100
 #define VERBOSE 0
 #define FUSION 1
 #define STRIDE 1
@@ -29,7 +29,7 @@
 #define POOLING 1
 #include "src/direct_convolution.h"
 #include "src/fused_conv_pooling.h"
-#include "src/utils.h"
+#include "src/torch_utils.h"
 //Good Ol' Timing
 static __inline__ unsigned long long rdtsc(void) {
   unsigned hi, lo;
@@ -119,6 +119,15 @@ int main(int argc, char ** argv)
   // a = torch::mul(a, 0.01);
   test_weights = torch::mul(test_weights, 1.0/(1.0*kernel_size*kernel_size*C_i));
   // float * w_ptr = a.data_ptr<float>();
+  //   for(uint32_t c = 0 ; c < C_i; c++){
+  //     for(uint32_t h = 0; h < N; h++){
+  //       for(uint32_t w = 0; w < M; w++){
+  //         *w_ptr *= (w+1) + (N-1)*M;
+  //         w_ptr++;
+  //       }
+  //     }
+  //   }
+
   float * c_ptr = test_weights.data_ptr<float>();
   // for(uint32_t b  = 0; b  < C_o; b ++){
   //   for(uint32_t c = 0 ; c < C_i; c++){
@@ -236,7 +245,7 @@ int main(int argc, char ** argv)
     copy_torch2dc(weights,'f',filter_dimensions,filter_dc);
 
 
-    for (int run = 0; run < RUNS; run++){
+    for (int run = 0; run < 0; run++){
       // Copy Inputs to their flat buffers
     
       t0 = rdtsc();
@@ -249,8 +258,8 @@ int main(int argc, char ** argv)
       MIN(sum_pool,(t1 - t0));
       unfused_timing.push_back((t1 - t0));
     }
-    assert(check_eqivalence(out_intermediate,'o', out_intermediate_dimensions, out_intermediate_dc, LIMIT)==1);
-    assert(check_eqivalence(out,'o', out_dimensions, out_dc, LIMIT)==1);
+    // assert(check_eqivalence(out_intermediate,'o', out_intermediate_dimensions, out_intermediate_dc, LIMIT)==1);
+    // assert(check_eqivalence(out,'o', out_dimensions, out_dc, LIMIT)==1);
     // print_cycles(sum);
 
     print_cycles(sum_pool);
@@ -259,7 +268,7 @@ int main(int argc, char ** argv)
   }
 
   implementations.push_back(unfused_timing);
-  const int NUM_IMPLEMENTATIONS = 3;
+  const int NUM_IMPLEMENTATIONS = 0;
 
   
 
@@ -268,8 +277,8 @@ int main(int argc, char ** argv)
   {
       // Initialize Outputs to 0
       std::vector<uint64_t> timings;
-      memset(out_intermediate_dc, 0, out_intermediate.numel()*sizeof(float));
-      memset(out_dc, 0, out.numel()*sizeof(float));
+      memset(out_intermediate_buffer, 0, output_rows * output_cols * C_ob * sizeof(float));
+      memset(out_dc, 0, out.numel() * sizeof(float));
 
       //3x3 unfused
       copy_torch2dc(a, 'i', in_dimensions, input_dc);
@@ -285,7 +294,7 @@ int main(int argc, char ** argv)
         // Copy Inputs to their flat buffers
 
         switch (implementation) {
-          case 2:
+          case 1:
             t0 = rdtsc();
             pixel_block_fused_pooling<stride,
                                       kernel_size, kernel_size,
@@ -297,11 +306,11 @@ int main(int argc, char ** argv)
                 M,
                 input_dc,
                 filter_dc,
-                out_intermediate_dc,
+                out_intermediate_buffer,
                 out_dc);
             t1 = rdtsc();
             break;
-          case 1:
+          case 0:
             t0 = rdtsc();
             channel_block_fused_pooling<stride,
                                       kernel_size, kernel_size,
@@ -313,12 +322,12 @@ int main(int argc, char ** argv)
                                                         M,
                                                         input_dc,
                                                         filter_dc,
-                                                        out_intermediate_dc,
+                                                        out_intermediate_buffer,
                                                         out_dc
                                                         );
             t1 = rdtsc();
             break;
-          case 0:
+          case 2:
             t0 = rdtsc();
             row_full_fused_pooling<stride,
                                         kernel_size, kernel_size,
@@ -330,7 +339,7 @@ int main(int argc, char ** argv)
                 M,
                 input_dc,
                 filter_dc,
-                out_intermediate_dc,
+                out_intermediate_buffer,
                 out_dc);
             t1 = rdtsc();
             break;
@@ -354,9 +363,9 @@ int main(int argc, char ** argv)
         MIN(sum_pool,(t1 - t0));
         timings.push_back((t1-t0));
       }
-      // assert(check_eqivalence(out_intermediate, 'o', out_intermediate_dimensions, out_intermediate_dc, LIMIT) == 1);
-      assert(check_eqivalence(out,'o', out_dimensions, out_dc, LIMIT)==1);
+      // assert(check_eqivalence(out_intermediate, 'o', out_intermediate_dimensions, out_intermediate_buffer, LIMIT) == 1);
       printf("%d\t", implementation);
+      assert(check_eqivalence(out,'o', out_dimensions, out_dc, LIMIT)==1);
       print_cycles(sum_pool);
       fflush(0);
     implementations.push_back(timings);

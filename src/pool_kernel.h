@@ -14,6 +14,7 @@ inline void pool_kernel(
 
 
     LOAD_TILE_C_strided(I, step, W_ob_pool, C_ob);
+    // printf("%d %.2f\n", (W_ob_pool - 1), c_tile[(W_ob_pool - 1) * C_ob]);
 
     int updates = 0;
     // uint32_t step = stride*C_ob;
@@ -24,10 +25,10 @@ inline void pool_kernel(
         int input_stencil_w = m*C_ib;
 
         float *a = I + input_stencil_w;
+        // printf("%d %d %.2f step %d\t", 0, m, a[(W_ob_pool - 1)*step], step);
 
         MAX_TILE_C(step, a, W_ob_pool, C_ob);
-
-        
+        // printf("%d %.2f\n", (W_ob_pool - 1), c_tile[(W_ob_pool - 1) * C_ob]);
     }
     for(uint32_t n = 1; n < H_f; n++){
 
@@ -38,14 +39,14 @@ inline void pool_kernel(
             int input_stencil_w = m*C_ib + input_stencil_h;
 
             float *a = I + input_stencil_w;
-        
-            MAX_TILE_C(step, a, W_ob_pool, C_ob);
+            // printf("%d %d %.2f \t", n, m, a[(W_ob_pool - 1) * step]);
 
-            
+            MAX_TILE_C(step, a, W_ob_pool, C_ob);
+            // printf("%d %.2f\n", (W_ob_pool - 1) , c_tile[(W_ob_pool - 1) * C_ob]);
         }
     }
 
-
+    // printf("%f\n", I[0]);
     STORE_TILE_C_POOL(O, W_ob_pool, C_ob);
 
 }

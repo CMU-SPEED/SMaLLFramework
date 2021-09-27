@@ -7,7 +7,7 @@
 #include<math.h>
 #include<assert.h>
 
-#include "src/utils.h"
+#include "src/torch_utils.h"
 
 #define GEMM 0
 #define L 0

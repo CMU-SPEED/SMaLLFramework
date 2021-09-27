@@ -9,7 +9,6 @@
 #define op_dim(IN_dim, stride, K_dim, OUT_dim){\
   OUT_dim = (IN_dim - K_dim)/stride + 1;\
 }
-
 //Assume padding to maintain the same input
 
 template <uint32_t stride, uint32_t H_f, uint32_t W_f>
@@ -72,14 +71,15 @@ void direct_convolution(
 
     for(uint32_t i = C_ib; i < C_i; i += C_ib){
 
-      uint32_t input_block_offset = (i/C_ib)*H_i*W_i*C_ib;
-      uint32_t filter_i_c_block = (i/C_ib)*H_f*W_f*C_ib*C_ob + filter_o_c_block;
+      uint32_t input_block_offset = (i/C_ib) * H_i * W_i * C_ib;
+      uint32_t filter_i_c_block = (i/C_ib) * H_f * W_f * C_ib * C_ob + filter_o_c_block;
       float *filter_block_ptr = F + filter_i_c_block;
 
-      for(uint32_t l = 0; l < H_o; l++){
+      for(uint32_t l = 0; l < H_o; l++)
+      {
 
-          uint32_t col_offset = l*W_o_full*C_ob;
-          uint32_t input_col_offset = (l * stride)*W_i*C_ob + input_block_offset;
+          uint32_t col_offset = l * W_o_full * C_ob;
+          uint32_t input_col_offset = (l * stride) * W_i * C_ob + input_block_offset;
 
           float * I_ptr = I + input_col_offset;
           float * O_ptr = O_buffer + col_offset;
