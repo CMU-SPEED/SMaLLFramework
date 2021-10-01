@@ -33,7 +33,7 @@ int main(int argc, char **argv)
   int C_o = atoi(argv[2]);
   // int C_o_1 = atoi(argv[3]);
 
-  constexpr int kernel_size = 3;
+  constexpr int kernel_size = 1;
   constexpr int stride = 1;
 
   constexpr int pool_kernel_size = 3;
@@ -78,8 +78,12 @@ int main(int argc, char **argv)
 
   //init
   init(input_dc, in_dimensions);
-  init_norm(filter_dc, filter_dimensions, C_o);
-  init_norm(filter_dw_dc, filter_dw_dimensions, 1);
+  init(filter_dc, filter_dimensions);
+  init(filter_dw_dc, filter_dw_dimensions);
+
+  // init_arange(input_dc, N, M, C_i);
+  // init_norm(filter_dc, filter_dimensions, C_o);
+  // init_norm(filter_dw_dc, filter_dw_dimensions, C_o);
 
 
 
@@ -149,7 +153,7 @@ int main(int argc, char **argv)
             out_fused_dc);
         t1 = rdtsc();
         break;
-      case 3:
+      case 0:
         t0 = rdtsc();
         channel_block_fused_pooling<stride,
                                     kernel_size, kernel_size,
@@ -183,9 +187,9 @@ int main(int argc, char **argv)
             out_fused_dc);
         t1 = rdtsc();
         break;
-        case 0:
+        case 3:
           t0 = rdtsc();
-          row_full_fused_pooling<stride,
+          row_partial_fused_pooling<stride,
                                  kernel_size, kernel_size,
                                  pool_stride, pool_kernel_size,
                                  pool_kernel_size>(
@@ -214,7 +218,7 @@ int main(int argc, char **argv)
   printf("\n");
 
   //write detailed timing to stderr
-  write_results<NUM_IMPLEMENTATIONS, RUNS>(combined_timing);
+  // write_results<NUM_IMPLEMENTATIONS, RUNS>(combined_timing);
 
 
   free(input_dc);

@@ -1,5 +1,5 @@
 
-#include <immintrin.h>
+// #include <immintrin.h>
 
 
 #include "scalar_intrinsics.h"
@@ -100,7 +100,7 @@ inline void conv_kernel_start_end(
                             uint32_t W_last
                            ){
 
-  ZERO_TILE_C(W_ob, C_ob);
+  ZERO_END_C(W_last, C_ob);
 
   int updates = 0;
   // uint32_t step = C_ob;//stride*C_ob;

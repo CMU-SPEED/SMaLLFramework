@@ -53,7 +53,7 @@ void init(float * ptr, uint32_t numel)
   float * cur_ptr = ptr;
   for(uint32_t i = 0 ; i < numel ; i++)
   {
-    *(cur_ptr++) = ((float) rand()/ RAND_MAX) + 1; 
+    *(cur_ptr++) = 2.0*((float) rand()/ RAND_MAX) - 1; 
   }
 }
 
@@ -62,10 +62,27 @@ void init_ones(float *ptr, uint32_t numel)
   float *cur_ptr = ptr;
   for (uint32_t i = 0; i < numel; i++)
   {
-    *(cur_ptr++) = 1;
+    *(cur_ptr++) = 1.0;
   }
 }
 
+void init_arange(float *ptr, uint32_t H, uint32_t W, uint32_t C)
+{
+  float *cur_ptr = ptr;
+  for (uint32_t i = 0; i < C; i+=C_ob)
+  {
+    for(uint32_t j = 0 ; j < H; j++)
+    {
+      for(uint32_t k = 0; k < W; k++)
+      {
+        for(uint32_t ii = 0; ii < C_ob; ii++)
+        {
+           *(cur_ptr++) =  k+1;
+        }
+      }
+    }
+  }
+}
 void init_norm(float *ptr, uint32_t numel, uint32_t C_o)
 {
   float *cur_ptr = ptr;
@@ -84,7 +101,9 @@ bool equals(uint32_t numel, float *unfused, float *fused, float tolerance = 1e-8
   for (uint32_t i = 0; i < numel; i++)
   {
     float diff = *(fused_ptr) - *(unfused_ptr);
-    if(fabs( diff > tolerance))
+    // printf("%d %.4f %.4f %.4f\n", i, *(fused_ptr), *(unfused_ptr), diff);
+
+    if(fabs(diff) > tolerance)
     {
       printf("%d %.4f %.4f %.4f\n", i, *(fused_ptr), *(unfused_ptr), diff);
       check = 0; 

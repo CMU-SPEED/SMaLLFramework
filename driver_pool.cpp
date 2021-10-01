@@ -12,7 +12,7 @@
 //Sample Convolution driver
 
 #define RUNS 1
-#define PARALLEL 1
+#define PARALLEL 0
 
 #define LIMIT 1e-4
 #include "src/direct_convolution.h"
@@ -23,9 +23,9 @@
 
 int main(int argc, char **argv)
 {
-  if (argc != 5)
+  if (argc < 5)
   {
-    printf("USAGE: torch_pool < 3x3 Input Channels> <3x3 Output Channels> <Output Height> <Output Width (multiple of 6)>\n");
+    printf("USAGE: fused_pool < 3x3 Input Channels> <3x3 Output Channels> <Output Height> <Output Width>\n");
     return 0;
   }
 
@@ -73,8 +73,12 @@ int main(int argc, char **argv)
   float *out_fused_dc = alloc(out_dimensions);
 
   //init
-  init(input_dc, in_dimensions);
-  init(filter_dc, filter_dimensions);
+  // init(input_dc, in_dimensions);
+  init_arange(input_dc, N, M, C_i);
+
+  init_norm(filter_dc, filter_dimensions, C_o);
+
+  // init_arange(filter_dc, pool_kernel_size, pool_kernel_size, C_o);
 
 
 
@@ -83,7 +87,7 @@ int main(int argc, char **argv)
 
 
   //set up log file to capture all the timing
-  constexpr int NUM_IMPLEMENTATIONS = 4;
+  constexpr int NUM_IMPLEMENTATIONS = 3;
   uint64_t combined_timing[(NUM_IMPLEMENTATIONS + 1) * RUNS];
   uint64_t *timing = combined_timing;
   uint64_t t0, t1;
@@ -111,7 +115,7 @@ int main(int argc, char **argv)
 
   print_cycles(sum, RUNS);
   //Test Fused implementations
-
+  printf("end unfused\n");
   uint64_t *fused_timing = combined_timing + RUNS;
   for (int implementation = 0; implementation < NUM_IMPLEMENTATIONS; implementation++)
   {
@@ -178,7 +182,7 @@ int main(int argc, char **argv)
         break;
         case 0:
           t0 = rdtsc();
-          row_full_fused_pooling<stride,
+          row_partial_fused_pooling<stride,
                                  kernel_size, kernel_size,
                                  pool_stride, pool_kernel_size,
                                  pool_kernel_size>(
@@ -194,17 +198,23 @@ int main(int argc, char **argv)
           break;
       }
       REDUCE(sum_fused, (t1 - t0));
+      fused_timing[implementation * RUNS + run] = (t1 - t0);
     }
     // assert(check_eqivalence(out_intermediate, 'o', out_intermediate_dimensions, out_intermediate_dc, LIMIT) == 1);
+    printf("implementation %d\t", implementation);
+    // if(out_intermediate_buffer_dimensions==out_intermediate_dimensions)
+    // {
+    //   printf("buffer conv check\n");
+    //   assert(equals(out_intermediate_dimensions, out_intermediate_dc, out_intermediate_buffer, LIMIT) == 1);
+    // }
     assert(equals(out_dimensions, out_dc, out_fused_dc, LIMIT) == 1);
-    printf("%d\t", implementation);
     print_cycles(sum_fused, RUNS);
   }
 
   printf("\n");
 
   //write detailed timing to stderr
-  write_results<NUM_IMPLEMENTATIONS, RUNS>(combined_timing);
+  // write_results<NUM_IMPLEMENTATIONS, RUNS>(combined_timing);
 
   free(input_dc);
   free(filter_dc);

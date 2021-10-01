@@ -5,6 +5,14 @@
 
 #include "scalar_intrinsics.h"
 
+// void print256_float(__m256 var)
+// {
+//     float val[8];
+//     memcpy(val, &var, sizeof(val));
+//     printf("Numerical: %.5f %.5f %.5f %.5f %.5f %.5f %.5f %.5f \n",
+//            val[0], val[1], val[2], val[3], val[4], val[5],
+//            val[6], val[7]);
+// }
 
 template <uint32_t step, uint32_t H_f, uint32_t W_f>
 inline void pool_kernel(
@@ -107,11 +115,13 @@ void row_pool_kernel(
                                      (O_pool_col) * C_ob;
 
         LOAD_TILE_C_strided(I, step, W_ob_pool, C_ob);
+        print256_float(c0);
         for (uint32_t m = 1; m < pool_W_f; m++)
         {
             int input_stencil_w = m * C_ob;
             float *a = I + input_stencil_w;
             MAX_TILE_C(step, a, W_ob_pool, C_ob);
+            print256_float(c0);
         }
         STORE_TILE_C_POOL(O_pool_ptr, W_ob_pool, C_ob);
     }
@@ -129,6 +139,8 @@ void row_pool_kernel(
                 int input_stencil_w = m * C_ob;
                 float *a = I + input_stencil_w;
                 MAX_TILE_C(step, a, W_ob_pool, C_ob);
+        print256_float(c0);
+
             }
             STORE_TILE_C_POOL(O_pool_ptr, W_ob_pool, C_ob);
         }
@@ -146,6 +158,7 @@ void row_pool_kernel_end(
     uint32_t W_last)
 {
     //write to as many rows as required
+    
     if (O_row % (pool_stride) == 0 && (O_row + pool_H_f - 1) < H_o)
     {
         float *O_pool_ptr = O_pool +
@@ -153,11 +166,14 @@ void row_pool_kernel_end(
                             (O_pool_col)*C_ob;
 
         LOAD_LAST_C_strided(I, step, W_ob_pool, C_ob, W_last);
+        printf("initial load %.2f %.2f \n", c_tile[0], I[0]);
+
         for (uint32_t m = 1; m < pool_W_f; m++)
         {
             int input_stencil_w = m * C_ob;
             float *a = I + input_stencil_w;
             MAX_END_C(step, a, W_last, C_ob);
+            printf("update %.2f %.2f %.2f\n", c_tile[0], O_pool_ptr[0], a[0]);
         }
         STORE_END_C(O_pool_ptr, W_ob_pool, C_ob, W_last);
     }
@@ -175,6 +191,7 @@ void row_pool_kernel_end(
                 int input_stencil_w = m * C_ob;
                 float *a = I + input_stencil_w;
                 MAX_END_C(step, a, W_last, C_ob);
+                printf("update %.2f %.2f %.2f\n", c_tile[0], O_pool_ptr[0], a[0]);
             }
             STORE_END_C_POOL(O_pool_ptr, W_ob_pool, C_ob, W_last);
         }
@@ -224,7 +241,7 @@ void fused_conv_pool_kernel(
             }
         }
     }
-    // STORE_TILE_C(O, W_ob, C_ob);
+    STORE_TILE_INTER(W_ob, C_ob);
     //Fused pooling
     MAX_TILE_IP(pool_col_stride, W_ob, C_ob, pool_stride, pool_H_f, pool_W_f, O_row, O_col, O_pool, H_o, W_o_full) ;
 }

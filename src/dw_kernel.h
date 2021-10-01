@@ -4,8 +4,16 @@
 
 
 
-#include "scalar_intrinsics.h"
+#include "zen2_intrinsics.h"
 
+// void print256_float(__m256 var)
+// {
+//     float val[8];
+//     memcpy(val, &var, sizeof(val));
+//     printf("Numerical: %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f \n",
+//            val[0], val[1], val[2], val[3], val[4], val[5],
+//            val[6], val[7]);
+// }
 
 template <uint32_t step, uint32_t H_f, uint32_t W_f>
 inline void dw_kernel(
@@ -14,18 +22,19 @@ inline void dw_kernel(
                             float * F,
                             float * O){
     float *b = F;
-    LOAD_TILE_C_strided(I, step, W_ob_dw, C_ob);
+    LOAD_TILE_C_strided_DW(I, step, W_ob_dw, C_ob);
     MUL_TILE_C(b, W_ob_dw, C_ob);
     int updates = 0;
     // uint32_t step = stride*C_ob;
     // int count = 0;
     b += C_ob;
+    // printf("%d %d %f \n",0, 1 ,b[0]);
     for(uint32_t m = 1; m < W_f; m++){
         int input_stencil_w = m*C_ib;
         float *a = I + input_stencil_w;
         DW_TILE_C(step, a, b, W_ob_dw, C_ob);
+
         b += C_ob;
-        
     }
     for(uint32_t n = 1; n < H_f; n++){
         int input_stencil_h = n * input_col_stride;
@@ -33,8 +42,8 @@ inline void dw_kernel(
             int input_stencil_w = m*C_ib + input_stencil_h;
             float *a = I + input_stencil_w;
             DW_TILE_C(step, a, b, W_ob_dw, C_ob);
+
             b += C_ob;
-            
         }
     }
     STORE_TILE_C(O, W_ob_dw, C_ob);
@@ -106,7 +115,7 @@ void row_dw_kernel(
                                      (O_pool_col) * C_ob;
 
         float *b = F_dw;
-        LOAD_TILE_C_strided(I, step, W_ob_dw, C_ob);
+        LOAD_TILE_C_strided_DW(I, step, W_ob_dw, C_ob);
         MUL_TILE_C(b, W_ob_dw, C_ob);
         b+=C_ob;
         for (uint32_t m = 1; m < pool_W_f; m++)
@@ -116,7 +125,7 @@ void row_dw_kernel(
             DW_TILE_C(step, a, b, W_ob_dw, C_ob);
             b+=C_ob;
         }
-        STORE_TILE_C_POOL(O_pool_ptr, W_ob_dw, C_ob);
+        STORE_TILE_C(O_pool_ptr, W_ob_dw, C_ob);
     }
     for(uint32_t n_p = 1; n_p < pool_H_f; n_p++)
     {
@@ -127,7 +136,7 @@ void row_dw_kernel(
                                     ((O_row - n_p) / pool_stride) * pool_col_stride +
                                         (O_pool_col) * C_ob;
             float * b = F_dw + n_p*(pool_W_f)*C_ob;
-            LOAD_TILE_C_POOL(O_pool_ptr, W_ob_dw, C_ob);
+            LOAD_TILE_C_DW(O_pool_ptr, W_ob_dw, C_ob);
             for (uint32_t m = 0; m < pool_W_f; m++)
             {
                 int input_stencil_w = m * C_ob;
@@ -135,7 +144,7 @@ void row_dw_kernel(
                 DW_TILE_C(step, a, b, W_ob_dw, C_ob);
                 b += C_ob;
             }
-            STORE_TILE_C_POOL(O_pool_ptr, W_ob_dw, C_ob);
+            STORE_TILE_C(O_pool_ptr, W_ob_dw, C_ob);
         }
     }
 }
@@ -151,6 +160,7 @@ void row_dw_kernel_end(
     uint32_t H_o,
     uint32_t W_last)
 {
+    // printf("%d last \n", W_last);
         //write to as many rows as required
         if (O_row % (pool_stride) == 0 && (O_row + pool_H_f - 1) < H_o)
     {
@@ -160,13 +170,18 @@ void row_dw_kernel_end(
 
         float *b = F_dw;
         LOAD_LAST_C_strided(I, step, W_ob_dw, C_ob, W_last);
+        // printf("%.2f %.2f \n", c_tile[0], I[0]);
         MUL_END_C(b, W_last, C_ob);
-        b += C_ob;
+        // printf("%.2f %.2f \n", c_tile[0], I[0]);
+
+            b += C_ob;
         for (uint32_t m = 1; m < pool_W_f; m++)
         {
             int input_stencil_w = m * C_ob;
             float *a = I + input_stencil_w;
             DW_END_C(step, a, b, W_last, C_ob);
+            // printf("%.2f %.2f \n", c_tile[0], a[0]);
+
             b += C_ob;
         }
         STORE_END_C_POOL(O_pool_ptr, W_ob_dw, C_ob, W_last);
@@ -186,9 +201,12 @@ void row_dw_kernel_end(
                 int input_stencil_w = m * C_ob;
                 float *a = I + input_stencil_w;
                 DW_END_C(step, a, b, W_last, C_ob);
+                // printf("%.2f %.2f \n", c_tile[0], a[0]);
+
                 b += C_ob;
             }
             STORE_END_C_POOL(O_pool_ptr, W_ob_dw, C_ob, W_last);
+            // printf("%.2f \n", O_pool_ptr[0]);
         }
     }
     
@@ -240,7 +258,8 @@ void fused_conv_dw_kernel(
             }
         }
     }
-    STORE_TILE_C(O, W_ob, C_ob);
+    //buffer the outputs locally
+    STORE_TILE_INTER(W_ob, C_ob);
     //Fused pooling
     DW_TILE_IP(pool_col_stride, W_ob, C_ob, pool_stride, pool_H_f, pool_W_f, F_dw, O_row, O_col, O_pool, H_o, W_o_full);
 }
@@ -290,7 +309,7 @@ inline void fused_conv_dw_kernel_end(
             }
         }
     }
-    STORE_END_C(O, W_ob, C_ob, W_last);
+    // STORE_END_C(O, W_ob, C_ob, W_last);
 
     DW_END_IP(pool_col_stride, W_last, C_ob, pool_stride, pool_H_f, pool_W_f, F_dw, O_row, O_col, O_pool, H_o, W_o_full);
 }
