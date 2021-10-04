@@ -46,6 +46,7 @@ float *alloc_dc_pooling_aware(torch::Tensor t, std::vector<uint32_t> &dimensions
 
 // copey elements of the torch tensor into the flat buffer allocated above in the
 // direct conv data layout
+template<uint32_t C_ob, uint32_t C_ib>
 int copy_torch2dc(torch::Tensor t,
                   char type, // 'i' = input, 'f' = filter, 'o'  = output
                   std::vector<uint32_t> dim_sizes,
@@ -104,8 +105,8 @@ int copy_torch2dc(torch::Tensor t,
         }
         else
         {
-            reshape_tensor = t.reshape({dim_sizes[1] / C_ob, C_ob, dim_sizes[2], dim_sizes[3]});
-            reshape_tensor = reshape_tensor.permute({0, 2, 3, 1});
+            reshape_tensor = t.reshape({dim_sizes[0] / C_ob, C_ob, C_ib, dim_sizes[2], dim_sizes[3]});
+            reshape_tensor = reshape_tensor.permute({0, 3, 4, 2, 1});
         }
     }
     else
@@ -126,74 +127,75 @@ int copy_torch2dc(torch::Tensor t,
 }
 
 // Tiling in the width dimenstion (Ignore for now)
-int copy_torch2dc_gemm(torch::Tensor t,
-                       char type,
-                       std::vector<uint32_t> dim_sizes,
-                       float *dc_array, bool fused = false)
-{
-    // float * flat_t = t.data_ptr<float>();
-    // uint32_t dim5, dim_4, dim_3, dim_2, dim_1, dim_0;
-    uint32_t dim_3, dim_2, dim_1, dim_0;
+// int copy_torch2dc_gemm(torch::Tensor t,
+//                        char type,
+//                        std::vector<uint32_t> dim_sizes,
+//                        float *dc_array, bool fused = false)
+// {
+//     // float * flat_t = t.data_ptr<float>();
+//     // uint32_t dim5, dim_4, dim_3, dim_2, dim_1, dim_0;
+//     uint32_t dim_3, dim_2, dim_1, dim_0;
 
-    uint32_t ip_block, op_block;
+//     uint32_t ip_block, op_block;
 
-    dim_3 = dim_sizes[0]; //C_o
-    dim_2 = dim_sizes[1]; //C_i
-    dim_1 = dim_sizes[2]; //H_f
-    dim_0 = dim_sizes[3]; //W_f
+//     dim_3 = dim_sizes[0]; //C_o
+//     dim_2 = dim_sizes[1]; //C_i
+//     dim_1 = dim_sizes[2]; //H_f
+//     dim_0 = dim_sizes[3]; //W_f
 
-    uint32_t total_elements = dim_3 * dim_2 * dim_1 * dim_0;
-    torch::Tensor reshape_tensor;
-    if (type == 'i')
-    {
-        //input
-        ip_block = C_ib;
-        op_block = 1;
-        reshape_tensor = t.reshape({dim_sizes[1] / C_ib, C_ib, dim_sizes[2], dim_sizes[3] / W_ob, W_ob});
-        reshape_tensor = reshape_tensor.permute({0, 2, 3, 1, 4});
-    }
-    else if (type == 'o')
-    {
-        //output
-        ip_block = C_ob;
-        op_block = 1;
-        reshape_tensor = t.reshape({dim_sizes[1] / C_ob, C_ob, dim_sizes[2], dim_sizes[3]});
-        reshape_tensor = reshape_tensor.permute({0, 2, 3, 1});
-    }
-    else if (type == 'f')
-    {
-        //filter
-        if (fused)
-        {
-            reshape_tensor = t.reshape({dim_sizes[0] / C_ob, C_ob, dim_sizes[1] / C_ib, C_ib, dim_sizes[2], dim_sizes[3]});
-            reshape_tensor = reshape_tensor.permute({2, 0, 4, 5, 3, 1});
-        }
-        else
-        {
-            reshape_tensor = t.reshape({dim_sizes[0] / C_ob, C_ob, dim_sizes[1] / C_ib, C_ib, dim_sizes[2], dim_sizes[3]});
-            reshape_tensor = reshape_tensor.permute({0, 2, 4, 5, 3, 1});
-        }
-        ip_block = C_ib;
-        op_block = C_ob;
-    }
-    else
-    {
-        return 0;
-    }
-    // reshape_tensor.to(torch::kCPU);
-    auto flattened_tensor = torch::flatten(reshape_tensor);
-    // copying
-    float *flat_t = flattened_tensor.data_ptr<float>();
-    uint32_t offset = 0;
-    for (uint32_t flattened_index = 0; flattened_index < total_elements; ++flattened_index)
-    {
-        dc_array[flattened_index] = flat_t[flattened_index];
-    }
+//     uint32_t total_elements = dim_3 * dim_2 * dim_1 * dim_0;
+//     torch::Tensor reshape_tensor;
+//     if (type == 'i')
+//     {
+//         //input
+//         ip_block = C_ib;
+//         op_block = 1;
+//         reshape_tensor = t.reshape({dim_sizes[1] / C_ib, C_ib, dim_sizes[2], dim_sizes[3] / W_ob, W_ob});
+//         reshape_tensor = reshape_tensor.permute({0, 2, 3, 1, 4});
+//     }
+//     else if (type == 'o')
+//     {
+//         //output
+//         ip_block = C_ob;
+//         op_block = 1;
+//         reshape_tensor = t.reshape({dim_sizes[1] / C_ob, C_ob, dim_sizes[2], dim_sizes[3]});
+//         reshape_tensor = reshape_tensor.permute({0, 2, 3, 1});
+//     }
+//     else if (type == 'f')
+//     {
+//         //filter
+//         if (fused)
+//         {
+//             reshape_tensor = t.reshape({dim_sizes[0] / C_ob, C_ob, dim_sizes[1] / C_ib, C_ib, dim_sizes[2], dim_sizes[3]});
+//             reshape_tensor = reshape_tensor.permute({2, 0, 4, 5, 3, 1});
+//         }
+//         else
+//         {
+//             reshape_tensor = t.reshape({dim_sizes[0] / C_ob, C_ob, dim_sizes[1] / C_ib, C_ib, dim_sizes[2], dim_sizes[3]});
+//             reshape_tensor = reshape_tensor.permute({0, 2, 4, 5, 3, 1});
+//         }
+//         ip_block = C_ib;
+//         op_block = C_ob;
+//     }
+//     else
+//     {
+//         return 0;
+//     }
+//     // reshape_tensor.to(torch::kCPU);
+//     auto flattened_tensor = torch::flatten(reshape_tensor);
+//     // copying
+//     float *flat_t = flattened_tensor.data_ptr<float>();
+//     uint32_t offset = 0;
+//     for (uint32_t flattened_index = 0; flattened_index < total_elements; ++flattened_index)
+//     {
+//         dc_array[flattened_index] = flat_t[flattened_index];
+//     }
 
-    return 1;
-}
+//     return 1;
+// }
 
 // check whether the pytorch output matches C++ output
+template<uint32_t C_ob, uint32_t C_ib>
 bool check_eqivalence(torch::Tensor t,
                       char type,
                       std::vector<uint32_t> dim_sizes,
@@ -285,19 +287,20 @@ bool check_eqivalence(torch::Tensor t,
     }
     return check;
 }
-//check whether the last block of the unfused 3x3 output matches the output buffer of the fused convolution
-bool check_block_eqivalence(uint32_t block_size,
-                            float *dc_buffer,
-                            float *dc_array, float tolerance = 1e-8)
-{
-    bool check = 1;
-    for (int i = 0; i < block_size; i++)
-    {
-        check &= (fabs(dc_array[i] - dc_buffer[i]) < tolerance);
-        // printf(" %f  %f %d\n", dc_array[i], dc_buffer[i], check);
-    }
-    return check;
-}
+
+// //check whether the last block of the unfused 3x3 output matches the output buffer of the fused convolution
+// bool check_block_eqivalence(uint32_t block_size,
+//                             float *dc_buffer,
+//                             float *dc_array, float tolerance = 1e-8)
+// {
+//     bool check = 1;
+//     for (int i = 0; i < block_size; i++)
+//     {
+//         check &= (fabs(dc_array[i] - dc_buffer[i]) < tolerance);
+//         // printf(" %f  %f %d\n", dc_array[i], dc_buffer[i], check);
+//     }
+//     return check;
+// }
 
 void write_results(std::string file, std::vector<std::vector<uint64_t>> implementations)
 {

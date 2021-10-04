@@ -10,6 +10,10 @@ SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${GCC_AVX_COMPILE_FLAGS}")
 
 #[[Comment Lines 12-26 out if you don not have libtorch]]
 find_package(Torch REQUIRED)
+add_executable(torch_conv torch_driver_scalar.cpp )
+target_link_libraries(torch_conv "${TORCH_LIBRARIES}")
+set_property(TARGET torch_conv PROPERTY CXX_STANDARD 14)
+
 
 add_executable(torch_dw torch_driver_dw_scalar.cpp )
 target_link_libraries(torch_dw "${TORCH_LIBRARIES}")

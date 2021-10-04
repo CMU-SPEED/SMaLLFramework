@@ -2,11 +2,11 @@
 
 #include<immintrin.h>
 //Architecture specific tiling params
-#define W_ob_dw 6
-#define W_ob_pool 3
-#define W_ob 6
-#define C_ob 16
-#define C_ib 16
+// #define W_ob_dw 6
+// #define W_ob_pool 3
+// #define W_ob 6
+// #define C_ob 16
+// #define C_ib 16
 
 #define SIMD 8
 

@@ -66,6 +66,7 @@ void init_ones(float *ptr, uint32_t numel)
   }
 }
 
+template<uint32_t C_ob>
 void init_arange(float *ptr, uint32_t H, uint32_t W, uint32_t C)
 {
   float *cur_ptr = ptr;

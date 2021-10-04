@@ -1,13 +1,6 @@
 //scalar versions of all the microkernels for platform portability
 
 //Architecture specific tiling params
-#define W_ob 6
-#define C_ob 16
-#define C_ib 16
-
-#define W_ob_dw W_ob
-#define W_ob_pool 3
-#define W_ob_g W_ob
 
 
 // __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;

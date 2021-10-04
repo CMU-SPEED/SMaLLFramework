@@ -251,7 +251,7 @@ int main(int argc, char **argv)
       // Copy Inputs to their flat buffers
 
       t0 = rdtsc();
-      direct_convolution<stride, kernel_size, kernel_size>(C_i, C_o, N, M, input_dc, filter_dc, out_intermediate_dc);
+      direct_convolution<W_ob, C_ob, C_ib, stride, kernel_size, kernel_size>(C_i, C_o, N, M, input_dc, filter_dc, out_intermediate_dc);
       // t1 = rdtsc();
       // MIN(sum,(t1 - t0));
       // t0 = rdtsc();
