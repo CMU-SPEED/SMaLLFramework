@@ -30,10 +30,6 @@
 #include "src/direct_convolution.h"
 // #include "src/fused_conv_dw.h"
 #include "src/torch_utils.h"
-
-//Problem size
-#include "config.h"
-
 //Good Ol' Timing
 static __inline__ unsigned long long rdtsc(void)
 {
@@ -88,37 +84,57 @@ WSS Size Out_img pool : %.2f K/8K elements  dims: %u %u %u\n\
 
 #define LIMIT 1e-2
 
+// layer type pickers
+static enum LayerOp { conv,
+                      bneck,
+                      group,
+                      dwise };
+
+// Map to associate the strings with the enum values
+static std::map<std::string, LayerOp> s_mapLayerOps;
+
+static void Initialize();
+
 int main(int argc, char **argv)
 {
     printf("%d \t %d\t ", BUFFER, PREFETCH);
     if (argc < 5)
     {
-        printf("USAGE: torch_pool < 3x3 Input Channels> <3x3 Output Channels> <Output Height> <Output Width (multiple of 6) <logfilename>>\n");
+        printf("USAGE: torch_general <Layer Type> <Input Channels> <Output Channels> <Output Height> <Output Width> <logfilename>>\n");
         return 0;
     }
+    Initialize();
 
-    // Setup Problem Size from command line variables
-    int C_i = atoi(argv[1]);
-    int C_o = atoi(argv[2]);
+    // Architecture specific constants
+    constexpr uint32_t W_ob = 6;
+    constexpr uint32_t C_ob = 16;
+    constexpr uint32_t C_ib = 16;
+
+
+
+    // Setup Layer Types and Parameters from command line variables
+    std::string layer_type(argv[1]);
+    
+    std::cout<< s_mapLayerOps[layer_type];
+
+
+    int C_i = atoi(argv[2]);
+    int C_o = atoi(argv[3]);
 
     // int C_o_1 = atoi(argv[3]);
 
-    constexpr int kernel_size = config_kernel_size;
-    constexpr int stride = config_stride;
+    constexpr int kernel_size = 3;
+    constexpr int stride = 1;
 
     constexpr int channel_stride = 1;
 
-
-    constexpr uint32_t W_ob  =  6;
-    constexpr uint32_t C_ob  = 16;
-    constexpr uint32_t C_ib  = 16;
     constexpr int C_o_1 = C_ib;
     // constexpr uint32_t W_ob_dw W_ob
     // constexpr uint32_t W_ob_pool 3
     // constexpr uint32_t W_ob_g W_ob
 
-    int output_rows = atol(argv[3]);
-    int output_cols = atol(argv[4]);
+    int output_rows = atol(argv[4]);
+    int output_cols = atol(argv[5]);
     // printf("%d %d", output_rows, output_cols);
     int N = (output_rows - 1) * stride + kernel_size;
     int M = (output_cols - 1) * stride + kernel_size;
@@ -223,7 +239,7 @@ int main(int argc, char **argv)
         {
             // Copy Inputs to their flat buffers
             t0 = rdtsc();
-            direct_convolution<W_ob, C_ob, C_ib, stride, channel_stride, kernel_size, kernel_size>(C_i, C_o, 1,  N, M, input_dc, filter_dc, out_intermediate_dc);
+            direct_convolution<W_ob, C_ob, C_ib, stride, channel_stride, kernel_size, kernel_size>(C_i, C_o, 1, N, M, input_dc, filter_dc, out_intermediate_dc);
             t1 = rdtsc();
             MIN(sum_pool, (t1 - t0));
             unfused_timing.push_back((t1 - t0));
