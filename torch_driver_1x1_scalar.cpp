@@ -88,7 +88,7 @@ WSS Size Out_img pool : %.2f K/8K elements  dims: %u %u %u\n\
 
 int main(int argc, char **argv)
 {
-    printf("%d \t %d\t ", BUFFER, PREFETCH);
+    // printf("%d \t %d\t ", BUFFER, PREFETCH);
     if (argc < 5)
     {
         printf("USAGE: torch_pool < 3x3 Input Channels> <3x3 Output Channels> <Output Height> <Output Width (multiple of 6) <logfilename>>\n");
@@ -233,7 +233,7 @@ int main(int argc, char **argv)
 
         print_cycles(sum_pool);
 
-        printf("%2.3f %d \n", (100.0 * sum_pytorch) / (sum_pool), check);
+        printf("%2.3f \n", (100.0 * sum_pytorch) / (sum_pool));
 
         fflush(0);
     }

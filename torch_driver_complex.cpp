@@ -25,13 +25,17 @@
 #endif
 #define PREFETCH 1
 
+#define COMPLEX 2
+
 #define H_TILE 0
 #define POOLING 1
-#include "src/direct_convolution.h"
+#include "src/direct_complex_convolution.h"
 // #include "src/fused_conv_dw.h"
 #include "src/torch_utils.h"
 
+//Problem size
 #include "config.h"
+
 //Good Ol' Timing
 static __inline__ unsigned long long rdtsc(void)
 {
@@ -88,7 +92,7 @@ WSS Size Out_img pool : %.2f K/8K elements  dims: %u %u %u\n\
 
 int main(int argc, char **argv)
 {
-    // printf("%d \t %d\t ", BUFFER, PREFETCH);
+    printf("%d \t %d\t ", BUFFER, PREFETCH);
     if (argc < 5)
     {
         printf("USAGE: torch_pool < 3x3 Input Channels> <3x3 Output Channels> <Output Height> <Output Width (multiple of 6) <logfilename>>\n");
@@ -96,29 +100,24 @@ int main(int argc, char **argv)
     }
 
     // Setup Problem Size from command line variables
-
-
-
-    constexpr uint32_t W_ob  =  6;
-    constexpr uint32_t C_ob  = 16;
-    constexpr uint32_t C_ib  = 16;
-
-
-   
-    // int C_o = atoi(argv[2]);
+    int C_i = atoi(argv[1]);
+    int C_o = atoi(argv[2]);
 
     // int C_o_1 = atoi(argv[3]);
 
     constexpr int kernel_size = config_kernel_size;
     constexpr int stride = config_stride;
 
-    constexpr int C_o_1 = 1;
-    constexpr int channel_stride = C_o_1;
+    constexpr int channel_stride = 1;
+
+
+    constexpr uint32_t W_ob  =  6;
+    constexpr uint32_t C_ob  = 16;
+    constexpr uint32_t C_ib  = 16;
+    constexpr int C_o_1 = C_ib;
     // constexpr uint32_t W_ob_dw W_ob
     // constexpr uint32_t W_ob_pool 3
     // constexpr uint32_t W_ob_g W_ob
-
-    int C_i = atoi(argv[1]);
 
     int output_rows = atol(argv[3]);
     int output_cols = atol(argv[4]);
@@ -134,32 +133,46 @@ int main(int argc, char **argv)
 
     // Create and Initialize Pytorch tensors
     torch::manual_seed(1729);
-    torch::Tensor a = torch::arange(C_i * N * M).reshape({1, C_i, N, M});
-    a = torch::mul(a, 1.0);
-    torch::Tensor test_weights = torch::arange(C_o_1 * C_i * kernel_size * kernel_size).reshape({C_i, C_o_1, kernel_size, kernel_size});
+    torch::Tensor a_real = torch::ones(C_i * N * M).reshape({1, C_i, N, M});
+    torch::Tensor a_imag = torch::ones(C_i * N * M).reshape({1, C_i, N, M});
+  
+    torch::Tensor test_weights_real = torch::ones(C_o * C_i * kernel_size * kernel_size).reshape({C_o, C_i, kernel_size, kernel_size});
+    torch::Tensor test_weights_imag = torch::ones(C_o * C_i * kernel_size * kernel_size).reshape({C_o, C_i, kernel_size, kernel_size});
+    a_real = torch::mul(a_real, 2.0);
+    a_imag = torch::mul(a_imag, 1.0);
+
+    test_weights_real = torch::mul(test_weights_real, 1.0 / (1.0 * kernel_size * kernel_size * C_i));
+    test_weights_imag = torch::mul(test_weights_imag, 1.0 / (1.0 * kernel_size * kernel_size * C_i));
+
+    test_weights_real = torch::mul(test_weights_real, 3.0);
+    test_weights_imag = torch::mul(test_weights_imag, 4.0);
 
 
-  test_weights = torch::mul(test_weights, 1.0 / (1.0 * kernel_size * kernel_size * C_o_1));
-
-    // std::cout<< test_weights;
     std::vector<std::vector<uint64_t>> implementations;
 
     //Create PyTorch Convolution layers
     //set weights to generated values
-    auto conv_3x3 = torch::nn::Conv2d(torch::nn::Conv2dOptions(C_i, C_o_1*C_i, kernel_size).stride(stride).padding(0).groups(C_i/C_o_1).bias(false));
+    auto conv_3x3_real = torch::nn::Conv2d(torch::nn::Conv2dOptions(C_i, C_o, kernel_size).stride(stride).padding(0).bias(false));
 
-    conv_3x3->weight = test_weights;
+    conv_3x3_real->weight = test_weights_real;
+
+    auto conv_3x3_imag = torch::nn::Conv2d(torch::nn::Conv2dOptions(C_i, C_o, kernel_size).stride(stride).padding(0).bias(false));
+
+    conv_3x3_imag->weight = test_weights_imag;
 
     //Run Inference with LibTorch
     unsigned long long t0, t1;
     unsigned long long sum_pytorch = ULLONG_MAX;
-    torch::Tensor out_intermediate, out;
+    torch::Tensor out_real, out_imag;
     float avg;
     std::vector<uint64_t> pytorch_timing;
     for (uint32_t r = 0; r < RUNS/10; r++)
     {
         t0 = rdtsc();
-        out_intermediate = conv_3x3(a);\
+        out_real = conv_3x3_real(a_real);
+        out_real += conv_3x3_imag(a_imag);
+        out_imag = conv_3x3_real(a_imag);
+        out_imag += conv_3x3_imag(a_real);
         t1 = rdtsc();
         MIN(sum_pytorch, (t1 - t0));
         pytorch_timing.push_back((t1 - t0));
@@ -167,20 +180,26 @@ int main(int argc, char **argv)
     implementations.push_back(pytorch_timing);
     print_cycles(sum_pytorch);
     fflush(0);
-
+    // std::cout << out_real<< std::endl;
+    // std::cout << out_imag << std::endl;
     //Direct Convolution Setup
     // Copy layer weights to temporaries
-    torch::Tensor weights = test_weights; //conv_3x3->weight;
+    //concatenate real and imaginary values
+    auto combined_input = torch::cat({a_real, a_imag}, 0);
+    auto combined_weight = torch::cat({test_weights_real, test_weights_imag}, 0);
+    auto combined_output = torch::cat({out_real, out_imag},0);
+
     std::vector<uint32_t> in_dimensions;
     std::vector<uint32_t> filter_dimensions;
     std::vector<uint32_t> out_intermediate_dimensions;
 
     std::vector<uint32_t> intermediate_block_dimensions;
-    float *input_dc = alloc_dc(a, in_dimensions);
-    float *filter_dc = alloc_dc(weights, filter_dimensions);
-    float *out_intermediate_dc = alloc_dc(out_intermediate, out_intermediate_dimensions);
-    // std::cout<<out_intermediate_dimensions;
-
+    float *input_dc = alloc_dc(combined_input, in_dimensions);
+    float *filter_dc = alloc_dc(combined_weight, filter_dimensions);
+    float *out_intermediate_dc = alloc_dc(combined_output, out_intermediate_dimensions);
+    // std::cout <<"output: "<< out_intermediate_dimensions << std::endl
+    //           << "input: " << in_dimensions << std::endl
+    //           << "filter: "<<filter_dimensions << std::endl;
 #if PARALLEL
     uint32_t num_threads = atoi(std::getenv("OMP_NUM_THREADS"));
 #endif
@@ -214,22 +233,20 @@ int main(int argc, char **argv)
 
     {
         // Initialize Outputs to 0
-        //3x3 unfused
-        copy_torch2dc<C_ob, C_ib>(a, 'i', in_dimensions, input_dc);
-        copy_torch2dc<C_ob, C_o_1>(weights, 'd', filter_dimensions, filter_dc);
 
-        // std::cout<<"direct convolution filter  " << *filter_dc <<std::endl;
-        memset(out_intermediate_dc, 0.0, out_intermediate.numel() * sizeof(float));
-        direct_convolution<W_ob, C_ob, C_o_1, stride, channel_stride, kernel_size, kernel_size>(C_o_1, C_o_1, C_i / C_o_1, N, M, input_dc, filter_dc, out_intermediate_dc);
-        bool check = check_eqivalence<C_ob, C_ib>(out_intermediate, 'o', out_intermediate_dimensions, out_intermediate_dc, LIMIT);
-        assert(check == 1);
+        //3x3 unfused
+        copy_torch2dc<C_ob/COMPLEX, C_ib/COMPLEX>(combined_input, 'c', in_dimensions, input_dc);
+        copy_torch2dc<C_ob/COMPLEX, C_ib/COMPLEX>(combined_weight, 'k', filter_dimensions, filter_dc);
+        memset(out_intermediate_dc, 0.0, combined_output.numel() * sizeof(float));
+        direct_convolution<W_ob, C_ob, C_ib, stride, channel_stride, kernel_size, kernel_size>(C_i, C_o, 1, N, M, input_dc, filter_dc, out_intermediate_dc);
+        // bool check = check_complex_eqivalence<C_ob/COMPLEX, C_ib/COMPLEX>(combined_output, 'o', out_intermediate_dimensions, out_intermediate_dc, LIMIT);
+        // assert(check == 1);
         // printf("op : %f", out_intermediate_dcop)
         for (int run = 0; run < RUNS; run++)
         {
             // Copy Inputs to their flat buffers
             t0 = rdtsc();
-            // std::cout<< W_ob<<"  "<< C_ob<<"  "<< C_ib<<"  "<< stride<<"  "<< channel_stride<<"  "<< kernel_size<<"  "<< kernel_size<<"  "<< C_o_1 <<"  "<< C_i<< std::endl;
-            direct_convolution<W_ob,C_ob, C_o_1, stride, channel_stride, kernel_size, kernel_size>(C_o_1, C_o_1, C_i/C_o_1,  N, M, input_dc, filter_dc, out_intermediate_dc);
+            direct_convolution<W_ob, C_ob, C_ib, stride, channel_stride, kernel_size, kernel_size>(C_i, C_o, 1,  N, M, input_dc, filter_dc, out_intermediate_dc);
             t1 = rdtsc();
             MIN(sum_pool, (t1 - t0));
             unfused_timing.push_back((t1 - t0));
@@ -239,7 +256,7 @@ int main(int argc, char **argv)
 
         print_cycles(sum_pool);
 
-        printf("%2.3f %d \n", (100.0 * sum_pytorch) / (sum_pool), check);
+        printf("%2.3f %d \n", (100.0*sum_pytorch)/(sum_pool), 0);
 
         fflush(0);
     }

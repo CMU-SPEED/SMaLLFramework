@@ -1,7 +1,6 @@
  
 #define config_kernel_size 3
 #define config_stride 1
-
 // #define config_G 4
 // #define config_C_o_1 16
 
