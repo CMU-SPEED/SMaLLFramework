@@ -94,14 +94,15 @@ for i in range(1000):
     sum_pool = min(sum_pool,(et - st))
     # print((et-st))
 print(" \t {:.4f}".format(sum_pool))
+
+f = open("unopt.txt", "w")
+f.write(custom_block.experimental_get_compiler_ir(input_tensor)(stage='hlo'))
+
+f = open("opt.txt", "w")
+f.write(custom_block.experimental_get_compiler_ir(input_tensor)(stage='optimized_hlo'))
+
+f = open("dotfile_dw.txt","w")
+f.write(custom_block.experimental_get_compiler_ir(input_tensor)(stage='optimized_hlo_dot'))
+# s = Source.from_file(x"dotfile_dw.txt")
 c = input()
-# f = open("unopt.txt", "w")
-# f.write(custom_block.experimental_get_compiler_ir(input_tensor)(stage='hlo'))
-
-# f = open("opt.txt", "w")
-# f.write(custom_block.experimental_get_compiler_ir(input_tensor)(stage='optimized_hlo'))
-
-# f = open("dotfile_relu.txt","w")
-# f.write(custom_block.experimental_get_compiler_ir(input_tensor)(stage='optimized_hlo_dot'))
-# s = Source.from_file("dotfile_relu.txt")
 # s.view()
