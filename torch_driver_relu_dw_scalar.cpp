@@ -27,7 +27,7 @@
 
 #define H_TILE 0
 #define POOLING 1
-#include "src/direct_convolution.h"
+#include "src/direct_convolution_fused_norm_relu.h"
 #include "src/fused_conv_dw.h"
 #include "src/torch_utils.h"
 //Good Ol' Timing
@@ -52,7 +52,7 @@ static __inline__ unsigned long long rdtsc(void)
   }
 #define print_cycles(time)           \
   {                                  \
-    printf("%.0lf\t", 1.0 * (time)); \
+    printf("%.0lf,\t", 1.0 * (time)); \
   }
 
 #define AVG(accum, trials, avg)   \
@@ -86,7 +86,7 @@ WSS Size Out_img pool : %.2f K/8K elements  dims: %u %u %u\n\
 
 int main(int argc, char **argv)
 {
-  printf("%d \t %d\t ", BUFFER, PREFETCH);
+  // printf("%d \t %d\t ", BUFFER, PREFETCH);
   if (argc < 5)
   {
     printf("USAGE: torch_pool < 3x3 Input Channels> <3x3 Output Channels> <Output Height> <Output Width (multiple of 6) <logfilename>>\n");
@@ -103,7 +103,7 @@ int main(int argc, char **argv)
   constexpr int stride = 1;
 
   constexpr int pool_kernel_size = 3;
-  constexpr int pool_stride = 1;
+  constexpr int pool_stride = 2;
 
   int output_rows = atol(argv[3]);
   int output_cols = atol(argv[4]);
@@ -163,6 +163,7 @@ int main(int argc, char **argv)
   auto conv_3x3 = torch::nn::Conv2d(torch::nn::Conv2dOptions(C_i, C_o, kernel_size).stride(stride).padding(0).bias(false));
 
   conv_3x3->weight = test_weights;
+  auto relu = torch::relu;
 
   auto pool = torch::nn::Conv2d(torch::nn::Conv2dOptions(C_o, C_o_1 * C_o, pool_kernel_size).stride(pool_stride).padding(0).groups(C_o).bias(false));
 
@@ -177,6 +178,7 @@ int main(int argc, char **argv)
   {
     t0 = rdtsc();
     out_intermediate = conv_3x3(a);
+    out_intermediate = relu(out_intermediate);
     out = pool(out_intermediate);
     t1 = rdtsc();
     MIN(sum_pytorch, (t1 - t0));
@@ -196,6 +198,7 @@ int main(int argc, char **argv)
   {
     t0 = rdtsc();
     out_intermediate = conv_3x3(a);
+    out_intermediate = relu(out_intermediate);
     t1 = rdtsc();
     MIN(sum_p_conv, (t1 - t0));
   } 
@@ -398,7 +401,7 @@ int main(int argc, char **argv)
         break;
       case 0:
         t0 = rdtsc();
-        row_full_fused_pooling<stride,
+        row_full_fused_relu_pooling<stride,
                                kernel_size, kernel_size,
                                pool_stride, pool_kernel_size,
                                pool_kernel_size>(
@@ -441,7 +444,7 @@ int main(int argc, char **argv)
       #endif
       timings.push_back((t1 - t0));
     }
-    printf("%d\t", implementation);
+    // printf("%d\t", implementation);
     // assert(check_eqivalence(out_intermediate, 'o', out_intermediate_dimensions, out_intermediate_buffer, LIMIT) == 1);
     assert(check_eqivalence(out, 'o', out_dimensions, out_dc, LIMIT) == 1);
     print_cycles(sum_pool);

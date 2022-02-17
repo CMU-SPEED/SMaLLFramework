@@ -42,7 +42,7 @@ void direct_convolution(
     float * O_buffer = O + block_offset;
     uint32_t group_offset = j/C_o;
     // printf("%d  filter block %d %f \n", group_offset, filter_o_c_block, F[filter_o_c_block]);
-    fflush(0);
+    // fflush(0);
     for(uint32_t i = 0; i < C_f; i += _C_ib){
       // printf("second ip block \n");
       uint32_t input_block_offset;

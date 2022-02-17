@@ -28,6 +28,7 @@
 #define H_TILE 0
 #define POOLING 1
 #include "src/direct_convolution.h"
+#include "src/naive_direct_convolution.h"
 // #include "src/fused_conv_dw.h"
 #include "src/torch_utils.h"
 
@@ -56,7 +57,7 @@ static __inline__ unsigned long long rdtsc(void)
     }
 #define print_cycles(time)               \
     {                                    \
-        printf("%.0lf\t", 1.0 * (time)); \
+        printf("%.0lf, \t", 1.0 * (time)); \
     }
 
 #define AVG(accum, trials, avg)       \
@@ -97,18 +98,6 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    // Setup Problem Size from command line variables
-    int C_i = atoi(argv[1]);
-    int C_o = atoi(argv[2]);
-
-    // int C_o_1 = atoi(argv[3]);
-
-    constexpr int kernel_size = config_kernel_size;
-    constexpr int stride = config_stride;
-
-    constexpr int channel_stride = 1;
-
-
     constexpr uint32_t W_ob  =  6;
     constexpr uint32_t C_ob  = 16;
     constexpr uint32_t C_ib  = 16;
@@ -117,8 +106,31 @@ int main(int argc, char **argv)
     // constexpr uint32_t W_ob_pool 3
     // constexpr uint32_t W_ob_g W_ob
 
+    constexpr uint32_t kernel_size = config_kernel_size;
+    constexpr uint32_t stride = config_stride;
+
+    constexpr uint32_t channel_stride = config_channel_stride;
+
+    // Setup Problem Size from command line variables
+    uint32_t C_i = atoi(argv[1]);
+    uint32_t C_o = atoi(argv[2]);
+
+    // uint32_t C_o_1 = atoi(argv[3]);
+
     int output_rows = atol(argv[3]);
     int output_cols = atol(argv[4]);
+
+    uint32_t naive_kernel_size = atoi(argv[5]);
+    constexpr uint32_t naive_stride = config_stride; atoi(argv[6]);
+
+    uint32_t naive_channel_stride = atoi(argv[7]);
+
+    // printf(" %d %d %d (compile)\n %d %d %d (runtime)\n", kernel_size, stride, channel_stride, naive_kernel_size, naive_stride, naive_channel_stride);
+
+    assert(kernel_size == naive_kernel_size);
+    assert(stride == naive_stride);
+    assert(channel_stride == naive_channel_stride);
+
     // printf("%d %d", output_rows, output_cols);
     int N = (output_rows - 1) * stride + kernel_size;
     int M = (output_cols - 1) * stride + kernel_size;
@@ -232,8 +244,27 @@ int main(int argc, char **argv)
         // print_cycles(sum);
 
         print_cycles(sum_pool);
+        printf("%2.3f, ", (100.0 * sum_pytorch) / (sum_pool));
+        sum = ULLONG_MAX;
+        memset(out_intermediate_dc, 0.0, out_intermediate.numel() * sizeof(float));
+        direct_convolution_naive<W_ob, C_ob, C_ib, naive_stride>( naive_channel_stride, naive_kernel_size, naive_kernel_size, C_i, C_o, 1, N, M, input_dc, filter_dc, out_intermediate_dc);
+        // direct_convolution<W_ob, C_ob, C_ib, stride, channel_stride, naive_kernel_size, naive_kernel_size>(C_i, C_o, 1, N, M, input_dc, filter_dc, out_intermediate_dc);
+        check = check_eqivalence<C_ob, C_ib>(out_intermediate, 'o', out_intermediate_dimensions, out_intermediate_dc, LIMIT);
+        assert(check == 1);
 
-        printf("%2.3f %d \n", (100.0*sum_pytorch)/(sum_pool), check);
+        for (int run = 0; run < RUNS; run++)
+        {
+            // Copy Inputs to their flat buffers
+            t0 = rdtsc();
+            direct_convolution_naive<W_ob, C_ob, C_ib, naive_stride>( naive_channel_stride, naive_kernel_size, naive_kernel_size, C_i, C_o, 1, N, M, input_dc, filter_dc, out_intermediate_dc);
+            t1 = rdtsc();
+            MIN(sum, (t1 - t0));
+            unfused_timing.push_back((t1 - t0));
+        }
+
+        print_cycles(sum);
+
+        printf("%2.3f \n", (100.0*sum)/(sum_pool));
 
         fflush(0);
     }

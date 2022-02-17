@@ -40,8 +40,8 @@ set_property(TARGET torch_group.x PROPERTY CXX_STANDARD 14)
 
 #fused libtorch free drivers
 
-# add_executable(conv driver.cpp )
-# set_property(TARGET conv PROPERTY CXX_STANDARD 14)
+add_executable(conv driver.cpp )
+set_property(TARGET conv PROPERTY CXX_STANDARD 14)
 
 
 # add_executable(fused_dw driver_dw.cpp )
