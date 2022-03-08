@@ -1,5 +1,5 @@
-# ContextDependentFusion
-This is a working draft of the fusion model.
+# SMaLL Framework
+This branch is a draft of the the framework, Software for Machine Learning Libraries (SMaLL)
 
 ## Assumptions
  Dimensions of <b> Output Image </b> of any convolution:
@@ -15,10 +15,10 @@ Dialation is always 1\
 No padding
 
 # Dependencies
-Libtorch CPU version available here (https://pytorch.org/cppdocs/installing.html) \
 C++ (14)\
 gcc (9.3.0)\
 GNU Make (4.2.1)\
+Libtorch CPU version available here (https://pytorch.org/cppdocs/installing.html) (optional) \
 CMake (3.16.3)
 
 # Directory Structure
@@ -27,5 +27,4 @@ Libtorch Uses CMake to build its scripts. The <b>_CMakeLists.txt_</b> file provi
 ContextDependentFusion/\
 |____ <b>_libtorch_</b>/\
 |____ CMakeLists.txt\
-|____ torch_1x1.cpp\
-|____ direct_convolution.h\
+|____ <driver>.cpp\
