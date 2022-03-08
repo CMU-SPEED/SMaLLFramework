@@ -18,8 +18,9 @@ No padding
 C++ (14)\
 gcc (9.3.0)\
 GNU Make (4.2.1)\
+CMake (3.16.3)\
 Libtorch CPU version available here (https://pytorch.org/cppdocs/installing.html) (optional) \
-CMake (3.16.3)
+
 
 # Directory Structure
 Libtorch Uses CMake to build its scripts. The <b>_CMakeLists.txt_</b> file provided here assumes the following directory Structure:
