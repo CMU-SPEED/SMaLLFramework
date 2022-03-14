@@ -1,7 +1,7 @@
 
 #include <math.h>
 #include <assert.h>
-#include <omp.h>
+// #include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -10,7 +10,7 @@
 #include <vector>
 #include <string>
 #include <fstream>
-
+#include<time.h>
 // Pooling driver
 
 #define GEMM 0
@@ -201,43 +201,43 @@ int main(int argc, char **argv)
 #endif
 
         assert(equals(out_dimensions, out_check_dc, out_dc, 1e-4));
-        for (int run = 0; run < RUNS; run++)
-        {
-            t0 = rdtsc();
-#if LAYER == RELU
-            check_ReLUActivation(0, C_i, N, M, input_dc, out_check_dc);
-#elif LAYER == POOL
-            Maxpool2D(0, kernel_size, stride, padding, C_i, N, M, input_dc, out_check_dc);
-#elif LAYER == CONV
-            check_Conv2D(0, kernel_size, stride, padding, C_o, C_i, N, M, input_dc, filter_dc, out_dc);
-#endif
-            t1 = rdtsc();
-            MIN(sum, (t1 - t0));
-            unfused_timing.push_back((t1 - t0));
-        }
+//         for (int run = 0; run < RUNS; run++)
+//         {
+//             t0 = rdtsc();
+// #if LAYER == RELU
+//             check_ReLUActivation(0, C_i, N, M, input_dc, out_check_dc);
+// #elif LAYER == POOL
+//             Maxpool2D(0, kernel_size, stride, padding, C_i, N, M, input_dc, out_check_dc);
+// #elif LAYER == CONV
+//             check_Conv2D(0, kernel_size, stride, padding, C_o, C_i, N, M, input_dc, filter_dc, out_dc);
+// #endif
+//             t1 = rdtsc();
+//             MIN(sum, (t1 - t0));
+//             unfused_timing.push_back((t1 - t0));
+//         }
 
-        print_cycles(sum);
+//         print_cycles(sum);
 
-        sum = ULLONG_MAX;
-        for (int run = 0; run < RUNS; run++)
-        {
-            t0 = rdtsc();
-#if LAYER == RELU
-            ReLUActivation(0, C_i, N, M, input_dc, out_check_dc);
-#elif LAYER == POOL
-            Maxpool2D(0, kernel_size, stride, padding, C_i, N, M, input_dc, out_dc);
-#elif LAYER == CONV
-            Conv2D(0, kernel_size, stride, padding, C_o, C_i, N, M, input_dc, filter_dc, out_dc); //     #endif
-#endif
-            t1 = rdtsc();
-            MIN(sum, (t1 - t0));
-            unfused_timing.push_back((t1 - t0));
-        }
+//         sum = ULLONG_MAX;
+//         for (int run = 0; run < RUNS; run++)
+//         {
+//             t0 = rdtsc();
+// #if LAYER == RELU
+//             ReLUActivation(0, C_i, N, M, input_dc, out_check_dc);
+// #elif LAYER == POOL
+//             Maxpool2D(0, kernel_size, stride, padding, C_i, N, M, input_dc, out_dc);
+// #elif LAYER == CONV
+//             Conv2D(0, kernel_size, stride, padding, C_o, C_i, N, M, input_dc, filter_dc, out_dc); //     #endif
+// #endif
+//             t1 = rdtsc();
+//             MIN(sum, (t1 - t0));
+//             unfused_timing.push_back((t1 - t0));
+//         }
 
-        print_cycles(sum);
-        printf("\n");
+//         print_cycles(sum);
+//         printf("\n");
 
-        fflush(0);
+//         fflush(0);
     }
     free(input_dc);
 #if LAYER < POOL

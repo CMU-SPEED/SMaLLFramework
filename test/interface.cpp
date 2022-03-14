@@ -1,6 +1,6 @@
 #include <math.h>
 #include <assert.h>
-#include <omp.h>
+// #include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -8,11 +8,11 @@
 #include "../config.h"
 #include "interface.h"
 
-#if uarch == 1
+#if uarch == ZEN2
 #include "../src/kernels/zen2/params.h"
-#elif uarch == 2
+#elif uarch == ARM
 #include "../src/kernels/arm/params.h"
-#elif uarch == 0
+#elif uarch == REF
 #include "../src/kernels/reference/params.h"
 #endif
 
