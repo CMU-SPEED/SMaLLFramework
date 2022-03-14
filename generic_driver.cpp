@@ -1,7 +1,7 @@
 
 #include <math.h>
 #include <assert.h>
-// #include <omp.h>
+#include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -15,7 +15,7 @@
 
 #define GEMM 0
 #define L 0
-#define RUNS 1000
+#define RUNS 100
 #define VERBOSE 0
 #define FUSION 1
 #define STRIDE 1
@@ -33,9 +33,10 @@
 
 #if uarch == ZEN2
 #include "src/kernels/zen2/params.h"
-
 #elif uarch == REF
-#include "kernels/reference/params.h"
+#include "src/kernels/reference/params.h"
+#elif uarch == ARM
+#include "src/kernels/arm/params.h"
 #endif
 
 #include "src/utils.h"
@@ -201,43 +202,53 @@ int main(int argc, char **argv)
 #endif
 
         assert(equals(out_dimensions, out_check_dc, out_dc, 1e-4));
-//         for (int run = 0; run < RUNS; run++)
-//         {
-//             t0 = rdtsc();
-// #if LAYER == RELU
-//             check_ReLUActivation(0, C_i, N, M, input_dc, out_check_dc);
-// #elif LAYER == POOL
-//             Maxpool2D(0, kernel_size, stride, padding, C_i, N, M, input_dc, out_check_dc);
-// #elif LAYER == CONV
-//             check_Conv2D(0, kernel_size, stride, padding, C_o, C_i, N, M, input_dc, filter_dc, out_dc);
-// #endif
-//             t1 = rdtsc();
-//             MIN(sum, (t1 - t0));
-//             unfused_timing.push_back((t1 - t0));
-//         }
+        diff = 0;
+        for (int run = 0; run < RUNS; run++)
+        {
+            t0 = rdtsc();
+            clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
 
-//         print_cycles(sum);
+#if LAYER == RELU
+            check_ReLUActivation(0, C_i, N, M, input_dc, out_check_dc);
+#elif LAYER == POOL
+            Maxpool2D(0, kernel_size, stride, padding, C_i, N, M, input_dc, out_check_dc);
+#elif LAYER == CONV
+            check_Conv2D(0, kernel_size, stride, padding, C_o, C_i, N, M, input_dc, filter_dc, out_dc);
+#endif
+            // t1 = rdtsc();
+            clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
 
-//         sum = ULLONG_MAX;
-//         for (int run = 0; run < RUNS; run++)
-//         {
-//             t0 = rdtsc();
-// #if LAYER == RELU
-//             ReLUActivation(0, C_i, N, M, input_dc, out_check_dc);
-// #elif LAYER == POOL
-//             Maxpool2D(0, kernel_size, stride, padding, C_i, N, M, input_dc, out_dc);
-// #elif LAYER == CONV
-//             Conv2D(0, kernel_size, stride, padding, C_o, C_i, N, M, input_dc, filter_dc, out_dc); //     #endif
-// #endif
-//             t1 = rdtsc();
-//             MIN(sum, (t1 - t0));
-//             unfused_timing.push_back((t1 - t0));
-//         }
+            diff = time_difference(time1, time2);
+            MIN(sum, diff);
+           
+        }
 
-//         print_cycles(sum);
-//         printf("\n");
+        print_cycles(sum);
 
-//         fflush(0);
+        sum = ULLONG_MAX;
+        diff = 0;
+        for (int run = 0; run < RUNS; run++)
+        {
+            // t0 = rdtsc();
+            clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
+#if LAYER == RELU
+            ReLUActivation(0, C_i, N, M, input_dc, out_check_dc);
+#elif LAYER == POOL
+            Maxpool2D(0, kernel_size, stride, padding, C_i, N, M, input_dc, out_dc);
+#elif LAYER == CONV
+            Conv2D(0, kernel_size, stride, padding, C_o, C_i, N, M, input_dc, filter_dc, out_dc); //     #endif
+#endif
+            // t1 = rdtsc();
+            clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
+            diff = time_difference(time1, time2);
+            MIN(sum, diff);
+           
+        }
+
+        print_cycles(sum);
+        printf("\n");
+
+        fflush(0);
     }
     free(input_dc);
 #if LAYER < POOL

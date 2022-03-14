@@ -8,7 +8,7 @@
 
 
 #ifndef uarch
-#define uarch REF
+#define uarch ZEN2
 #endif
 
 
