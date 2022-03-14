@@ -7,8 +7,12 @@ config_template = '''
 
 #define config_channel_stride {:}
 '''
+top_level_path = os.getcwd()
+repo_name = "ContextDependentFusion"
+top_level_path = top_level_path[:top_level_path.index(repo_name)+len(repo_name)]
+print(top_level_path)
 
-config_file = open("./config.h", "w")
+config_file = open("{:}/config.h".format(top_level_path), "w")
 
 config_txt = config_template.format(
                                     sys.argv[1], 
@@ -29,7 +33,8 @@ for i in range(len(vars)):
     bash_vars += "export {:}={:}\n".format(vars[i], sys.argv[i+1])
 
 
-file = "Experiments/script_VGG_almost.sh"
+
+file = "{:}/Experiments/script_VGG_almost.sh".format(top_level_path)
 index = 3
 with open(file, 'r+') as fd:
     contents = fd.readlines()

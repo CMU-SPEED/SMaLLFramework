@@ -14,11 +14,11 @@
 
 #define GEMM 0
 #define L 0
-#define RUNS 1
+#define RUNS 1000
 #define VERBOSE 0
 #define FUSION 1
 #define STRIDE 1
-#define PARALLEL 0
+#define PARALLEL 1
 #define COMB 0
 #ifndef BUFFER
 #define BUFFER 0
@@ -27,10 +27,18 @@
 
 #define H_TILE 0
 #define POOLING 1
-#include "src/direct_convolution.h"
-#include "src/fused_conv_gpool.h"
+
+// Problem size
+#include "config.h"
 #include "src/torch_utils.h"
-//Good Ol' Timing
+
+// #include "src/direct_convolution.h"
+#include "src/naive_direct_convolution.h"
+// #include "src/fused_conv_dw.h"
+
+
+
+// Good Ol' Timing
 static __inline__ unsigned long long rdtsc(void)
 {
   unsigned hi, lo;
@@ -50,9 +58,9 @@ static __inline__ unsigned long long rdtsc(void)
   {                                          \
     printf("%.4lf\t", (ops) / (1.0 * time)); \
   }
-#define print_cycles(time)           \
-  {                                  \
-    printf("%.0lf\t", 1.0 * (time)); \
+#define print_cycles(time)             \
+  {                                    \
+    printf("%.0lf, \t", 1.0 * (time)); \
   }
 
 #define AVG(accum, trials, avg)   \
@@ -82,31 +90,52 @@ WSS Size Out_img pool : %.2f K/8K elements  dims: %u %u %u\n\
            out.numel() / 1024.0, out_dimensions[1], out_dimensions[2], out_dimensions[3]);                                                    \
   }
 
-#define LIMIT 1e-3
+#define LIMIT 1e-2
 
 int main(int argc, char **argv)
 {
-  printf("%d \t %d\t ", BUFFER, PREFETCH);
+  // printf("%d \t %d\t ", BUFFER, PREFETCH);
   if (argc < 5)
   {
     printf("USAGE: torch_pool < 3x3 Input Channels> <3x3 Output Channels> <Output Height> <Output Width (multiple of 6) <logfilename>>\n");
     return 0;
   }
 
+  constexpr uint32_t W_ob = 6;
+  constexpr uint32_t C_ob = 12;
+  constexpr uint32_t C_ib = 12;
+  constexpr int C_o_1 = C_ib;
+  // constexpr uint32_t W_ob_dw W_ob
+  // constexpr uint32_t W_ob_pool 3
+  // constexpr uint32_t W_ob_g W_ob
+
+  constexpr uint32_t kernel_size = config_kernel_size;
+  constexpr uint32_t stride = config_stride;
+
+  constexpr uint32_t channel_stride = config_channel_stride;
+
   // Setup Problem Size from command line variables
   int C_i = atoi(argv[1]);
   int C_o = atoi(argv[2]);
-  int C_o_1 = 1;
-  // int C_o_1 = atoi(argv[3]);
+  //atoi(argv[2]);
 
-  constexpr int kernel_size = 3;
-  constexpr int stride = 1;
-
-  constexpr int pool_kernel_size = 3;
-  constexpr int pool_stride = 2;
+  // uint32_t C_o_1 = atoi(argv[3]);
 
   int output_rows = atol(argv[3]);
   int output_cols = atol(argv[4]);
+
+  uint32_t naive_kernel_size = atoi(argv[5]);
+  constexpr uint32_t naive_stride = config_stride;
+  atoi(argv[6]);
+
+  uint32_t naive_channel_stride = atoi(argv[7]);
+
+  printf(" %d %d %d (compile)\n %d %d %d (runtime)\n", kernel_size, stride, channel_stride, naive_kernel_size, naive_stride, naive_channel_stride);
+  // fflush(0);
+  assert(kernel_size == naive_kernel_size);
+  assert(stride == naive_stride);
+  assert(channel_stride == naive_channel_stride);
+  assert(!(C_i%C_ib)*(!(C_o%C_ob)));
   // printf("%d %d", output_rows, output_cols);
   int N = (output_rows - 1) * stride + kernel_size;
   int M = (output_cols - 1) * stride + kernel_size;
@@ -122,75 +151,46 @@ int main(int argc, char **argv)
   torch::Tensor a = torch::randn(C_i * N * M).reshape({1, C_i, N, M});
   a = torch::mul(a, 1.0);
   torch::Tensor test_weights = torch::randn(C_o * C_i * kernel_size * kernel_size).reshape({C_o, C_i, kernel_size, kernel_size});
-  // a = torch::mul(a, 0.01);
-  torch::Tensor test_weights_dw = torch::randn(C_o_1 * C_o * pool_kernel_size * pool_kernel_size).reshape({C_o, C_o_1, pool_kernel_size, pool_kernel_size});
-  test_weights = torch::mul(test_weights, 1.0 / (1.0 * kernel_size * kernel_size * C_i));
-  // float * w_ptr = a.data_ptr<float>();
-  // float * c_ptr = test_weights.data_ptr<float>();
 
-  //   for(uint32_t c = 0 ; c < C_i; c++){
-  //     for(uint32_t h = 0; h < N; h++){
-  //       for(uint32_t w = 0; w < M; w++){
-  //         *w_ptr *= (0)*M + (w+1);
-  //         w_ptr++;
-  //       }
-  //     }
-  //   }
+  test_weights = torch::mul(test_weights, 1.0 / (1.0 * kernel_size * kernel_size * C_i));
 
   std::vector<std::vector<uint64_t>> implementations;
 
-  //Create PyTorch Convolution layers
-  //set weights to generated values
+  // Create PyTorch Convolution layers
+  // set weights to generated values
   auto conv_3x3 = torch::nn::Conv2d(torch::nn::Conv2dOptions(C_i, C_o, kernel_size).stride(stride).padding(0).bias(false));
 
   conv_3x3->weight = test_weights;
-  auto pool = torch::nn::AdaptiveAvgPool2d(torch::nn::AdaptiveAvgPool2dOptions({1, 1}));
 
-  //   pool->weight = test_weights_dw;
-  //Run Inference with LibTorch
+  // Run Inference with LibTorch
   unsigned long long t0, t1;
   unsigned long long sum_pytorch = ULLONG_MAX;
   torch::Tensor out_intermediate, out;
   float avg;
   std::vector<uint64_t> pytorch_timing;
-  for (uint32_t r = 0; r < 10; r++)
+  for (uint32_t r = 0; r < RUNS / 10 + 1; r++)
   {
     t0 = rdtsc();
     out_intermediate = conv_3x3(a);
-    out = pool(out_intermediate);
     t1 = rdtsc();
     MIN(sum_pytorch, (t1 - t0));
     pytorch_timing.push_back((t1 - t0));
   }
-  fflush(0);
   implementations.push_back(pytorch_timing);
-  print_cycles(sum_pytorch)
-      uint64_t conv_ops = out_intermediate.numel() * (kernel_size * kernel_size * C_i * 2.0);
-  uint64_t pool_ops = out.numel() * (3 * 3);
+  print_cycles(sum_pytorch);
+  fflush(0);
 
-  uint64_t effective_conv_h = (out.size(2) - 1) * 2 + 3;
-  uint64_t effective_conv_w = (out.size(3) - 1) * 2 + 3;
-
-  uint64_t effective_conv_ops = effective_conv_h * effective_conv_w * C_o *
-                                (kernel_size * kernel_size * C_i * 2.0);
-
-  //Direct Convolution Setup
-  // Copy layer weights to temporaries
-  torch::Tensor weights = test_weights; //conv_3x3->weight;
-//   torch::Tensor weights_dw = pool->weight.reshape({C_o_1, C_o, 3, 3});
-
+  // Direct Convolution Setup
+  //  Copy layer weights to temporaries
+  torch::Tensor weights = test_weights; // conv_3x3->weight;
   std::vector<uint32_t> in_dimensions;
   std::vector<uint32_t> filter_dimensions;
-//   std::vector<uint32_t> filter_dw_dimensions;
   std::vector<uint32_t> out_intermediate_dimensions;
-  std::vector<uint32_t> out_dimensions;
 
   std::vector<uint32_t> intermediate_block_dimensions;
   float *input_dc = alloc_dc(a, in_dimensions);
   float *filter_dc = alloc_dc(weights, filter_dimensions);
   float *out_intermediate_dc = alloc_dc(out_intermediate, out_intermediate_dimensions);
-//   float *filter_dw_dc = alloc_dc(weights_dw, filter_dw_dimensions);
-  float *out_dc = alloc_dc(out, out_dimensions);
 
 #if PARALLEL
   uint32_t num_threads = atoi(std::getenv("OMP_NUM_THREADS"));
@@ -201,7 +201,11 @@ int main(int argc, char **argv)
   if (C_i > 16)
   {
 #if PARALLEL
+#if H_TILE == 1
+    int ret = posix_memalign((void **)&out_intermediate_buffer, 4096, 3 * out_intermediate_dimensions[3] * C_ob * sizeof(float) * (num_threads));
+#else
     int ret = posix_memalign((void **)&out_intermediate_buffer, 4096, out_intermediate_dimensions[2] * out_intermediate_dimensions[3] * C_ob * sizeof(float) * (num_threads));
+#endif
 #else
     int ret = posix_memalign((void **)&out_intermediate_buffer, 4096, out_intermediate_dimensions[2] * out_intermediate_dimensions[3] * C_ob * sizeof(float));
 #endif
@@ -212,9 +216,6 @@ int main(int argc, char **argv)
     return 0;
   }
 #endif
-#if (VERBOSE)
-  MEMORY_SIZES_LOG;
-#endif
 
   unsigned long long sum = ULLONG_MAX, sum_pool = ULLONG_MAX;
   volatile unsigned long long sum_fused = ULLONG_MAX,
@@ -224,130 +225,41 @@ int main(int argc, char **argv)
   {
     // Initialize Outputs to 0
 
-    //3x3 unfused
-    copy_torch2dc(a, 'i', in_dimensions, input_dc);
-    copy_torch2dc(weights, 'f', filter_dimensions, filter_dc);
-    // copy_torch2dc(weights_dw, 'd', filter_dw_dimensions, filter_dw_dc);
-    for (int run = 0; run < RUNS; run++)
-    {
-      // Copy Inputs to their flat buffers
+    // 3x3 unfused
+    copy_torch2dc<C_ob, C_ib>(a, 'i', in_dimensions, input_dc);
+    copy_torch2dc<C_ob,  C_ib>(weights, 'f', filter_dimensions, filter_dc);
+    printf("init complete\n");
+    fflush(0);
+    sum = ULLONG_MAX;
+    memset(out_intermediate_dc, 0.0, out_intermediate.numel() * sizeof(float));
+    printf("init complete\n");
+    fflush(0);
+    direct_convolution_naive<W_ob, C_ob, C_ib, naive_stride, 'v','c'>(naive_channel_stride, naive_kernel_size, naive_kernel_size, C_i, C_o, 1, N, M, input_dc, filter_dc, out_intermediate_dc);
+    // direct_convolution<W_ob, C_ob, C_o, stride, channel_stride, naive_kernel_size, naive_kernel_size>(C_i, C_o, C_o, N, M, input_dc, filter_dc, out_intermediate_dc);
+    bool check = check_eqivalence<C_ob, C_ib>(out_intermediate, 'o', out_intermediate_dimensions, out_intermediate_dc, LIMIT);
+    assert(check == 1);
 
-      t0 = rdtsc();
-      direct_convolution<stride, kernel_size, kernel_size>(C_i, C_o, N, M, input_dc, filter_dc, out_intermediate_dc);
-      // t1 = rdtsc();
-      // MIN(sum,(t1 - t0));
-      // t0 = rdtsc();
-      pooling(C_o, out_intermediate_dimensions[2], out_intermediate_dimensions[3], out_intermediate_dc, out_dc);
-      t1 = rdtsc();
-      MIN(sum_pool, (t1 - t0));
-      unfused_timing.push_back((t1 - t0));
-    }
-    assert(check_eqivalence(out_intermediate, 'o', out_intermediate_dimensions, out_intermediate_dc, LIMIT) == 1);
-    assert(check_eqivalence(out, 'o', out_dimensions, out_dc, LIMIT) == 1);
+    // for (int run = 0; run < RUNS; run++)
+    // {
+    //   // Copy Inputs to their flat buffers
+    //   t0 = rdtsc();
+    //   direct_convolution_naive<W_ob, C_ob, C_ib, naive_stride, 'c'>(naive_channel_stride, naive_kernel_size, naive_kernel_size, C_i, C_o, 1, N, M, input_dc, filter_dc, out_intermediate_dc);
+    //   // direct_convolution_naive<W_ob, C_ob, C_ib, naive_stride, 'c'>(naive_channel_stride, naive_kernel_size, naive_kernel_size, C_i, C_o, 1, N, M, input_dc, filter_dc, out_intermediate_dc);
+    //   t1 = rdtsc();
+    //   MIN(sum, (t1 - t0));
+    //   unfused_timing.push_back((t1 - t0));
+    // }
+
     // print_cycles(sum);
 
-    print_cycles(sum_pool);
+    // printf("%2.3f \n", (100.0 * sum) / (sum_pool));
 
     fflush(0);
   }
 
-  implementations.push_back(unfused_timing);
-  const int NUM_IMPLEMENTATIONS = 2;
 
-  for (int implementation = 0; implementation < NUM_IMPLEMENTATIONS; implementation++)
-  {
-    // Initialize Outputs to 0
-    std::vector<uint64_t> timings;
-    memset(out_intermediate_buffer, 0, output_rows * output_cols * C_ob * sizeof(float));
-    memset(out_dc, 0, out.numel() * sizeof(float));
-
-    //3x3 unfused
-    copy_torch2dc(a, 'i', in_dimensions, input_dc);
-    copy_torch2dc(weights, 'f', filter_dimensions, filter_dc);
-    sum_pool = ULLONG_MAX;
-    for (int run = 0; run < RUNS; run++)
-    {
-      // Copy Inputs to their flat buffers
-
-      switch (implementation)
-      {
-      case 3:
-        // t0 = rdtsc();
-        // pixel_block_fused_pooling<stride,
-        //                           kernel_size, kernel_size,
-        //                           pool_stride, pool_kernel_size,
-        //                           pool_kernel_size>(
-        //     C_i,
-        //     C_o,
-        //     N,
-        //     M,
-        //     input_dc,
-        //     filter_dc,
-        //     out_intermediate_buffer,
-        //     out_dc);
-        // t1 = rdtsc();
-        break;
-      case 0:
-        t0 = rdtsc();
-        channel_block_fused_pooling<stride, kernel_size, kernel_size>(
-            C_i,
-            C_o,
-            N,
-            M,
-            input_dc,
-            filter_dc,
-            out_intermediate_buffer,
-            out_dc);
-        t1 = rdtsc();
-        break;
-
-        case 1:
-            t0 = rdtsc();
-            row_partial_fused_pooling<stride,
-                                    kernel_size, kernel_size>(
-                C_i,
-                C_o,
-                N,
-                M,
-                input_dc,
-                filter_dc,
-                out_intermediate_buffer,
-                out_dc);
-            t1 = rdtsc();
-            break;
-      }
-      MIN(sum_pool, (t1 - t0));
-      timings.push_back((t1 - t0));
-    }
-    printf("%d\t", implementation);
-    // assert(check_eqivalence(out_intermediate, 'o', out_intermediate_dimensions, out_intermediate_buffer, LIMIT) == 1);
-    assert(check_eqivalence(out, 'o', out_dimensions, out_dc, LIMIT) == 1);
-    print_cycles(sum_pool);
-    fflush(0);
-    implementations.push_back(timings);
-  }
-
-  printf("\n");
-
-  //output log file
-
-  std::string file;
-  if (argc == 6)
-  {
-    file = argv[5];
-  }
-  else
-  {
-    file = "log.txt";
-  }
-
-  write_results(file, implementations);
 
   free(input_dc);
   free(filter_dc);
-  free(out_dc);
   free(out_intermediate_dc);
-#if BUFFER == 0
-  free(out_intermediate_buffer);
-#endif
 }

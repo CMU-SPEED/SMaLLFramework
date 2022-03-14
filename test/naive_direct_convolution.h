@@ -2,10 +2,12 @@
 
 #include <stdint.h>
 
-#include "kernel.h"
+#include "kernel_naive.h"
+
+
 
 template <uint32_t _W_ob, uint32_t _C_ob, uint32_t _C_ib, uint32_t stride, char op>
-void direct_convolution(
+void direct_convolution_naive(
     uint32_t channel_stride,
     uint32_t H_f,
     uint32_t W_f,
@@ -14,10 +16,11 @@ void direct_convolution(
     uint32_t G,
     uint32_t H_i,
     uint32_t W_i,
-    uint32_t padding,
+    uint32_t padding, 
     float *I,
     float *F,
-    float *O)
+    float *O
+    )
 {
     uint32_t H_o = 0;
     op_dim(H_i, stride, H_f, H_o);
@@ -26,11 +29,11 @@ void direct_convolution(
     uint32_t W_o = (W_o_full / _W_ob) * _W_ob;
     uint32_t W_last = W_o_full % _W_ob;
 
-    uint32_t H_o_padding = 0, W_o_padding = 0;
-    if (padding == 'f')
+    uint32_t H_o_padding = 0,  W_o_padding = 0;
+    if(padding=='f')
     {
-        H_o_padding = (H_i - H_o) / 2;
-        W_o_padding = (W_i - W_o) / 2;
+         H_o_padding = (H_i - H_o)/2;
+         W_o_padding = (W_i - W_o)/2;
     }
 
 // printf("W_of_full: %d W_o : %d W_las t: %d\n ", W_o_full, W_o, W_last);
@@ -65,20 +68,19 @@ void direct_convolution(
             }
             uint32_t filter_i_c_block = (i / _C_ib) * H_f * W_f * _C_ib * _C_ob + filter_o_c_block;
             // printf("filter input offset %d ", filter_i_c_block - filter_o_c_block);
-
             float *filter_block_ptr = F + filter_i_c_block;
-            // front padding row
-            //  if(stride == 1)
-            //  {
-            //      for(uint32_t l_padded = 0; l_padded < H_o_padding; l_padded++)
-            //      {
-            //          for (uint32_t k = 0; k < W_o; k += _W_ob)
-            //          {
-
+            //front padding row
+            // if(stride == 1)
+            // {
+            //     for(uint32_t l_padded = 0; l_padded < H_o_padding; l_padded++)
+            //     {
+            //         for (uint32_t k = 0; k < W_o; k += _W_ob)
+            //         {
+                       
             //         }
             // }
-            // Set the output pointer to the full section
-            // end front padding
+            //Set the output pointer to the full section
+            //end front padding
             for (uint32_t l = 0; l < H_o; l++)
             {
                 uint32_t col_offset = l * W_o_full * _C_ob;
@@ -92,16 +94,14 @@ void direct_convolution(
                     // float * I_ptr = I + input_row_offset + input_col_offset;
                     if (_C_ib == 1)
                     {
-                        if (op == 'c')
-                        {
+                        if(op == 'c'){
                             dw_kernel<_W_ob, _C_ob, _C_ib, stride * _C_ob>(H_f, W_f, W_i * _C_ob, I_ptr, filter_block_ptr, O_ptr);
                         }
-                        else if (op == 'p')
-                        {
-                            pool_kernel<_W_ob, _C_ob, _C_ib, stride * _C_ob>(H_f, W_f, W_i * _C_ob, I_ptr, O_ptr);
+                        else if(op == 'p'){
+                            pool_kernel<_W_ob, _C_ob, _C_ib, stride * _C_ob>(H_f, W_f, W_i * _C_ob, I_ptr,  O_ptr);
                         }
                         else if (op == 'a')
-                        {
+                        {   
                             activation_kernel<_W_ob, _C_ob, _C_ib, stride * _C_ob>(H_f, W_f, W_i * _C_ob, I_ptr, O_ptr);
                         }
                     }
@@ -116,12 +116,10 @@ void direct_convolution(
                 if (_C_ib == 1)
                 {
                     // printf("calling dwise  %d\n", O_ptr - O);
-                    if (op == 'c')
-                    {
-                        dw_kernel_end<_W_ob, _C_ob, _C_ib, stride * _C_ob>(H_f, W_f, W_i * _C_ob, I_ptr, filter_block_ptr, O_ptr, W_last);
+                    if(op == 'c'){
+                    dw_kernel_end<_W_ob, _C_ob, _C_ib, stride * _C_ob>(H_f, W_f, W_i * _C_ob, I_ptr, filter_block_ptr, O_ptr, W_last);
                     }
-                    else if (op == 'p')
-                    {
+                    else if (op == 'p'){
                         pool_kernel_end<_W_ob, _C_ob, _C_ib, stride * _C_ob>(H_f, W_f, W_i * _C_ob, I_ptr, O_ptr, W_last);
                     }
                     else if (op == 'a')
@@ -138,7 +136,7 @@ void direct_convolution(
             }
             // printf("op[0]: %f update %d \n", O_buffer[0], i);
 
-            // back padding row
+            //back padding row
         }
 
         for (uint32_t i = _C_ib; i < C_f; i += _C_ib)

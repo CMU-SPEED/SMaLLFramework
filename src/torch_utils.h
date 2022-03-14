@@ -4,6 +4,16 @@
 
 // allocate a page aligned flatbuffer of size Tensor.numel()
 // Copy the dimensions of Tensor to a C++ vector to iterate over
+
+
+#ifndef op_dim
+#define op_dim(IN_dim, stride, K_dim, OUT_dim)   \
+    {                                            \
+        OUT_dim = (IN_dim - K_dim) / stride + 1; \
+    }
+#endif
+
+
 float *alloc_dc(torch::Tensor t, std::vector<uint32_t> &dimensions)
 {
     uint32_t total_elements = 1;
@@ -46,7 +56,7 @@ float *alloc_dc_pooling_aware(torch::Tensor t, std::vector<uint32_t> &dimensions
 
 // copey elements of the torch tensor into the flat buffer allocated above in the
 // direct conv data layout
-template<uint32_t C_ob, uint32_t C_ib>
+template<uint32_t _C_ob, uint32_t _C_ib>
 int copy_torch2dc(torch::Tensor t,
                   char type, // 'i' = input, 'f' = filter, 'o'  = output
                   std::vector<uint32_t> dim_sizes,
@@ -68,17 +78,17 @@ int copy_torch2dc(torch::Tensor t,
     if (type == 'i')
     {
         //input
-        ip_block = C_ib;
+        ip_block = _C_ib;
         op_block = 1;
-        reshape_tensor = t.reshape({dim_sizes[1] / C_ib, C_ib, dim_sizes[2], dim_sizes[3]});
+        reshape_tensor = t.reshape({dim_sizes[1] / _C_ib, _C_ib, dim_sizes[2], dim_sizes[3]});
         reshape_tensor = reshape_tensor.permute({0, 2, 3, 1});
     }
     else if (type == 'o')
     {
         //output
-        ip_block = C_ob;
+        ip_block = _C_ob;
         op_block = 1;
-        reshape_tensor = t.reshape({dim_sizes[1] / C_ob, C_ob, dim_sizes[2], dim_sizes[3]});
+        reshape_tensor = t.reshape({dim_sizes[1] / _C_ob, _C_ob, dim_sizes[2], dim_sizes[3]});
         reshape_tensor = reshape_tensor.permute({0, 2, 3, 1});
     }
     else if (type == 'f')
@@ -86,12 +96,12 @@ int copy_torch2dc(torch::Tensor t,
         //filter
         if (fused)
         {
-            reshape_tensor = t.reshape({dim_sizes[0] / C_ob, C_ob, dim_sizes[1] / C_ib, C_ib, dim_sizes[2], dim_sizes[3]});
+            reshape_tensor = t.reshape({dim_sizes[0] / _C_ob, _C_ob, dim_sizes[1] / _C_ib, _C_ib, dim_sizes[2], dim_sizes[3]});
             reshape_tensor = reshape_tensor.permute({2, 0, 4, 5, 3, 1});
         }
         else
         {
-            reshape_tensor = t.reshape({dim_sizes[0] / C_ob, C_ob, dim_sizes[1] / C_ib, C_ib, dim_sizes[2], dim_sizes[3]});
+            reshape_tensor = t.reshape({dim_sizes[0] / _C_ob, _C_ob, dim_sizes[1] / _C_ib, _C_ib, dim_sizes[2], dim_sizes[3]});
             reshape_tensor = reshape_tensor.permute({0, 2, 4, 5, 3, 1});
         }
     }
@@ -100,12 +110,12 @@ int copy_torch2dc(torch::Tensor t,
         //filter
         if (fused)
         {
-            reshape_tensor = t.reshape({dim_sizes[0] / C_ob, C_ob, dim_sizes[1] / C_ib, C_ib, dim_sizes[2], dim_sizes[3]});
+            reshape_tensor = t.reshape({dim_sizes[0] / _C_ob, _C_ob, dim_sizes[1] / _C_ib, _C_ib, dim_sizes[2], dim_sizes[3]});
             reshape_tensor = reshape_tensor.permute({2, 0, 4, 5, 3, 1});
         }
         else
         {
-            reshape_tensor = t.reshape({dim_sizes[0] / C_ob, C_ob, C_ib, dim_sizes[2], dim_sizes[3]});
+            reshape_tensor = t.reshape({dim_sizes[0] / _C_ob, _C_ob, _C_ib, dim_sizes[2], dim_sizes[3]});
             reshape_tensor = reshape_tensor.permute({0, 3, 4, 2, 1});
         }
     }
@@ -148,17 +158,17 @@ int copy_torch2dc(torch::Tensor t,
 //     if (type == 'i')
 //     {
 //         //input
-//         ip_block = C_ib;
+//         ip_block = _C_ib;
 //         op_block = 1;
-//         reshape_tensor = t.reshape({dim_sizes[1] / C_ib, C_ib, dim_sizes[2], dim_sizes[3] / W_ob, W_ob});
+//         reshape_tensor = t.reshape({dim_sizes[1] / _C_ib, _C_ib, dim_sizes[2], dim_sizes[3] / W_ob, W_ob});
 //         reshape_tensor = reshape_tensor.permute({0, 2, 3, 1, 4});
 //     }
 //     else if (type == 'o')
 //     {
 //         //output
-//         ip_block = C_ob;
+//         ip_block = _C_ob;
 //         op_block = 1;
-//         reshape_tensor = t.reshape({dim_sizes[1] / C_ob, C_ob, dim_sizes[2], dim_sizes[3]});
+//         reshape_tensor = t.reshape({dim_sizes[1] / _C_ob, _C_ob, dim_sizes[2], dim_sizes[3]});
 //         reshape_tensor = reshape_tensor.permute({0, 2, 3, 1});
 //     }
 //     else if (type == 'f')
@@ -166,16 +176,16 @@ int copy_torch2dc(torch::Tensor t,
 //         //filter
 //         if (fused)
 //         {
-//             reshape_tensor = t.reshape({dim_sizes[0] / C_ob, C_ob, dim_sizes[1] / C_ib, C_ib, dim_sizes[2], dim_sizes[3]});
+//             reshape_tensor = t.reshape({dim_sizes[0] / _C_ob, _C_ob, dim_sizes[1] / _C_ib, _C_ib, dim_sizes[2], dim_sizes[3]});
 //             reshape_tensor = reshape_tensor.permute({2, 0, 4, 5, 3, 1});
 //         }
 //         else
 //         {
-//             reshape_tensor = t.reshape({dim_sizes[0] / C_ob, C_ob, dim_sizes[1] / C_ib, C_ib, dim_sizes[2], dim_sizes[3]});
+//             reshape_tensor = t.reshape({dim_sizes[0] / _C_ob, _C_ob, dim_sizes[1] / _C_ib, _C_ib, dim_sizes[2], dim_sizes[3]});
 //             reshape_tensor = reshape_tensor.permute({0, 2, 4, 5, 3, 1});
 //         }
-//         ip_block = C_ib;
-//         op_block = C_ob;
+//         ip_block = _C_ib;
+//         op_block = _C_ob;
 //     }
 //     else
 //     {
@@ -195,7 +205,7 @@ int copy_torch2dc(torch::Tensor t,
 // }
 
 // check whether the pytorch output matches C++ output
-template<uint32_t C_ob, uint32_t C_ib>
+template<uint32_t _C_ob, uint32_t _C_ib>
 bool check_eqivalence(torch::Tensor t,
                       char type,
                       std::vector<uint32_t> dim_sizes,
@@ -216,21 +226,21 @@ bool check_eqivalence(torch::Tensor t,
     if (type == 'i')
     {
         //input
-        ip_block = C_ib;
+        ip_block = _C_ib;
         op_block = 1;
     }
     else if (type == 'o')
     {
         //output
-        ip_block = C_ob;
+        ip_block = _C_ob;
         op_block = 1;
     }
 
     else if (type == 'f')
     {
         //filter
-        ip_block = C_ib;
-        op_block = C_ob;
+        ip_block = _C_ib;
+        op_block = _C_ob;
     }
     else
     {
@@ -279,6 +289,12 @@ bool check_eqivalence(torch::Tensor t,
                                                     i_offset +
                                                     j_offset])));
                             }
+                            // printf("%d %.4f %.4f %f\n", offset - 1, dc_array[offset - 1], flat_t[g_offset + l_offset + h_offset + k_offset + i_offset + j_offset],
+                            //        (fabs(dc_array[offset - 1] -
+                            //              flat_t[g_offset + l_offset +
+                            //                     h_offset + k_offset +
+                            //                     i_offset +
+                            //                     j_offset])));
                         }
                     }
                 }
@@ -341,20 +357,20 @@ void write_results(std::string file, std::vector<std::vector<uint64_t>> implemen
 //
 //  if(type=='i'){
 //    //input
-//    ip_block = C_ib;
+//    ip_block = _C_ib;
 //    op_block = 1;
 //  }
 //  else if(type=='o'){
 //    //output
-//    ip_block = C_ob;
+//    ip_block = _C_ob;
 //    op_block = 1;
 //
 //  }
 //
 //  else if(type == 'f'){
 //    //filter
-//    ip_block = C_ib;
-//    op_block = C_ob;
+//    ip_block = _C_ib;
+//    op_block = _C_ob;
 //
 //  }
 //  else{

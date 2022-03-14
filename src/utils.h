@@ -3,9 +3,12 @@
 // We have timing, initialization, allocation, logging and equivalence checking  
 
 //Timing
+#include <sys/time.h>
+// Change this to log min of all runs etc
+#define TIME_ZERO 0
 
 //Change this to log min of all runs etc
-#define TIME_ZERO 0
+
 
 //TODO: Change when moving to different architectures
 static __inline__ unsigned long long rdtsc(void)
@@ -21,15 +24,19 @@ static __inline__ unsigned long long rdtsc(void)
     a += b;          \
   }
 
+#define MIN(a, b)            \
+    {                        \
+        a = (b < a) ? b : a; \
+    }
 
 //logging 
-#define print_flops(ops, time, trials)              \
+#define print_flops(ops, time)              \
   {                                                 \
-    printf("%.4lf\t", (ops) / (1.0 * time / trials)); \
+    printf("%.4lf\t", (ops) / (1.0 * time); \
   }
-#define print_cycles(time, trials)          \
+#define print_cycles(time)          \
   {                                         \
-    printf("%.2lf\t", 1.0 * (time / trials)); \
+    printf("%.2lf\t", 1.0 * (time)); \
   }
 //Allocation
 
@@ -63,22 +70,24 @@ void init_ones(float *ptr, uint32_t numel)
   for (uint32_t i = 0; i < numel; i++)
   {
     *(cur_ptr++) = 1.0;
+    // printf("%.2f \n", *(cur_ptr - 1));
   }
 }
 
-template<uint32_t C_ob>
+template<uint32_t _C_ob>
 void init_arange(float *ptr, uint32_t H, uint32_t W, uint32_t C)
 {
   float *cur_ptr = ptr;
-  for (uint32_t i = 0; i < C; i+=C_ob)
+  for (uint32_t i = 0; i < C; i+=_C_ob)
   {
     for(uint32_t j = 0 ; j < H; j++)
     {
       for(uint32_t k = 0; k < W; k++)
       {
-        for(uint32_t ii = 0; ii < C_ob; ii++)
+        for(uint32_t ii = 0; ii < _C_ob; ii++)
         {
-           *(cur_ptr++) =  k+1;
+           *(cur_ptr++) =  ii + i + k*(C) + j*(W*C);
+          //  printf("%.2f \n", *(cur_ptr - 1));
         }
       }
     }
@@ -140,3 +149,20 @@ void write_results(uint64_t * fused_timing)
   }
 }
 
+timespec time1, time2;
+long diff = 0;
+long time_difference(timespec start, timespec end)
+{
+  timespec temp;
+  if ((end.tv_nsec - start.tv_nsec) < 0)
+  {
+    temp.tv_sec = end.tv_sec - start.tv_sec - 1;
+    temp.tv_nsec = 1000000000 + end.tv_nsec - start.tv_nsec;
+  }
+  else
+  {
+    temp.tv_sec = end.tv_sec - start.tv_sec;
+    temp.tv_nsec = end.tv_nsec - start.tv_nsec;
+  }
+  return (temp.tv_sec * 1000000000 + temp.tv_nsec);
+}
