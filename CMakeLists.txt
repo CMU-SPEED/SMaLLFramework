@@ -33,12 +33,8 @@ set_property(TARGET test_interface_pool.x PROPERTY CXX_STANDARD 14)
 
 
 
-#[[Comment Lines out if you don not have libtorch
+#[[Comment Lines out if you don not have libtorch]]
 find_package(Torch REQUIRED)
-
-# add_executable(ml_backend.o src/naive_direct_convolution.cpp)
-# SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ")
-# set_property(TARGET ml_backend.o PROPERTY CXX_STANDARD 14)
 add_executable(interface_relu.x torch_interface_driver.cpp )
 target_link_libraries(interface_relu.x "${TORCH_LIBRARIES}")
 target_link_libraries(interface_relu.x check_interface.o interface.o)
@@ -59,9 +55,7 @@ target_link_libraries(interface_pool.x check_interface.o interface.o)
 SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS}")
 target_compile_definitions(interface_pool.x PRIVATE LAYER=POOL)
 set_property(TARGET interface_pool.x PROPERTY CXX_STANDARD 14)
-]]
 
-#libtorch free drivers
 
 
 

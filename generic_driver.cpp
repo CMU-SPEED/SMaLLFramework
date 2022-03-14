@@ -15,11 +15,11 @@
 
 #define GEMM 0
 #define L 0
-#define RUNS 100
+
 #define VERBOSE 0
 #define FUSION 1
 #define STRIDE 1
-#define PARALLEL 1
+
 #define COMB 0
 #ifndef BUFFER
 #define BUFFER 0
@@ -86,20 +86,20 @@
 #define POOL 4
 #define RELU 5
 
-#ifndef LAYER
-#define LAYER CONV
-#endif
+// #ifndef LAYER
+// #define LAYER 
+// #endif
 
 int main(int argc, char **argv)
 {
     // printf("%d \t %d\t ", BUFFER, PREFETCH);
     if (argc < 5)
     {
-        printf("USAGE: torch_pool <Input Channels> <Input Height> <Input Width> <kernel heightand width> <padding 'v' or 'f'> <Output Channels> ");
+        printf("USAGE: torch_pool <Input Channels> <Input Height> <Input Width> <kernel heightand width> <stride> <padding 'v' or 'f'> <Output Channels> \n");
         return 0;
     }
 
-    printf("layer %d %d %d \n", LAYER, uarch, W_ob);
+    printf("layer %d \n", LAYER);
     int C_i = atoi(argv[1]);
 
     int N = atol(argv[2]);
@@ -232,7 +232,7 @@ int main(int argc, char **argv)
             // t0 = rdtsc();
             clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
 #if LAYER == RELU
-            ReLUActivation(0, C_i, N, M, input_dc, out_check_dc);
+            ReLUActivation(0, C_i, N, M, input_dc, out_dc);
 #elif LAYER == POOL
             Maxpool2D(0, kernel_size, stride, padding, C_i, N, M, input_dc, out_dc);
 #elif LAYER == CONV
@@ -251,7 +251,7 @@ int main(int argc, char **argv)
         fflush(0);
     }
     free(input_dc);
-#if LAYER < POOL
+#if LAYER == CONV
     free(filter_dc);
 #endif
     free(out_check_dc);

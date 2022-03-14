@@ -11,7 +11,8 @@
 #define uarch ZEN2
 #endif
 
-
+#define RUNS 1000
+#define PARALLEL 1
 
 #define op_dim(IN_dim, stride, K_dim, OUT_dim)   \
     {                                            \
