@@ -14,11 +14,11 @@
 
 #define GEMM 0
 #define L 0
-#define RUNS 1000
+
 #define VERBOSE 0
 #define FUSION 1
 #define STRIDE 1
-#define PARALLEL 1
+
 #define COMB 0
 #ifndef BUFFER
 #define BUFFER 0

@@ -10,7 +10,7 @@ print("H/W \t K \t C \t Pytorch Convolution FLOPS\t Pytorch Convolution Timing\t
 C = 64
 K = 64
 
-for j, CK in [(222, 64), (114,128), (54,128) , (30, 256) , (12, 512)]:
+for j, CK in [(222, 64), (114,128), (54,256) , (30, 512) , (12, 512)]:
     i = j+2
     C = CK
     K = CK
