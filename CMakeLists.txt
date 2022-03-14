@@ -5,11 +5,13 @@ include(CTest)
 set(CMAKE_VERBOSE_MAKEFILE off)
 set(CMAKE_CXX_COMPILER /usr/bin/g++)
 set(CMAKE_C_COMPILER gcc)
-SET(GCC_AVX_COMPILE_FLAGS "-fopenmp -mavx2 -mfma -O3 -fpermissive -march=native")
+SET(GCC_AVX_COMPILE_FLAGS " -mavx2 -mfma -O3 -fpermissive -mfpu=neon")
 SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${GCC_AVX_COMPILE_FLAGS}")
 
+add_library(check_interface.o STATIC test/interface.cpp)
+add_library(interface.o STATIC src/interface.cpp)
 
-#[[Comment Lines 12-26 out if you don not have libtorch]]
+#[[Comment Lines 12-26 out if you don not have libtorch
 find_package(Torch REQUIRED)
 # add_executable(torch_conv.x torch_driver_scalar.cpp)
 # target_link_libraries(torch_conv.x "${TORCH_LIBRARIES}")
@@ -43,8 +45,7 @@ find_package(Torch REQUIRED)
 # SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ")
 # set_property(TARGET ml_backend.o PROPERTY CXX_STANDARD 14)
 
-add_library(check_interface.o STATIC test/interface.cpp)
-add_library(interface.o STATIC src/interface.cpp)
+
 
 add_executable(interface_relu.x torch_interface_driver.cpp )
 target_link_libraries(interface_relu.x "${TORCH_LIBRARIES}")
@@ -66,20 +67,9 @@ target_link_libraries(interface_pool.x check_interface.o interface.o)
 SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS}")
 target_compile_definitions(interface_pool.x PRIVATE LAYER=POOL)
 set_property(TARGET interface_pool.x PROPERTY CXX_STANDARD 14)
+]]
 
-# add_executable(torch_general.x torch_driver_general.cpp )
-# target_link_libraries(torch_general.x "${TORCH_LIBRARIES}")
-# set_property(TARGET torch_general.x PROPERTY CXX_STANDARD 14)
-
-# add_executable(torch_pool.x torch_driver_pool_scalar_dw.cpp )
-# target_link_libraries(torch_pool.x "${TORCH_LIBRARIES}")
-# set_property(TARGET torch_pool.x PROPERTY CXX_STANDARD 14)
-
-# add_executable(torch_gpool.x torch_driver_gpool_scalar.cpp )
-# target_link_libraries(torch_gpool.x "${TORCH_LIBRARIES}")
-# set_property(TARGET torch_gpool.x PROPERTY CXX_STANDARD 14)
-
-#fused libtorch free drivers
+#libtorch free drivers
 
 # add_executable(conv driver.cpp )
 # set_property(TARGET conv PROPERTY CXX_STANDARD 14)
