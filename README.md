@@ -1,8 +1,3 @@
-# README
-
-Date Created: March 14, 2022 10:57 AM
-Due Date: March 14, 2022 12:00 PM
-Tags: Framework
 
 # SMaLL Framework
 
