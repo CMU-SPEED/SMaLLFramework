@@ -98,8 +98,5 @@ SIMD = 8
 
 The Experiments folder has some scripts to run a variety of sizes with the framework
 
-```bash
-$./Experiments/test_all.sh
-```
-
-Runs ./test_interface_pool.x
+- `Experiments/script_VGG_almost.sh` Runs layer sizes similar to VGGnet.
+- `Experiments/test_all.sh` Runs the 3 executables generated above through the VGGnet test. 
