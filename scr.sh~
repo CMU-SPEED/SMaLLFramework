@@ -1,5 +1,0 @@
-#!/bin/bash
-
-./Experiments/varyK_pool_script.sh ./torch_pool 6 | tee vary_K_l_buffered_l3_6_mar17.txt
-./Experiments/varyK_pool_script.sh ./torch_pool 2 | tee vary_K_l_buffered_l3_2_mar18.txt
-./Experiments/varyK_pool_script.sh ./torch_pool 4 | tee vary_K_l_buffered_l3_4_mar18.txt
