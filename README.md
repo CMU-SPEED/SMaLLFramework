@@ -31,19 +31,15 @@ There is currently no support for padding other than “valid” padding
 
 ### Specify µArch
 
-To architecture specific features such as SIMD and NEON, modify the `uarch` parameter in `./config.h`
-
-Please choose one of the available architectures
+To architecture specific features such as SIMD and NEON, please choose one of the available architectures specified in  `./config.h`
 
 ```c
 #define REF 0
 #define ZEN2 1
 #define ARM 2
 
-#ifndef uarch
-#define uarch ZEN2 //<---change this
-#endif
 ```
+The µarch is specified when building with CMake using the `CMAKE_UARCH ` parameter.
 
 The reference build (REF) is written in purely in C and should work on any architecture with a C compiler.
 
@@ -72,7 +68,7 @@ Create a build folder from the Top Level directory and run CMake.
 ```bash
 $ mkdir build
 $ cd build
-$ cmake ../
+$ cmake ../ -DCMAKE_UARCH=<µarch>
 $ make
 ```
 
