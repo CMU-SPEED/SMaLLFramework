@@ -155,7 +155,13 @@ int main(int argc, char **argv)
     std::vector<uint32_t> intermediate_block_dimensions;
 
 #if PARALLEL
-    uint32_t num_threads = atoi(std::getenv("OMP_NUM_THREADS"));
+    uint32_t num_threads = 1;
+    if (char const *nt_str = std::getenv("OMP_NUM_THREADS"))
+    {
+        int32_t nt(atoi(nt_str));
+        if (nt > 0)
+            num_threads = nt;
+    }
 #endif
 
     unsigned long long sum = ULLONG_MAX, sum_pool = ULLONG_MAX;
