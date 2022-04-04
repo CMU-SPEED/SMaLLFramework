@@ -1,3 +1,4 @@
+#pragma once
 
 // #define W_ob 6
 // #define C_ob 16

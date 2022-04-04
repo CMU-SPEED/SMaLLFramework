@@ -9,15 +9,18 @@ set(CMAKE_C_COMPILER gcc) #<--- Specify C compiler
 
 if(CMAKE_UARCH EQUAL ZEN2)
   SET(GCC_AVX_COMPILE_FLAGS "-fopenmp -mavx2 -mfma -O3 -fpermissive -march=native")
+  message("Microarchitecture target: ZEN2")
 elseif(CMAKE_UARCH EQUAL ARM)
-  SET(GCC_AVX_COMPILE_FLAGS " -fopenmp -O3 -fpermissive -mcpu=cortex-a57 ")
+  SET(GCC_AVX_COMPILE_FLAGS "-fopenmp -O3 -fpermissive -mcpu=cortex-a57 ")
+  message("Microarchitecture target: ARM-A57")
 else()
-    SET(GCC_AVX_COMPILE_FLAGS " -fopenmp -O3")
+  SET(CMAKE_UARCH REF)
+  SET(GCC_AVX_COMPILE_FLAGS "-fopenmp -O3")
+  message("Microarchitecture: REF")
 endif()
 
 SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${GCC_AVX_COMPILE_FLAGS}")
-
-
+message("CXX_FLAGS:        ${CMAKE_CXX_FLAGS}")
 
 add_library(check_interface.o STATIC test/interface.cpp)
 target_compile_definitions(check_interface.o PRIVATE uarch=${CMAKE_UARCH})

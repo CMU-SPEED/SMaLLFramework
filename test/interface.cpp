@@ -29,7 +29,7 @@
 
 
 void print_build_info_check() {
-    char * archs[] = {"reference", "zen2", "arm"}; 
+    char const * archs[] = {"reference", "zen2", "arm"};
     printf("µArch: %s \n W_ob =  %d \n C_ob = %d \n SIMD = %d \n", archs[uarch], W_ob, C_ob, SIMD);
 }
 
