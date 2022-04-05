@@ -19,7 +19,7 @@ else()
   message("Microarchitecture: REF")
 endif()
 
-SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${GCC_AVX_COMPILE_FLAGS}")
+SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall ${GCC_AVX_COMPILE_FLAGS}")
 message("CXX_FLAGS:        ${CMAKE_CXX_FLAGS}")
 
 add_library(check_interface.o STATIC test/interface.cpp)

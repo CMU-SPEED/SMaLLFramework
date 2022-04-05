@@ -14,19 +14,19 @@ inline void activation_kernel(
 {
   ZERO_TILE_C( _W_ob, _C_ob);
 
-  int updates = 0;
+  // int updates = 0;
   // uint32_t step = _C_ob;//stride*_C_ob;
   // int count = 0;
   for (uint32_t n = 0; n < H_f; n++)
   {
 
-    int filter_offset_h = n * W_f * _C_ib * _C_ob;
+    // int filter_offset_h = n * W_f * _C_ib * _C_ob;
     int input_stencil_h = /*input_col_offset +*/ n * input_col_stride /*+ input_row_offset*/;
 
     for (uint32_t m = 0; m < W_f; m++)
     {
 
-      int filter_offset_w = m * _C_ib * _C_ob + filter_offset_h;
+      // int filter_offset_w = m * _C_ib * _C_ob + filter_offset_h;
       int input_stencil_w = m * _C_ob + input_stencil_h;
 
       float *a = I + input_stencil_w;
@@ -35,7 +35,7 @@ inline void activation_kernel(
 
         // kernel_conv(_W_ob,_C_ob,rank_k,I + input_stencil_w, F + filter_offset_w, O);
 
-        int p_cur = ii;
+        // int p_cur = ii;
 
         MAX_TILE_C(step, a, _W_ob, _C_ob);
       }
@@ -56,7 +56,7 @@ inline void activation_kernel_end(
 
   ZERO_END_C(_W_ob, _C_ob);
 
-  int updates = 0;
+  // int updates = 0;
   // uint32_t step = _C_ob;//stride*_C_ob;
   // int count = 0;
   for (uint32_t n = 0; n < H_f; n++)
@@ -75,7 +75,7 @@ inline void activation_kernel_end(
 
         // kernel_conv(_W_ob,_C_ob,rank_k,I + input_stencil_w, F + filter_offset_w, O);
 
-        int p_cur = ii;
+        // int p_cur = ii;
         MAX_END_C(step, a, W_last, _C_ob);
       }
     }
@@ -95,19 +95,19 @@ inline void pool_kernel(
 
   LOAD_TILE_C_strided(I, step, _W_ob, _C_ob);
 
-  int updates = 0;
+  // int updates = 0;
   // uint32_t step = _C_ob;//stride*_C_ob;
   // int count = 0;
   for (uint32_t n = 0; n < H_f; n++)
   {
 
-    int filter_offset_h = n * W_f * _C_ib * _C_ob;
+    // int filter_offset_h = n * W_f * _C_ib * _C_ob;
     int input_stencil_h = /*input_col_offset +*/ n * input_col_stride /*+ input_row_offset*/;
 
     for (uint32_t m = 0; m < W_f; m++)
     {
 
-      int filter_offset_w = m * _C_ib * _C_ob + filter_offset_h;
+      // int filter_offset_w = m * _C_ib * _C_ob + filter_offset_h;
       int input_stencil_w = m * _C_ob + input_stencil_h;
 
       float *a = I + input_stencil_w;
@@ -116,7 +116,7 @@ inline void pool_kernel(
 
         // kernel_conv(_W_ob,_C_ob,rank_k,I + input_stencil_w, F + filter_offset_w, O);
 
-        int p_cur = ii;
+        // int p_cur = ii;
 
         MAX_TILE_C(step, a,_W_ob, _C_ob);
       }
@@ -137,7 +137,7 @@ inline void pool_kernel_end(
 
   LOAD_LAST_C_strided(I, step, _W_ob, _C_ob, W_last);
 
-  int updates = 0;
+  // int updates = 0;
   // uint32_t step = _C_ob;//stride*_C_ob;
   // int count = 0;
   for (uint32_t n = 0; n < H_f; n++)
@@ -156,7 +156,7 @@ inline void pool_kernel_end(
 
         // kernel_conv(_W_ob,_C_ob,rank_k,I + input_stencil_w, F + filter_offset_w, O);
 
-        int p_cur = ii;
+        // int p_cur = ii;
         MAX_END_C(step, a, W_last, _C_ob);
       }
     }
@@ -177,7 +177,7 @@ inline void dw_kernel(
 
   ZERO_TILE_C(_W_ob, _C_ob);
 
-  int updates = 0;
+  // int updates = 0;
   // uint32_t step = _C_ob;//stride*_C_ob;
   // int count = 0;
   for (uint32_t n = 0; n < H_f; n++)
@@ -199,7 +199,7 @@ inline void dw_kernel(
 
         // kernel_conv(_W_ob,_C_ob,rank_k,I + input_stencil_w, F + filter_offset_w, O);
 
-        int p_cur = ii;
+        // int p_cur = ii;
 
         DW_TILE_C(step, a, b, _W_ob, _C_ob);
       }
@@ -223,7 +223,7 @@ inline void dw_kernel_end(
 
   ZERO_END_C(W_last, _C_ob);
 
-  int updates = 0;
+  // int updates = 0;
   // uint32_t step = _C_ob;//stride*_C_ob;
   // int count = 0;
   for (uint32_t n = 0; n < H_f; n++)
@@ -243,7 +243,7 @@ inline void dw_kernel_end(
       {
 
         // kernel_conv(_W_ob,_C_ob,rank_k,I + input_stencil_w, F + filter_offset_w, O);
-        int p_cur = ii;
+        // int p_cur = ii;
         DW_END_C(step, a, b, W_last, _C_ob);
       }
     }
@@ -267,7 +267,7 @@ inline void conv_kernel(
 
   LOAD_TILE_C(O, _W_ob, _C_ob);
 
-  int updates = 0;
+  // int updates = 0;
   // uint32_t step = stride*_C_ob;
   // int count = 0;
   for(uint32_t n = 0; n < H_f; n++){
@@ -309,7 +309,7 @@ inline void conv_kernel_start(
 
   ZERO_TILE_C(_W_ob, _C_ob);
 
-  int updates = 0;
+  // int updates = 0;
   // uint32_t step = _C_ob;//stride*_C_ob;
   // int count = 0;
   for(uint32_t n = 0; n < H_f; n++){
@@ -353,7 +353,7 @@ inline void conv_kernel_start_end(
 
   ZERO_END_C(W_last, _C_ob);
 
-  int updates = 0;
+  // int updates = 0;
   // uint32_t step = _C_ob;//stride*_C_ob;
   // int count = 0;
   for(uint32_t n = 0; n < H_f; n++){
@@ -394,7 +394,7 @@ inline void conv_kernel_end(
 {
 
   LOAD_LAST_C(O, _W_ob, _C_ob, W_last);
-  int updates = 0;
+  // int updates = 0;
   // uint32_t step = stride*_C_ob;
   // int count = 0;
   for(uint32_t n = 0; n < H_f; n++){

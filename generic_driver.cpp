@@ -134,7 +134,7 @@ int main(int argc, char **argv)
     print_build_info_check();
 
     // #endif
-    unsigned long long t0, t1;
+    //unsigned long long t0, t1;
 
     // Direct Convolution Setup
     //  Copy layer weights to temporaries
@@ -155,18 +155,18 @@ int main(int argc, char **argv)
     std::vector<uint32_t> intermediate_block_dimensions;
 
 #if PARALLEL
-    uint32_t num_threads = 1;
-    if (char const *nt_str = std::getenv("OMP_NUM_THREADS"))
-    {
-        int32_t nt(atoi(nt_str));
-        if (nt > 0)
-            num_threads = nt;
-    }
+    // uint32_t num_threads = 1;
+    // if (char const *nt_str = std::getenv("OMP_NUM_THREADS"))
+    // {
+    //     int32_t nt(atoi(nt_str));
+    //     if (nt > 0)
+    //         num_threads = nt;
+    // }
 #endif
 
-    unsigned long long sum = ULLONG_MAX, sum_pool = ULLONG_MAX;
-    volatile unsigned long long sum_fused = ULLONG_MAX,
-                                sum_conv = ULLONG_MAX;
+    unsigned long long sum = ULLONG_MAX; //, sum_pool = ULLONG_MAX;
+    // volatile unsigned long long sum_fused = ULLONG_MAX;
+    // volatile unsigned long long sum_conv = ULLONG_MAX;
     std::vector<uint64_t> unfused_timing;
 
 
@@ -186,7 +186,7 @@ int main(int argc, char **argv)
 
 #endif
     {
-        bool check = 0;
+        //bool check = 0;
 
         sum = ULLONG_MAX;
 #if LAYER == RELU

@@ -26,12 +26,12 @@ void direct_convolution(
     uint32_t W_o = (W_o_full / _W_ob) * _W_ob;
     uint32_t W_last = W_o_full % _W_ob;
 
-    uint32_t H_o_padding = 0, W_o_padding = 0;
-    if (padding == 'f')
-    {
-        H_o_padding = (H_i - H_o) / 2;
-        W_o_padding = (W_i - W_o) / 2;
-    }
+    // uint32_t H_o_padding = 0, W_o_padding = 0;
+    // if (padding == 'f')
+    // {
+    //     H_o_padding = (H_i - H_o) / 2;
+    //     W_o_padding = (W_i - W_o) / 2;
+    // }
 
 // printf("W_of_full: %d W_o : %d W_las t: %d\n ", W_o_full, W_o, W_last);
 
@@ -205,16 +205,16 @@ void direct_convolution_partial(
     uint32_t W_o = (W_o_full / _W_ob) * _W_ob;
     uint32_t W_last = W_o_full % _W_ob;
 
-    if (padding == 'f')
-    {
-        uint32_t H_o_padding = (H_i - H_o) / 2;
-        uint32_t W_o_padding = (W_i - W_o) / 2;
-    }
-    else if (padding == 's')
-    {
-        uint32_t H_o_padding = (H_i - H_o) / 2;
-        uint32_t W_o_padding = (W_i - W_o) / 2;
-    }
+    // if (padding == 'f')
+    // {
+    //     uint32_t H_o_padding = (H_i - H_o) / 2;  // NOTE: scoped to this block only
+    //     uint32_t W_o_padding = (W_i - W_o) / 2;
+    // }
+    // else if (padding == 's')
+    // {
+    //     uint32_t H_o_padding = (H_i - H_o) / 2;
+    //     uint32_t W_o_padding = (W_i - W_o) / 2;
+    // }
 // printf("W_of_full: %d W_o : %d W_las t: %d\n ", W_o_full, W_o, W_last);
 
 // printf(" input dims : %d %d \n", H_i, W_i);
@@ -227,7 +227,7 @@ void direct_convolution_partial(
         uint32_t block_offset = (j / _C_ob) * H_o * W_o_full * _C_ob;
         uint32_t filter_o_c_block = (j / _C_ob) * (C_f / _C_ib) * H_f * W_f * _C_ib * _C_ob;
         float *O_buffer = O + block_offset;
-        uint32_t group_offset = j / C_o;
+        // uint32_t group_offset = j / C_o;
 
         for (uint32_t i = 0; i < C_f; i += _C_ib)
         {
