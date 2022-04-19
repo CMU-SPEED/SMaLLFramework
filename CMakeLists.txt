@@ -7,10 +7,10 @@ set(CMAKE_C_COMPILER gcc) #<--- Specify C compiler
 
 #Compiler Flags
 
-if(CMAKE_UARCH EQUAL ZEN2)
+if(CMAKE_UARCH STREQUAL "ZEN2")
   SET(GCC_AVX_COMPILE_FLAGS "-fopenmp -mavx2 -mfma -O3 -fpermissive -march=native")
   message("Microarchitecture target: ZEN2")
-elseif(CMAKE_UARCH EQUAL ARM)
+elseif(CMAKE_UARCH STREQUAL "ARM")
   SET(GCC_AVX_COMPILE_FLAGS "-fopenmp -O3 -fpermissive -mcpu=cortex-a57 ")
   message("Microarchitecture target: ARM-A57")
 else()
