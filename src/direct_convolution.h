@@ -32,6 +32,7 @@ void direct_convolution(
     //     H_o_padding = (H_i - H_o) / 2;
     //     W_o_padding = (W_i - W_o) / 2;
     // }
+    // printf("%d %d %d\n", _W_ob, _C_ob, _C_ib);
 
 // printf("W_of_full: %d W_o : %d W_last: %d\n ", W_o_full, W_o, W_last);
 

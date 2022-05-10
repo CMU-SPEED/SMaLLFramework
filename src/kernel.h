@@ -264,7 +264,7 @@ inline void conv_kernel_combined(
     float *F,
     float *O)
 {
-
+    // printf("first: %d\n", first);
     DEF_TILE_C(_W_ob, _C_ob);
     if(first)
     {
@@ -274,6 +274,7 @@ inline void conv_kernel_combined(
     {
         LOAD_TILE_C(O, _W_ob, _C_ob);
     }
+
 
     // int updates = 0;
     // uint32_t step = stride*_C_ob;
@@ -317,7 +318,6 @@ inline void conv_kernel_end_combined(
     float *O,
     uint32_t W_last)
 {
-
     DEF_TILE_C_END(_W_ob, _C_ob);
     if(first)
     {

@@ -12,12 +12,12 @@
 #define DEF_TILE_C_END(W_ob, C_ob) \
   float c_tile[W_ob * C_ob];       \
 //  float c_tile[W_ob * C_ob];
-#define ZERO_TILE_C(W_ob, C_ob)                   \
-  for (uint32_t kk = 0; kk < W_ob; kk++)          \
-  {                                               \
-    for (uint32_t jj = 0; jj < C_ob; jj++)        \
-    {                                             \
-      c_tile[kk * C_ob + jj] = 0.0; \
+#define ZERO_TILE_C(W_ob, C_ob)            \
+  for (uint32_t kk = 0; kk < W_ob; kk++)   \
+  {                                        \
+    for (uint32_t jj = 0; jj < C_ob; jj++) \
+    {                                      \
+      c_tile[kk * C_ob + jj] = 0.0;        \
     }                                             \
   }
 

@@ -7,10 +7,10 @@ set(CMAKE_C_COMPILER gcc) #<--- Specify C compiler
 
 #Compiler Flags
 
-if(CMAKE_UARCH EQUAL ZEN2)
+if(CMAKE_UARCH STREQUAL "ZEN2")
   SET(GCC_AVX_COMPILE_FLAGS "-fopenmp -mavx2 -mfma -O3 -fpermissive -march=native")
   message("Microarchitecture target: ZEN2")
-elseif(CMAKE_UARCH EQUAL ARM)
+elseif(CMAKE_UARCH STREQUAL "ARM")
   SET(GCC_AVX_COMPILE_FLAGS "-fopenmp -O3 -fpermissive -mcpu=cortex-a57 ")
   message("Microarchitecture target: ARM-A57")
 else()
@@ -46,7 +46,6 @@ set_property(TARGET test_interface_pool.x PROPERTY CXX_STANDARD 14)
 
 
 #[[Comment Lines out if you don not have libtorch
-]]
 find_package(Torch REQUIRED)
 add_executable(interface_relu.x torch_interface_driver.cpp )
 target_link_libraries(interface_relu.x "${TORCH_LIBRARIES}")
@@ -68,4 +67,4 @@ target_link_libraries(interface_pool.x check_interface.o interface.o)
 SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS}")
 target_compile_definitions(interface_pool.x PRIVATE LAYER=POOL)
 set_property(TARGET interface_pool.x PROPERTY CXX_STANDARD 14)
-
+]]
