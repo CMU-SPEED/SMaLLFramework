@@ -12,9 +12,13 @@
 
 
 // Initializations
+#define DEF_TILE_C(W_ob, C_ob)\
+__m256 a_reg, b0, b1, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13;\
+
+#define DEF_TILE_C_END(W_ob, C_ob) \
+  float c_tile[W_ob * C_ob];
 
 #define ZERO_TILE_C(W_ob, C_ob) \
-__m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;\
   c0 = _mm256_setzero_ps();     \
   c1 = _mm256_setzero_ps();     \
   c2 = _mm256_setzero_ps();     \
@@ -28,13 +32,18 @@ __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;\
   c10 = _mm256_setzero_ps();    \
   c11 = _mm256_setzero_ps();
 
-#define ZERO_END_C(W_ob, C_ob) \
-    float c_tile[W_ob * C_ob] = {0};
+#define ZERO_END_C(W_ob, C_ob)                    \
+  for (uint32_t kk = 0; kk < W_ob; kk++)          \
+  {                                               \
+    for (uint32_t jj = 0; jj < C_ob; jj++)        \
+    {                                             \
+      c_tile[kk * C_ob + jj] = 0.0; \
+    }                                             \
+  }
 
 // Loads
 
 #define LOAD_TILE_C(O, W_ob, C_ob)                                                    \
-    __m256 a_reg, b0, b1, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13; \
     c0 = _mm256_load_ps(O + (0 * C_ob));                                              \
     c1 = _mm256_load_ps(O + (0 * C_ob) + SIMD);                                       \
     c2 = _mm256_load_ps(O + (1 * C_ob));                                              \
@@ -49,7 +58,6 @@ __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;\
     c11 = _mm256_load_ps(O + (5 * C_ob) + SIMD);
 
 #define LOAD_LAST_C(O, W_ob, C_ob, W_last)        \
-  float c_tile[W_ob * C_ob];                      \
   for (uint32_t kk = 0; kk < W_last; kk++)        \
   {                                               \
     for (uint32_t jj = 0; jj < C_ob; jj++)        \
@@ -97,7 +105,6 @@ __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;\
     c11 = _mm256_load_ps(O + (5 * C_ob) + SIMD);
 // strided loads
 #define LOAD_TILE_C_strided(O, step, _W_ob, _C_ob)                                  \
-  __m256 a_reg, b0, b1, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13; \
   c0 = _mm256_load_ps(O + (0 * step));                                              \
   c1 = _mm256_load_ps(O + (0 * step) + SIMD);                                       \
   c2 = _mm256_load_ps(O + (1 * step));                                              \
@@ -126,14 +133,13 @@ __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;\
     c10 = _mm256_load_ps(O + (5 * step));                                             \
     c11 = _mm256_load_ps(O + (5 * step) + SIMD);
 
-#define LOAD_LAST_C_strided(O, step, W_ob, C_ob, W_last)                       \
-  float c_tile[W_ob * C_ob];                                                   \
-  for (uint32_t kk = 0; kk < W_last; kk++)                                     \
-  {                                                                            \
-    for (uint32_t jj = 0; jj < C_ob; jj++)                                     \
-    {                                                                          \
-      c_tile[kk * C_ob + jj] = O[kk * step + jj];                              \
-    }                                                                          \
+#define LOAD_LAST_C_strided(O, step, W_ob, C_ob, W_last) \
+  for (uint32_t kk = 0; kk < W_last; kk++)               \
+  {                                                      \
+    for (uint32_t jj = 0; jj < C_ob; jj++)               \
+    {                                                    \
+      c_tile[kk * C_ob + jj] = O[kk * step + jj];        \
+    }                                                    \
   }
 
 //Stores

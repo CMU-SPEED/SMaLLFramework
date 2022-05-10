@@ -9,7 +9,7 @@
 #define ARM 2
 
 #ifndef uarch
-#define uarch REF
+#define uarch ZEN2
 #endif
 
 #define RUNS 1000

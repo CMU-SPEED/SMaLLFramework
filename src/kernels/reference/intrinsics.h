@@ -6,17 +6,35 @@
 // __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
 
 // Initializations
+#define DEF_TILE_C(W_ob, C_ob)
+  float c_tile[W_ob * C_ob];
 
-#define ZERO_TILE_C(W_ob, C_ob) \
-  float c_tile[W_ob * C_ob] = {0};
+#define DEF_TILE_C_END(W_ob, C_ob) \
+  float c_tile[W_ob * C_ob];       \
+//  float c_tile[W_ob * C_ob];
+#define ZERO_TILE_C(W_ob, C_ob)                   \
+  for (uint32_t kk = 0; kk < W_ob; kk++)          \
+  {                                               \
+    for (uint32_t jj = 0; jj < C_ob; jj++)        \
+    {                                             \
+      c_tile[kk * C_ob + jj] = 0.0; \
+    }                                             \
+  }
 
-#define ZERO_END_C(W_ob, C_ob) \
-  float c_tile[W_ob * C_ob] = {0};
+//  float c_tile[W_ob * C_ob];
+
+#define ZERO_END_C(W_ob, C_ob)                    \
+  for (uint32_t kk = 0; kk < W_ob; kk++)          \
+  {                                               \
+    for (uint32_t jj = 0; jj < C_ob; jj++)        \
+    {                                             \
+      c_tile[kk * C_ob + jj] = 0.0; \
+    }                                             \
+  }
 
 // Loads
-
+//  float c_tile[W_ob * C_ob]; 
 #define LOAD_TILE_C(O, W_ob, C_ob)                \
-  float c_tile[W_ob * C_ob];                      \
   for (uint32_t kk = 0; kk < W_ob; kk++)          \
   {                                               \
     for (uint32_t jj = 0; jj < C_ob; jj++)        \
@@ -25,8 +43,8 @@
     }                                             \
   }
 
+//  float c_tile[W_ob * C_ob]; 
 #define LOAD_LAST_C(O, W_ob, C_ob, W_last)        \
-  float c_tile[W_ob * C_ob];                      \
   for (uint32_t kk = 0; kk < W_last; kk++)        \
   {                                               \
     for (uint32_t jj = 0; jj < C_ob; jj++)        \
@@ -69,8 +87,8 @@
   }
 
 // strided loads
+//  float c_tile[_W_ob * _C_ob];
 #define LOAD_TILE_C_strided(O, step, _W_ob, _C_ob) \
-  float c_tile[_W_ob * _C_ob];                     \
   for (uint32_t kk = 0; kk < _W_ob; kk++)          \
   {                                                \
     for (uint32_t jj = 0; jj < _C_ob; jj++)        \
@@ -79,8 +97,8 @@
     }                                              \
   }
 
+//  float c_tile[W_ob * C_ob];
 #define LOAD_LAST_C_strided(O, step, W_ob, C_ob, W_last) \
-  float c_tile[W_ob * C_ob];                             \
   for (uint32_t kk = 0; kk < W_last; kk++)               \
   {                                                      \
     for (uint32_t jj = 0; jj < C_ob; jj++)               \
@@ -98,7 +116,7 @@
       c_tile[kk * _C_ob + jj] = O[kk * step + jj];    \
     }                                                 \
   }
-//Stores
+                             // Stores
 
 #define STORE_TILE_C(O, W_ob, C_ob)               \
   for (uint32_t kk = 0; kk < W_ob; kk++)          \
@@ -138,7 +156,7 @@
 
 #define STORE_TILE_INTER(W_ob, C_ob)               \
   void * do_nothing = NULL;
-//Convolution Computation
+                             // Convolution Computation
 //(Strided GEMM)
 // Pouint32_ter to C defined in the outer scope
 #define FMA_TILE_C(step, a, b, p_cur, W_ob, C_ob) \
