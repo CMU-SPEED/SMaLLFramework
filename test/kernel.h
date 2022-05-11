@@ -101,13 +101,13 @@ inline void pool_kernel(
     for (uint32_t n = 0; n < H_f; n++)
     {
 
-        //int filter_offset_h = n * W_f * _C_ib * _C_ob;
+        // int filter_offset_h = n * W_f * _C_ib * _C_ob;
         int input_stencil_h = /*input_col_offset +*/ n * input_col_stride /*+ input_row_offset*/;
 
         for (uint32_t m = 0; m < W_f; m++)
         {
 
-            //int filter_offset_w = m * _C_ib * _C_ob + filter_offset_h;
+            // int filter_offset_w = m * _C_ib * _C_ob + filter_offset_h;
             int input_stencil_w = m * _C_ob + input_stencil_h;
 
             float *a = I + input_stencil_w;
@@ -258,7 +258,7 @@ inline void dw_kernel_end(
 template <uint32_t _W_ob, uint32_t _C_ob>
 inline void initial_conv_kernel_combined(
     uint32_t first,
-     uint32_t _C_ib, uint32_t step,
+    uint32_t _C_ib, uint32_t step,
     uint32_t H_f, uint32_t W_f,
     uint32_t input_col_stride,
     float *I,
@@ -362,7 +362,7 @@ inline void initial_conv_kernel_end_combined(
 
 template <uint32_t _W_ob, uint32_t _C_ob, uint32_t _C_ib, uint32_t step>
 inline void conv_kernel_combined(
-    uint32_t first, 
+    uint32_t first,
     uint32_t H_f, uint32_t W_f,
     uint32_t input_col_stride,
     float *I,
@@ -371,7 +371,7 @@ inline void conv_kernel_combined(
 {
     // printf("first: %d\n", first);
     DEF_TILE_C(_W_ob, _C_ob);
-    if(first)
+    if (first)
     {
         ZERO_TILE_C(_W_ob, _C_ob);
     }
@@ -379,7 +379,6 @@ inline void conv_kernel_combined(
     {
         LOAD_TILE_C(O, _W_ob, _C_ob);
     }
-
 
     // int updates = 0;
     // uint32_t step = stride*_C_ob;
@@ -424,7 +423,7 @@ inline void conv_kernel_end_combined(
     uint32_t W_last)
 {
     DEF_TILE_C_END(_W_ob, _C_ob);
-    if(first)
+    if (first)
     {
         ZERO_END_C(W_last, _C_ob);
     }
@@ -432,7 +431,7 @@ inline void conv_kernel_end_combined(
     {
         LOAD_LAST_C(O, _W_ob, _C_ob, W_last);
     }
-   
+
     // int updates = 0;
     // uint32_t step = stride*_C_ob;
     // int count = 0;

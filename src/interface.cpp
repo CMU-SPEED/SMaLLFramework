@@ -31,27 +31,40 @@
 
 void Conv2D(int layer_num, int kernel_size, int stride, char padding, int output_channels, int input_channels, int input_height, int input_width, float *input_ptr, float *filter_ptr, float *output_ptr)
 {
-    if (stride == 1)
+    if(input_channels < C_ob)
     {
-        direct_convolution<W_ob, C_ob, C_ib, 1, 'c'>(1,
-                                                           kernel_size, kernel_size, input_channels,
-                                                           output_channels, 1,
-                                                           input_height, input_width,
-                                                           padding,
-                                                           input_ptr, filter_ptr, output_ptr);
-    }
-    else if (stride == 2)
-    {
-        direct_convolution<W_ob, C_ob, C_ib, 2, 'c'>(1,
-                                                           kernel_size, kernel_size, input_channels,
-                                                           output_channels, 1,
-                                                           input_height, input_width,
-                                                           padding,
-                                                           input_ptr, filter_ptr, output_ptr);
+        printf("small input channels");
+        initial_direct_convolution<W_ob, C_ob, 1>(1,
+                                                     kernel_size, kernel_size, input_channels,
+                                                     output_channels, 1,
+                                                     input_height, input_width,
+                                                     padding,
+                                                     input_ptr, filter_ptr, output_ptr);
     }
     else
     {
-        printf("This stride is unsupported, please change the interface.cpp file\n");
+        if (stride == 1)
+        {
+            direct_convolution<W_ob, C_ob, C_ib, 1, 'c'>(1,
+                                                            kernel_size, kernel_size, input_channels,
+                                                            output_channels, 1,
+                                                            input_height, input_width,
+                                                            padding,
+                                                            input_ptr, filter_ptr, output_ptr);
+        }
+        else if (stride == 2)
+        {
+            direct_convolution<W_ob, C_ob, C_ib, 2, 'c'>(1,
+                                                            kernel_size, kernel_size, input_channels,
+                                                            output_channels, 1,
+                                                            input_height, input_width,
+                                                            padding,
+                                                            input_ptr, filter_ptr, output_ptr);
+        }
+        else
+        {
+            printf("This stride is unsupported, please change the interface.cpp file\n");
+        }
     }
 }
 
