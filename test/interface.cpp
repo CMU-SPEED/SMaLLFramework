@@ -143,4 +143,15 @@ void check_ReLUActivation(int layer_num, int input_channels, int input_height, i
                                                          'v',
                                                          input_ptr, NULL, output_ptr);
 }
+
+void check_Dense(int layer_num, int output_elements, int input_elements, float *input_ptr, float *filter_ptr, float *output_ptr)
+{
+    direct_convolution_naive<W_ob, C_ob, C_ib, 1, 'c'>(1,
+                                                       1, 1, input_elements,
+                                                       output_elements, 1,
+                                                       1, 1,
+                                                       'v',
+                                                       input_ptr, filter_ptr, output_ptr);
+}
+
 //

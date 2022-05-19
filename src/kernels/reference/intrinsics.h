@@ -419,9 +419,9 @@
       for (uint32_t jj = 0; jj < C_ob; jj++)           \
       {                                                \
         *(c_channel) += (*(a_channel) * *(b_channel)); \
-        c_channel++;                                   \
-        b_channel++;                                   \
-        a_channel++;                                   \
+  c_channel++;\
+  b_channel++;\
+  a_channel++;                                   \
       }                                                \
       a_pixel += step;                                 \
       c_pixel += C_ob;                                 \

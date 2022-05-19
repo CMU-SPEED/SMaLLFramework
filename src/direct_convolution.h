@@ -20,22 +20,37 @@ void initial_direct_convolution(
     float *F,
     float *O)
 {
-    uint32_t H_o = 0;
-    op_dim(H_i, stride, H_f, H_o);
-    uint32_t W_o_full = 0;
-    op_dim(W_i, stride, W_f, W_o_full);
+    uint32_t H_o = 0, W_o_full = 0;
+    uint32_t H_padding = 0, W_padding = 0;
+
+    if (padding == 'f')
+    {
+        H_padding = (H_f - 1) / 2;
+        W_padding = (W_f - 1) / 2;
+    }
+
+    uint32_t H_o_w_pad = 0, W_o_w_pad = 0;
+
+    // Total outputs 
+
+    //Front padding outputs
+
+    // Full kernel output elements
+
+    op_dim((H_i + H_padding) - stride, stride, H_f, H_o);
+    op_dim((W_i + W_padding) - stride, stride, W_f, W_o_full);
+
+    //back padding elements
+
+    //setting up microkernel specific parameters
     uint32_t W_o = (W_o_full / _W_ob) * _W_ob;
     uint32_t W_last = W_o_full % _W_ob;
 
-    // uint32_t H_o_padding = 0, W_o_padding = 0;
-    // if (padding == 'f')
-    // {
-    //     H_o_padding = (H_i - H_o) / 2;
-    //     W_o_padding = (W_i - W_o) / 2;
-    // }
+
+
     // printf("%d %d %d\n", _W_ob, _C_ob, _C_ib);
 
-// printf("W_of_full: %d W_o : %d W_last: %d\n ", W_o_full, W_o, W_last);
+printf("W_of_full: %d W_o : %d W_last: %d\n ", W_o_full, W_o, W_last);
 
 // printf(" input dims : %d %d \n", H_i, W_i);
 #if PARALLEL == 1
@@ -66,7 +81,7 @@ void initial_direct_convolution(
             // front padding row
             //  if(stride == 1)
             //  {
-            //      for(uint32_t l_padded = 0; l_padded < H_o_padding; l_padded++)
+            //      for(uint32_t l_padded = 0; l_padded < H_padding; l_padded++)
             //      {
             //          for (uint32_t k = 0; k < W_o; k += _W_ob)
             //          {
@@ -89,7 +104,7 @@ void initial_direct_convolution(
                     I_ptr += stride * _W_ob * C_f;
                     O_ptr += _W_ob * _C_ob;
                 }
-                initial_conv_kernel_end_combined<_W_ob, _C_ob>(first, C_f, stride * C_f, H_f, W_f, W_i * C_f, I_ptr, filter_block_ptr, O_ptr, W_last);
+                initial_conv_kernel_end_combined<_W_ob, _C_ob>(first, C_f, stride * C_f, H_f, W_f, W_i * C_f, I_ptr, filter_block_ptr, O_ptr, W_last, W_padding);
             }
 
             // back padding row
@@ -118,17 +133,17 @@ void direct_convolution(
     uint32_t W_o = (W_o_full / _W_ob) * _W_ob;
     uint32_t W_last = W_o_full % _W_ob;
 
-    // uint32_t H_o_padding = 0, W_o_padding = 0;
-    // if (padding == 'f')
-    // {
-    //     H_o_padding = (H_i - H_o) / 2;
-    //     W_o_padding = (W_i - W_o) / 2;
-    // }
+    uint32_t H_padding = 0, W_padding = 0;
+    if (padding == 'f')
+    {
+        H_padding = (H_i - H_o) / 2;
+        W_padding = (W_i - W_o) / 2;
+    }
     // printf("%d %d %d\n", _W_ob, _C_ob, _C_ib);
 
 // printf("W_of_full: %d W_o : %d W_last: %d\n ", W_o_full, W_o, W_last);
-
-// printf(" input dims : %d %d \n", H_i, W_i);
+// printf("C_f %d G %d C_o %d\n", C_f, G, C_o);
+// printf(" output dims : %d %d \n", H_o, W_o_full);
 #if PARALLEL == 1
 #pragma omp parallel for
 #endif
@@ -161,15 +176,20 @@ void direct_convolution(
             // printf("filter input offset %d ", filter_i_c_block - filter_o_c_block);
 
             float *filter_block_ptr = F + filter_i_c_block;
-            // front padding row
+            // // front padding row
             //  if(stride == 1)
             //  {
-            //      for(uint32_t l_padded = 0; l_padded < H_o_padding; l_padded++)
+            //      for(uint32_t l_padded = 0; l_padded < H_padding; l_padded++)
             //      {
-            //          for (uint32_t k = 0; k < W_o; k += _W_ob)
-            //          {
+            //         //padded row elements
+
+            //         for (uint32_t k = 0; k < W_o; k += _W_ob)
+            //         {   
 
             //         }
+
+            //         //padded row elements
+
             // }
             // Set the output pointer to the full section
             // end front padding
@@ -212,27 +232,58 @@ void direct_convolution(
                     // printf("calling dwise  %d\n", O_ptr - O);
                     if (op == 'c')
                     {
-                        dw_kernel_end<_W_ob, _C_ob, _C_ib, stride * _C_ob>(H_f, W_f, W_i * _C_ob, I_ptr, filter_block_ptr, O_ptr, W_last);
+
+                        dw_kernel_end<_W_ob, _C_ob, _C_ib, stride * _C_ob>(H_f, W_f, W_i * _C_ob, I_ptr, filter_block_ptr, O_ptr, W_last, W_padding);
                     }
                     else if (op == 'p')
                     {
-                        pool_kernel_end<_W_ob, _C_ob, _C_ib, stride * _C_ob>(H_f, W_f, W_i * _C_ob, I_ptr, O_ptr, W_last);
+                        pool_kernel_end<_W_ob, _C_ob, _C_ib, stride * _C_ob>(H_f, W_f, W_i * _C_ob, I_ptr, O_ptr, W_last, W_padding);
                     }
                     else if (op == 'a')
                     {
-                        activation_kernel_end<_W_ob, _C_ob, _C_ib, stride * _C_ob>(H_f, W_f, W_i * _C_ob, I_ptr, O_ptr, W_last);
+                        activation_kernel_end<_W_ob, _C_ob, _C_ib, stride * _C_ob>(H_f, W_f, W_i * _C_ob, I_ptr, O_ptr, W_last, W_padding);
                     }
                     // printf("filter: %.5f %d input: %.5f\n",filter_block_ptr[0], filter_block_ptr - F, I_ptr[0]);
                     // printf("%.5f %.5f  %.5f  %.5f %.5f %.5f %.5f %.5f \n", O_ptr[0], O_ptr[1], O_ptr[2], O_ptr[3], O_ptr[4], O_ptr[5], O_ptr[6], O_ptr[7]);
                 }
                 else
                 {
-                    conv_kernel_end_combined<_W_ob, _C_ob, _C_ib, stride * _C_ib>(first, H_f, W_f, W_i * _C_ib, I_ptr, filter_block_ptr, O_ptr, W_last);
+                    conv_kernel_end_combined<_W_ob, _C_ob, _C_ib, stride * _C_ib>(first, H_f, W_f, W_i * _C_ib, I_ptr, filter_block_ptr, O_ptr, W_last, W_padding);
                 }
             }
             // printf("op[0]: %f update %d \n", O_buffer[0], i);
 
             // back padding row
+            for(uint32_t l_padding = 0; l_padding < H_padding; l_padding++)
+            {
+                uint32_t col_offset = (H_o + l_padding) * W_o_full * _C_ob;
+                uint32_t input_col_offset = ((H_o + l_padding) * stride) * W_i * _C_ob + input_block_offset;
+                float *I_ptr = I + input_col_offset;
+                float *O_ptr = O_buffer + col_offset;
+                if (_C_ib == 1)
+                {
+                    // printf("calling dwise  %d\n", O_ptr - O);
+                    if (op == 'c')
+                    {
+
+                        dw_kernel_padding_end<_W_ob, _C_ob, _C_ib, stride * _C_ob>(H_f, W_f, W_i * _C_ob, I_ptr, filter_block_ptr, O_ptr,  H_padding, W_o, W_last, W_padding);
+                    }
+                    else if (op == 'p')
+                    {
+                        pool_kernel_padding_end<_W_ob, _C_ob, _C_ib, stride * _C_ob>(H_f, W_f, W_i * _C_ob, I_ptr, O_ptr, H_padding, W_o, W_last, W_padding);
+                    }
+                    else if (op == 'a')
+                    {
+                        activation_kernel_padding_end<_W_ob, _C_ob, _C_ib, stride * _C_ob>(H_f, W_f, W_i * _C_ob, I_ptr, O_ptr, H_padding, W_o, W_last, W_padding);
+                    }
+                    // printf("filter: %.5f %d input: %.5f\n",filter_block_ptr[0], filter_block_ptr - F, I_ptr[0]);
+                    // printf("%.5f %.5f  %.5f  %.5f %.5f %.5f %.5f %.5f \n", O_ptr[0], O_ptr[1], O_ptr[2], O_ptr[3], O_ptr[4], O_ptr[5], O_ptr[6], O_ptr[7]);
+                }
+                else
+                {
+                    conv_kernel_padding_end_combined<_W_ob, _C_ob, _C_ib, stride * _C_ib>(first, H_f, W_f, W_i * _C_ib, I_ptr, filter_block_ptr, O_ptr, H_padding, W_o, W_last, W_padding);
+                }
+            }   
         }
 
 
@@ -261,16 +312,13 @@ void direct_convolution_partial(
     uint32_t W_o = (W_o_full / _W_ob) * _W_ob;
     uint32_t W_last = W_o_full % _W_ob;
 
-    // if (padding == 'f')
-    // {
-    //     uint32_t H_o_padding = (H_i - H_o) / 2;  // NOTE: scoped to this block only
-    //     uint32_t W_o_padding = (W_i - W_o) / 2;
-    // }
-    // else if (padding == 's')
-    // {
-    //     uint32_t H_o_padding = (H_i - H_o) / 2;
-    //     uint32_t W_o_padding = (W_i - W_o) / 2;
-    // }
+    uint32_t H_padding = 0, W_padding = 0;
+    if (padding == 'f')
+    {
+        H_padding = (H_i - H_o) / 2;
+        W_padding = (W_i - W_o) / 2;
+    }
+
 // printf("W_of_full: %d W_o : %d W_las t: %d\n ", W_o_full, W_o, W_last);
 
 // printf(" input dims : %d %d \n", H_i, W_i);
@@ -317,7 +365,7 @@ void direct_convolution_partial(
                 // printf(" input channel: %d  row: %d %.2f %.2f %.2f %.2f \n", i, l, I_ptr[0], I_ptr[_C_ob*stride], I_ptr[2*_C_ob*stride], filter_block_ptr[0]);
                 // printf("\t %d \n", l);
 
-                conv_kernel_end_combined<_W_ob, _C_ob, _C_ib, stride * _C_ib>(0, H_f, W_f, W_i * _C_ib, I_ptr, filter_block_ptr, O_ptr, W_last);
+                conv_kernel_end_combined<_W_ob, _C_ob, _C_ib, stride * _C_ib>(0, H_f, W_f, W_i * _C_ib, I_ptr, filter_block_ptr, O_ptr, W_last, W_padding);
                 // printf(" input channel: %d  row: %d %.2f %.2f %.2f %.2f \n", i, l, I_ptr[0], I_ptr[_C_ob * stride], I_ptr[2 * _C_ob * stride], filter_block_ptr[0]);
 
                 // conv_kernel_end<_W_ob, _C_ob, _C_ib, stride * _C_ib, H_f, W_f>(W_i * _C_ib, I_ptr, filter_block_ptr, O_ptr, W_last);
@@ -356,11 +404,11 @@ and another to handle all subsequent ones
 //     uint32_t W_o = (W_o_full / _W_ob) * _W_ob;
 //     uint32_t W_last = W_o_full % _W_ob;
 
-//     // uint32_t H_o_padding = 0, W_o_padding = 0;
+//     // uint32_t H_padding = 0, W_padding = 0;
 //     // if (padding == 'f')
 //     // {
-//     //     H_o_padding = (H_i - H_o) / 2;
-//     //     W_o_padding = (W_i - W_o) / 2;
+//     //     H_padding = (H_i - H_o) / 2;
+//     //     W_padding = (W_i - W_o) / 2;
 //     // }
 
 // // printf("W_of_full: %d W_o : %d W_las t: %d\n ", W_o_full, W_o, W_last);
@@ -400,7 +448,7 @@ and another to handle all subsequent ones
 //             // front padding row
 //             //  if(stride == 1)
 //             //  {
-//             //      for(uint32_t l_padded = 0; l_padded < H_o_padding; l_padded++)
+//             //      for(uint32_t l_padded = 0; l_padded < H_padding; l_padded++)
 //             //      {
 //             //          for (uint32_t k = 0; k < W_o; k += _W_ob)
 //             //          {

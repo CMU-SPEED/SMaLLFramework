@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#include "kernel.h"
+#include "kernel_naive.h"
 
 template <uint32_t _W_ob, uint32_t _C_ob, uint32_t stride>
 void initial_direct_convolution_naive(
@@ -324,7 +324,7 @@ void direct_convolution_partial_naive(
     }
 }
 
-template <uint32_t _W_ob, uint32_t _C_ob, uint32_t _C_ib, uint32_t stride, char op>
+//template <uint32_t _W_ob, uint32_t _C_ob, uint32_t _C_ib, uint32_t stride, char op>
 // void direct_convolution_naive(
 //     uint32_t channel_stride,
 //     uint32_t H_f,

@@ -20,9 +20,9 @@
 #endif
 
 #ifndef op_dim
-#define op_dim(IN_dim, stride, K_dim, OUT_dim)   \
+#define op_dim(IN_dim, stride, K_dim, padding, OUT_dim)   \
     {                                            \
-        OUT_dim = (IN_dim - K_dim) / stride + 1; \
+        OUT_dim = (IN_dim +  2*padding - K_dim) / stride + 1; \
     }
 #endif
 
@@ -95,7 +95,7 @@ void DepthwiseConv2D(int layer_num, int kernel_size, int stride, char padding, i
     if (stride == 1)
     {
         direct_convolution<W_ob, C_ob, 1, 1, 'c'>(1,
-                                                        kernel_size, kernel_size, input_channels,
+                                                        kernel_size, kernel_size, 1,
                                                         1, input_channels,
                                                         input_height, input_width,
                                                         padding,
@@ -104,7 +104,7 @@ void DepthwiseConv2D(int layer_num, int kernel_size, int stride, char padding, i
     else if (stride == 2)
     {
         direct_convolution<W_ob, C_ob, 1, 2, 'c'>(1,
-                                                        kernel_size, kernel_size, input_channels,
+                                                        kernel_size, kernel_size, 1,
                                                         1, input_channels,
                                                         input_height, input_width,
                                                         padding,
@@ -144,4 +144,13 @@ void ReLUActivation(int layer_num, int input_channels, int input_height, int inp
                                                     'v',
                                                     input_ptr, NULL, output_ptr);
 }
-//
+
+void Dense(int layer_num, int output_elements, int input_elements, float *input_ptr, float *filter_ptr, float *output_ptr)
+{
+    direct_convolution<W_ob, C_ob, C_ib, 1, 'c'>(1,
+                                                 1, 1, input_elements,
+                                                 output_elements, 1,
+                                                 1, 1,
+                                                 'v',
+                                                 input_ptr, filter_ptr, output_ptr);
+}

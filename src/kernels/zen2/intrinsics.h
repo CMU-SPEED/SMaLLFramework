@@ -488,9 +488,9 @@ __m256 a_reg, b0, b1, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13
       for (uint32_t jj = 0; jj < C_ob; jj++)           \
       {                                                \
         *(c_channel) += (*(a_channel) * *(b_channel)); \
-        c_channel++;                                   \
-        b_channel++;                                   \
-        a_channel++;                                   \
+c_channel++;\
+b_channel++;\
+a_channel++;                                   \
       }                                                \
       a_pixel += step;                                 \
       c_pixel += C_ob;                                 \

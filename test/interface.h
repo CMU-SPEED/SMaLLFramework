@@ -54,4 +54,6 @@ void check_Maxpool2D( int layer_num, int kernel_size, int stride, char padding, 
 
 void check_ReLUActivation( int layer_num, int input_channels, int  input_height, int input_width, float * input_ptr, float * output_ptr);
 
+void check_Dense(int layer_num, int output_elements, int input_elements, float *input_ptr, float *filter_ptr, float *output_ptr);
+
 // Normalization layers may or may not be required (constant folding)
