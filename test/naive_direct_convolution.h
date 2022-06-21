@@ -4,9 +4,10 @@
 
 #include "kernel_naive.h"
 
-template <uint32_t _W_ob, uint32_t _C_ob, uint32_t stride>
+template <uint32_t _W_ob, uint32_t _C_ob>
 void initial_direct_convolution_naive(
     uint32_t channel_stride,
+    uint32_t stride,
     uint32_t H_f,
     uint32_t W_f,
     uint32_t C_f,

@@ -26,6 +26,13 @@
     }
 #endif
 
+#ifndef op_dim_stride
+#define op_dim_stride(IN_dim, stride ,OUT_dim)        \
+    {                                                          \
+        OUT_dim = ceil(IN_dim/stride) \
+    }
+#endif
+
 #include "direct_convolution.h"
 
 

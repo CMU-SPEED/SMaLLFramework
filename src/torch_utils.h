@@ -23,7 +23,7 @@ float *alloc_dc(torch::Tensor t, std::vector<uint32_t> &dimensions)
         dimensions.push_back(t.size(i));
     }
     float *ptr_dc;
-
+    std::cout<<dimensions<<std::endl;
     int ret = posix_memalign((void **)&ptr_dc, 4096, t.numel() * sizeof(float));
 
     if (ret)
