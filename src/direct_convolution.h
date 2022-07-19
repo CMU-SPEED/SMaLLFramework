@@ -4,6 +4,10 @@
 #include<math.h>
 #include "kernel.h"
 
+
+#define DEBUG 1
+
+
 // // #ifndef op_dim
 // #define op_dim(IN_dim, stride, K_dim, OUT_dim)         \
 //     {                                                  \
@@ -13,6 +17,9 @@
 //     }
 // // #endif
 
+
+//As described in TF docs
+// Calculates padding to the left and right of 1 dimension
 #define CALC_PADDING(I_dim, K_dim, stride, padding_front, padding_back)                      \
     {                                                                                        \
         uint32_t padding;                                                                    \
@@ -27,6 +34,38 @@
         padding_front = padding / 2;                                                         \
         padding_back = padding - padding_front;                                              \
     }
+
+
+
+// Given 4 padding sizes for left, right, top and bottom, calculates indices into the input and output
+// indexing into the weight matrix is performed in the corresponding kernel
+#define SET_PADDING_PARAMS() \
+/*    //  To calculate offsets to next output row, next output block*/\
+op_dim((H_i + H_f_padding + H_b_padding), stride, H_f, H_o_w_pad);\
+op_dim((W_i + W_f_padding + W_b_padding), stride, W_f, W_o_w_pad);\
+\
+H_f_elements = H_f_padding / stride + (H_f_padding % stride != 0);\
+W_f_elements = W_f_padding / stride + (W_f_padding % stride != 0);\
+\
+H_full_index = H_f_elements * stride - H_f_padding;\
+W_full_index = W_f_elements * stride - W_f_padding;\
+\
+/*// Full kernel output elements*/\
+op_dim(H_i - H_full_index, stride, H_f, H_o);\
+op_dim(W_i - W_full_index, stride, W_f, W_o_full);\
+\
+/*// back padding elements*/\
+\
+H_back_index = H_full_index + stride * (H_o);\
+W_back_index = W_full_index + stride * (W_o_full);\
+\
+op_dim((H_i + H_b_padding - H_back_index), stride, H_f, H_b_elements);\
+op_dim((W_i + W_b_padding - W_back_index), stride, W_f, W_b_elements);\
+\
+/*// setting up microkernel specific parameters*/\
+W_o = (W_o_full / _W_ob) * _W_ob;\
+W_last = W_o_full % _W_ob;
+
 
 // assumes channels are the fastest dimension
 template <uint32_t _W_ob, uint32_t _C_ob>
@@ -50,11 +89,14 @@ void initial_direct_convolution(
     uint32_t H_f_elements = 0, W_f_elements = 0;
     uint32_t H_b_padding = 0, W_b_padding = 0;
     uint32_t H_b_elements = 0, W_b_elements = 0;
-    uint32_t H_pad_row = 0, W_pad_row = 0;
+    uint32_t H_full_index = 0, W_full_index = 0;
+    uint32_t H_back_index, W_back_index;
     //Output Elements with padding
     uint32_t H_o_w_pad = 0, W_o_w_pad = 0;
     //Output Elements using the full filter
     uint32_t H_o = 0, W_o_full = 0;
+    uint32_t W_o = 0, W_last = 0;
+
 
 //TODO: Change the interface to do this at a different (higher) level of abstraction
     if (padding == 'f')
@@ -63,51 +105,22 @@ void initial_direct_convolution(
         CALC_PADDING(W_i, W_f, stride, W_f_padding, W_b_padding);
     }
 
-    //Total output elements
-    // To calculate offsets to next output row, next output block
-    op_dim((H_i+H_f_padding+H_b_padding), stride, H_f, H_o_w_pad);
-    op_dim((W_i+W_f_padding+W_b_padding), stride, W_f, W_o_w_pad);
-    // printf("W_o_w_pad : %d H_o_w_pad: %d\n ", W_o_w_pad, H_o_w_pad);
-
-    H_f_elements = H_f_padding / stride + (H_f_padding % stride != 0);
-    W_f_elements = W_f_padding / stride + (W_f_padding % stride != 0);
-    // printf("W_f_elements : %d H_f_elements: %d\n ", W_f_elements, H_f_elements);
-
-    H_pad_row = H_f_elements*stride - H_f_padding;
-    W_pad_row = W_f_elements*stride - W_f_padding;
-
-    // printf("starting index of full elements\n H: %d W: %d \n", H_pad_row, W_pad_row);
-
-    // Full kernel output elements
-    op_dim(H_i - H_pad_row, stride, H_f, H_o);
-    op_dim(W_i - W_pad_row, stride, W_f, W_o_full);
-    // printf(" H_o: %d W_o_full: %d\n ", H_o, W_o_full);
-
-    //back padding elements
-    uint32_t H_back_index, W_back_index;
-    
-    H_back_index = H_pad_row + stride * (H_o);
-    W_back_index = W_pad_row + stride * (W_o_full);
-    // printf("starting index of back padding elements\n H: %d W: %d \n", H_back_index, W_back_index);
-
-    op_dim((H_i + H_b_padding - H_back_index), stride, H_f, H_b_elements);
-    op_dim((W_i + W_b_padding - W_back_index), stride, W_f, W_b_elements);
-    // printf("W_b_elements : %d H_b_elements: %d\n ", W_b_elements, H_b_elements);
-
-    // setting up microkernel specific parameters
-    uint32_t W_o = (W_o_full / _W_ob) * _W_ob;
-    uint32_t W_last = W_o_full % _W_ob;
-
-    // printf("W_o : %d W_last: %d\n", W_o, W_last);
-
-    // printf("%d %d %d\n", _W_ob, _C_ob, _C_ib);
+    SET_PADDING_PARAMS();
+    #if DEBUG == 1
+    printf("W_o_w_pad : %d H_o_w_pad: %d\n ", W_o_w_pad, H_o_w_pad);
+    printf("W_f_elements : %d H_f_elements: %d\n ", W_f_elements, H_f_elements);
+    printf("starting index of full elements\n H: %d W: %d \n", H_full_index, W_full_index);
+    printf("starting index of back padding elements\n H: %d W: %d \n", H_back_index, W_back_index);
+    printf("W_b_elements : %d H_b_elements: %d\n ", W_b_elements, H_b_elements);
+    #endif
+    printf(" H_o: %d W_o_full: %d\n ", H_o, W_o_full);
 
 
-// printf(" input dims : %d %d \n", H_i, W_i);
+    // printf(" input dims : %d %d \n", H_i, W_i);
 #if PARALLEL == 1
 #pragma omp parallel for
 #endif
-        for (uint32_t j = 0; j < C_o * G; j += _C_ob)
+    for (uint32_t j = 0; j < C_o * G; j += _C_ob)
     {
 
         uint32_t first = 1;
@@ -131,6 +144,7 @@ void initial_direct_convolution(
         float * I_row = I_buffer;
         float * O_row = O_buffer;
         // front padding rows
+
         initial_conv_kernel_padding_top_combined<_W_ob, _C_ob>(first, 
                                                                 stride, 
                                                                 C_f, 
@@ -139,31 +153,35 @@ void initial_direct_convolution(
                                                                 W_i*C_f, 
                                                                 I_row, filter_block_ptr, O_row,
                                                                 H_f_padding,
-                                                                // W_pad_row,
+                                                                // W_full_index,
                                                                 W_o, W_last, 
                                                                 W_f_padding, W_b_padding,
-                                                                W_pad_row,
+                                                                W_full_index,
                                                                 W_o_w_pad
                                                             );
+
         // printf("Padding output elements: %.2f \n", O_row[0]);
         // Set Input pointer to the full section
-        I_row = I_buffer + (H_pad_row)*W_i * C_f;
+        I_row = I_buffer + (H_full_index)*W_i * C_f;
         // Set the output pointer to the full section
         O_row = O_buffer + H_f_elements * W_o_w_pad * C_ob;
+        
+        printf("Output idx after top padding: %f \n", (O_row - O_buffer)/(1.0*W_o_w_pad*C_ob));
         // end front padding
         for (uint32_t l = 0; l < H_o; l++)
         {
             uint32_t col_offset = l * W_o_full * _C_ob;
             uint32_t input_col_offset = (l * stride) *W_i *C_f;
             float *I_ptr = I_row + input_col_offset;
-            // printf("row index %d \n",)
+            printf("row index %d \n", l+H_f_elements);
             float *O_ptr = O_row + col_offset;
 
             //left padding elements
-            // initial_conv_kernel_padding_left_combined<_W_ob, _C_ob>(first, stride, C_f, stride * C_f, H_f, W_f, W_i * C_f, I_ptr, filter_block_ptr, O_ptr, W_f_padding);
+            initial_conv_kernel_padding_left_combined<_W_ob, _C_ob>(first, stride, C_f, stride * C_f, H_f, W_f, W_i * C_f, I_ptr, filter_block_ptr, O_ptr, W_f_padding);
+            printf("Output idx after left padding: %f %f \n", (O_row - O_buffer) / (1.0 * W_o_w_pad * C_ob), (O_row - O_buffer) / (C_ob));
 
             //Set pointer to full elements
-            I_ptr += W_pad_row*C_f;
+            I_ptr += W_full_index*C_f;
             O_ptr += W_f_elements*C_ob;
             for (uint32_t k = 0; k < W_o; k += _W_ob)
             {
@@ -176,29 +194,31 @@ void initial_direct_convolution(
             //cleanup elements and back padding
             // printf("i row offset %d %.2f \n",(I_ptr-I_row)/C_f, I_ptr[0]);
             initial_conv_kernel_padding_right_combined<_W_ob, _C_ob>(first, stride, C_f, stride * C_f, H_f, W_f, W_i * C_f, I_ptr, filter_block_ptr, O_ptr, W_last, W_b_padding);
-        
+            printf("Output idx after right padding: %f %f \n", (O_row - O_buffer) / (1.0 * W_o_w_pad * C_ob), (O_row - O_buffer) / (C_ob));
         } 
             
         // O_buffer = O_buffer + (H_f_padding + H_o )* W_o_w_pad * C_ob;
         
         // back padding row
-            I_row = I_buffer + (H_back_index) * W_i * C_f;
-            // printf("%d == %d? %d\n", I_buffer + (H_o * stride) * W_i * C_f, I_buffer + H_back_index * W_i* C_f);
-            // printf("I_row: %d \n", (I_row-I_buffer)/(W_i*C_f));
-            O_row = O_buffer + (H_o + H_f_elements)*W_o_w_pad * C_ob;
-            // printf("O offset = %d %d\n", (O_row - O) / (W_o_w_pad * _C_ob), (O_row - O));
-            initial_conv_kernel_padding_bottom_combined<_W_ob, _C_ob>(first,
-                                                                         stride,
-                                                                         C_f,
-                                                                         stride * C_f,
-                                                                         H_f, W_f,
-                                                                         W_i * C_f,
-                                                                         I_row, filter_block_ptr, O_row,
-                                                                         H_b_elements,
-                                                                         W_o, W_last,
-                                                                         W_f_elements, W_b_elements,
-                                                                         W_pad_row,
-                                                                         W_o_w_pad);
+        I_row = I_buffer + (H_back_index) * W_i * C_f;
+        // printf("%d == %d? %d\n", I_buffer + (H_o * stride) * W_i * C_f, I_buffer + H_back_index * W_i* C_f);
+        // printf("I_row: %d \n", (I_row-I_buffer)/(W_i*C_f));
+        O_row = O_buffer + (H_o + H_f_elements)*W_o_w_pad * C_ob;
+        // printf("O offset = %d %d\n", (O_row - O) / (W_o_w_pad * _C_ob), (O_row - O));
+        initial_conv_kernel_padding_bottom_combined<_W_ob, _C_ob>(first,
+                                                                        stride,
+                                                                        C_f,
+                                                                        stride * C_f,
+                                                                        H_f, W_f,
+                                                                        W_i * C_f,
+                                                                        I_row, filter_block_ptr, O_row,
+                                                                        H_b_elements,
+                                                                        W_o, W_last,
+                                                                        W_f_elements, W_b_elements,
+                                                                        W_full_index,
+                                                                        W_o_w_pad);
+
+        printf("Output idx after bottom padding: %f \n", (O_row - O_buffer) / (1.0 * W_o_w_pad * C_ob));
     }
 }
 
@@ -248,7 +268,7 @@ void direct_convolution(
     uint32_t H_f_elements = 0, W_f_elements = 0;
     uint32_t H_b_padding = 0, W_b_padding = 0;
     uint32_t H_b_elements = 0, W_b_elements = 0;
-    uint32_t H_pad_row = 0, W_pad_row = 0;
+    uint32_t H_full_index = 0, W_full_index = 0;
     // Output Elements with padding
     uint32_t H_o_w_pad = 0, W_o_w_pad = 0;
     // Output Elements using the full filter
@@ -273,22 +293,22 @@ void direct_convolution(
     // printf("W_f_elements : %d H_f_elements: %d\n ", W_f_elements, H_f_elements);
     // printf("W_f_padding : %d H_f_padding: %d\n ", W_f_padding, H_f_padding);
 
-    H_pad_row = H_f_elements * stride - H_f_padding;
-    W_pad_row = W_f_elements * stride - W_f_padding;
+    H_full_index = H_f_elements * stride - H_f_padding;
+    W_full_index = W_f_elements * stride - W_f_padding;
 
-    // printf("starting index of full elements\n H: %d W: %d \n", H_pad_row, W_pad_row);
+    // printf("starting index of full elements\n H: %d W: %d \n", H_full_index, W_full_index);
 
     // Full kernel output elements
-    op_dim(H_i - H_pad_row, stride, H_f, H_o);
-    op_dim(W_i - W_pad_row, stride, W_f, W_o_full);
+    op_dim(H_i - H_full_index, stride, H_f, H_o);
+    op_dim(W_i - W_full_index, stride, W_f, W_o_full);
 
     // printf(" H_o: %d W_o_full: %d\n ", H_o, W_o_full);
 
     // back padding elements
     uint32_t H_back_index, W_back_index;
 
-    H_back_index = H_pad_row + stride * (H_o);
-    W_back_index = W_pad_row + stride * (W_o_full);
+    H_back_index = H_full_index + stride * (H_o);
+    W_back_index = W_full_index + stride * (W_o_full);
 
     // printf("starting index of back padding elements\n H: %d W: %d \n", H_back_index, W_back_index);
 
@@ -341,7 +361,7 @@ void direct_convolution(
             {
                 if (op == 'c')
                 {
-                    dw_kernel_padding_top<_W_ob, _C_ob, _C_ib, stride * _C_ob>(stride, H_f, W_f, W_i * _C_ob, I_row_ptr, filter_block_ptr, O_row, H_f_padding, W_o, W_last, W_f_padding, W_b_padding, W_pad_row, W_o_w_pad);
+                    dw_kernel_padding_top<_W_ob, _C_ob, _C_ib, stride * _C_ob>(stride, H_f, W_f, W_i * _C_ob, I_row_ptr, filter_block_ptr, O_row, H_f_padding, W_o, W_last, W_f_padding, W_b_padding, W_full_index, W_o_w_pad);
                 }
             }
             else
@@ -359,11 +379,11 @@ void direct_convolution(
                     W_last,
                     W_f_padding,
                     W_b_padding,
-                    W_pad_row,
+                    W_full_index,
                     W_o_w_pad);
             }
             // Set the pointers to the full section
-            I_row_ptr = I_buffer + (H_pad_row)*W_i * _C_ob;
+            I_row_ptr = I_buffer + (H_full_index)*W_i * _C_ob;
             
             // end front padding
 
@@ -394,7 +414,7 @@ void direct_convolution(
                                                                                              W_f_padding);
                 }
 
-                I_ptr += W_pad_row*_C_ob;
+                I_ptr += W_full_index*_C_ob;
                 O_ptr += W_f_elements*_C_ob;
                 for (uint32_t k = 0; k < W_o; k += _W_ob)
                 {
@@ -460,7 +480,7 @@ void direct_convolution(
             {
                 if (op == 'c')
                 {
-                    dw_kernel_padding_bottom<_W_ob, _C_ob, _C_ib, stride * _C_ob>(stride, H_f, W_f, W_i * _C_ob, I_row_ptr, filter_block_ptr, O_row, H_b_padding, W_o, W_last, W_f_padding, W_b_padding, W_pad_row, W_o_w_pad);
+                    dw_kernel_padding_bottom<_W_ob, _C_ob, _C_ib, stride * _C_ob>(stride, H_f, W_f, W_i * _C_ob, I_row_ptr, filter_block_ptr, O_row, H_b_padding, W_o, W_last, W_f_padding, W_b_padding, W_full_index, W_o_w_pad);
                                 }
             }
             else
@@ -474,7 +494,7 @@ void direct_convolution(
                                                                                          H_b_padding,
                                                                                          W_o, W_last,
                                                                                          W_f_padding, W_b_padding,
-                                                                                         W_pad_row,
+                                                                                         W_full_index,
                                                                                          W_o_w_pad);
             }
         }

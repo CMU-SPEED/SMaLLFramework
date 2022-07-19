@@ -459,6 +459,7 @@ inline void dw_kernel(
         {
 
             int filter_offset_w = m * _C_ib * _C_ob + filter_offset_h;
+            //This is C_ob because the microkernel stretches across groups
             int input_stencil_w = m * _C_ob + input_stencil_h;
 
             float *b = F + filter_offset_w;
@@ -841,28 +842,6 @@ inline void dw_kernel_padding_bottom(
 // convolution kernels
 // printf("H_lb:%d, W_lb:%d \nH_ub:%d, W_ub:%d\n", H_lb, W_lb, H_ub, W_ub);
 
-#define COMPUTE_PADDING_W_LDST(H_lb, H_ub, W_lb, W_ub, W_f, input_channels, W_elements, W_padding)                         \
-    for (uint32_t n = H_lb; n < H_ub; n++)                                                                 \
-    {                                                                                                      \
-        int filter_offset_h = n * W_f * input_channels * _C_ob;                                            \
-        int input_stencil_h = /*input_col_offset +*/ (n - H_lb) * input_col_stride /*+ input_row_offset*/; \
-        for (uint32_t m = W_lb; m < W_ub; m++)                                                             \
-        {                                                                                                  \
-            int filter_offset_w = m * input_channels * _C_ob + filter_offset_h;                            \
-            int input_stencil_w = (m - W_lb) * input_channels + input_stencil_h;                           \
-            float *b = F + filter_offset_w;                                                                \
-            float *a = I_ptr + input_stencil_w;                                                            \
-            for (uint32_t ii = 0; ii < input_channels; ii++)                                               \
-            {                                                                                              \
-                int p_cur = ii;                                                                            \
-                /* if (W_elements == _W_ob) */                                                             \
-                /*  FMA_TILE_C(step, a, b, p_cur, _W_ob, _C_ob);*/                                         \
-                /* else */                                                                                 \
-                FMA_END_C(step, a, b, p_cur, _W_ob, _C_ob, W_elements);                                    \
-            }                                                                                              \
-        }                                                                                                  \
-    }
-
 #define COMPUTE_W_PADDING(H_lb, H_ub, W_lb, W_ub, W_f, input_channels, W_elements)                         \
     for (uint32_t n = H_lb; n < H_ub; n++)                                                                 \
     {                                                                                                      \
@@ -885,6 +864,9 @@ inline void dw_kernel_padding_bottom(
         }                                                                                                  \
     }
 
+
+
+// all initial cases specialize for problem size I_C < C_ib
 template <uint32_t _W_ob, uint32_t _C_ob>
 inline void initial_conv_kernel_padding_top_combined(
     uint32_t first,

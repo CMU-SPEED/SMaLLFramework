@@ -91,7 +91,8 @@ void GroupConv2D(int layer_num, int kernel_size, int stride, char padding, int i
 {
     direct_convolution<W_ob, C_ob, C_ib, 1, 'c'>(C_ob,
                                                                      kernel_size, kernel_size, C_ob,
-                                                                     C_ob, input_channels / C_ob,
+                                                                     C_ob, 
+                                                                     input_channels / C_ob,
                                                                      input_height, input_width,
                                                                      padding,
                                                                      input_ptr, filter_ptr, output_ptr);
