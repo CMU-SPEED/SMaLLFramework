@@ -131,7 +131,7 @@ void initial_direct_convolution(
         //Include padding outputs
         uint32_t block_offset = (j / _C_ob) * H_o_w_pad * W_o_w_pad * _C_ob;
         float *O_buffer = O + block_offset;
-        
+
 
         //Unaffected by padding
         uint32_t filter_o_c_block = (j / _C_ob) * (C_f / C_f) * H_f * W_f * C_f * _C_ob;
@@ -145,16 +145,16 @@ void initial_direct_convolution(
         float * O_row = O_buffer;
         // front padding rows
 
-        initial_conv_kernel_padding_top_combined<_W_ob, _C_ob>(first, 
-                                                                stride, 
-                                                                C_f, 
+        initial_conv_kernel_padding_top_combined<_W_ob, _C_ob>(first,
+                                                                stride,
+                                                                C_f,
                                                                 stride*C_f,
-                                                                H_f, W_f, 
-                                                                W_i*C_f, 
+                                                                H_f, W_f,
+                                                                W_i*C_f,
                                                                 I_row, filter_block_ptr, O_row,
                                                                 H_f_padding,
                                                                 // W_full_index,
-                                                                W_o, W_last, 
+                                                                W_o, W_last,
                                                                 W_f_padding, W_b_padding,
                                                                 W_full_index,
                                                                 W_o_w_pad
@@ -165,7 +165,7 @@ void initial_direct_convolution(
         I_row = I_buffer + (H_full_index)*W_i * C_f;
         // Set the output pointer to the full section
         O_row = O_buffer + H_f_elements * W_o_w_pad * C_ob;
-        
+
         printf("Output idx after top padding: %f \n", (O_row - O_buffer)/(1.0*W_o_w_pad*C_ob));
         // end front padding
         for (uint32_t l = 0; l < H_o; l++)
@@ -178,7 +178,7 @@ void initial_direct_convolution(
 
             //left padding elements
             initial_conv_kernel_padding_left_combined<_W_ob, _C_ob>(first, stride, C_f, stride * C_f, H_f, W_f, W_i * C_f, I_ptr, filter_block_ptr, O_ptr, W_f_padding);
-            printf("Output idx after left padding: %f %f \n", (O_row - O_buffer) / (1.0 * W_o_w_pad * C_ob), (O_row - O_buffer) / (C_ob));
+            printf("Output idx after left padding: %f %f \n", (O_row - O_buffer) / (1.0 * W_o_w_pad * C_ob), (O_row - O_buffer) / ((double)C_ob));
 
             //Set pointer to full elements
             I_ptr += W_full_index*C_f;
@@ -194,11 +194,11 @@ void initial_direct_convolution(
             //cleanup elements and back padding
             // printf("i row offset %d %.2f \n",(I_ptr-I_row)/C_f, I_ptr[0]);
             initial_conv_kernel_padding_right_combined<_W_ob, _C_ob>(first, stride, C_f, stride * C_f, H_f, W_f, W_i * C_f, I_ptr, filter_block_ptr, O_ptr, W_last, W_b_padding);
-            printf("Output idx after right padding: %f %f \n", (O_row - O_buffer) / (1.0 * W_o_w_pad * C_ob), (O_row - O_buffer) / (C_ob));
-        } 
-            
+            printf("Output idx after right padding: %f %f \n", (O_row - O_buffer) / (1.0 * W_o_w_pad * C_ob), (O_row - O_buffer) / ((double)C_ob));
+        }
+
         // O_buffer = O_buffer + (H_f_padding + H_o )* W_o_w_pad * C_ob;
-        
+
         // back padding row
         I_row = I_buffer + (H_back_index) * W_i * C_f;
         // printf("%d == %d? %d\n", I_buffer + (H_o * stride) * W_i * C_f, I_buffer + H_back_index * W_i* C_f);
@@ -339,7 +339,7 @@ void direct_convolution(
         {
             uint32_t first = i==0;
             uint32_t input_block_offset;
-            
+
             // if (_C_ib == 1)
             // {
             //     input_block_offset = ((i / _C_ib) * H_i * W_i * _C_ib) + (group_offset * H_i * W_i);
@@ -356,7 +356,7 @@ void direct_convolution(
 
             //begin top padding
             float * O_row = O_buffer;
-            
+
             if(_C_ib == 1)
             {
                 if (op == 'c')
@@ -384,7 +384,7 @@ void direct_convolution(
             }
             // Set the pointers to the full section
             I_row_ptr = I_buffer + (H_full_index)*W_i * _C_ob;
-            
+
             // end front padding
 
 
@@ -590,8 +590,8 @@ void direct_convolution_partial(
 
 
 /*
-The code verision below has two separate kernels, 
-one to deal with the first iteration 
+The code verision below has two separate kernels,
+one to deal with the first iteration
 and another to handle all subsequent ones.
 
 The switch to a single kernel means that there are fewer kernels to implement over all

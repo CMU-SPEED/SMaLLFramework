@@ -38,7 +38,7 @@
 
 void Conv2D(int layer_num, int kernel_size, int stride, char padding, int output_channels, int input_channels, int input_height, int input_width, float *input_ptr, float *filter_ptr, float *output_ptr)
 {
-    if(input_channels < C_ob)
+    if (input_channels < C_ob)
     {
         printf("small input channels");
         initial_direct_convolution<W_ob, C_ob, 1>(1,
@@ -91,7 +91,7 @@ void GroupConv2D(int layer_num, int kernel_size, int stride, char padding, int i
 {
     direct_convolution<W_ob, C_ob, C_ib, 1, 'c'>(C_ob,
                                                                      kernel_size, kernel_size, C_ob,
-                                                                     C_ob, 
+                                                                     C_ob,
                                                                      input_channels / C_ob,
                                                                      input_height, input_width,
                                                                      padding,

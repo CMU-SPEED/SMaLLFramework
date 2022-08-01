@@ -154,4 +154,3 @@ void check_Dense(int layer_num, int output_elements, int input_elements, float *
                                                        input_ptr, filter_ptr, output_ptr);
 }
 
-//
