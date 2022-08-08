@@ -45,7 +45,9 @@ set_property(TARGET test_interface_pool.x PROPERTY CXX_STANDARD 14)
 
 
 
-#[[Comment Lines out if you don not have libtorch
+add_subdirectory(test)
+
+#[[REMOVE THE FOLLOWING;  Comment Lines out if you do not have libtorch
 find_package(Torch REQUIRED)
 add_executable(interface_relu.x torch_interface_driver.cpp )
 target_link_libraries(interface_relu.x "${TORCH_LIBRARIES}")
