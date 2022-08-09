@@ -32,7 +32,7 @@ void Conv2D(int layer_num, int kernel_size, int stride, char padding, int output
     if (input_channels < C_ob)
     {
         printf("small input channels");
-        initial_direct_convolution<W_ob, C_ob, 1>(1,
+        initial_direct_convolution<W_ob, C_ob>(1, stride,
                                                      kernel_size, kernel_size, input_channels,
                                                      output_channels, 1,
                                                      input_height, input_width,
