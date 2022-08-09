@@ -1,38 +1,40 @@
 // this file implements simple direct convolution with no fusion
 
+#pragma once
+
 #include <stdint.h>
-#include<math.h>
-#include "kernel.h"
+#include <math.h>
+#include <small/detail/kernel.h>
 
 
 #define DEBUG 1
 
-
-// // #ifndef op_dim
-// #define op_dim(IN_dim, stride, K_dim, OUT_dim)         \
-//     {                                                  \
-//         int out_elems = (IN_dim - K_dim) / stride + 1; \
-        printf("number of elements %d \n", out_elems);                    \
-//         OUT_dim = (out_elems > 0) ? out_elems : 0;     \
-//     }
-// // #endif
-
+#if 0
+// #ifndef op_dim
+#define op_dim(IN_dim, stride, K_dim, OUT_dim)                          \
+    {                                                                   \
+        int out_elems = (IN_dim - K_dim) / stride + 1;                  \
+        printf("number of elements %d \n", out_elems);                  \
+        OUT_dim = (out_elems > 0) ? out_elems : 0;                      \
+    }
+// #endif
+#endif
 
 //As described in TF docs
 // Calculates padding to the left and right of 1 dimension
-#define CALC_PADDING(I_dim, K_dim, stride, padding_front, padding_back)                      \
-    {                                                                                        \
-        uint32_t padding;                                                                    \
-        if (I_dim % stride == 0)                                                             \
-        {                                                                                    \
-            padding = (K_dim - stride > 0) ? K_dim - stride : 0;                 \
-        }                                                                                    \
-        else                                                                                 \
-        {                                                                                    \
+#define CALC_PADDING(I_dim, K_dim, stride, padding_front, padding_back) \
+    {                                                                   \
+        uint32_t padding;                                               \
+        if (I_dim % stride == 0)                                        \
+        {                                                               \
+            padding = (K_dim - stride > 0) ? K_dim - stride : 0;        \
+        }                                                               \
+        else                                                            \
+        {                                                               \
             padding = (K_dim - (I_dim % stride) > 0) ? K_dim - (I_dim% stride) : 0; \
-        }                                                                                    \
-        padding_front = padding / 2;                                                         \
-        padding_back = padding - padding_front;                                              \
+        }                                                               \
+        padding_front = padding / 2;                                    \
+        padding_back = padding - padding_front;                         \
     }
 
 
@@ -40,31 +42,31 @@
 // Given 4 padding sizes for left, right, top and bottom, calculates indices into the input and output
 // indexing into the weight matrix is performed in the corresponding kernel
 #define SET_PADDING_PARAMS() \
-/*    //  To calculate offsets to next output row, next output block*/\
-op_dim((H_i + H_f_padding + H_b_padding), stride, H_f, H_o_w_pad);\
-op_dim((W_i + W_f_padding + W_b_padding), stride, W_f, W_o_w_pad);\
-\
-H_f_elements = H_f_padding / stride + (H_f_padding % stride != 0);\
-W_f_elements = W_f_padding / stride + (W_f_padding % stride != 0);\
-\
-H_full_index = H_f_elements * stride - H_f_padding;\
-W_full_index = W_f_elements * stride - W_f_padding;\
-\
-/*// Full kernel output elements*/\
-op_dim(H_i - H_full_index, stride, H_f, H_o);\
-op_dim(W_i - W_full_index, stride, W_f, W_o_full);\
-\
-/*// back padding elements*/\
-\
-H_back_index = H_full_index + stride * (H_o);\
-W_back_index = W_full_index + stride * (W_o_full);\
-\
-op_dim((H_i + H_b_padding - H_back_index), stride, H_f, H_b_elements);\
-op_dim((W_i + W_b_padding - W_back_index), stride, W_f, W_b_elements);\
-\
-/*// setting up microkernel specific parameters*/\
-W_o = (W_o_full / _W_ob) * _W_ob;\
-W_last = W_o_full % _W_ob;
+    /*    //  To calculate offsets to next output row, next output block*/ \
+    op_dim((H_i + H_f_padding + H_b_padding), stride, H_f, H_o_w_pad);  \
+    op_dim((W_i + W_f_padding + W_b_padding), stride, W_f, W_o_w_pad);  \
+                                                                        \
+    H_f_elements = H_f_padding / stride + (H_f_padding % stride != 0);  \
+    W_f_elements = W_f_padding / stride + (W_f_padding % stride != 0);  \
+                                                                        \
+    H_full_index = H_f_elements * stride - H_f_padding;                 \
+    W_full_index = W_f_elements * stride - W_f_padding;                 \
+                                                                        \
+    /*// Full kernel output elements*/                                  \
+    op_dim(H_i - H_full_index, stride, H_f, H_o);                       \
+    op_dim(W_i - W_full_index, stride, W_f, W_o_full);                  \
+                                                                        \
+    /*// back padding elements*/                                        \
+                                                                        \
+    H_back_index = H_full_index + stride * (H_o);                       \
+    W_back_index = W_full_index + stride * (W_o_full);                  \
+                                                                        \
+    op_dim((H_i + H_b_padding - H_back_index), stride, H_f, H_b_elements); \
+    op_dim((W_i + W_b_padding - W_back_index), stride, W_f, W_b_elements); \
+                                                                        \
+    /*// setting up microkernel specific parameters*/                   \
+    W_o = (W_o_full / _W_ob) * _W_ob;                                   \
+    W_last = W_o_full % _W_ob;
 
 
 // assumes channels are the fastest dimension

@@ -10,7 +10,7 @@
 #include <vector>
 #include <string>
 #include <fstream>
-#include<time.h>
+#include <time.h>
 // Pooling driver
 
 #define GEMM 0
@@ -29,20 +29,14 @@
 #define H_TILE 0
 #define POOLING 1
 
-#include "config.h"
+#include <small/config.h>
+#include <params.h>      // should come from active kernels subdirectory
 
-#if uarch == ZEN2
-#include "src/kernels/zen2/params.h"
-#elif uarch == REF
-#include "src/kernels/reference/params.h"
-#elif uarch == ARM
-#include "src/kernels/arm/params.h"
-#endif
+#include "utils.h"
+#include "check_interface.h"
 
-#include "src/utils.h"
-#include "test/interface.h"
+#include <small/interface.h>
 
-#include "src/interface.h"
 // Problem size
 
 // Timing Utils
@@ -90,6 +84,7 @@
 // #define LAYER
 // #endif
 
+//****************************************************************************
 int main(int argc, char **argv)
 {
     // printf("%d \t %d\t ", BUFFER, PREFETCH);

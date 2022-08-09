@@ -12,8 +12,11 @@
 //#include <LAGraph.h>
 
 #include <acutest.h>
-//#include <params.h>
-//#include <intrinsics.h>
+
+#include <small/config.h>
+#include <small/interface.h>
+#include <params.h>
+#include <intrinsics.h>
 
 //****************************************************************************
 void test_dummy(void)

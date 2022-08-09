@@ -5,18 +5,15 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include "../config.h"
-#include "interface.h"
+#include <small/config.h>     // was ./config.h
+#include "check_interface.h"  // was test/interface.h
+//#include <small/interface.h>  // was src/interface.h
+#include <small/direct_convolution.h>  // was src/direct_convolution.h
+#include <params.h>           // comes from active kernels subdirectory
 
-#if uarch == ZEN2
-#include "../src/kernels/zen2/params.h"
-#elif uarch == ARM
-#include "../src/kernels/arm/params.h"
-#elif uarch == REF
-#include "../src/kernels/reference/params.h"
-#endif
-
-#include "intrinsics.h"
+// Should this come directly from kernels/reference/intrinsics.h or active kernel
+//#include <intrinsics.h>
+#include <../reference/intrinsics.h>
 
 #ifndef op_dim
 #define op_dim(IN_dim, stride, K_dim, OUT_dim)   \
@@ -153,4 +150,3 @@ void check_Dense(int layer_num, int output_elements, int input_elements, float *
                                                        'v',
                                                        input_ptr, filter_ptr, output_ptr);
 }
-

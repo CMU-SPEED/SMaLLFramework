@@ -5,17 +5,17 @@
 
 // __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
 
+#pragma once
+
 // Initializations
 #ifndef DEF_TILE_C
-#define DEF_TILE_C(W_ob, C_ob)
-  float c_tile[W_ob * C_ob];
+#define DEF_TILE_C(W_ob, C_ob)  float c_tile[W_ob*C_ob];
 #endif
 
 #ifndef DEF_TILE_C_END
-#define DEF_TILE_C_END(W_ob, C_ob) \
-  float c_tile[W_ob * C_ob];       \
-  
+#define DEF_TILE_C_END(W_ob, C_ob)  float c_tile[W_ob*C_ob];
 #endif
+
 //  float c_tile[W_ob * C_ob];
 
 #define ZERO_TILE_C(W_ob, C_ob)            \
@@ -39,7 +39,7 @@
   }
 
 // Loads
-//  float c_tile[W_ob * C_ob]; 
+//  float c_tile[W_ob * C_ob];
 #define LOAD_TILE_C(O, W_ob, C_ob)                \
   for (uint32_t kk = 0; kk < W_ob; kk++)          \
   {                                               \
@@ -49,7 +49,7 @@
     }                                             \
   }
 
-//  float c_tile[W_ob * C_ob]; 
+//  float c_tile[W_ob * C_ob];
 #define LOAD_LAST_C(O, W_ob, C_ob, W_last)        \
   for (uint32_t kk = 0; kk < W_last; kk++)        \
   {                                               \
@@ -419,9 +419,9 @@
       for (uint32_t jj = 0; jj < C_ob; jj++)           \
       {                                                \
         *(c_channel) += (*(a_channel) * *(b_channel)); \
-  c_channel++;\
-  b_channel++;\
-  a_channel++;                                   \
+        c_channel++;                                   \
+        b_channel++;                                   \
+        a_channel++;                                   \
       }                                                \
       a_pixel += step;                                 \
       c_pixel += C_ob;                                 \
@@ -666,5 +666,3 @@
       c_pixel += C_ob;                       \
     }                                        \
   }
-
-  

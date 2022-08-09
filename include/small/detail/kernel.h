@@ -1,3 +1,4 @@
+#pragma once
 
 // #include <immintrin.h>
 
@@ -215,7 +216,7 @@ inline void pool_kernel_padding_end(
     uint32_t input_col_stride,
     float *I,
     float *O,
-    uint32_t H_padding, 
+    uint32_t H_padding,
     uint32_t W_o,
     uint32_t W_last,
     uint32_t W_padding)
@@ -555,7 +556,7 @@ inline void dw_kernel_end(
 
 template <int32_t _W_ob, uint32_t _C_ob, uint32_t _C_ib, uint32_t step>
 inline void dw_kernel_padding_right(
-    uint32_t stride, 
+    uint32_t stride,
     uint32_t H_f, uint32_t W_f,
     uint32_t input_col_stride,
     float *I,
@@ -763,8 +764,8 @@ inline void dw_kernel_padding_bottom(
 //     float *I,
 //     float *F,
 //     float *O,
-//     uint32_t H_padding, 
-//     uint32_t W_o, 
+//     uint32_t H_padding,
+//     uint32_t W_o,
 //     uint32_t W_last,
 //     uint32_t W_padding)
 // {
@@ -931,7 +932,7 @@ inline void initial_conv_kernel_padding_top_combined(
         I_ptr = I_row + W_pad_row * _C_ib;
         {
             DEF_TILE_C(_W_ob, _C_ob);
-           
+
             for (uint32_t k = 0; k < W_o; k += _W_ob)
             {
                 if (first)
@@ -971,7 +972,7 @@ inline void initial_conv_kernel_padding_top_combined(
                 STORE_TILE_C(O_ptr, _W_ob, _C_ob);
 
                 O_ptr += _W_ob*_C_ob;
-                I_ptr += stride*_W_ob*_C_ib; 
+                I_ptr += stride*_W_ob*_C_ib;
             }
         }
 
@@ -1009,7 +1010,7 @@ inline void initial_conv_kernel_padding_top_combined(
             }
 
             COMPUTE_W_PADDING(H_i_valid, H_f, 0, W_i_valid, W_f, _C_ib, 1);
-            
+
             STORE_END_C(O_ptr, _W_ob, _C_ob, 1);
 
             W_i_valid -= stride;
@@ -1372,7 +1373,7 @@ inline void initial_conv_kernel_padding_bottom_combined(
             }
         }
 
-        
+
         // clean up tile elements
         //  O_ptr = O_row + (k_w_output + W_o)*_C_ob;
         if (first)
@@ -1699,7 +1700,7 @@ inline void conv_kernel_end_combined(
     {
         LOAD_LAST_C(O, _W_ob, _C_ob, W_last);
     }
-   
+
     // int updates = 0;
     // uint32_t step = stride*_C_ob;
     // int count = 0;
@@ -1821,7 +1822,7 @@ inline void conv_kernel_padding_right_combined(
 //     float *F,
 //     float *O,
 //     uint32_t H_padding,
-//     uint32_t W_o, 
+//     uint32_t W_o,
 //     uint32_t W_last,
 //     uint32_t W_padding)
 // {

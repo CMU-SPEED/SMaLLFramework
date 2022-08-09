@@ -5,19 +5,10 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include "../config.h"
-#include "interface.h"
-
-#if uarch == ZEN2
-#include "../src/kernels/zen2/params.h"
-#include "kernels/zen2/intrinsics.h"
-#elif uarch == ARM
-#include "../src/kernels/arm/params.h"
-#include "kernels/arm/intrinsics.h"
-#elif uarch == REF
-#include "../src/kernels/reference/params.h"
-#include "kernels/reference/intrinsics.h"
-#endif
+#include <small/config.h>     // was ./config.h
+#include <small/interface.h>  // was src/interface.h
+#include <params.h>           // comes from active kernels subdirectory
+#include <intrinsics.h>       // comes from active kernels subdirectory
 
 #ifndef op_dim
 #define op_dim(IN_dim, stride, K_dim, padding, OUT_dim)   \
@@ -33,7 +24,7 @@
     }
 #endif
 
-#include "direct_convolution.h"
+#include <small/direct_convolution.h>
 
 
 void Conv2D(int layer_num, int kernel_size, int stride, char padding, int output_channels, int input_channels, int input_height, int input_width, float *input_ptr, float *filter_ptr, float *output_ptr)

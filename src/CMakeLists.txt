@@ -1,5 +1,5 @@
 #-------------------------------------------------------------------------------
-# test/CMakeLists.txt:  cmake script for tests
+# test/CMakeLists.txt:  cmake script for SMaLL library
 #-------------------------------------------------------------------------------
 
 # LAGraph, (c) 2022 by The SMaLLFramework Contributors, All Rights Reserved.
