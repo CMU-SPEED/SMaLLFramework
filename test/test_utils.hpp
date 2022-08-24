@@ -79,19 +79,27 @@ int read_float_inputs(std::string const &input_data_fname,
 uint32_t read_float_inputs(std::string const &input_data_fname, float **in_buf)
 {
     using RealT = float;
+    *in_buf = nullptr;
 
     uint32_t in_n, num_elts;
     std::ifstream ifs(input_data_fname, std::ios::binary);
+    if (!ifs)
+    {
+        std::cerr << "ERROR: failed to open file: " << input_data_fname
+                  << std::endl;
+        return 0;
+    }
+
     // TODO: check if there are endian issues for cross platform
     ifs.read(reinterpret_cast<char*>(&in_n), sizeof(uint32_t));
     num_elts = ntohl(in_n);
 
-    std::cout << "Reading " << num_elts << " elements from "
-              << input_data_fname << std::endl;
+    //std::cout << "Reading " << num_elts << " elements from "
+    //          << input_data_fname << std::endl;
 
     if (num_elts < 1)
     {
-        std::cerr << "Error: invalid number of elements in "
+        std::cerr << "ERROR: invalid number of elements in "
                   << input_data_fname << std::endl;
         *in_buf = nullptr;
         return 0;
@@ -106,17 +114,7 @@ uint32_t read_float_inputs(std::string const &input_data_fname, float **in_buf)
         return 0;
     }
 
-    for (size_t ix = 0; ix < num_elts; ++ix)
-    {
-        ifs.read(reinterpret_cast<char*>(&((*in_buf)[ix])), sizeof(RealT));
-    }
-    for (size_t ix = 0; ix < num_elts; ++ix)
-    {
-
-        //TEST_CHECK((output_dc[ix] == ));
-        std::cout << ": input data(" << ix << ")-->"
-                  << (*in_buf)[ix] << std::endl;
-    }
+    ifs.read(reinterpret_cast<char*>(*in_buf), num_elts*sizeof(RealT));
 
     return num_elts;
 }

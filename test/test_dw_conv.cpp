@@ -30,7 +30,7 @@ size_t const C_i_max = 16;
 size_t const M_max = 30;
 size_t const N_max = 30;
 
-std::string const input_data_fname("maxpool_input_data_float.bin");
+std::string const input_data_fname("dw_input_data_float.bin");
 size_t const max_inputs(C_i_max * M_max * N_max);
 //size_t const max_weights(C_i * M_max * N_max);
 
@@ -96,7 +96,7 @@ size_t compute_output_dim(size_t input_dim,
 
 
 //****************************************************************************
-void test_maxpool_single_element(void)
+void test_dw_single_element(void)
 {
     using RealT = float;
 
@@ -104,18 +104,24 @@ void test_maxpool_single_element(void)
     size_t const H = 3;
     size_t const W = 3;
     size_t const kernel_size = 3;
-    size_t const stride = 2;
+    size_t const stride = 1;
     char   const padding = 'v';
     //size_t const C_o = 16;
 
     std::string in_fname(
-        "../test/regression_data/in__pool_Ci16_H3_W3_k3_s2_v_144.bin");
+        "../test/regression_data/in__dw_conv_Ci16_H3_W3_k3_s1_v_144.bin");
     RealT *input_dc = nullptr;
     uint32_t num_input_elts = read_float_inputs(in_fname, &input_dc);
     TEST_CHECK(num_input_elts == C_i*H*W);
 
+    std::string filter_fname(
+        "../test/regression_data/filter__dw_conv_Ci16_H3_W3_k3_s1_v_144.bin");
+    RealT *filter_dc = nullptr;
+    uint32_t num_filter_elts = read_float_inputs(filter_fname, &filter_dc);
+    TEST_CHECK(num_filter_elts == C_i*kernel_size*kernel_size);
+
     std::string out_fname(
-        "../test/regression_data/out__pool_Ci16_H3_W3_k3_s2_v_16.bin");
+        "../test/regression_data/out__dw_conv_Ci16_H3_W3_k3_s1_v_16.bin");
     RealT *output_dc_answers = nullptr;
     uint32_t num_output_elts = read_float_inputs(out_fname, &output_dc_answers);
 
@@ -128,13 +134,13 @@ void test_maxpool_single_element(void)
     RealT *output_dc = small_alloc<RealT>(num_output_elts);
     TEST_CHECK(nullptr != output_dc);
 
-    Maxpool2D(0, kernel_size, stride, padding,
-              C_i, H, W, input_dc, output_dc);
+    DepthwiseConv2D(0, kernel_size, stride, padding,
+                    C_i, H, W, input_dc, filter_dc, output_dc);
 
     for (size_t ix = 0; ix < num_output_elts; ++ix)
     {
         TEST_CHECK(output_dc[ix] == output_dc_answers[ix]);
-        //std::cout << ": Maxpool_out(" << ix << ")-->"
+        //std::cout << ": Dw_out(" << ix << ")-->"
         //          << output_dc[ix] << " ?= " << output_dc_answers[ix]
         //          << std::endl;
     }
@@ -145,31 +151,39 @@ void test_maxpool_single_element(void)
 }
 
 //****************************************************************************
-void test_maxpool_single_tile(void)
+void test_dw_single_tile(void)
 {
     using RealT = float;
 
     size_t const C_i = 16;
     size_t const H = 3;
-    size_t const W = 13;
+    size_t const W = 8;
     size_t const kernel_size = 3;
-    size_t const stride = 2;
+    size_t const stride = 1;
     char   const padding = 'v';
     //size_t const C_o = 16;
 
     std::string in_fname(
-        "../test/regression_data/in__pool_Ci16_H3_W13_k3_s2_v_624.bin");
+        "../test/regression_data/in__dw_conv_Ci16_H3_W8_k3_s1_v_384.bin");
     RealT *input_dc = nullptr;
     uint32_t num_input_elts = read_float_inputs(in_fname, &input_dc);
     TEST_CHECK(num_input_elts == C_i*H*W);
 
+    std::string filter_fname(
+        "../test/regression_data/filter__dw_conv_Ci16_H3_W8_k3_s1_v_144.bin");
+    RealT *filter_dc = nullptr;
+    uint32_t num_filter_elts = read_float_inputs(filter_fname, &filter_dc);
+    TEST_CHECK(num_filter_elts == C_i*kernel_size*kernel_size);
+
     std::string out_fname(
-        "../test/regression_data/out__pool_Ci16_H3_W13_k3_s2_v_96.bin");
+        "../test/regression_data/out__dw_conv_Ci16_H3_W8_k3_s1_v_96.bin");
     RealT *output_dc_answers = nullptr;
     uint32_t num_output_elts = read_float_inputs(out_fname, &output_dc_answers);
 
     size_t Ho(compute_output_dim(H, kernel_size, stride, padding));
     size_t Wo(compute_output_dim(W, kernel_size, stride, padding));
+    //std::cout << "n = 16*ho*wo: " << num_output_elts << " = 16*"
+    //          << Ho << "*" << Wo << std::endl;
     TEST_CHECK(1 == Ho);
     TEST_CHECK(6 == Wo);
     TEST_CHECK(num_output_elts == C_i*Ho*Wo);
@@ -177,24 +191,25 @@ void test_maxpool_single_tile(void)
     RealT *output_dc = small_alloc<RealT>(num_output_elts);
     TEST_CHECK(nullptr != output_dc);
 
-    Maxpool2D(0, kernel_size, stride, padding,
-              C_i, H, W, input_dc, output_dc);
+    DepthwiseConv2D(0, kernel_size, stride, padding,
+                    C_i, H, W, input_dc, filter_dc, output_dc);
 
     for (size_t ix = 0; ix < num_output_elts; ++ix)
     {
         TEST_CHECK(output_dc[ix] == output_dc_answers[ix]);
-        //std::cout << ": Maxpool_out(" << ix << ")-->"
+        //std::cout << ": Dw_out(" << ix << ")-->"
         //          << output_dc[ix] << " ?= " << output_dc_answers[ix]
         //          << std::endl;
     }
 
     free(input_dc);
+    free(filter_dc);
     free(output_dc);
     free(output_dc_answers);
 }
 
 //****************************************************************************
-void test_maxpool_large_tile(void)
+void test_dw_large_tile(void)
 {
     using RealT = float;
 
@@ -202,42 +217,51 @@ void test_maxpool_large_tile(void)
     size_t const H = 30;
     size_t const W = 30;
     size_t const kernel_size = 3;
-    size_t const stride = 2;
+    size_t const stride = 1;
     char   const padding = 'v';
     //size_t const C_o = 16;
 
     std::string in_fname(
-        "../test/regression_data/in__pool_Ci16_H30_W30_k3_s2_v_14400.bin");
+        "../test/regression_data/in__dw_conv_Ci16_H30_W30_k3_s1_v_14400.bin");
     RealT *input_dc = nullptr;
     uint32_t num_input_elts = read_float_inputs(in_fname, &input_dc);
     TEST_CHECK(num_input_elts == C_i*H*W);
 
+    std::string filter_fname(
+        "../test/regression_data/filter__dw_conv_Ci16_H30_W30_k3_s1_v_144.bin");
+    RealT *filter_dc = nullptr;
+    uint32_t num_filter_elts = read_float_inputs(filter_fname, &filter_dc);
+    TEST_CHECK(num_filter_elts == C_i*kernel_size*kernel_size);
+
     std::string out_fname(
-        "../test/regression_data/out__pool_Ci16_H30_W30_k3_s2_v_3136.bin");
+        "../test/regression_data/out__dw_conv_Ci16_H30_W30_k3_s1_v_12544.bin");
     RealT *output_dc_answers = nullptr;
     uint32_t num_output_elts = read_float_inputs(out_fname, &output_dc_answers);
 
     size_t Ho(compute_output_dim(H, kernel_size, stride, padding));
     size_t Wo(compute_output_dim(W, kernel_size, stride, padding));
-    TEST_CHECK(14 == Ho);
-    TEST_CHECK(14 == Wo);
+    //std::cout << "n = 16*ho*wo: " << num_output_elts << " = 16*"
+    //          << Ho << "*" << Wo << std::endl;
+    TEST_CHECK(28 == Ho);
+    TEST_CHECK(28 == Wo);
     TEST_CHECK(num_output_elts == C_i*Ho*Wo);
 
     RealT *output_dc = small_alloc<RealT>(num_output_elts);
     TEST_CHECK(nullptr != output_dc);
 
-    Maxpool2D(0, kernel_size, stride, padding,
-              C_i, H, W, input_dc, output_dc);
+    DepthwiseConv2D(0, kernel_size, stride, padding,
+                    C_i, H, W, input_dc, filter_dc, output_dc);
 
     for (size_t ix = 0; ix < num_output_elts; ++ix)
     {
         TEST_CHECK(output_dc[ix] == output_dc_answers[ix]);
-        //std::cout << ": Maxpool_out(" << ix << ")-->"
+        //std::cout << ": Dw_out(" << ix << ")-->"
         //          << output_dc[ix] << " ?= " << output_dc_answers[ix]
         //          << std::endl;
     }
 
     free(input_dc);
+    free(filter_dc);
     free(output_dc);
     free(output_dc_answers);
 }
@@ -245,8 +269,8 @@ void test_maxpool_large_tile(void)
 //****************************************************************************
 //****************************************************************************
 TEST_LIST = {
-    {"maxpool_single_element",  test_maxpool_single_element},
-    {"maxpool_single_tile",  test_maxpool_single_tile},
-    {"maxpool_large_tile",  test_maxpool_large_tile},
+    {"dw_single_element", test_dw_single_element},
+    {"dw_single_tile",    test_dw_single_tile},
+    {"dw_large_tile",     test_dw_large_tile},
     {NULL, NULL}
 };
