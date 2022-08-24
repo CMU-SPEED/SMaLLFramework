@@ -118,3 +118,63 @@ uint32_t read_float_inputs(std::string const &input_data_fname, float **in_buf)
 
     return num_elts;
 }
+
+//****************************************************************************
+// from https://www.tensorflow.org/api_docs/python/tf/keras/layers/MaxPool2D
+size_t compute_output_dim_old(size_t input_dim,
+                              size_t kernel_dim,
+                              size_t stride,
+                              char   padding)
+{
+    if ((padding == 'v') && (input_dim >= kernel_dim))
+    {
+        return std::floor((input_dim - kernel_dim)/((float)stride)) + 1;
+    }
+    else if (padding == 's')
+    {
+        return std::floor((input_dim - 1)/((float)stride)) + 1;
+    }
+    else
+    {
+        throw std::invalid_argument(std::string("Bad combination"));
+    }
+
+    return 0;
+}
+
+//****************************************************************************
+size_t compute_output_dim(size_t input_dim,
+                          size_t kernel_dim,
+                          size_t stride,
+                          char   padding)
+{
+    if ((padding == 'v') && (input_dim >= kernel_dim))
+    {
+        return std::floor((input_dim - kernel_dim)/((float)stride)) + 1;
+    }
+    else if (padding == 's')
+    {
+        int padding_elements;
+        if (input_dim % stride == 0)
+        {
+            padding_elements = ((kernel_dim - stride > 0) ?
+                                kernel_dim - stride :
+                                0);
+        }
+        else
+        {
+            padding_elements = ((kernel_dim - (input_dim % stride) > 0) ?
+                                kernel_dim - (input_dim % stride) :
+                                0);
+        }
+        size_t padded_input_dim = input_dim + padding_elements;
+        size_t output_dim = ((padded_input_dim - kernel_dim)/stride) - 1;
+        return std::max(output_dim, 0UL);
+    }
+    else
+    {
+        throw std::invalid_argument("Bad combination");
+    }
+
+    return 0;
+}

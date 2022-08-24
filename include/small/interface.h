@@ -24,16 +24,88 @@
  * DMxx-xxxx
  */
 
-void Conv2D(int layer_num, int kernel_size, int stride, char padding, int output_channels, int input_channels, int input_height, int input_width, float *input_ptr, float *filter_ptr, float *output_ptr);
+/// @todo Consider changing to unsigned integer types for dimensions
+/// @todo How should errors be reported (throw exceptions, return codes?)
 
-void PartialConv2D(int layer_num, int kernel_size, int stride, char padding, int output_channels, int input_channels, int input_height, int input_width, float *input_ptr, float *filter_ptr, float *output_ptr);
 
-void GroupConv2D(int layer_num, int kernel_size, int stride, char padding, int input_channels, int input_height, int input_width, float *input_ptr, float *filter_ptr, float *output_ptr);
+/*****************************************************************************
+   Perform the computation for a 2D convolution layer.
 
-void DepthwiseConv2D(int layer_num, int kernel_size, int stride, char padding, int input_channels, int input_height, int input_width, float *input_ptr, float *filter_ptr, float *output_ptr);
+   @param[in] layer_num     Unused
+   @param[in] kernel_size   Height and width dimensions of convolution window
+   @param[in] stride        Number of pixels to skip in height and width
+                            dimensions of the input between convolutions
+   @param[in] padding       'v' is for valid padding, no additional padding;
+                            'f' is for full padding, works only for square
+                            images and square kernels and adds enough boundary
+                            pixels to have the output image dimensions to be
+                            the same as the input image dimension.
+   @param[in]  output_channels Number of channels produced by layer
+   @param[in]  input_channels  Number of channels associated with input image
+   @param[in]  input_height    Height of input image in pixels
+   @param[in]  input_width     Width of input image in pixels
+   @param[in]  input_ptr       Pointer to input (image x channels) data
+                               size = Ci x iH x iW
+   @param[in]  filter_ptr      Pointer to convolution filter weights
+                               size = Ci x kernel x kernel x Co
+   @param[out] output_ptr      Pointer to output data computed for layer
+                               size = oH x oW x Co where the output image size
+                               depends on input image size, kernel, padding
+                               and stride parameters.
+ */
+void Conv2D(int layer_num,
+            int kernel_size, int stride, char padding,
+            int output_channels, int input_channels,
+            int input_height, int input_width,
+            float *input_ptr, float *filter_ptr, float *output_ptr);
 
-void Maxpool2D(int layer_num, int kernel_size, int stride, char padding, int input_channels, int input_height, int input_width, float *input_ptr, float *output_ptr);
+/**
+   Perform the computation for a partial Conv2D layer??
+ */
+void PartialConv2D(int layer_num,
+                   int kernel_size, int stride, char padding,
+                   int output_channels, int input_channels,
+                   int input_height, int input_width,
+                   float *input_ptr, float *filter_ptr, float *output_ptr);
 
-void ReLUActivation(int layer_num, int input_channels, int input_height, int input_width, float *input_ptr, float *output_ptr);
+/**
+   Perform the computation for a group of Conv2D layers??
+ */
+void GroupConv2D(int layer_num,
+                 int kernel_size, int stride, char padding,
+                 int input_channels,
+                 int input_height, int input_width,
+                 float *input_ptr, float *filter_ptr, float *output_ptr);
 
-void Dense(int layer_num, int output_elements, int input_elements, float *input_ptr, float *filter_ptr, float *output_ptr);
+/**
+   Perform the computation for a depth-wise Conv2D layer.
+ */
+void DepthwiseConv2D(int layer_num,
+                     int kernel_size, int stride, char padding,
+                     int input_channels,
+                     int input_height, int input_width,
+                     float *input_ptr, float *filter_ptr, float *output_ptr);
+
+/**
+   Perform the computation for a 2D maxpool layer.
+ */
+void Maxpool2D(int layer_num,
+               int kernel_size, int stride, char padding,
+               int input_channels,
+               int input_height, int input_width,
+               float *input_ptr, float *output_ptr);
+
+/**
+   Perform the computation for a rectified linear unit (ReLU) layer.
+ */
+void ReLUActivation(int layer_num,
+                    int input_channels,
+                    int input_height, int input_width,
+                    float *input_ptr, float *output_ptr);
+
+/**
+   Perform the computation for a fully-connected layer?
+ */
+void Dense(int layer_num,
+           int output_elements, int input_elements,
+           float *input_ptr, float *filter_ptr, float *output_ptr);
