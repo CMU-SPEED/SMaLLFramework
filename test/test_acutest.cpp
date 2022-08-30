@@ -13,10 +13,7 @@
 
 #include <acutest.h>
 
-#include <small/config.h>
-#include <small/interface.h>
-#include <params.h>
-#include <intrinsics.h>
+#include <small.h>
 
 //****************************************************************************
 void test_dummy(void)

@@ -29,13 +29,14 @@
 #define H_TILE 0
 #define POOLING 1
 
-#include <small/config.h>
-#include <params.h>      // should come from active kernels subdirectory
+// from config.h, consider making command line options
+#define RUNS 1000
+#define PARALLEL 1
+
+#include <small.h>
 
 #include "utils.h"
 #include "check_interface.h"
-
-#include <small/interface.h>
 
 #define LIMIT 1e-2
 

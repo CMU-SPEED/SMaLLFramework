@@ -1,3 +1,7 @@
+#pragma once
+
+#define UARCH "ARM-v8"
+
 #define W_ob 6
 #define C_ob 16
 #define SIMD 4

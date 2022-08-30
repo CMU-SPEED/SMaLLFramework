@@ -26,9 +26,17 @@
 
 #pragma once
 
-#include <small/interface.h>
-#include <small/direct_convolution.h>  /// @todo rename to abstract_layer.h
+#define SMALL_MAJOR_VERSION  1
+#define SMALL_MINOR_VERSION  0
+#define SMALL_SUB_VERSON     0
 
-// Platform specific includes.  Use -I compile option to point to correct version
+
+#include <small/interface.h>
+
+// Platform specific includes.
+// Use -I compile option to point to correct platform
 #include <params.h>
 #include <intrinsics.h>
+
+/// @todo Why must this come after platform-specific includes?
+#include <small/direct_convolution.h>  /// @todo rename to abstract_layer.h

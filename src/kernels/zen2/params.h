@@ -1,3 +1,6 @@
+#pragma once
+
+#define UARCH "Zen2"
 
 #define W_ob 6
 #define C_ob 16

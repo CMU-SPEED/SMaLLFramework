@@ -32,14 +32,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-/// @todo #include <small.h>
-//#include <small/config.h>     // was ./config.h
-#include <small/interface.h>  // was src/interface.h
-#include <params.h>           // comes from active kernels subdirectory
-#include <intrinsics.h>       // comes from active kernels subdirectory
-
-#include <small/direct_convolution.h>
-
+#include <small.h>
 
 //****************************************************************************
 void Conv2D(int layer_num,

@@ -18,10 +18,7 @@
 #include <cmath>
 #include <random>
 
-#include <small/config.h>
-#include <small/interface.h>
-#include <params.h>
-#include <intrinsics.h>
+#include <small.h>
 
 #include "Timer.hpp"
 #include "test_utils.hpp"
