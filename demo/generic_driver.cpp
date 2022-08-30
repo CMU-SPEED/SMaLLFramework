@@ -37,40 +37,6 @@
 
 #include <small/interface.h>
 
-// Problem size
-
-// Timing Utils
-// static __inline__ unsigned long long rdtsc(void)
-// {
-//     unsigned hi, lo;
-//     __asm__ __volatile__("rdtsc"
-//                          : "=a"(lo), "=d"(hi));
-//     return ((unsigned long long)lo) | (((unsigned long long)hi) << 32);
-// }
-
-// #define print_flops(ops, time)                   \
-//     {                                            \
-//         printf("%.4lf\t", (ops) / (1.0 * time)); \
-//     }
-// #define print_cycles(time)                 \
-//     {                                      \
-//         printf("%.0lf, \t", 1.0 * (time)); \
-//     }
-
-// #define AVG(accum, trials, avg)       \
-//     {                                 \
-//         avg = (1.0 * accum) / trials; \
-//     }
-
-// #define MIN(a, b)            \
-//     {                        \
-//         a = (b < a) ? b : a; \
-//     }
-// #define ACCUM_time(a, b) \
-//     {                    \
-//         a += b;          \
-//     }
-
 #define LIMIT 1e-2
 
 #define CONV 0
@@ -123,7 +89,7 @@ int main(int argc, char **argv)
 #if LAYER == CONV
     uint32_t C_o = atol(argv[7]);
 #else
-    uint32_t C_o = C_i;
+    //uint32_t C_o = C_i;
 #endif
 
     print_build_info_check();
@@ -159,7 +125,7 @@ int main(int argc, char **argv)
     // }
 #endif
 
-    unsigned long long sum = ULLONG_MAX; //, sum_pool = ULLONG_MAX;
+    long long sum = LLONG_MAX; //, sum_pool = LLONG_MAX;
     // volatile unsigned long long sum_fused = ULLONG_MAX;
     // volatile unsigned long long sum_conv = ULLONG_MAX;
     std::vector<uint64_t> unfused_timing;
@@ -183,7 +149,7 @@ int main(int argc, char **argv)
     {
         //bool check = 0;
 
-        sum = ULLONG_MAX;
+        sum = LLONG_MAX;
 #if LAYER == RELU
         // direct_convolution_naive<W_ob, C_ob, C_o, 1 , 'v', 'a'>(1 , 1, 1, C_i, 1, C_i, N, M, input_dc, filter_dc, out_check_dc);
         check_ReLUActivation(0, C_i, N, M, input_dc, out_check_dc);
@@ -226,7 +192,7 @@ int main(int argc, char **argv)
 
         print_cycles(sum);
 
-        sum = ULLONG_MAX;
+        sum = LLONG_MAX;
         diff = 0;
         for (int run = 0; run < RUNS; run++)
         {

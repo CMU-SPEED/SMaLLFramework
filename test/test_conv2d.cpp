@@ -26,109 +26,69 @@
 #include "Timer.hpp"
 #include "test_utils.hpp"
 
-//****************************************************************************
-void test_conv2d_single_element(void)
-{
-    using RealT = float;
-
-    size_t const C_i = 16;
-    size_t const H = 3;
-    size_t const W = 3;
-    size_t const kernel_size = 3;
-    size_t const stride = 1;
-    char   const padding = 'v';
-    size_t const C_o = 16;
-
-    std::string in_fname(
-        "../test/regression_data/in__conv2d_Ci16_H3_W3_k3_s1_v_Co16_144.bin");
-    RealT *input_dc = nullptr;
-    uint32_t num_input_elts = read_float_inputs(in_fname, &input_dc);
-    TEST_CHECK(num_input_elts == C_i*H*W);
-
-    std::string filter_fname(
-        "../test/regression_data/filter__conv2d_Ci16_H3_W3_k3_s1_v_Co16_2304.bin");
-    RealT *filter_dc = nullptr;
-    uint32_t num_filter_elts = read_float_inputs(filter_fname, &filter_dc);
-    TEST_CHECK(num_filter_elts == C_i*kernel_size*kernel_size*C_o);
-
-    std::string out_fname(
-        "../test/regression_data/out__conv2d_Ci16_H3_W3_k3_s1_v_Co16_16.bin");
-    RealT *output_dc_answers = nullptr;
-    uint32_t num_output_elts = read_float_inputs(out_fname, &output_dc_answers);
-
-    size_t Ho(compute_output_dim(H, kernel_size, stride, padding));
-    TEST_CHECK(1 == Ho);
-    size_t Wo(compute_output_dim(W, kernel_size, stride, padding));
-    TEST_CHECK(1 == Wo);
-    TEST_CHECK(num_output_elts == C_o*Ho*Wo);
-
-    RealT *output_dc = small_alloc<RealT>(num_output_elts);
-    TEST_CHECK(nullptr != output_dc);
-
-    Conv2D(0, kernel_size, stride, padding,
-           C_o, C_i, H, W, input_dc, filter_dc, output_dc);
-
-    for (size_t ix = 0; ix < num_output_elts; ++ix)
-    {
-        TEST_CHECK(output_dc[ix] == output_dc_answers[ix]);
-        //std::cout << ": Conv2d_out(" << ix << ")-->"
-        //          << output_dc[ix] << " ?= " << output_dc_answers[ix]
-        //          << std::endl;
-    }
-
-    free(input_dc);
-    free(output_dc);
-    free(output_dc_answers);
-}
+std::string const data_dir("../test/regression_data");
 
 //****************************************************************************
-void test_conv2d_single_tile(void)
+template <typename RealT>
+bool run_conv2d_config(LayerParams const &params)
 {
-    using RealT = float;
+    /// @todo add smart pointer to buffers
+    // Read input data
+    std::string in_fname =
+        get_pathname(data_dir, "in", "conv2d",
+                     params,
+                     params.C_i*params.H*params.W);
+    std::cout << "\nDepthwiseConv: input file = " << in_fname << std::endl;
 
-    size_t const C_i = 16;
-    size_t const H = 3;
-    size_t const W = 8;
-    size_t const kernel_size = 3;
-    size_t const stride = 1;
-    char   const padding = 'v';
-    size_t const C_o = 16;
-
-    std::string in_fname(
-        "../test/regression_data/in__conv2d_Ci16_H3_W8_k3_s1_v_Co16_384.bin");
     RealT *input_dc = nullptr;
     uint32_t num_input_elts = read_float_inputs(in_fname, &input_dc);
-    TEST_CHECK(num_input_elts == C_i*H*W);
+    TEST_ASSERT(num_input_elts == params.C_i*params.H*params.W);
+    TEST_ASSERT(nullptr != input_dc);
 
-    std::string filter_fname(
-        "../test/regression_data/filter__conv2d_Ci16_H3_W8_k3_s1_v_Co16_2304.bin");
+    // Read filter data
+    std::string filter_fname =
+        get_pathname(data_dir, "filter", "conv2d",
+                     params,
+                     params.C_i*params.k*params.k*params.C_o);
+    std::cout << "DepthwiseConv: filter file= " << filter_fname << std::endl;
     RealT *filter_dc = nullptr;
     uint32_t num_filter_elts = read_float_inputs(filter_fname, &filter_dc);
-    TEST_CHECK(num_filter_elts == C_i*kernel_size*kernel_size*C_o);
+    TEST_ASSERT(num_filter_elts == params.C_i*params.k*params.k*params.C_o);
+    TEST_ASSERT(nullptr != filter_dc);
 
-    std::string out_fname(
-        "../test/regression_data/out__conv2d_Ci16_H3_W8_k3_s1_v_Co16_96.bin");
+    // Read output regression data
+    size_t Ho(compute_output_dim(params.H, params.k, params.s, params.p));
+    size_t Wo(compute_output_dim(params.W, params.k, params.s, params.p));
+    std::cerr << "Output image dims: " << Ho << ", " << Wo << std::endl;
+    std::string out_fname =
+        get_pathname(data_dir, "out", "conv2d",
+                     params,
+                     params.C_o*Ho*Wo);
+    std::cout << "DepthwiseConv: output file= " << out_fname << std::endl;
     RealT *output_dc_answers = nullptr;
     uint32_t num_output_elts = read_float_inputs(out_fname, &output_dc_answers);
+    TEST_ASSERT(num_output_elts == params.C_o*Ho*Wo);
+    TEST_ASSERT(nullptr != output_dc_answers);
 
-    size_t Ho(compute_output_dim(H, kernel_size, stride, padding));
-    size_t Wo(compute_output_dim(W, kernel_size, stride, padding));
-    //std::cout << "n = 16*ho*wo: " << num_output_elts << " = 16*"
-    //          << Ho << "*" << Wo << std::endl;
-    TEST_CHECK(1 == Ho);
-    TEST_CHECK(6 == Wo);
-    TEST_CHECK(num_output_elts == C_o*Ho*Wo);
-
+    // Allocate output buffer
     RealT *output_dc = small_alloc<RealT>(num_output_elts);
-    TEST_CHECK(nullptr != output_dc);
+    TEST_ASSERT(nullptr != output_dc);
 
-    Conv2D(0, kernel_size, stride, padding,
-           C_o, C_i, H, W, input_dc, filter_dc, output_dc);
+    // Compute layer
+    Conv2D(0,
+           params.k, params.s, params.p,
+           params.C_o, params.C_i, params.H, params.W,
+           input_dc, filter_dc, output_dc);
 
+    // Check answer
+    bool passing = true;
     for (size_t ix = 0; ix < num_output_elts; ++ix)
     {
-        TEST_CHECK(output_dc[ix] == output_dc_answers[ix]);
-        //std::cout << ": Conv2d_out(" << ix << ")-->"
+        if (output_dc[ix] != output_dc_answers[ix])
+        {
+            passing = false;
+        }
+        //std::cout << ": Maxpool_out(" << ix << ")-->"
         //          << output_dc[ix] << " ?= " << output_dc_answers[ix]
         //          << std::endl;
     }
@@ -137,71 +97,38 @@ void test_conv2d_single_tile(void)
     free(filter_dc);
     free(output_dc);
     free(output_dc_answers);
+
+    return passing;
 }
 
 //****************************************************************************
-void test_conv2d_large_tile(void)
+void test_conv2d_regression_data(void)
 {
-    using RealT = float;
-
-    size_t const C_i = 16;
-    size_t const H = 30;
-    size_t const W = 30;
-    size_t const kernel_size = 3;
-    size_t const stride = 1;
-    char   const padding = 'v';
-    size_t const C_o = 16;
-
-    std::string in_fname(
-        "../test/regression_data/in__conv2d_Ci16_H30_W30_k3_s1_v_Co16_14400.bin");
-    RealT *input_dc = nullptr;
-    uint32_t num_input_elts = read_float_inputs(in_fname, &input_dc);
-    TEST_CHECK(num_input_elts == C_i*H*W);
-
-    std::string filter_fname(
-        "../test/regression_data/filter__conv2d_Ci16_H30_W30_k3_s1_v_Co16_2304.bin");
-    RealT *filter_dc = nullptr;
-    uint32_t num_filter_elts = read_float_inputs(filter_fname, &filter_dc);
-    TEST_CHECK(num_filter_elts == C_i*kernel_size*kernel_size*C_o);
-
-    std::string out_fname(
-        "../test/regression_data/out__conv2d_Ci16_H30_W30_k3_s1_v_Co16_12544.bin");
-    RealT *output_dc_answers = nullptr;
-    uint32_t num_output_elts = read_float_inputs(out_fname, &output_dc_answers);
-
-    size_t Ho(compute_output_dim(H, kernel_size, stride, padding));
-    size_t Wo(compute_output_dim(W, kernel_size, stride, padding));
-    //std::cout << "n = 16*ho*wo: " << num_output_elts << " = 16*"
-    //          << Ho << "*" << Wo << std::endl;
-    TEST_CHECK(28 == Ho);
-    TEST_CHECK(28 == Wo);
-    TEST_CHECK(num_output_elts == C_o*Ho*Wo);
-
-    RealT *output_dc = small_alloc<RealT>(num_output_elts);
-    TEST_CHECK(nullptr != output_dc);
-
-    Conv2D(0, kernel_size, stride, padding,
-           C_o, C_i, H, W, input_dc, filter_dc, output_dc);
-
-    for (size_t ix = 0; ix < num_output_elts; ++ix)
+    std::vector<LayerParams> params =
     {
-        TEST_CHECK(output_dc[ix] == output_dc_answers[ix]);
-        //std::cout << ": Conv2d_out(" << ix << ")-->"
-        //          << output_dc[ix] << " ?= " << output_dc_answers[ix]
-        //          << std::endl;
-    }
+        {16,  3,  3, 3, 1, 'v', 16},  //Ci,Hi,Wi,k,s,p,Co
+        {16,  3,  8, 3, 1, 'v', 16},
+        {16, 30, 30, 3, 1, 'v', 16},
 
-    free(input_dc);
-    free(filter_dc);
-    free(output_dc);
-    free(output_dc_answers);
+        {16,  3,  8, 3, 1, 'v', 96},
+        {96,  3,  8, 3, 1, 'v', 16},
+        {96, 30, 30, 3, 1, 'v', 96}
+#if 0
+      , {16,  3,  3, 3, 1, 'f', 16},  //Ci,Hi,Wi,k,s,p,Co
+        {16,  3,  8, 3, 1, 'f', 16},
+        {96, 30, 30, 3, 1, 'f', 96},
+        {96,  3,  8, 3, 1, 'f', 16}
+#endif
+    };
+    for (LayerParams const &p: params)
+    {
+        TEST_CHECK(true == run_conv2d_config<float>(p));
+    }
 }
 
 //****************************************************************************
 //****************************************************************************
 TEST_LIST = {
-    {"conv2d_single_element", test_conv2d_single_element},
-    {"conv2d_single_tile",    test_conv2d_single_tile},
-    {"conv2d_large_tile",     test_conv2d_large_tile},
+    {"conv2d_regression_data",     test_conv2d_regression_data},
     {NULL, NULL}
 };

@@ -33,6 +33,17 @@
 #include <stdlib.h>
 #include <arpa/inet.h>
 
+struct LayerParams
+{
+    size_t C_i;
+    size_t H; // image_height;
+    size_t W; // image_width;
+    size_t k; // kernel_size;
+    size_t s; // stride;
+    char   p; // padding; 'v' or 'f'
+    size_t C_o;
+};
+
 //****************************************************************************
 template <typename T>
 T* small_alloc(size_t num_elements)
@@ -43,6 +54,33 @@ T* small_alloc(size_t num_elements)
         return buffer;
     else
         return (T*)nullptr;
+}
+
+//****************************************************************************
+std::string get_pathname(
+    std::string const &directory,
+    std::string const &buffer_name,  // in, filter, out,
+    std::string const &layer_name,   // conv2d, dw_conv, relue, pool
+    LayerParams const &params,
+    size_t             num_elements)
+{
+    if ((params.p != 'v') && (params.p != 'f'))
+    {
+        throw std::invalid_argument("ERROR: bad padding value.");
+    }
+
+    std::string fname =
+        directory + "/" + buffer_name + "__" + layer_name +
+        "_Ci" + std::to_string(params.C_i) +
+        "_H" + std::to_string(params.H) +
+        "_W" + std::to_string(params.W) +
+        "_k" + std::to_string(params.k) +
+        "_s" + std::to_string(params.s) +
+        ((params.p == 'v') ? "_v" : "_f") +
+        ((params.C_o > 0) ? ("_Co" + std::to_string(params.C_o)) : "") +
+        "_" +  std::to_string(num_elements) + ".bin";
+
+    return fname;
 }
 
 //****************************************************************************
@@ -58,8 +96,12 @@ int read_float_inputs(std::string const &input_data_fname,
     // TODO: check if there are endian issues for cross platform
     ifs.read(reinterpret_cast<char*>(&in_n), sizeof(size_t));
 
-    if (num_elts > in_n)
-        return 1;
+    if (num_elts != in_n)
+    {
+        throw std::invalid_argument("ERROR: num elements not correct: " +
+                                    std::to_string(num_elts) + " != " +
+                                    std::to_string(in_n));
+    }
 
     // TODO: endian details
     ifs.read(reinterpret_cast<char*>(in_buf), num_elts*sizeof(RealT));
@@ -130,7 +172,7 @@ size_t compute_output_dim_old(size_t input_dim,
     {
         return std::floor((input_dim - kernel_dim)/((float)stride)) + 1;
     }
-    else if (padding == 's')
+    else if (padding == 'f')
     {
         return std::floor((input_dim - 1)/((float)stride)) + 1;
     }
@@ -152,7 +194,7 @@ size_t compute_output_dim(size_t input_dim,
     {
         return std::floor((input_dim - kernel_dim)/((float)stride)) + 1;
     }
-    else if (padding == 's')
+    else if (padding == 'f')
     {
         int padding_elements;
         if (input_dim % stride == 0)
@@ -169,6 +211,7 @@ size_t compute_output_dim(size_t input_dim,
         }
         size_t padded_input_dim = input_dim + padding_elements;
         size_t output_dim = ((padded_input_dim - kernel_dim)/stride) - 1;
+        std::cerr << "f output dim: " << output_dim << std::endl;
         return std::max(output_dim, 0UL);
     }
     else

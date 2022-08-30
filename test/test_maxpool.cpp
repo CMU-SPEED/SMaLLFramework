@@ -26,45 +26,59 @@
 #include "Timer.hpp"
 #include "test_utils.hpp"
 
+std::string const data_dir("../test/regression_data");
+
 //****************************************************************************
-void test_maxpool_single_element(void)
+template <typename RealT>
+bool run_maxpool_config(LayerParams const &params)
 {
-    using RealT = float;
+    /// @todo add smart pointer to buffers
+    // Read input data
+    std::string in_fname =
+        get_pathname(data_dir, "in", "pool",
+                     params,
+                     params.C_i*params.H*params.W);
+    std::cout << "\nMaxpool: input file = " << in_fname << std::endl;
 
-    size_t const C_i = 16;
-    size_t const H = 3;
-    size_t const W = 3;
-    size_t const kernel_size = 3;
-    size_t const stride = 2;
-    char   const padding = 'v';
-    //size_t const C_o = 16;
-
-    std::string in_fname(
-        "../test/regression_data/in__pool_Ci16_H3_W3_k3_s2_v_144.bin");
     RealT *input_dc = nullptr;
     uint32_t num_input_elts = read_float_inputs(in_fname, &input_dc);
-    TEST_CHECK(num_input_elts == C_i*H*W);
+    TEST_ASSERT(num_input_elts > 0);
+    TEST_ASSERT(nullptr != input_dc);
+    TEST_ASSERT(num_input_elts == params.C_i*params.H*params.W);
 
-    std::string out_fname(
-        "../test/regression_data/out__pool_Ci16_H3_W3_k3_s2_v_16.bin");
+    // Read output regression data
+    size_t Ho(compute_output_dim(params.H, params.k, params.s, params.p));
+    size_t Wo(compute_output_dim(params.W, params.k, params.s, params.p));
+    std::cerr << "Output image dims: " << Ho << ", " << Wo << std::endl;
+    std::string out_fname =
+        get_pathname(data_dir, "out", "pool",
+                     params,
+                     params.C_i*Ho*Wo);
+    std::cout << "Maxpool: output file= " << out_fname << std::endl;
     RealT *output_dc_answers = nullptr;
     uint32_t num_output_elts = read_float_inputs(out_fname, &output_dc_answers);
+    TEST_ASSERT(num_output_elts > 0);
+    TEST_ASSERT(nullptr != output_dc_answers);
+    TEST_ASSERT(num_output_elts == params.C_i*Ho*Wo);
 
-    size_t Ho(compute_output_dim(H, kernel_size, stride, padding));
-    TEST_CHECK(1 == Ho);
-    size_t Wo(compute_output_dim(W, kernel_size, stride, padding));
-    TEST_CHECK(1 == Wo);
-    TEST_CHECK(num_output_elts == C_i*Ho*Wo);
-
+    // Allocate output buffer
     RealT *output_dc = small_alloc<RealT>(num_output_elts);
-    TEST_CHECK(nullptr != output_dc);
+    TEST_ASSERT(nullptr != output_dc);
 
-    Maxpool2D(0, kernel_size, stride, padding,
-              C_i, H, W, input_dc, output_dc);
+    // Compute layer
+    Maxpool2D(0,
+              params.k, params.s, params.p,
+              params.C_i, params.H, params.W,
+              input_dc, output_dc);
 
+    // Check answer
+    bool passing = true;
     for (size_t ix = 0; ix < num_output_elts; ++ix)
     {
-        TEST_CHECK(output_dc[ix] == output_dc_answers[ix]);
+        if (output_dc[ix] != output_dc_answers[ix])
+        {
+            passing = false;
+        }
         //std::cout << ": Maxpool_out(" << ix << ")-->"
         //          << output_dc[ix] << " ?= " << output_dc_answers[ix]
         //          << std::endl;
@@ -73,111 +87,37 @@ void test_maxpool_single_element(void)
     free(input_dc);
     free(output_dc);
     free(output_dc_answers);
+
+    return passing;
 }
 
 //****************************************************************************
-void test_maxpool_single_tile(void)
+void test_maxpool_regression_data(void)
 {
-    using RealT = float;
-
-    size_t const C_i = 16;
-    size_t const H = 3;
-    size_t const W = 13;
-    size_t const kernel_size = 3;
-    size_t const stride = 2;
-    char   const padding = 'v';
-    //size_t const C_o = 16;
-
-    std::string in_fname(
-        "../test/regression_data/in__pool_Ci16_H3_W13_k3_s2_v_624.bin");
-    RealT *input_dc = nullptr;
-    uint32_t num_input_elts = read_float_inputs(in_fname, &input_dc);
-    TEST_CHECK(num_input_elts == C_i*H*W);
-
-    std::string out_fname(
-        "../test/regression_data/out__pool_Ci16_H3_W13_k3_s2_v_96.bin");
-    RealT *output_dc_answers = nullptr;
-    uint32_t num_output_elts = read_float_inputs(out_fname, &output_dc_answers);
-
-    size_t Ho(compute_output_dim(H, kernel_size, stride, padding));
-    size_t Wo(compute_output_dim(W, kernel_size, stride, padding));
-    TEST_CHECK(1 == Ho);
-    TEST_CHECK(6 == Wo);
-    TEST_CHECK(num_output_elts == C_i*Ho*Wo);
-
-    RealT *output_dc = small_alloc<RealT>(num_output_elts);
-    TEST_CHECK(nullptr != output_dc);
-
-    Maxpool2D(0, kernel_size, stride, padding,
-              C_i, H, W, input_dc, output_dc);
-
-    for (size_t ix = 0; ix < num_output_elts; ++ix)
+    std::vector<LayerParams> params =
     {
-        TEST_CHECK(output_dc[ix] == output_dc_answers[ix]);
-        //std::cout << ": Maxpool_out(" << ix << ")-->"
-        //          << output_dc[ix] << " ?= " << output_dc_answers[ix]
-        //          << std::endl;
-    }
+        {16,  3,  3, 3, 2, 'v', 0},  //Ci,Hi,Wi,k,s,p,Co
+        {16,  3, 13, 3, 2, 'v', 0},
 
-    free(input_dc);
-    free(output_dc);
-    free(output_dc_answers);
-}
-
-//****************************************************************************
-void test_maxpool_large_tile(void)
-{
-    using RealT = float;
-
-    size_t const C_i = 16;
-    size_t const H = 30;
-    size_t const W = 30;
-    size_t const kernel_size = 3;
-    size_t const stride = 2;
-    char   const padding = 'v';
-    //size_t const C_o = 16;
-
-    std::string in_fname(
-        "../test/regression_data/in__pool_Ci16_H30_W30_k3_s2_v_14400.bin");
-    RealT *input_dc = nullptr;
-    uint32_t num_input_elts = read_float_inputs(in_fname, &input_dc);
-    TEST_CHECK(num_input_elts == C_i*H*W);
-
-    std::string out_fname(
-        "../test/regression_data/out__pool_Ci16_H30_W30_k3_s2_v_3136.bin");
-    RealT *output_dc_answers = nullptr;
-    uint32_t num_output_elts = read_float_inputs(out_fname, &output_dc_answers);
-
-    size_t Ho(compute_output_dim(H, kernel_size, stride, padding));
-    size_t Wo(compute_output_dim(W, kernel_size, stride, padding));
-    TEST_CHECK(14 == Ho);
-    TEST_CHECK(14 == Wo);
-    TEST_CHECK(num_output_elts == C_i*Ho*Wo);
-
-    RealT *output_dc = small_alloc<RealT>(num_output_elts);
-    TEST_CHECK(nullptr != output_dc);
-
-    Maxpool2D(0, kernel_size, stride, padding,
-              C_i, H, W, input_dc, output_dc);
-
-    for (size_t ix = 0; ix < num_output_elts; ++ix)
+        {16, 30, 30, 3, 2, 'v', 0},
+        {96, 30, 30, 3, 2, 'v', 0},
+        {96,  3, 13, 3, 2, 'v', 0}
+#if 0
+      , {16,  3,  3, 3, 2, 'f', 0},  //Ci,Hi,Wi,k,s,p,Co
+        {16,  3, 13, 3, 2, 'f', 0},
+        {96, 30, 30, 3, 2, 'f', 0},
+        {96,  3, 13, 3, 2, 'f', 0}
+#endif
+    };
+    for (LayerParams const &p: params)
     {
-        TEST_CHECK(output_dc[ix] == output_dc_answers[ix]);
-        //std::cout << ": Maxpool_out(" << ix << ")-->"
-        //          << output_dc[ix] << " ?= " << output_dc_answers[ix]
-        //          << std::endl;
+        TEST_CHECK(true == run_maxpool_config<float>(p));
     }
-
-    free(input_dc);
-    free(output_dc);
-    free(output_dc_answers);
 }
 
 //****************************************************************************
 //****************************************************************************
 TEST_LIST = {
-    {"maxpool_single_element",  test_maxpool_single_element},
-    {"maxpool_single_tile",  test_maxpool_single_tile},
-    {"maxpool_large_tile",  test_maxpool_large_tile},
+    {"maxpool_regression_data",          test_maxpool_regression_data},
     {NULL, NULL}
 };

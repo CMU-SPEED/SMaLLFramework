@@ -6,6 +6,27 @@
 #include <math.h>
 #include <small/detail/kernel.h>
 
+// Came from config.h
+#define op_dim(IN_dim, stride, K_dim, OUT_dim)   \
+    {                                            \
+        OUT_dim = (IN_dim - K_dim) / stride + 1; \
+    }
+
+// Came from interface.cpp
+#ifndef op_dim
+#define op_dim(IN_dim, stride, K_dim, padding, OUT_dim)         \
+    {                                                           \
+        OUT_dim = (IN_dim +  2*padding - K_dim) / stride + 1;   \
+    }
+#endif
+
+// IS THIS USED?
+#ifndef op_dim_stride
+#define op_dim_stride(IN_dim, stride, OUT_dim)  \
+    {                                           \
+        OUT_dim = ceil(IN_dim/stride)           \
+    }
+#endif
 
 #define DEBUG 1
 
@@ -36,7 +57,6 @@
         padding_front = padding / 2;                                    \
         padding_back = padding - padding_front;                         \
     }
-
 
 
 // Given 4 padding sizes for left, right, top and bottom, calculates indices into the input and output
@@ -86,7 +106,7 @@ void initial_direct_convolution(
     float *F,
     float *O)
 {
-    uint32_t H_padding = 0, W_padding = 0;
+    //uint32_t H_padding = 0, W_padding = 0;
     uint32_t H_f_padding = 0, W_f_padding = 0;
     uint32_t H_f_elements = 0, W_f_elements = 0;
     uint32_t H_b_padding = 0, W_b_padding = 0;
@@ -137,7 +157,7 @@ void initial_direct_convolution(
 
         //Unaffected by padding
         uint32_t filter_o_c_block = (j / _C_ob) * (C_f / C_f) * H_f * W_f * C_f * _C_ob;
-        uint32_t group_offset = j / C_o;
+        //uint32_t group_offset = j / C_o;
         uint32_t filter_i_c_block = 0 + filter_o_c_block; //(i / _C_ib) * H_f * W_f * _C_ib * _C_ob + filter_o_c_block;
 
         float *I_buffer = I + input_block_offset;
@@ -265,11 +285,11 @@ void direct_convolution(
 
 //Calculating padding and output parameters
 
-    uint32_t H_padding = 0, W_padding = 0;
+    //uint32_t H_padding = 0;
+    uint32_t W_padding = 0;
     uint32_t H_f_padding = 0, W_f_padding = 0;
     uint32_t H_f_elements = 0, W_f_elements = 0;
     uint32_t H_b_padding = 0, W_b_padding = 0;
-    uint32_t H_b_elements = 0, W_b_elements = 0;
     uint32_t H_full_index = 0, W_full_index = 0;
     // Output Elements with padding
     uint32_t H_o_w_pad = 0, W_o_w_pad = 0;
@@ -307,15 +327,17 @@ void direct_convolution(
     // printf(" H_o: %d W_o_full: %d\n ", H_o, W_o_full);
 
     // back padding elements
-    uint32_t H_back_index, W_back_index;
+    uint32_t H_back_index;
+    //uint32_t W_back_index;
 
     H_back_index = H_full_index + stride * (H_o);
-    W_back_index = W_full_index + stride * (W_o_full);
+    //W_back_index = W_full_index + stride * (W_o_full);
 
     // printf("starting index of back padding elements\n H: %d W: %d \n", H_back_index, W_back_index);
 
-    op_dim((H_i + H_b_padding - H_back_index), stride, H_f, H_b_elements);
-    op_dim((W_i + W_b_padding - W_back_index), stride, W_f, W_b_elements);
+    //uint32_t H_b_elements = 0, W_b_elements = 0;
+    //op_dim((H_i + H_b_padding - H_back_index), stride, H_f, H_b_elements);
+    //op_dim((W_i + W_b_padding - W_back_index), stride, W_f, W_b_elements);
     // printf("W_b_elements : %d H_b_elements: %d\n ", W_b_elements, H_b_elements);
 
     // setting up microkernel specific parameters
@@ -527,10 +549,11 @@ void direct_convolution_partial(
     uint32_t W_o = (W_o_full / _W_ob) * _W_ob;
     uint32_t W_last = W_o_full % _W_ob;
 
-    uint32_t H_padding = 0, W_padding = 0;
+    //uint32_t H_padding = 0;
+    uint32_t W_padding = 0;
     if (padding == 'f')
     {
-        H_padding = (H_i - H_o) / 2;
+        //H_padding = (H_i - H_o) / 2;
         W_padding = (W_i - W_o) / 2;
     }
 

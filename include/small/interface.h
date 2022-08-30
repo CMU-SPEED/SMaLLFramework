@@ -24,34 +24,40 @@
  * DMxx-xxxx
  */
 
+/// @todo OBE: Use an enum for padding  enum Padding { PAD_FULL, PAD_VALID };
+/// @todo Put interface in small namespace, details in small::detail namespace
 /// @todo Consider changing to unsigned integer types for dimensions
 /// @todo How should errors be reported (throw exceptions, return codes?)
+/// @todo add interface documentation for possible errors
 
+/// #include <detail/kernel.h
 
-/*****************************************************************************
-   Perform the computation for a 2D convolution layer.
+#pragma once
 
-   @param[in] layer_num     Unused
-   @param[in] kernel_size   Height and width dimensions of convolution window
-   @param[in] stride        Number of pixels to skip in height and width
-                            dimensions of the input between convolutions
-   @param[in] padding       'v' is for valid padding, no additional padding;
-                            'f' is for full padding, works only for square
-                            images and square kernels and adds enough boundary
-                            pixels to have the output image dimensions to be
-                            the same as the input image dimension.
-   @param[in]  output_channels Number of channels produced by layer
-   @param[in]  input_channels  Number of channels associated with input image
-   @param[in]  input_height    Height of input image in pixels
-   @param[in]  input_width     Width of input image in pixels
-   @param[in]  input_ptr       Pointer to input (image x channels) data
-                               size = Ci x iH x iW
-   @param[in]  filter_ptr      Pointer to convolution filter weights
-                               size = Ci x kernel x kernel x Co
-   @param[out] output_ptr      Pointer to output data computed for layer
-                               size = oH x oW x Co where the output image size
-                               depends on input image size, kernel, padding
-                               and stride parameters.
+/**
+ * Perform the computation for a 2D convolution layer.
+ *
+ * @param[in]  layer_num       Unused
+ * @param[in]  kernel_size     Height and width dimensions of convolution window
+ * @param[in]  stride          Number of pixels to skip in height and width
+ *                             dimensions of the input between convolutions
+ * @param[in]  padding         'v' is for valid padding, no additional padding;
+ *                             'f' is for full padding, works only for square
+ *                             images and square kernels and adds enough boundary
+ *                             pixels to have the output image dimensions to be
+ *                             the same as the input image dimension.
+ * @param[in]  output_channels Number of channels produced by layer
+ * @param[in]  input_channels  Number of channels associated with input image
+ * @param[in]  input_height    Height of input image in pixels
+ * @param[in]  input_width     Width of input image in pixels
+ * @param[in]  input_ptr       Pointer to input (image x channels) data
+ *                             size = Ci x iH x iW
+ * @param[in]  filter_ptr      Pointer to convolution filter weights
+ *                             size = Ci x kernel x kernel x Co
+ * @param[out] output_ptr      Pointer to output data computed for layer
+ *                             size = oH x oW x Co where the output image size
+ *                             depends on input image size, kernel, padding
+ *                             and stride parameters.
  */
 void Conv2D(int layer_num,
             int kernel_size, int stride, char padding,
@@ -60,7 +66,29 @@ void Conv2D(int layer_num,
             float *input_ptr, float *filter_ptr, float *output_ptr);
 
 /**
-   Perform the computation for a partial Conv2D layer??
+ * Perform the computation for a partial Conv2D layer??
+ *
+ * @param[in]  layer_num       Unused
+ * @param[in]  kernel_size     Height and width dimensions of convolution window
+ * @param[in]  stride          Number of pixels to skip in height and width
+ *                             dimensions of the input between convolutions
+ * @param[in]  padding         'v' is for valid padding, no additional padding;
+ *                             'f' is for full padding, works only for square
+ *                             images and square kernels and adds enough boundary
+ *                             pixels to have the output image dimensions to be
+ *                             the same as the input image dimension.
+ * @param[in]  output_channels Number of channels produced by layer
+ * @param[in]  input_channels  Number of channels associated with input image
+ * @param[in]  input_height    Height of input image in pixels
+ * @param[in]  input_width     Width of input image in pixels
+ * @param[in]  input_ptr       Pointer to input (image x channels) data
+ *                             size = Ci x iH x iW
+ * @param[in]  filter_ptr      Pointer to convolution filter weights
+ *                             size = Ci x kernel x kernel x Co
+ * @param[out] output_ptr      Pointer to output data computed for layer
+ *                             size = oH x oW x Co where the output image size
+ *                             depends on input image size, kernel, padding
+ *                             and stride parameters.
  */
 void PartialConv2D(int layer_num,
                    int kernel_size, int stride, char padding,
@@ -69,7 +97,28 @@ void PartialConv2D(int layer_num,
                    float *input_ptr, float *filter_ptr, float *output_ptr);
 
 /**
-   Perform the computation for a group of Conv2D layers??
+ * Perform the computation for a group of Conv2D layers??
+ *
+ * @param[in]  layer_num       Unused
+ * @param[in]  kernel_size     Height and width dimensions of convolution window
+ * @param[in]  stride          Number of pixels to skip in height and width
+ *                             dimensions of the input between convolutions
+ * @param[in]  padding         'v' is for valid padding, no additional padding;
+ *                             'f' is for full padding, works only for square
+ *                             images and square kernels and adds enough boundary
+ *                             pixels to have the output image dimensions to be
+ *                             the same as the input image dimension.
+ * @param[in]  input_channels  Number of channels associated with input image
+ * @param[in]  input_height    Height of input image in pixels
+ * @param[in]  input_width     Width of input image in pixels
+ * @param[in]  input_ptr       Pointer to input (image x channels) data
+ *                             size = Ci x iH x iW
+ * @param[in]  filter_ptr      Pointer to convolution filter weights
+ *                             size = Ci x kernel x kernel x Co
+ * @param[out] output_ptr      Pointer to output data computed for layer
+ *                             size = oH x oW x Co where the output image size
+ *                             depends on input image size, kernel, padding
+ *                             and stride parameters.
  */
 void GroupConv2D(int layer_num,
                  int kernel_size, int stride, char padding,
@@ -78,7 +127,28 @@ void GroupConv2D(int layer_num,
                  float *input_ptr, float *filter_ptr, float *output_ptr);
 
 /**
-   Perform the computation for a depth-wise Conv2D layer.
+ * Perform the computation for a depth-wise Conv2D layer.
+ *
+ * @param[in]  layer_num       Unused
+ * @param[in]  kernel_size     Height and width dimensions of convolution window
+ * @param[in]  stride          Number of pixels to skip in height and width
+ *                             dimensions of the input between convolutions
+ * @param[in]  padding         'v' is for valid padding, no additional padding;
+ *                             'f' is for full padding, works only for square
+ *                             images and square kernels and adds enough boundary
+ *                             pixels to have the output image dimensions to be
+ *                             the same as the input image dimension.
+ * @param[in]  input_channels  Number of channels associated with input image
+ * @param[in]  input_height    Height of input image in pixels
+ * @param[in]  input_width     Width of input image in pixels
+ * @param[in]  input_ptr       Pointer to input (image x channels) data
+ *                             size = Ci x iH x iW
+ * @param[in]  filter_ptr      Pointer to convolution filter weights
+ *                             size = Ci x kernel x kernel x Co
+ * @param[out] output_ptr      Pointer to output data computed for layer
+ *                             size = oH x oW x Co where the output image size
+ *                             depends on input image size, kernel, padding
+ *                             and stride parameters.
  */
 void DepthwiseConv2D(int layer_num,
                      int kernel_size, int stride, char padding,
@@ -87,7 +157,26 @@ void DepthwiseConv2D(int layer_num,
                      float *input_ptr, float *filter_ptr, float *output_ptr);
 
 /**
-   Perform the computation for a 2D maxpool layer.
+ * Perform the computation for a 2D maxpool layer.
+ *
+ * @param[in]  layer_num       Unused
+ * @param[in]  kernel_size     Height and width dimensions of convolution window
+ * @param[in]  stride          Number of pixels to skip in height and width
+ *                             dimensions of the input between convolutions
+ * @param[in]  padding         'v' is for valid padding, no additional padding;
+ *                             'f' is for full padding, works only for square
+ *                             images and square kernels and adds enough boundary
+ *                             pixels to have the output image dimensions to be
+ *                             the same as the input image dimension.
+ * @param[in]  input_channels  Number of channels associated with input image
+ * @param[in]  input_height    Height of input image in pixels
+ * @param[in]  input_width     Width of input image in pixels
+ * @param[in]  input_ptr       Pointer to input (image x channels) data
+ *                             size = Ci x iH x iW
+ * @param[out] output_ptr      Pointer to output data computed for layer
+ *                             size = oH x oW x Co where the output image size
+ *                             depends on input image size, kernel, padding
+ *                             and stride parameters.
  */
 void Maxpool2D(int layer_num,
                int kernel_size, int stride, char padding,
@@ -96,7 +185,18 @@ void Maxpool2D(int layer_num,
                float *input_ptr, float *output_ptr);
 
 /**
-   Perform the computation for a rectified linear unit (ReLU) layer.
+ * Perform the computation for a rectified linear unit (ReLU) layer.
+ *
+ * @param[in]  layer_num       Unused
+ * @param[in]  input_channels  Number of channels associated with input image
+ * @param[in]  input_height    Height of input image in pixels
+ * @param[in]  input_width     Width of input image in pixels
+ * @param[in]  input_ptr       Pointer to input (image x channels) data
+ *                             size = Ci x iH x iW
+ * @param[out] output_ptr      Pointer to output data computed for layer
+ *                             size = oH x oW x Co where the output image size
+ *                             depends on input image size, kernel, padding
+ *                             and stride parameters.
  */
 void ReLUActivation(int layer_num,
                     int input_channels,
@@ -104,7 +204,14 @@ void ReLUActivation(int layer_num,
                     float *input_ptr, float *output_ptr);
 
 /**
-   Perform the computation for a fully-connected layer?
+ * Perform the computation for a fully-connected layer?
+ *
+ * @param[in]  layer_num       Unused
+ * @param[in]  output_elements ???
+ * @param[in]  input_elements  ???
+ * @param[in]  input_ptr       Pointer to input data (how big?)
+ * @param[in]  filter_ptr      Pointer to convolution filter weights (how big?)
+ * @param[out] output_ptr      Pointer to output data (how big?)
  */
 void Dense(int layer_num,
            int output_elements, int input_elements,

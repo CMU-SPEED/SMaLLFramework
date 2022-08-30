@@ -10,8 +10,9 @@
 #include <params.h>           // comes from active kernels subdirectory
 #include <../reference/intrinsics.h>       // comes from active kernels subdirectory
 
+#if 0
 #ifndef op_dim
-#define op_dim(IN_dim, stride, K_dim, padding, OUT_dim)   \
+#define op_dim(IN_dim, stride, K_dim, padding, OUT_dim)       \
     {                                            \
         OUT_dim = (IN_dim +  2*padding - K_dim) / stride + 1; \
     }
@@ -22,6 +23,7 @@
     {                                                          \
         OUT_dim = ceil(IN_dim/stride) \
     }
+#endif
 #endif
 
 void print_build_info_check() {

@@ -257,7 +257,7 @@ inline void pool_kernel_padding_end(
     {                                                                                                      \
         int filter_offset_h = n * W_f * input_channels * _C_ob;                                            \
         int input_stencil_h = /*input_col_offset +*/ (n - H_lb) * input_col_stride /*+ input_row_offset*/; \
-        for (uint32_t m = W_lb; m < W_ub; m++)                                                             \
+        for (auto m = W_lb; m < W_ub; m++)                              \
         {                                                                                                  \
             int filter_offset_w = m * input_channels * _C_ob + filter_offset_h;                            \
             int input_stencil_w = (m - W_lb) * input_channels + input_stencil_h;                           \
@@ -265,7 +265,7 @@ inline void pool_kernel_padding_end(
             float *a = I_ptr + input_stencil_w;                                                            \
             for (uint32_t ii = 0; ii < input_channels; ii++)                                               \
             {                                                                                              \
-                int p_cur = ii;                                                                            \
+                /* int p_cur = ii; */                                   \
                 /* if (W_elements == _W_ob) */                                                             \
                 /*  FMA_TILE_C(step, a, b, p_cur, _W_ob, _C_ob);*/                                         \
                 /* else */                                                                                 \
@@ -372,7 +372,7 @@ inline void dw_kernel_padding_top(
         ZERO_END_C(W_last, _C_ob);
 
 
-        COMPUTE_DW_PADDING(H_i_valid, H_f, 0, W_f, W_f, _C_ib, W_last);
+        COMPUTE_DW_PADDING(H_i_valid, H_f, 0U, W_f, W_f, _C_ib, W_last);
 
         STORE_END_C(O_ptr, _W_ob, _C_ob, W_last);
 
@@ -387,7 +387,7 @@ inline void dw_kernel_padding_top(
             ZERO_END_C(1, _C_ob);
 
 
-            COMPUTE_DW_PADDING(H_i_valid, H_f, 0, W_i_valid, W_f, _C_ib, 1);
+            COMPUTE_DW_PADDING(H_i_valid, H_f, 0U, W_i_valid, W_f, _C_ib, 1);
 
             STORE_END_C(O_ptr, _W_ob, _C_ob, 1);
 
@@ -425,7 +425,7 @@ inline void dw_kernel_padding_left(
         ZERO_END_C(1, _C_ob);
 
 
-        COMPUTE_DW_PADDING(0, H_f, W_i_valid, W_f, W_f, _C_ib, 1);
+        COMPUTE_DW_PADDING(0, H_f, W_i_valid, (int)W_f, W_f, _C_ib, 1);
 
         STORE_END_C(O_ptr, _W_ob, _C_ob, 1);
 
@@ -705,8 +705,7 @@ inline void dw_kernel_padding_bottom(
 
                             // kernel_conv(_W_ob,_C_ob,rank_k,I + input_stencil_w, F + filter_offset_w, O);
 
-                            int p_cur = ii;
-
+                            // int p_cur = ii;
                             // FMA_TILE_C(step, a, b, p_cur, _W_ob, _C_ob);
                             DW_END_C(step, a, b, W_last, _C_ob);
                         }
@@ -725,7 +724,7 @@ inline void dw_kernel_padding_bottom(
 
         ZERO_END_C(W_last, _C_ob);
 
-        COMPUTE_DW_PADDING(0, H_i_valid, 0, W_f, W_f, _C_ib, W_last);
+        COMPUTE_DW_PADDING(0, H_i_valid, 0UL, W_f, W_f, _C_ib, W_last);
 
         STORE_END_C(O_ptr, _W_ob, _C_ob, W_last);
 
@@ -742,7 +741,7 @@ inline void dw_kernel_padding_bottom(
 
             ZERO_END_C(1, _C_ob);
 
-            COMPUTE_DW_PADDING(0, H_i_valid, 0, W_i_valid, W_f, _C_ib, 1);
+            COMPUTE_DW_PADDING(0, H_i_valid, 0UL, W_i_valid, W_f, _C_ib, 1);
             STORE_END_C(O_ptr, _W_ob, _C_ob, 1);
 
             W_i_valid -= stride;
@@ -847,7 +846,7 @@ inline void dw_kernel_padding_bottom(
     {                                                                                                      \
         int filter_offset_h = n * W_f * input_channels * _C_ob;                                            \
         int input_stencil_h = /*input_col_offset +*/ (n - H_lb) * input_col_stride /*+ input_row_offset*/; \
-        for (uint32_t m = W_lb; m < W_ub; m++)                                                             \
+        for (auto m = W_lb; m < W_ub; m++)                               \
         {                                                                                                  \
             int filter_offset_w = m * input_channels * _C_ob + filter_offset_h;                            \
             int input_stencil_w = (m - W_lb) * input_channels + input_stencil_h;                           \
@@ -988,7 +987,7 @@ inline void initial_conv_kernel_padding_top_combined(
             LOAD_LAST_C(O_ptr, _W_ob, _C_ob, W_last);
         }
 
-        COMPUTE_W_PADDING(H_i_valid, H_f, 0, W_f, W_f, _C_ib, W_last);
+        COMPUTE_W_PADDING(H_i_valid, H_f, 0U, W_f, W_f, _C_ib, W_last);
 
         STORE_END_C(O_ptr, _W_ob, _C_ob, W_last);
 
@@ -1008,7 +1007,7 @@ inline void initial_conv_kernel_padding_top_combined(
                 LOAD_LAST_C(O_ptr, _W_ob, _C_ob, 1);
             }
 
-            COMPUTE_W_PADDING(H_i_valid, H_f, 0, W_i_valid, W_f, _C_ib, 1);
+            COMPUTE_W_PADDING(H_i_valid, H_f, 0U, W_i_valid, W_f, _C_ib, 1);
 
             STORE_END_C(O_ptr, _W_ob, _C_ob, 1);
 
@@ -1162,7 +1161,7 @@ inline void initial_conv_kernel_padding_left_combined(
         }
 
         // COMPUTE_W_PADDING(0, H_f, 0, W_i_valid, W_f, _C_ib, 1);
-        COMPUTE_W_PADDING(0, H_f, W_i_valid, W_f, W_f, _C_ib, 1);
+        COMPUTE_W_PADDING(0, H_f, W_i_valid, (int)W_f, W_f, _C_ib, 1);
 
         STORE_END_C(O_ptr, _W_ob, _C_ob, 1);
 
@@ -1384,7 +1383,7 @@ inline void initial_conv_kernel_padding_bottom_combined(
             LOAD_LAST_C(O_ptr, _W_ob, _C_ob, W_last);
         }
 
-        COMPUTE_W_PADDING(0, H_i_valid, 0, W_f, W_f, _C_ib, W_last);
+        COMPUTE_W_PADDING(0, H_i_valid, 0U, W_f, W_f, _C_ib, W_last);
 
         STORE_END_C(O_ptr, _W_ob, _C_ob, W_last);
 
@@ -1408,7 +1407,7 @@ inline void initial_conv_kernel_padding_bottom_combined(
             {
                 LOAD_LAST_C(O_ptr, _W_ob, _C_ob, 1);
             }
-            COMPUTE_W_PADDING(0, H_i_valid, 0, W_i_valid, W_f, _C_ib, 1);
+            COMPUTE_W_PADDING(0, H_i_valid, 0U, W_i_valid, W_f, _C_ib, 1);
             STORE_END_C(O_ptr, _W_ob, _C_ob, 1);
 
             W_i_valid -= stride;
@@ -1552,7 +1551,7 @@ inline void conv_kernel_padding_top_combined(
             LOAD_LAST_C(O_ptr, _W_ob, _C_ob, W_last);
         }
 
-        COMPUTE_W_PADDING(H_i_valid, H_f, 0, W_f, W_f, _C_ib, W_last);
+        COMPUTE_W_PADDING(H_i_valid, H_f, 0U, W_f, W_f, _C_ib, W_last);
 
         STORE_END_C(O_ptr, _W_ob, _C_ob, W_last);
 
@@ -1572,7 +1571,7 @@ inline void conv_kernel_padding_top_combined(
                 LOAD_LAST_C(O_ptr, _W_ob, _C_ob, 1);
             }
 
-            COMPUTE_W_PADDING(H_i_valid, H_f, 0, W_i_valid, W_f, _C_ib, 1);
+            COMPUTE_W_PADDING(H_i_valid, H_f, 0U, W_i_valid, W_f, _C_ib, 1);
 
             STORE_END_C(O_ptr, _W_ob, _C_ob, 1);
 
@@ -1616,7 +1615,7 @@ inline void conv_kernel_padding_left_combined(
             LOAD_LAST_C(O_ptr, _W_ob, _C_ob, 1);
         }
 
-        COMPUTE_W_PADDING(0, H_f, W_i_valid, W_f, W_f, _C_ib, 1);
+        COMPUTE_W_PADDING(0, H_f, W_i_valid, (int)W_f, W_f, _C_ib, 1);
 
         STORE_END_C(O_ptr, _W_ob, _C_ob, 1);
 
@@ -1992,7 +1991,7 @@ inline void conv_kernel_padding_bottom_combined(
             LOAD_LAST_C(O_ptr, _W_ob, _C_ob, W_last);
         }
 
-        COMPUTE_W_PADDING(0, H_i_valid, 0, W_f, W_f, _C_ib, W_last);
+        COMPUTE_W_PADDING(0, H_i_valid, 0U, W_f, W_f, _C_ib, W_last);
 
         STORE_END_C(O_ptr, _W_ob, _C_ob, W_last);
 
@@ -2014,7 +2013,7 @@ inline void conv_kernel_padding_bottom_combined(
             {
                 LOAD_LAST_C(O_ptr, _W_ob, _C_ob, 1);
             }
-            COMPUTE_W_PADDING(0, H_i_valid, 0, W_i_valid, W_f, _C_ib, 1);
+            COMPUTE_W_PADDING(0, H_i_valid, 0U, W_i_valid, W_f, _C_ib, 1);
             STORE_END_C(O_ptr, _W_ob, _C_ob, 1);
 
             W_i_valid -= stride;

@@ -14,8 +14,3 @@
 
 #define RUNS 1000
 #define PARALLEL 1
-
-#define op_dim(IN_dim, stride, K_dim, OUT_dim)   \
-    {                                            \
-        OUT_dim = (IN_dim - K_dim) / stride + 1; \
-    }
