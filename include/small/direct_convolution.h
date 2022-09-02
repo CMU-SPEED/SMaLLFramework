@@ -9,37 +9,9 @@
 // Came from config.h
 #define op_dim(IN_dim, stride, K_dim, OUT_dim)   \
     {                                            \
-        OUT_dim = (IN_dim - K_dim) / stride + 1; \
+        int out_elems = (int(IN_dim) - int(K_dim)) / stride + 1; \
+        OUT_dim = (out_elems > 0) ? out_elems : 0;     \
     }
-
-// Came from interface.cpp
-#ifndef op_dim
-#define op_dim(IN_dim, stride, K_dim, padding, OUT_dim)         \
-    {                                                           \
-        OUT_dim = (IN_dim +  2*padding - K_dim) / stride + 1;   \
-    }
-#endif
-
-// IS THIS USED?
-#ifndef op_dim_stride
-#define op_dim_stride(IN_dim, stride, OUT_dim)  \
-    {                                           \
-        OUT_dim = ceil(IN_dim/stride)           \
-    }
-#endif
-
-#define DEBUG 1
-
-#if 0
-// #ifndef op_dim
-#define op_dim(IN_dim, stride, K_dim, OUT_dim)                          \
-    {                                                                   \
-        int out_elems = (IN_dim - K_dim) / stride + 1;                  \
-        printf("number of elements %d \n", out_elems);                  \
-        OUT_dim = (out_elems > 0) ? out_elems : 0;                      \
-    }
-// #endif
-#endif
 
 //As described in TF docs
 // Calculates padding to the left and right of 1 dimension

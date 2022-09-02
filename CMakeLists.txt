@@ -71,49 +71,7 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 add_library(interface.o STATIC src/interface.cpp)
 target_compile_definitions(interface.o PRIVATE uarch=${CMAKE_UARCH})
 
-#add_executable(test_interface_relu.x generic_driver.cpp )
-#target_link_libraries(test_interface_relu.x check_interface.o interface.o)
-#target_compile_definitions(test_interface_relu.x PRIVATE LAYER=RELU)
-#set_property(TARGET test_interface_relu.x PROPERTY CXX_STANDARD 14)
-
-#add_executable(test_interface_conv.x generic_driver.cpp )
-#target_link_libraries(test_interface_conv.x check_interface.o interface.o)
-#target_compile_definitions(test_interface_conv.x PRIVATE LAYER=CONV)
-#set_property(TARGET test_interface_conv.x PROPERTY CXX_STANDARD 14)
-
-
-#add_executable(test_interface_pool.x generic_driver.cpp )
-#target_link_libraries(test_interface_pool.x check_interface.o interface.o)
-#target_compile_definitions(test_interface_pool.x PRIVATE LAYER=POOL)
-#set_property(TARGET test_interface_pool.x PROPERTY CXX_STANDARD 14)
-
 add_subdirectory(demo)
 
-
 enable_testing()
-
 add_subdirectory(test)
-
-#[[REMOVE THE FOLLOWING;  Comment Lines out if you do not have libtorch
-find_package(Torch REQUIRED)
-add_executable(interface_relu.x torch_interface_driver.cpp )
-target_link_libraries(interface_relu.x "${TORCH_LIBRARIES}")
-target_link_libraries(interface_relu.x check_interface.o interface.o)
-SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS}")
-target_compile_definitions(interface_relu.x PRIVATE LAYER=RELU)
-set_property(TARGET interface_relu.x PROPERTY CXX_STANDARD 14)
-
-add_executable(interface_conv.x torch_interface_driver.cpp )
-target_link_libraries(interface_conv.x "${TORCH_LIBRARIES}")
-target_link_libraries(interface_conv.x check_interface.o interface.o)
-SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS}")
-target_compile_definitions(interface_conv.x PRIVATE LAYER=CONV)
-set_property(TARGET interface_conv.x PROPERTY CXX_STANDARD 14)
-
-add_executable(interface_pool.x torch_interface_driver.cpp )
-target_link_libraries(interface_pool.x "${TORCH_LIBRARIES}")
-target_link_libraries(interface_pool.x check_interface.o interface.o)
-SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS}")
-target_compile_definitions(interface_pool.x PRIVATE LAYER=POOL)
-set_property(TARGET interface_pool.x PROPERTY CXX_STANDARD 14)
-]]

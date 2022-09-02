@@ -14,8 +14,6 @@ void print_build_info_check()
            UARCH, W_ob, C_ob, SIMD);
 }
 
-#include <small/direct_convolution.h>
-
 //****************************************************************************
 void check_Conv2D(int layer_num,
                   int kernel_size, int stride, char padding,
