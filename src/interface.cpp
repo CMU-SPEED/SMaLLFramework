@@ -28,6 +28,7 @@
 
 #include "direct_convolution.h"
 
+extern "C" {
 
 void Conv2D(int layer_num, int kernel_size, int stride, char padding, int output_channels, int input_channels, int input_height, int input_width, float *input_ptr, float *filter_ptr, float *output_ptr)
 {
@@ -124,11 +125,16 @@ void Maxpool2D(int layer_num, int kernel_size, int stride, char padding, int inp
 
 void ReLUActivation(int layer_num, int input_channels, int input_height, int input_width, float *input_ptr, float *output_ptr)
 {
+
+    printf("entering SMaLL ReLU\n");
+
     direct_convolution<W_ob, C_ob, 1, 1, 'a'>(1,
                                                     1, 1, 1,
                                                     1, input_channels,
                                                     input_height, input_width,
                                                     'v',
                                                     input_ptr, NULL, output_ptr);
+}
+
 }
 //

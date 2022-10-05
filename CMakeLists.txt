@@ -2,11 +2,10 @@ cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 project(ContextDependentFusion)
 include(CTest)
 set(CMAKE_VERBOSE_MAKEFILE off)
-set(CMAKE_CXX_COMPILER g++) #<--- Specify C++ compiler
-set(CMAKE_C_COMPILER gcc) #<--- Specify C compiler
+set(CMAKE_CXX_COMPILER g++) # <--- Specify C++ compiler
+set(CMAKE_C_COMPILER gcc) # <--- Specify C compiler
 
-#Compiler Flags
-
+# Compiler Flags
 if(CMAKE_UARCH STREQUAL "ZEN2")
   SET(GCC_AVX_COMPILE_FLAGS "-fopenmp -mavx2 -mfma -O3 -fpermissive -march=native")
   message("Microarchitecture target: ZEN2")
@@ -19,7 +18,7 @@ else()
   message("Microarchitecture: REF")
 endif()
 
-SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall ${GCC_AVX_COMPILE_FLAGS}")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall ${GCC_AVX_COMPILE_FLAGS}")
 message("CXX_FLAGS:        ${CMAKE_CXX_FLAGS}")
 
 add_library(check_interface.o STATIC test/interface.cpp)
@@ -27,23 +26,22 @@ target_compile_definitions(check_interface.o PRIVATE uarch=${CMAKE_UARCH})
 add_library(interface.o STATIC src/interface.cpp)
 target_compile_definitions(interface.o PRIVATE uarch=${CMAKE_UARCH})
 
-add_executable(test_interface_relu.x generic_driver.cpp )
+add_executable(test_interface_relu.x generic_driver.cpp)
 target_link_libraries(test_interface_relu.x check_interface.o interface.o)
 target_compile_definitions(test_interface_relu.x PRIVATE LAYER=RELU)
 set_property(TARGET test_interface_relu.x PROPERTY CXX_STANDARD 14)
 
-add_executable(test_interface_conv.x generic_driver.cpp )
+add_executable(test_interface_conv.x generic_driver.cpp)
 target_link_libraries(test_interface_conv.x check_interface.o interface.o)
 target_compile_definitions(test_interface_conv.x PRIVATE LAYER=CONV)
 set_property(TARGET test_interface_conv.x PROPERTY CXX_STANDARD 14)
 
-
-add_executable(test_interface_pool.x generic_driver.cpp )
+add_executable(test_interface_pool.x generic_driver.cpp)
 target_link_libraries(test_interface_pool.x check_interface.o interface.o)
 target_compile_definitions(test_interface_pool.x PRIVATE LAYER=POOL)
 set_property(TARGET test_interface_pool.x PROPERTY CXX_STANDARD 14)
 
-
+add_library(interface SHARED src/interface.cpp)
 
 #[[Comment Lines out if you don not have libtorch
 find_package(Torch REQUIRED)
