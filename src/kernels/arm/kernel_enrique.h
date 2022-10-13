@@ -1163,7 +1163,7 @@ inline void conv_kernel_end_enrique(
     uint32_t W_last)
 {
 
-    LOAD_LAST_C(O, W_ob, C_ob, W_last);
+    LOAD_END_C(O, W_ob, C_ob)   ;
     int updates = 0;
     // uint32_t step = stride*C_ob;
     // int count = 0;

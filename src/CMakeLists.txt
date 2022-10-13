@@ -1,27 +1,20 @@
 #-------------------------------------------------------------------------------
-# test/CMakeLists.txt:  cmake script for SMaLL library
+# src/CMakeLists.txt:  cmake script for SMaLL library
 #-------------------------------------------------------------------------------
 
-# LAGraph, (c) 2022 by The SMaLLFramework Contributors, All Rights Reserved.
+# SMaLLFramework, (c) 2022 by The SMaLLFramework Contributors, All Rights Reserved.
 # SPDX-License-Identifier: BSD-3-Clause
 # See additional acknowledgments in the LICENSE file
 
 #-------------------------------------------------------------------------------
-# This will only build tests from files with the name "test_*.c"
+# Build a few object files from the src directory (temporary?)
 #-------------------------------------------------------------------------------
 
-include_directories ( ${CMAKE_SOURCE_DIR}/test/include )
+include_directories ( ${CMAKE_SOURCE_DIR}/src )
 
-file( GLOB TEST_SOURCES LIST_DIRECTORIES false test_*.cpp )
-message("In test/CMakeLists.txt: ${TEST_SOURCES}")
+# TODO: Deprecated??  Build the SMaLL library binary (was interface.o)
+#add_library(interface.o STATIC interface.cpp)
+#target_compile_definitions(interface.o PRIVATE uarch=${CMAKE_UARCH})
 
-foreach( testsourcefile ${TEST_SOURCES} )
-    get_filename_component(justname ${testsourcefile} NAME)
-    string( REPLACE ".cpp" ".exe" testname ${justname} )
-    message("Adding: ${testname}")
-    add_executable( ${testname} ${testsourcefile})
-    target_include_directories(${testname} INTERFACE ${CMAKE_SOURCE_DIR}/test/include ${CMAKE_SOURCE_DIR}/test ${CMAKE_SOURCE_DIR})
-    #target_link_libraries( ${testname} check_interface.o interface.o )
-    string( REPLACE "test_" "ctest_" ctestname ${testname})
-    add_test( ${ctestname} ${testname})
-endforeach( testsourcefile ${TEST_SOURCES} )
+add_library(interface_abstract.o STATIC interface_abstract.cpp)
+target_compile_definitions(interface_abstract.o PRIVATE uarch=${CMAKE_UARCH})

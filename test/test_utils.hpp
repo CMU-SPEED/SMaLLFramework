@@ -35,13 +35,13 @@
 
 struct LayerParams
 {
-    size_t C_i;
-    size_t H; // image_height;
-    size_t W; // image_width;
-    size_t k; // kernel_size;
-    size_t s; // stride;
-    char   p; // padding; 'v' or 'f'
-    size_t C_o;
+    size_t   C_i;
+    uint32_t H; // image_height;
+    uint32_t W; // image_width;
+    uint32_t k; // kernel_size;
+    uint16_t s; // stride;
+    char     p; // padding; 'v' or 'f'
+    size_t   C_o;
 };
 
 //****************************************************************************

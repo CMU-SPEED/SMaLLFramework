@@ -16,8 +16,8 @@ There is currently no support for padding other than “valid” padding
 ## Tested Platforms and Architectures
 |Name|Architecture|Created|
 |---|---|---|
-|[AMD Zen2](platform_notes/AMD.md)|x86-64|"March 14| 2022 11:33 AM"|
-|[< New >](platform_notes/New.md)|< your arch >|"March 14| 2022 11:33 AM"|
+|[AMD Zen2](platform_notes/AMD.md)|x86-64 | March 14 |
+|[< New >](platform_notes/New.md)|< your arch > | March 14 |
 
 ## Upcoming
 
@@ -69,6 +69,7 @@ Create a build folder from the Top Level directory and run CMake.
 $ mkdir build
 $ cd build
 $ cmake ../ -DCMAKE_UARCH=<µarch>
+$ cmake ../ -DCMAKE_UARCH=<µarch> -DCMAKE_SMALL_DIR=<path-to/SMaLLFramework/src/>
 $ make
 ```
 
@@ -81,7 +82,7 @@ This *should* generate 3 executables
 Each executable accepts an input size (C,H,W) and a  filter size where applicable and outputs something like the following
 
 ```bash
-$ ./test_interface_conv.x 256  30 30  3 1 'v' 192
+$ ./test_interface_conv.x 256  30 30  3 1 v 192
 layer 0 
 µArch: zen2 
 W_ob =  6 
@@ -96,3 +97,4 @@ The Experiments folder has some scripts to run a variety of sizes with the frame
 
 - `Experiments/script_VGG_almost.sh` Runs layer sizes similar to VGGnet.
 - `Experiments/test_all.sh` Runs the 3 executables generated above through the VGGnet test. 
+- `Experiments/sweep_sizes.sh` Runs different problem sizes to test the loops

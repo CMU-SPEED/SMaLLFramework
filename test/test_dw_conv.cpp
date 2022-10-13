@@ -71,9 +71,17 @@ bool run_dw_config(LayerParams const &params)
     RealT *output_dc = small_alloc<RealT>(num_output_elts);
     TEST_ASSERT(nullptr != output_dc);
 
+    uint8_t t_pad=0, b_pad=0, l_pad=0, r_pad=0;
+    if (params.p == 'f')
+    {
+        CALC_PADDING(params.H, params.k, params.s, t_pad, b_pad);
+        CALC_PADDING(params.W, params.k, params.s, l_pad, r_pad);
+    }
+
     // Compute layer
     DepthwiseConv2D(0,
-                    params.k, params.s, params.p,
+                    params.k, params.s,
+                    t_pad, b_pad, l_pad, r_pad,
                     params.C_i, params.H, params.W,
                     input_dc, filter_dc, output_dc);
 
@@ -85,7 +93,7 @@ bool run_dw_config(LayerParams const &params)
         {
             passing = false;
         }
-        //std::cout << ": Maxpool_out(" << ix << ")-->"
+        //std::cout << ": DepthwiseConv_out(" << ix << ")-->"
         //          << output_dc[ix] << " ?= " << output_dc_answers[ix]
         //          << std::endl;
     }

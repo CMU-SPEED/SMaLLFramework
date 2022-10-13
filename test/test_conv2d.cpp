@@ -35,7 +35,7 @@ bool run_conv2d_config(LayerParams const &params)
         get_pathname(data_dir, "in", "conv2d",
                      params,
                      params.C_i*params.H*params.W);
-    std::cout << "\nDepthwiseConv: input file = " << in_fname << std::endl;
+    std::cout << "\nConv2D: input file = " << in_fname << std::endl;
 
     RealT *input_dc = nullptr;
     uint32_t num_input_elts = read_float_inputs(in_fname, &input_dc);
@@ -47,7 +47,7 @@ bool run_conv2d_config(LayerParams const &params)
         get_pathname(data_dir, "filter", "conv2d",
                      params,
                      params.C_i*params.k*params.k*params.C_o);
-    std::cout << "DepthwiseConv: filter file= " << filter_fname << std::endl;
+    std::cout << "Conv2D: filter file= " << filter_fname << std::endl;
     RealT *filter_dc = nullptr;
     uint32_t num_filter_elts = read_float_inputs(filter_fname, &filter_dc);
     TEST_ASSERT(num_filter_elts == params.C_i*params.k*params.k*params.C_o);
@@ -61,7 +61,7 @@ bool run_conv2d_config(LayerParams const &params)
         get_pathname(data_dir, "out", "conv2d",
                      params,
                      params.C_o*Ho*Wo);
-    std::cout << "DepthwiseConv: output file= " << out_fname << std::endl;
+    std::cout << "Conv2D: output file= " << out_fname << std::endl;
     RealT *output_dc_answers = nullptr;
     uint32_t num_output_elts = read_float_inputs(out_fname, &output_dc_answers);
     TEST_ASSERT(num_output_elts == params.C_o*Ho*Wo);
@@ -71,9 +71,17 @@ bool run_conv2d_config(LayerParams const &params)
     RealT *output_dc = small_alloc<RealT>(num_output_elts);
     TEST_ASSERT(nullptr != output_dc);
 
+    uint8_t t_pad=0, b_pad=0, l_pad=0, r_pad=0;
+    if (params.p == 'f')
+    {
+        CALC_PADDING(params.H, params.k, params.s, t_pad, b_pad);
+        CALC_PADDING(params.W, params.k, params.s, l_pad, r_pad);
+    }
+
     // Compute layer
     Conv2D(0,
-           params.k, params.s, params.p,
+           params.k, params.s,
+           t_pad, b_pad, l_pad, r_pad,
            params.C_o, params.C_i, params.H, params.W,
            input_dc, filter_dc, output_dc);
 
@@ -85,9 +93,9 @@ bool run_conv2d_config(LayerParams const &params)
         {
             passing = false;
         }
-        //std::cout << ": Maxpool_out(" << ix << ")-->"
-        //          << output_dc[ix] << " ?= " << output_dc_answers[ix]
-        //          << std::endl;
+        std::cout << ": Conv2D_out(" << ix << ")-->"
+                  << output_dc[ix] << " ?= " << output_dc_answers[ix]
+                  << std::endl;
     }
 
     free(input_dc);

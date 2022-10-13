@@ -38,5 +38,5 @@
 #include <params.h>
 #include <intrinsics.h>
 
-/// @todo Why must this come after platform-specific includes?
-#include <small/direct_convolution.h>  /// @todo rename to abstract_layer.h
+/// This must come after platform-specific includes.
+#include <small/abstract_layer.h>

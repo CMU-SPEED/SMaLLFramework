@@ -199,7 +199,7 @@ bool run_relu_config(LayerParams const &params)
         {
             passing = false;
         }
-        //std::cout << ": Maxpool_out(" << ix << ")-->"
+        //std::cout << ": ReLU_out(" << ix << ")-->"
         //          << output_dc[ix] << " ?= " << output_dc_answers[ix]
         //          << std::endl;
     }
