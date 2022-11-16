@@ -92,10 +92,11 @@ bool run_dw_config(LayerParams const &params)
         if (output_dc[ix] != output_dc_answers[ix])
         {
             passing = false;
+
+        std::cout << "FAIL: DepthwiseConv_out(" << ix << ")-->"
+                  << output_dc[ix] << " ?= " << output_dc_answers[ix]
+                  << std::endl;
         }
-        //std::cout << ": DepthwiseConv_out(" << ix << ")-->"
-        //          << output_dc[ix] << " ?= " << output_dc_answers[ix]
-        //          << std::endl;
     }
 
     free(input_dc);
