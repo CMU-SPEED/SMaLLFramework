@@ -52,7 +52,7 @@ typedef float operand_t;
 //****************************************************************************
 inline dim_t output_dim(dim_t idim, dim_t fdim, dim_t stride) {
     dim_t odim = ((idim - fdim) / stride) + 1;
-    return odim < 0 ? 0 : odim;
+    return odim < 0 ? 0 : odim; /// @todo FIXME: odim is unsigned, cant be negative
 }
 
 
