@@ -39,13 +39,14 @@
 
 typedef uint32_t index_t;
 typedef uint32_t dim_t;
-typedef float operand_t;
+typedef float operand_t;  /// @todo template on operand type?
 
 //****************************************************************************
 // @todo unify op_dim and output_dim
+// @todo replace macro with inline/constexpr(?) function
 #define op_dim(IN_dim, stride, K_dim, OUT_dim)   \
     {                                            \
-        int out_elems = (IN_dim - K_dim) / stride + 1; \
+        int out_elems = (int(IN_dim) - int(K_dim)) / stride + 1;        \
         OUT_dim = (out_elems > 0 ) ? out_elems : 0;\
     }
 
