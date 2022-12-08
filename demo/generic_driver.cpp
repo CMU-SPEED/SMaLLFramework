@@ -104,7 +104,7 @@ int main(int argc, char **argv)
     // torch::Tensor weights = test_weights; // layer->weight;
 
     uint32_t in_dimensions = (C_i * input_height * input_width);
-#if LAYER < RELU
+#if LAYER == CONV || LAYER == PARTIAL_CONV
     uint32_t output_rows =  ((input_height + t_pad + b_pad) - kernel_size)/stride + 1;
     uint32_t output_cols =  ((input_width + l_pad + r_pad) - kernel_size) / stride + 1;
     uint32_t out_dimensions = (C_o * output_rows * output_cols);
@@ -358,6 +358,10 @@ int main(int argc, char **argv)
     compute_ops = output_els * (kernel_size * kernel_size*2.0);
     throughput = (NUM_FMA * 2.0 * SIMD);
 #elif LAYER == CONV
+    compute_ops = output_els * (kernel_size * kernel_size * C_i * 2.0);
+    throughput = (NUM_FMA * 2.0 * SIMD);
+#elif LAYER == PARTIAL_CONV
+    /// @todo CONFIRM THESE NUMBERS
     compute_ops = output_els * (kernel_size * kernel_size * C_i * 2.0);
     throughput = (NUM_FMA * 2.0 * SIMD);
 #elif LAYER == FC

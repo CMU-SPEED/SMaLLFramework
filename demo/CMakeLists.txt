@@ -16,7 +16,7 @@ include_directories ( ${CMAKE_SOURCE_DIR}/demo )
 add_library(check_interface.o STATIC check_interface_abstract.cpp)
 target_compile_definitions(check_interface.o PRIVATE uarch=${CMAKE_UARCH})
 
-set(LAYER_NAMES RELU CONV POOL DW)
+set(LAYER_NAMES RELU CONV PARTIAL_CONV POOL DW_CONV)
 message("In demo/CMakeLists.txt: ${LAYER_NAMES}")
 
 foreach( layer_name ${LAYER_NAMES} )
@@ -24,7 +24,7 @@ foreach( layer_name ${LAYER_NAMES} )
   message("Adding executable: ${demo_name}")
   add_executable(${demo_name} generic_driver.cpp)
   target_link_libraries(${demo_name} check_interface.o interface_abstract.o)
-  target_compile_definitions(${demo_name} PRIVATE LAYER=RELU)
+  target_compile_definitions(${demo_name} PRIVATE LAYER=${layer_name})
   set_property(TARGET ${demo_name} PROPERTY CXX_STANDARD 14)
 endforeach( layer_name ${LAYER_NAMES} )
 
