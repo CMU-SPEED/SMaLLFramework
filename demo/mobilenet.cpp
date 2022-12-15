@@ -234,6 +234,18 @@ int main(int argc, char **argv)
 
     auto layer_num_total = layer_num - 1;
 
+    for (auto i = 0; i < layer_num_total; i++)
+    {
+        printf("layer %d: ", i);
+        printf(" input_dims: %d %d ", I_HEIGHT(i), I_WIDTH(i));
+        for (auto j = 0; j < 10; j++)
+        {
+            printf("%d, ", layer_params[i][j]);
+        }
+        printf("\b\b");
+        // printf("input dims: %d %d ", I_HEIGHT(i+1), I_WIDTH(i+1));
+        printf("\n");
+    }
     // Direct Convolution Setup
 
     // bool check = 1;

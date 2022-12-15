@@ -235,7 +235,18 @@ int main(int argc, char **argv)
     auto layer_num_total = layer_num - 1;
     printf("Layer num total: %d", layer_num_total);
     // Direct Convolution Setup
-
+    for (auto i = 0; i < layer_num_total; i++)
+    {
+        printf("layer %d: ", i);
+        printf(" input_dims: %d %d ", I_HEIGHT(i), I_WIDTH(i));
+        for (auto j = 0; j < 10; j++)
+        {
+            printf("%d, ", layer_params[i][j]);
+        }
+        printf("\b\b");
+        // printf("input dims: %d %d ", I_HEIGHT(i+1), I_WIDTH(i+1));
+        printf("\n");
+    }
     //bool check = 1;
     // #if PARALLEL
     //     uint32_t num_threads = atoi(std::getenv("OMP_NUM_THREADS"));

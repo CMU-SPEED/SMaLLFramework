@@ -76,6 +76,7 @@ inline void resnet_block(
     uint32_t o_h, o_w;
     op_dim(in_dims[0] + t_pad_0 + b_pad_0, stride, kernel_size, o_h);
     op_dim(in_dims[1] + l_pad_0 + r_pad_0, stride, kernel_size, o_w);
+
     ReLUActivation(1, input_channels, o_h, o_w, O_intermediate, O_intermediate);
     if (scale_channels)
     {
@@ -162,7 +163,7 @@ int main(int argc, char **argv)
     // int layer_num = 0;
     uint32_t max_numel_inter_0 = 0, max_numel_inter_1 = 0;
 
-    intermediate_dims.push_back(std::array<uint, 2>({N, M}));
+    intermediate_dims.push_back(std::array<uint32_t, 2>({N, M}));
 
     // conv
     REDUCTION_C(layer_num) = C_i; // input channels
@@ -177,9 +178,9 @@ int main(int argc, char **argv)
     auto inter_dim = INPUT_NUMEL(layer_num);
     max_numel_inter_0 = (inter_dim > max_numel_inter_0) ? inter_dim : max_numel_inter_0;
 
-    intermediate_dims.push_back(std::array<uint, 2>(OUTPUT_DIMS(layer_num)));
-    intermediate_dims.push_back(std::array<uint, 2>(OUTPUT_DIMS(layer_num)));
-    std::cout << "conv " << I_HEIGHT(layer_num) << " " << I_WIDTH(layer_num) << std::endl;
+    // intermediate_dims.push_back(std::array<uint32_t, 2>(OUTPUT_DIMS(layer_num)));
+    intermediate_dims.push_back(std::array<uint32_t, 2>(OUTPUT_DIMS(layer_num)));
+    //std::cout << "conv " << I_HEIGHT(layer_num) << " " << I_WIDTH(layer_num) << std::endl;
 
     // common set up for model architecture
     auto resnet_blocks = 3;
@@ -200,11 +201,11 @@ int main(int argc, char **argv)
         CALC_PADDING(I_WIDTH(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), l_pad, r_pad);
         SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad);
         layer_num++; // 2,4,7
-        intermediate_dims.push_back(std::array<uint, 2>(OUTPUT_DIMS(layer_num)));
+        intermediate_dims.push_back(std::array<uint32_t, 2>(OUTPUT_DIMS(layer_num)));
 
         inter_dim = INPUT_NUMEL(layer_num);
         max_numel_inter_1 = (inter_dim > max_numel_inter_1) ? inter_dim : max_numel_inter_1;
-        std::cout << "conv 0 " << layer_num << "  " << I_HEIGHT(layer_num) << " " << I_WIDTH(layer_num) << " " << GROUP_C(layer_num - 1) << std::endl;
+        //std::cout << "conv 0 " << layer_num << "  " << I_HEIGHT(layer_num) << " " << I_WIDTH(layer_num) << " " << GROUP_C(layer_num - 1) << std::endl;
 
         REDUCTION_C(layer_num) = GROUP_C(layer_num - 1);
         GROUP_C(layer_num) = GROUP_C(layer_num - 1);
@@ -217,27 +218,29 @@ int main(int argc, char **argv)
         layer_num++; // 3,5,8
         inter_dim = INPUT_NUMEL(layer_num);
         max_numel_inter_0 = (inter_dim > max_numel_inter_0) ? inter_dim : max_numel_inter_0;
-        intermediate_dims.push_back(std::array<uint, 2>(OUTPUT_DIMS(layer_num)));
+        //intermediate_dims.push_back(std::array<uint32_t, 2>(OUTPUT_DIMS(layer_num - 2)));
         // std::cout << intermediate_dims[layer_num - 1][0] << " " << intermediate_dims[layer_num - 1][1] << std::endl;
-        std::cout << "conv 1 (partial) " << layer_num << "  " << I_HEIGHT(layer_num) << " " << I_WIDTH(layer_num) << " " << GROUP_C(layer_num - 1) << std::endl;
+        //std::cout << "conv 1 (partial) " << layer_num << "  " << I_HEIGHT(layer_num) << " " << I_WIDTH(layer_num) << " " << GROUP_C(layer_num - 1) << std::endl;
 
         if (channel_multiplier != 1)
         {
-            REDUCTION_C(layer_num) = in_channels * channel_multiplier; // input channels
-            GROUP_C(layer_num) = GROUP_C(layer_num - 1);
-            GROUPS(layer_num) = 1;       // output channels
-            REDUCTION_HW(layer_num) = 1; // kernel size
-            STRIDE(layer_num) = 2;       // stride
-
-            SET_PADDING(layer_num, 0, 0, 0, 0);
-            layer_num++; // 6,9
-            intermediate_dims.push_back(std::array<uint, 2>(OUTPUT_DIMS(layer_num - 1)));
-            std::cout << "1x1 " << layer_num << "  " << I_HEIGHT(layer_num) << " " << I_WIDTH(layer_num) << " " << GROUP_C(layer_num - 1) << std::endl;
-            inter_dim = INPUT_NUMEL(layer_num);
-            max_numel_inter_0 = (inter_dim > max_numel_inter_0) ? inter_dim : max_numel_inter_0;
+	  intermediate_dims.push_back(std::array<uint32_t, 2>(OUTPUT_DIMS(layer_num - 2)));
+	  REDUCTION_C(layer_num) = in_channels; // input channels
+	  GROUP_C(layer_num) = in_channels * channel_multiplier;
+	  GROUPS(layer_num) = 1;       // output channels
+	  REDUCTION_HW(layer_num) = 1; // kernel size
+	  STRIDE(layer_num) = 2;       // stride
+	  
+	  SET_PADDING(layer_num, 0, 0, 0, 0);
+	  layer_num++; // 6,9
+	  //intermediate_dims.push_back(std::array<uint32_t, 2>(OUTPUT_DIMS(layer_num)));
+	  //	  std::cout << "1x1 " << layer_num << "  " << I_HEIGHT(layer_num) << " " << I_WIDTH(layer_num) << " " << GROUP_C(layer_num - 1) << std::endl;
+	  inter_dim = INPUT_NUMEL(layer_num);
+	  max_numel_inter_0 = (inter_dim > max_numel_inter_0) ? inter_dim : max_numel_inter_0;
         }
+	intermediate_dims.push_back(std::array<uint32_t, 2>(OUTPUT_DIMS(layer_num)));
 
-        std::cout << std::endl;
+        //std::cout << std::endl;
     }
     // pooling dims
     printf("%d pool layer num\n", layer_num);
@@ -256,12 +259,15 @@ int main(int argc, char **argv)
 
     for (uint32_t i = 0; i < layer_num_total; i++)
     {
-        printf("%d: ", i);
+        printf("layer %d: ", i);
+	printf(" input_dims: %d %d ", I_HEIGHT(i), I_WIDTH(i));
         for (auto j = 0; j < 10; j++)
         {
             printf("%d, ", layer_params[i][j]);
         }
-        printf("\b\b\n");
+	printf("\b\b");
+	//printf("input dims: %d %d ", I_HEIGHT(i+1), I_WIDTH(i+1));
+        printf("\n");
     }
 
     //unsigned long long t0, t1, sum_reference;
@@ -339,7 +345,7 @@ int main(int argc, char **argv)
     // printf("\n");
 
     layer_num += 2;
-    // std::cout << "Done with block 0 H: " << I_HEIGHT(layer_num) << " W: " << I_WIDTH(layer_num) << " C:" << GROUP_C(0) << std::endl;
+     std::cout << "Done with block 0 H: " << I_HEIGHT(layer_num) << " W: " << I_WIDTH(layer_num) << " C:" << GROUP_C(0) << std::endl;
 
     for (int ds_layer = 1; ds_layer < resnet_blocks; ds_layer++)
     {
@@ -357,11 +363,9 @@ int main(int argc, char **argv)
                         filter_ptrs[layer_num + 2],
                         inter_1_dc,
                         O_intermediate);
-        // printf("\n");
         layer_num += 3;
 
         // Since channels were scaled, switch the pointers between inter_2 and inter_0
-
         inter_2_dc = inter_0_dc;
         inter_0_dc = O_intermediate;
     }

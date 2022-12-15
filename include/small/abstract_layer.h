@@ -58,9 +58,42 @@ inline dim_t output_dim(dim_t idim, dim_t fdim, dim_t stride) {
 
 
 //TODO: Make this work
-//#define ABSTRACT_OP_END(op_type, op_class, a_cur, b_cur, c_cur)
+#define ABSTRACT_OP_END(op_type, op_class, a_cur, b_cur, c_cur)       \
+    if (op_type == 'c')                                               \
+    {                                                                 \
+        if (op_class == 1)                                            \
+        {                                                             \
+            DW_END_C(step, a_cur, b_cur, c_cur, W_elements, _C_ob);   \
+        }                                                             \
+        else if (op_class == 2)                                       \
+        {                                                             \
+            CONV_END_C(step, a_cur, b_cur, c_cur, W_elements, _C_ob); \
+        }                                                             \
+    }                                                                 \
+    else if (op_type == 'a' || op_type == 'p')                        \
+    {                                                                 \
+        MAX_END_C(step, a_cur, b_cur, c_cur, W_elements, _C_ob);      \
+    }
 
-//****************************************************************************
+#define ABSTRACT_OP(op_type, op_class, a_cur, b_cur)       \
+    if (op_type == 'c')                                    \
+    {                                                      \
+        if (op_class == 1)                                 \
+        {                                                  \
+            DW_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob);   \
+        }                                                  \
+        else if (op_class == 2)                            \
+        {                                                  \
+            CONV_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob); \
+        }                                                  \
+    }                                                      \
+    else if (op_type == 'a' || op_type == 'p')             \
+    {                                                      \
+        MAX_TILE_C(step, a_cur, _O_wb, _C_ob);             \
+    }
+
+#define DEBUG 0
+
 template <
     // standard template params
     dim_t _G_b,
@@ -109,21 +142,22 @@ void inline compute_with_padding(dim_t H_lb, dim_t H_ub,
                 operand_t *b_cur = b + ii * _UNROLL * C_ob;
                 operand_t *a_cur = a + ii * _UNROLL;
                 // printf("unrol k %d %f\n", ii*_UNROLL, a[ii * _UNROLL]);
-                if (op_type == 'c')
-                {
-                    if (op_class == 1)
-                    {
-                        DW_END_C(step, a_cur, b_cur, c_cur, W_elements, _C_ob);
-                    }
-                    else if (op_class == 2)
-                    {
-                        CONV_END_C(step, a_cur, b_cur, c_cur, W_elements, _C_ob);
-                    }
-                }
-                else if (op_type == 'a' || op_type == 'p')
-                {
-                    MAX_END_C(step, a_cur, b_cur, c_cur, W_elements, _C_ob);
-                }
+                // if (op_type == 'c')
+                // {
+                //     if (op_class == 1)
+                //     {
+                //         DW_END_C(step, a_cur, b_cur, c_cur, W_elements, _C_ob);
+                //     }
+                //     else if (op_class == 2)
+                //     {
+                //         CONV_END_C(step, a_cur, b_cur, c_cur, W_elements, _C_ob);
+                //     }
+                // }
+                // else if (op_type == 'a' || op_type == 'p')
+                // {
+                //     MAX_END_C(step, a_cur, b_cur, c_cur, W_elements, _C_ob);
+                // }
+                ABSTRACT_OP_END(op_type, op_class, a_cur, b_cur, c_cur);
             }
         }
     }
@@ -314,22 +348,23 @@ void inline kernel(
                 operand_t *b_cur = b + ii * _UNROLL * C_ob;
                 operand_t *a_cur = a + ii * _UNROLL;
 
-                if (op_type == 'c')
-                {
-                    if(op_class == 1)
-                    {
-                        DW_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob);
-                    }
-                    else if (op_class == 2)
-                    {
-                        CONV_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob);
-                    }
-
-                }
-                else if (op_type == 'a' || op_type =='p')
-                {
-                    MAX_TILE_C(step, a_cur, _O_wb, _C_ob);
-                }
+                // if (op_type == 'c')
+                // {
+                //     if(op_class == 1)
+                //     {
+                //         DW_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob);
+                //     }
+                //     else if (op_class == 2)
+                //     {
+                //         CONV_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob);
+                //     }
+                   
+                // }
+                // else if (op_type == 'a' || op_type =='p')
+                // {
+                //     MAX_TILE_C(step, a_cur, _O_wb, _C_ob);
+                // }
+                ABSTRACT_OP(op_type, op_class, a_cur, b_cur);
             }
         }
     }
@@ -404,21 +439,22 @@ void inline kernel_pad(
                 operand_t *b_cur = b + ii * _UNROLL * C_ob;
                 operand_t *a_cur = a + ii * _UNROLL;
 
-                if (op_type == 'c')
-                {
-                    if (op_class == 1)
-                    {
-                        DW_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob);
-                    }
-                    else if (op_class == 2)
-                    {
-                        CONV_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob);
-                    }
-                }
-                else if (op_type == 'a' || op_type == 'p')
-                {
-                    MAX_TILE_C(step, a_cur, _O_wb, _C_ob);
-                }
+                // if (op_type == 'c')
+                // {
+                //     if (op_class == 1)
+                //     {
+                //         DW_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob);
+                //     }
+                //     else if (op_class == 2)
+                //     {
+                //         CONV_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob);
+                //     }
+                // }
+                // else if (op_type == 'a' || op_type == 'p')
+                // {
+                //     MAX_TILE_C(step, a_cur, _O_wb, _C_ob);
+                // }
+                ABSTRACT_OP(op_type, op_class, a_cur, b_cur);
             }
         }
     }
@@ -908,7 +944,7 @@ void abstract_layer(
                 // Loop over input channel reduction
                 for (index_t i = 0; i < F_c / _F_cb; i++)
                 {
-                    bool first = rewrite_output & (i == 0);
+                    bool first = rewrite_output && (i == 0);
 
                     // printf("\t out_channel:%d, %d before: in_channel %d, %.2f %.2f %.2f %.2f\n", g, k, i,O_channel_block_output[0], O_channel_block_output[1], O_channel_block_output[2], O_channel_block_output[3]);
 

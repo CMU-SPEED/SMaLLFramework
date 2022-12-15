@@ -49,7 +49,7 @@ template <typename T>
 T* small_alloc(size_t num_elements)
 {
     T *buffer;
-    int ret = posix_memalign((void**)&buffer, 4096, num_elements*sizeof(T));
+    int ret = posix_memalign((void**)&buffer, 64, num_elements*sizeof(T));
     if (0 == ret)
         return buffer;
     else
