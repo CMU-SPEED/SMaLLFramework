@@ -310,11 +310,38 @@ a_channel++;                                   \
 
 
 //ReLU Activation
-// Same kernel as Pooling, set to zero to start.
+// Unfused: Same kernel as Pooling, set to zero to start.
 
+// Fused
+#define RELU_REGISTER_TILE_C(W_ob, C_ob) \
+  b0 = _mm256_setzero_ps();              \
+  c0 = _mm256_max_ps(c0, b0);            \
+  c1 = _mm256_max_ps(c1, b0);            \
+  c2 = _mm256_max_ps(c2, b0);            \
+  c3 = _mm256_max_ps(c3, b0);            \
+  c4 = _mm256_max_ps(c4, b0);            \
+  c5= _mm256_max_ps(c5, b0);            \
+  c6 = _mm256_max_ps(c6, b0);            \
+  c7 = _mm256_max_ps(c7, b0);            \
+  c8 = _mm256_max_ps(c8, b0);            \
+  c9 = _mm256_max_ps(c9, b0);            \
+  c10 = _mm256_max_ps(c10, b0);          \
+  c11 = _mm256_max_ps(c11, b0);
+
+#define RELU_REGISTER_END_C(c_cur, W_ob, C_ob) \
+  float *c_pixel = c_cur;                       \
+  for (uint32_t kk = 0; kk < W_ob; kk++)        \
+  {\
+float *c_channel = c_pixel;\
+for (uint32_t jj = 0; jj < C_ob; jj++)\
+{\
+  *c_channel = (*c_channel > 0)? *c_channel: 0;\
+  c_channel++;\
+}\
+  c_pixel += C_ob;\
+}
 
 //________________________________________________________________
-
 
 //Fusion Kernels
 

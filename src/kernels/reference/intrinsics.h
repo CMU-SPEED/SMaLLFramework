@@ -255,9 +255,33 @@ typedef float c_tile_t;
     }                                                  \
   }
 
+// ReLU Activation
+//  Fused
+#define RELU_REGISTER_TILE_C(W_ob, C_ob)              \
+  float *c_pixel = c_tile;                             \
+  for (uint32_t kk = 0; kk < W_ob; kk++)              \
+  {                                                   \
+    float *c_channel = c_pixel;                       \
+    for (uint32_t jj = 0; jj < C_ob; jj++)            \
+    {                                                 \
+      *c_channel = (*c_channel > 0) ? *c_channel : 0; \
+      c_channel++;                                    \
+    }                                                 \
+    c_pixel += C_ob;                                  \
+  }
 
-
-
+#define RELU_REGISTER_END_C(c_cur, W_ob, C_ob)        \
+  float *c_pixel = c_cur;                             \
+  for (uint32_t kk = 0; kk < W_ob; kk++)              \
+  {                                                   \
+    float *c_channel = c_pixel;                       \
+    for (uint32_t jj = 0; jj < C_ob; jj++)            \
+    {                                                 \
+      *c_channel = (*c_channel > 0) ? *c_channel : 0; \
+      c_channel++;                                    \
+    }                                                 \
+    c_pixel += C_ob;                                  \
+  }
 
 // AVG Pooling
 #define ADD_TILE_C_G(I, W_ob_g, C_ob)      \
