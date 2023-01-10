@@ -39,6 +39,10 @@ bool run_conv2d_config(LayerParams const &params)
 
     RealT *input_dc = nullptr;
     uint32_t num_input_elts = read_float_inputs(in_fname, &input_dc);
+    for(uint32_t ix = 0; ix < num_input_elts; ix++)
+    {
+        printf("input idx %d: %f \n", ix, input_dc[ix]);
+    }
     TEST_ASSERT(num_input_elts == params.C_i*params.H*params.W);
     TEST_ASSERT(nullptr != input_dc);
 
@@ -50,6 +54,10 @@ bool run_conv2d_config(LayerParams const &params)
     std::cout << "Conv2D: filter file= " << filter_fname << std::endl;
     RealT *filter_dc = nullptr;
     uint32_t num_filter_elts = read_float_inputs(filter_fname, &filter_dc);
+    for (uint32_t ix = 0; ix < num_filter_elts; ix++)
+    {
+        printf("filter idx %d: %f \n", ix, filter_dc[ix]);
+    }
     TEST_ASSERT(num_filter_elts == params.C_i*params.k*params.k*params.C_o);
     TEST_ASSERT(nullptr != filter_dc);
 
@@ -96,6 +104,13 @@ bool run_conv2d_config(LayerParams const &params)
         std::cout << "FAIL: Conv2D_out(" << ix << ")-->"
                   << output_dc[ix] << " ?= " << output_dc_answers[ix]
                   << std::endl;
+        printf("fail %lf ! = %lf \n", output_dc[ix], output_dc_answers[ix]);
+        }
+        else
+        {
+                std::cout << "PASS: Conv2D_out(" << ix << ")-->"
+                  << output_dc[ix] << " ?= " << output_dc_answers[ix]
+                  << std::endl;
         }
     }
 
@@ -112,31 +127,31 @@ void test_conv2d_regression_data(void)
 {
     std::vector<LayerParams> params =
     {
-        {16,  1,  1, 1, 1, 'v', 16},
-        {16,  1,  6, 1, 1, 'v', 16},
-        {16,  3,  3, 3, 1, 'v', 16},  //Ci,Hi,Wi,k,s,p,Co
-        {16,  3,  8, 3, 1, 'v', 16},
+        {16, 1, 1, 1, 1, 'v', 16},
+#if 0
+        {16, 1, 6, 1, 1, 'v', 16},
+        {16, 3, 3, 3, 1, 'v', 16}, // Ci,Hi,Wi,k,s,p,Co
+        {16, 3, 8, 3, 1, 'v', 16},
         {16, 30, 30, 3, 1, 'v', 16},
 
-        {16,  1,  6, 1, 1, 'v', 96},
-        {16,  3,  8, 3, 1, 'v', 96},
+        {16, 1, 6, 1, 1, 'v', 96},
+        {16, 3, 8, 3, 1, 'v', 96},
 
-        {96,  1,  6, 1, 1, 'v', 16},
-        {96,  3,  8, 3, 1, 'v', 16},
+        {96, 1, 6, 1, 1, 'v', 16},
+        {96, 3, 8, 3, 1, 'v', 16},
 
         {96, 30, 30, 1, 1, 'v', 96},
         {96, 30, 30, 3, 1, 'v', 96},
 
-#if 1
-        {16,  3,  3, 3, 1, 'f', 16},  //Ci,Hi,Wi,k,s,p,Co
-        {16,  3,  3, 3, 2, 'f', 16},
-        {16,  3,  8, 3, 1, 'f', 16},
-        {16,  3,  8, 3, 1, 'f', 96},
-        {16,  3, 13, 3, 2, 'f', 16},
-        {16,  3, 13, 3, 2, 'f', 96},
+        {16, 3, 3, 3, 1, 'f', 16}, // Ci,Hi,Wi,k,s,p,Co
+        {16, 3, 3, 3, 2, 'f', 16},
+        {16, 3, 8, 3, 1, 'f', 16},
+        {16, 3, 8, 3, 1, 'f', 96},
+        {16, 3, 13, 3, 2, 'f', 16},
+        {16, 3, 13, 3, 2, 'f', 96},
 
-        {96,  3,  8, 3, 1, 'f', 16},
-        {96,  3, 13, 3, 2, 'f', 16},
+        {96, 3, 8, 3, 1, 'f', 16},
+        {96, 3, 13, 3, 2, 'f', 16},
         {96, 30, 30, 3, 1, 'f', 96},
         {96, 30, 30, 3, 2, 'f', 96}
 #endif

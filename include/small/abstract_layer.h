@@ -330,14 +330,19 @@ void inline kernel(
 
     const dim_t H_UPPER = ((!H_ub)*(F_h)) + (H_ub);
     // const dim_t W_UPPER = ((!W_ub) * (F_w)) + (W_ub);
-
+    // printf("op_type: %c op_class: %d\n", op_type, op_class);
     DEF_TILE_C(_O_wb, _C_ob);
     if (first)
     {
         ZERO_TILE_C(_O_wb, _C_ob);
         if (op_type == 'p')
         {
-            LOAD_TILE_C_strided(I, step, _O_wb, C_ob);
+            // printf("pooling params: %d %d \n", _C_ob, _O_wb);
+            LOAD_TILE_C_strided(I, step, _O_wb, _C_ob);
+            // for(int i = 0; i < _C_ob; i++)
+            // {
+            //     printf("%d i %f\n", i, I[i]);
+            // }
         }
     }
     else
@@ -348,6 +353,8 @@ void inline kernel(
     // int updates = 0;
     // uint32_t step = _C_ob;//stride*_C_ob;
     // int count = 0;
+    // printf(" \n\n\nop_class %d op_type %c \n", op_class, op_type);
+
     for (uint32_t n = H_lb; n < H_UPPER; n++)
     {
 
@@ -365,19 +372,32 @@ void inline kernel(
             operand_t *a = I + input_stencil_w;
             for (uint32_t ii = 0; ii < _F_cb/_UNROLL; ii++)
             {
-                // printf()?
                 operand_t *b_cur = b + ii * _UNROLL * C_ob;
                 operand_t *a_cur = a + ii * _UNROLL;
+                // if (op_type == 'p')
+                // {
+                //     printf("%d %d %d input_offset %d col_stride: %d  %f\n", n, m, ii, input_stencil_w, input_col_stride, a[0]);
+
+                //     // for (int i = 0; i < _C_ob; i++)
+                //     // {
+                //     //     printf("%d i %f\n", i, a[i]);
+                //     // }
+                // }
                 ABSTRACT_OP(op_type, op_class, a_cur, b_cur);
             }
         }
     }
 
+    // printf("op_class %d op_type %c \n\n\n", op_class, op_type);
     if (op_class_fused_ewise == 0)
     {
         ABSTRACT_EWISE_OP(op_type_fused_ewise);
     }
     STORE_TILE_C(O, _O_wb, _C_ob);
+    // for(int i = 0; i < _C_ob; i++)
+    // {
+    //     printf("%d %f\n", i, O[i] );
+    // }
 }
 
 
@@ -1401,12 +1421,12 @@ void fused_abstract_layer(
 
     const dim_t O_hxO_w_1 = O_h_w_pad_1 * O_w_w_pad_1;
 
-#if DEBUG == 0
+#if DEBUG == 1
 
     printf("\t\t I_h_1 %d I_w_1 %d F_C %d G_1 %d \n", I_h_1, I_w_1, F_c_1, G_1);
     printf("\t\t O_h_pad: %d O_w_w_pad_1 %d \n", O_h_w_pad_1, O_w_w_pad_1);
     printf("O_h_1 %d O_w_1 %d O_w_left_1 %d \n", O_h_1, O_w_full_1, O_w_left_1);
-
+make 
     printf("bottom padding index into input: %d \t bottom padding elements: %d \n", H_back_index, b_pad_el_1);
     printf("no padding index into input: %d \t top padding elements: %d \n", H_full_index_1, t_pad_el_1);
 
@@ -1676,6 +1696,606 @@ void fused_abstract_layer(
                     operand_t *O_row_bot = O_row_full + O_h_0 * (O_w_w_pad_0 * _G_b_0 * _K_b_0);
 
                     kernel_bottom<_G_b_0, _K_b_0, _F_cb_0, _O_wb, _stride_0, _UNROLL_0, op_type_0, op_class_0, fused_ewise_op_class_0, fused_ewise_op_type_0>(
+                        first,
+                        F_h_0,
+                        F_w_0,
+                        I_w_0 * _C_ib,
+                        b_pad_el_0,
+                        pad_bottom_0,
+                        W_full_index_0,
+                        l_pad_el_0,
+                        pad_left_0,
+                        O_w_w_pad_0,
+                        O_w_full_0,
+                        O_w_left_0,
+                        r_pad_el_0,
+                        pad_right_0,
+                        I_row_bot,
+                        F_row_bot,
+                        O_row_bot);
+
+                    // printf("\t out_channel:%d %d after: in_channel %d %.2f %.2f %.2f %.2f\n", g, k, i, O_channel_block_output[0], O_channel_block_output[1], O_channel_block_output[2], O_channel_block_output[3]);
+                }
+            }
+        }
+    }
+}
+
+// Fused abstract layer
+//  Fused call param
+template <
+    dim_t _G_b_0,
+    dim_t _K_b_0,
+    dim_t _F_cb_0,
+    dim_t _O_wb,
+    dim_t _stride_0,
+    dim_t _UNROLL_0,
+    char op_type_0,
+    int8_t op_class_0,
+    bool rewrite_output_0,
+    dim_t _G_b_1,
+    dim_t _K_b_1,
+    dim_t _F_cb_1,
+    dim_t _stride_1,
+    char fused_ewise_op_type_0,
+    int8_t fused_ewise_op_class_0,
+    bool rewrite_output_1>
+void fused_newise_abstract_layer(
+    // Params for first layer
+    dim_t G_0,   // Output Channel Grouping
+    dim_t K_0,   // Output Channels per group
+    dim_t F_c_0, // Channel Reduction Dimension
+    dim_t I_h_0, // Input Height
+    dim_t I_w_0, // Input Width
+
+    dim_t F_h_0, // Filter height
+    dim_t F_w_0, // Filter width
+
+    // Padding values
+    dim_t pad_top_0,
+    dim_t pad_left_0,
+    dim_t pad_right_0,
+    dim_t pad_bottom_0,
+
+    // Params for second layer
+    dim_t G_1,   // Output Channel Grouping
+    dim_t K_1,   // Output Channels per group
+    dim_t F_c_1, // Channel Reduction Dimension
+    dim_t I_h_1, // Input Height ------------------> These could be inferred
+    dim_t I_w_1, // Input Width
+
+    dim_t F_h_1, // Filter height
+    dim_t F_w_1, // Filter width
+
+    // Padding values
+    dim_t pad_top_1,
+    dim_t pad_left_1,
+    dim_t pad_right_1,
+    dim_t pad_bottom_1,
+    // Data
+    operand_t *__restrict__ I,
+    operand_t *__restrict__ F_0,
+    operand_t *__restrict__ O_inter,
+    operand_t *__restrict__ F_1,
+    operand_t *__restrict__ O)
+{
+
+    // Parameters for the first operation
+    dim_t t_pad_el_0 = 0, l_pad_el_0 = 0;
+    dim_t b_pad_el_0 = 0, r_pad_el_0 = 0;
+
+    // Only need this for debugging
+    uint32_t H_back_index = 0, W_back_index = 0;
+
+    uint32_t H_full_index_0 = 0, W_full_index_0 = 0;
+
+    constexpr dim_t _C_ib = _F_cb_0 * _G_b_0;
+    constexpr dim_t _C_ib_1 = _F_cb_1 * _G_b_1;
+    // Derive parameters for first operation
+    // Deriving padding parameters
+    dim_t O_h_w_pad_0 = I_h_1;
+    dim_t O_w_w_pad_0 = I_w_1;
+
+    // hardware specific kernel iterations
+    dim_t O_h_0;
+    dim_t O_w_0;
+    // CALC_FULL_DIMS((I_h_0 + pad_top_0 + pad_bottom_0), (I_w_0 + pad_left_0 + pad_right_0), _stride_0, F_h_0, F_w_0, O_h_w_pad_0, O_w_w_pad_0);
+    SET_PADDING_PARAMS(I_h_0, I_w_0, pad_top_0, pad_bottom_0, pad_left_0, pad_right_0, _stride_0, F_h_0, F_w_0,
+                       t_pad_el_0, b_pad_el_0, l_pad_el_0, r_pad_el_0, H_full_index_0, W_full_index_0, H_back_index, W_back_index, O_h_0, O_w_0);
+
+    // setting up microkernel specific parameters
+    /*// setting up microkernel specific parameters*/
+
+    const dim_t O_w_full_0 = (O_w_0 / _O_wb) * _O_wb;
+    const dim_t O_w_left_0 = O_w_0 - O_w_full_0;
+
+    const dim_t O_hxO_w_0 = O_h_w_pad_0 * O_w_w_pad_0;
+
+    //
+#if DEBUG == 1
+
+    printf("\t\t I_h_0 %d I_w_0 %d F_C %d G_0 %d \n", I_h_0, I_w_0, F_c_0, G_0);
+    printf("\t\t O_h_pad: %d O_w_w_pad_0 %d \n", O_h_w_pad_0, O_w_w_pad_0);
+    printf("O_h_0 %d O_w_0 %d O_w_left_0 %d \n", O_h_0, O_w_full_0, O_w_left_0);
+
+    printf("bottom padding index into input: %d \t bottom padding elements: %d \n", H_back_index, b_pad_el_0);
+    printf("no padding index into input: %d \t top padding elements: %d \n", H_full_index_0, t_pad_el_0);
+
+    printf("right padding index into input: %d \t right padding elements: %d \n", W_back_index, r_pad_el_0);
+    printf("no padding index into input: %d \t left padding elements: %d \n", W_full_index_0, l_pad_el_0);
+
+    printf("O_w_full_0: %d O_w_left_0: %d \n", O_w_full_0, O_w_left_0);
+    printf("new params: _O_wb %d F_Cb %d G_b %d K_b %d\n", _O_wb, _F_cb_0, _G_b_0, _K_b_0);
+
+#endif
+    // printf("\t rewrite output?: %d  %c %d\n", rewrite_output, op_type_0, op_class_0);
+
+    // Set up parallelism for the channel loops
+
+    //  Get total available threads
+    // TODO: add error checking in case env variable isn't defined.
+    int N = 1;
+    char const *env_nt(std::getenv("OMP_NUM_THREADS"));
+    if (nullptr != env_nt)
+    {
+        N = atoi(std::getenv("OMP_NUM_THREADS"));
+    }
+
+    // const int Channel_blocks = K_0 / _K_b_0;
+    // const int Group_blocks = G_0 / _G_b_0;
+
+    int T_channel = N, T_group = 1, T_height_0 = 1, T_height_1;
+
+    // If dwise, parallelize on groups
+    if (K_0 == 1)
+    {
+        T_channel = 1;
+        T_group = N;
+    }
+
+    //_____________________________________________________________________________________________
+    // Parameters for the second operation
+
+    dim_t t_pad_el_1 = 0, l_pad_el_1 = 0;
+    dim_t b_pad_el_1 = 0, r_pad_el_1 = 0;
+
+    // uint32_t H_back_index = 0, W_back_index = 0;
+
+    uint32_t H_full_index_1 = 0, W_full_index_1 = 0;
+
+    // Derive parameters for second operation
+    // Deriving padding parameters
+    dim_t O_h_w_pad_1;
+    dim_t O_w_w_pad_1;
+
+    // hardware specific kernel iterations
+    dim_t O_h_1;
+    dim_t O_w_1;
+    CALC_FULL_DIMS((I_h_1 + pad_top_1 + pad_bottom_1), (I_w_1 + pad_left_1 + pad_right_1), _stride_1, F_h_1, F_w_1, O_h_w_pad_1, O_w_w_pad_1);
+    SET_PADDING_PARAMS(I_h_1, I_w_1, pad_top_1, pad_bottom_1, pad_left_1, pad_right_1, _stride_1, F_h_1, F_w_1,
+                       t_pad_el_1, b_pad_el_1, l_pad_el_1, r_pad_el_1, H_full_index_1, W_full_index_1, H_back_index, W_back_index, O_h_1, O_w_1);
+
+    // setting up microkernel specific parameters
+    /*// setting up microkernel specific parameters*/
+
+    const dim_t O_w_full_1 = (O_w_1 / _O_wb) * _O_wb;
+    const dim_t O_w_left_1 = O_w_1 - O_w_full_1;
+
+    const dim_t O_hxO_w_1 = O_h_w_pad_1 * O_w_w_pad_1;
+
+#if DEBUG == 1
+
+    printf("\t\t I_h_1 %d I_w_1 %d F_C %d G_1 %d \n", I_h_1, I_w_1, F_c_1, G_1);
+    printf("\t\t O_h_pad: %d O_w_w_pad_1 %d \n", O_h_w_pad_1, O_w_w_pad_1);
+    printf("O_h_1 %d O_w_1 %d O_w_left_1 %d \n", O_h_1, O_w_full_1, O_w_left_1);
+
+    printf("bottom padding index into input: %d \t bottom padding elements: %d \n", H_back_index, b_pad_el_1);
+    printf("no padding index into input: %d \t top padding elements: %d \n", H_full_index_1, t_pad_el_1);
+
+    printf("right padding index into input: %d \t right padding elements: %d \n", W_back_index, r_pad_el_1);
+    printf("no padding index into input: %d \t left padding elements: %d \n", W_full_index_1, l_pad_el_1);
+
+    printf("O_w_full_1: %d O_w_left_1: %d \n", O_w_full_1, O_w_left_1);
+    printf("new params: _O_wb %d F_Cb %d G_b %d K_b %d\n", _O_wb, _F_cb_1, _G_b_1, _K_b_1);
+
+#endif
+
+// printf("T_Group: %d T_channel: %d\n",T_group, T_channel);
+// TODO: parallelize
+
+// create parallel region with all threads
+#if PARALLEL == 1
+#pragma omp parallel num_threads(N)
+#endif
+    {
+        auto t_id = omp_get_thread_num();
+        auto height_tid = t_id % T_height_0;
+        auto channel_tid = ((t_id) / (T_height_0)) % T_channel;
+        auto group_tid = ((t_id / (T_channel * T_height_0))) % T_group;
+        // loops over output channels
+        for (index_t g = group_tid; g < G_0 / _G_b_0; g += T_group)
+        {
+            operand_t *I_group = I + g * (F_c_0 * I_h_0 * I_w_0 * _G_b_0);
+            operand_t *F_group = F_0 + g * (K_0 * F_c_0 * F_h_0 * F_w_0 * _G_b_0);
+            operand_t *O_group = O_inter + g * (K_0 * O_hxO_w_0 * _G_b_0);
+            // printf("I group offset %d \n", (I_group - I)/(I_h_0 * I_w_0));
+            // printf("F group offset %d \n", (F_group - F) / (F_h_0 * F_w_0));
+
+            for (index_t k = channel_tid; k < K_0 / _K_b_0; k += T_channel)
+            {
+                operand_t *I_channel_block_output = I_group + 0;
+                operand_t *F_channel_block_output = F_group + k * (F_c_0 * F_h_0 * F_w_0 * _G_b_0 * _K_b_0);
+                operand_t *O_channel_block_output = O_group + k * (O_hxO_w_0 * _G_b_0 * _K_b_0);
+
+                // Loop over input channel reduction
+
+                // Peel the last iteration to fuse
+                for (index_t i = 0; i < (F_c_0 / _F_cb_0) - 1; i++)
+                {
+                    bool first = rewrite_output_0 && (i == 0);
+
+                    // printf("\t out_channel:%d, %d before: in_channel %d, %.2f %.2f %.2f %.2f\n", g, k, i,O_channel_block_output[0], O_channel_block_output[1], O_channel_block_output[2], O_channel_block_output[3]);
+
+                    operand_t *I_channel_block_input = I_channel_block_output + i * (I_h_0 * I_w_0 * _F_cb_0 * _G_b_0);
+                    // printf("I block offset %d %d \n", (I_channel_block_input - I), i * (I_h_0 * I_w_0 * _F_cb_0 * _G_b_0));
+                    operand_t *F_channel_block_input = F_channel_block_output + i * (F_h_0 * F_w_0 * _F_cb_0 * _G_b_0 * _K_b_0);
+                    operand_t *O_channel_block_input = O_channel_block_output + 0;
+
+                    // Loops over spatial dimensions of output
+
+                    // Prologue with top padding
+                    operand_t *I_row_top = I_channel_block_input;
+                    operand_t *F_row_top = F_channel_block_input + 0;
+                    operand_t *O_row_top = O_channel_block_input;
+
+                    kernel_top<_G_b_0, _K_b_0, _F_cb_0, _O_wb, _stride_0, _UNROLL_0, op_type_0, op_class_0>(
+                        first,
+                        F_h_0,
+                        F_w_0,
+                        I_w_0 * _C_ib,
+                        t_pad_el_0,
+                        pad_top_0,
+                        W_full_index_0,
+                        l_pad_el_0,
+                        pad_left_0,
+                        O_w_w_pad_0,
+                        O_w_full_0,
+                        O_w_left_0,
+                        r_pad_el_0,
+                        pad_right_0,
+                        I_row_top,
+                        F_row_top,
+                        O_row_top);
+
+                    float *I_row_full = I_row_top + H_full_index_0 * I_w_0 * (_F_cb_0 * _G_b_0);
+                    float *O_row_full = O_row_top + t_pad_el_0 * O_w_w_pad_0 * (_G_b_0 * _K_b_0);
+                    // Steady State over rows
+                    for (index_t j = height_tid; j < O_h_0; j += T_height_0)
+                    {
+                        operand_t *I_row = I_row_full + (j * _stride_0) * (I_w_0 * _F_cb_0 * _G_b_0);
+                        operand_t *F_row = F_channel_block_input + 0;
+                        operand_t *O_row = O_row_full + j * (O_w_w_pad_0 * _G_b_0 * _K_b_0);
+                        // Prologue with left padding
+                        kernel_left<_G_b_0, _K_b_0, _F_cb_0, _O_wb, _stride_0, _UNROLL_0, op_type_0, op_class_0>(
+                            first,
+                            F_h_0,
+                            F_w_0,
+                            I_w_0 * _C_ib,
+                            l_pad_el_0,
+                            pad_left_0,
+                            I_row,
+                            F_row,
+                            O_row);
+
+                        float *I_col_full = I_row + W_full_index_0 * (_F_cb_0 * _G_b_0);
+                        float *O_col_full = O_row + l_pad_el_0 * (_G_b_0 * _K_b_0);
+                        // Steady State with microkernel
+                        for (index_t l = 0; l < O_w_full_0; l += _O_wb)
+                        {
+                                operand_t *I_col = I_col_full + (l * _stride_0) * (_F_cb_0 * _G_b_0);
+                                operand_t *F_col = F_row + 0;
+                                operand_t *O_col = O_col_full + l * (_G_b_0 * _K_b_0);
+                                // printf("O_col_full %p O_col %p l %d _C_ob %d _O_wb %d\n", O_col, O_col_full, l, (_G_b_0 * _K_b_0), _O_wb);
+                                kernel<_G_b_0, _K_b_0, _F_cb_0, _O_wb, _stride_0, _UNROLL_0, op_type_0, op_class_0>(
+                                    first,
+                                    F_h_0,
+                                    F_w_0,
+                                    I_w_0 * _C_ib,
+                                    I_col,
+                                    F_col,
+                                    O_col);
+                                // for (uint32_t o_idx = 0; o_idx < _K_b_0; o_idx++)
+                                // {
+                                //     printf("idx: %d offset %ld value %f\n", o_idx, O_col - O, O_col[o_idx]);
+                                // }
+                        }
+
+                        // Epilogue for microkernel + right padding elements
+                        operand_t *I_col_left = I_col_full + (O_w_full_0 * _stride_0) * (_F_cb_0 * _G_b_0);
+                        operand_t *F_col_left = F_row + 0;
+                        operand_t *O_col_left = O_col_full + O_w_full_0 * (_G_b_0 * _K_b_0);
+                        kernel_right<_G_b_0, _K_b_0, _F_cb_0, _O_wb, _stride_0, _UNROLL_0, op_type_0, op_class_0>(
+                            first,
+                            F_h_0,
+                            F_w_0,
+                            I_w_0 * _C_ib,
+                            O_w_left_0,
+                            r_pad_el_0,
+                            pad_right_0,
+                            I_col_left,
+                            F_col_left,
+                            O_col_left);
+                    }
+                    // Epilogue with bottom padding
+                    operand_t *I_row_bot = I_row_full + (O_h_0 * _stride_0) * (I_w_0 * _F_cb_0 * _G_b_0);
+                    operand_t *F_row_bot = F_channel_block_input + 0;
+                    operand_t *O_row_bot = O_row_full + O_h_0 * (O_w_w_pad_0 * _G_b_0 * _K_b_0);
+
+                    kernel_bottom<_G_b_0, _K_b_0, _F_cb_0, _O_wb, _stride_0, _UNROLL_0, op_type_0, op_class_0>(
+                        first,
+                        F_h_0,
+                        F_w_0,
+                        I_w_0 * _C_ib,
+                        b_pad_el_0,
+                        pad_bottom_0,
+                        W_full_index_0,
+                        l_pad_el_0,
+                        pad_left_0,
+                        O_w_w_pad_0,
+                        O_w_full_0,
+                        O_w_left_0,
+                        r_pad_el_0,
+                        pad_right_0,
+                        I_row_bot,
+                        F_row_bot,
+                        O_row_bot);
+
+                    // printf("\t out_channel:%d %d after: in_channel %d %.2f %.2f %.2f %.2f\n", g, k, i, O_channel_block_output[0], O_channel_block_output[1], O_channel_block_output[2], O_channel_block_output[3]);
+                }
+
+                // Last iteration of updates for the first layer
+
+                {
+                    index_t i = (F_c_0 / _F_cb_0) - 1;
+                    bool first = rewrite_output_0 && (i == 0);
+
+                    // printf("\t out_channel:%d, %d before: in_channel %d, %.2f %.2f %.2f %.2f\n", g, k, i,O_channel_block_output[0], O_channel_block_output[1], O_channel_block_output[2], O_channel_block_output[3]);
+
+                    operand_t *I_channel_block_input = I_channel_block_output + i * (I_h_0 * I_w_0 * _F_cb_0 * _G_b_0);
+                    // printf("I block offset %d %d \n", (I_channel_block_input - I), i * (I_h_0 * I_w_0 * _F_cb_0 * _G_b_0));
+                    operand_t *F_channel_block_input = F_channel_block_output + i * (F_h_0 * F_w_0 * _F_cb_0 * _G_b_0 * _K_b_0);
+                    operand_t *O_channel_block_input = O_channel_block_output + 0;
+
+                    // Pointers for 2nd operation
+                    // total channel offset for the 1st operation
+                    dim_t output_0_channel_offset = g * (K_0) + k;
+                    operand_t *F_1_channel_block = F_1 + output_0_channel_offset * (K_1 * F_c_1 * F_h_1 * F_w_1 * _G_b_1);
+                    operand_t *O_1_channel_offset = O + output_0_channel_offset * (O_hxO_w_1 * _G_b_1);
+
+                    // Loops over spatial dimensions of output
+                    // Peel First F_h_1 - S_h_1 elements of the loop over output rows of the 1st operation
+                    // TODO: work out the case where t_pad_el_0 is greater than the number of rows required to be peeled.
+                    int req_peeled_output_rows = F_h_1 - _stride_1 - t_pad_el_0;
+                    dim_t O_h_0_peeled = (req_peeled_output_rows >= 0) ? req_peeled_output_rows : 0;
+                    // printf("F_h_1 : %d Stride: %d req_peel: %d O_h_0_peel: %d\n", F_h_1, _stride_1, req_peeled_output_rows, O_h_0_peeled);
+                    // Prologue with top padding
+                    operand_t *I_row_top = I_channel_block_input;
+                    operand_t *F_row_top = F_channel_block_input + 0;
+                    operand_t *O_row_top = O_channel_block_input;
+
+                    kernel_top<_G_b_0, _K_b_0, _F_cb_0, _O_wb, _stride_0, _UNROLL_0, op_type_0, op_class_0>(
+                        first,
+                        F_h_0,
+                        F_w_0,
+                        I_w_0 * _C_ib,
+                        t_pad_el_0,
+                        pad_top_0,
+                        W_full_index_0,
+                        l_pad_el_0,
+                        pad_left_0,
+                        O_w_w_pad_0,
+                        O_w_full_0,
+                        O_w_left_0,
+                        r_pad_el_0,
+                        pad_right_0,
+                        I_row_top,
+                        F_row_top,
+                        O_row_top);
+
+                    float *I_row_full = I_row_top + H_full_index_0 * I_w_0 * (_F_cb_0 * _G_b_0);
+                    float *O_row_full = O_row_top + t_pad_el_0 * O_w_w_pad_0 * (_G_b_0 * _K_b_0);
+
+                    for (index_t j_peel = 0; j_peel < O_h_0_peeled; j_peel++)
+                    {
+                        operand_t *I_row = I_row_full + (j_peel * _stride_0) * (I_w_0 * _F_cb_0 * _G_b_0);
+                        operand_t *F_row = F_channel_block_input + 0;
+                        operand_t *O_row = O_row_full + j_peel * (O_w_w_pad_0 * _G_b_0 * _K_b_0);
+                        // Prologue with left padding
+                        kernel_left<_G_b_0, _K_b_0, _F_cb_0, _O_wb, _stride_0, _UNROLL_0, op_type_0, op_class_0, fused_ewise_op_class_0, fused_ewise_op_type_0>(
+                            first,
+                            F_h_0,
+                            F_w_0,
+                            I_w_0 * _C_ib,
+                            l_pad_el_0,
+                            pad_left_0,
+                            I_row,
+                            F_row,
+                            O_row);
+
+                        float *I_col_full = I_row + W_full_index_0 * (_F_cb_0 * _G_b_0);
+                        float *O_col_full = O_row + l_pad_el_0 * (_G_b_0 * _K_b_0);
+                        // Steady State with microkernel
+                        for (index_t l = 0; l < O_w_full_0; l += _O_wb)
+                        {
+                                operand_t *I_col = I_col_full + (l * _stride_0) * (_F_cb_0 * _G_b_0);
+                                operand_t *F_col = F_row + 0;
+                                operand_t *O_col = O_col_full + l * (_G_b_0 * _K_b_0);
+                                // printf("O_col_full %p O_col %p l %d _C_ob %d _O_wb %d\n", O_col, O_col_full, l, (_G_b_0 * _K_b_0), _O_wb);
+                                kernel<_G_b_0, _K_b_0, _F_cb_0, _O_wb, _stride_0, _UNROLL_0, op_type_0, op_class_0, fused_ewise_op_class_0, fused_ewise_op_type_0>(
+                                    first,
+                                    F_h_0,
+                                    F_w_0,
+                                    I_w_0 * _C_ib,
+                                    I_col,
+                                    F_col,
+                                    O_col);
+                                // for (uint32_t o_idx = 0; o_idx < _K_b_0; o_idx++)
+                                // {
+                                //     printf("idx: %d offset %ld value %f\n", o_idx, O_col - O, O_col[o_idx]);
+                                // }
+                        }
+
+                        // Epilogue for microkernel + right padding elements
+                        operand_t *I_col_left = I_col_full + (O_w_full_0 * _stride_0) * (_F_cb_0 * _G_b_0);
+                        operand_t *F_col_left = F_row + 0;
+                        operand_t *O_col_left = O_col_full + O_w_full_0 * (_G_b_0 * _K_b_0);
+                        kernel_right<_G_b_0, _K_b_0, _F_cb_0, _O_wb, _stride_0, _UNROLL_0, op_type_0, op_class_0, fused_ewise_op_class_0, fused_ewise_op_type_0>(
+                            first,
+                            F_h_0,
+                            F_w_0,
+                            I_w_0 * _C_ib,
+                            O_w_left_0,
+                            r_pad_el_0,
+                            pad_right_0,
+                            I_col_left,
+                            F_col_left,
+                            O_col_left);
+                    }
+
+
+                    // TODO: top padding row for second operation
+                    operand_t *O_1_row_top = O_1_channel_offset;
+                    // float *I_row_full = I_row_top + H_full_index_0 * I_w_0 * (_F_cb_0 * _G_b_0);
+                    float *O_1_row_full = O_1_row_top + t_pad_el_1 * O_w_w_pad_1 * (_G_b_1 * _K_b_1);
+                    // Steady State over output rows o the second operation
+                    for (index_t j = 0; j < O_h_1; j ++)
+                    {
+                        index_t j_0_offset = j * _stride_1;
+                        
+                        index_t j_end = (j + 1) * _stride_1;
+                        // printf("Calc 2nd output row %d starting with input row  %d - %d \n", j, j_0_offset, j_end);
+                        for (index_t j_peel = j_0_offset; j_peel < j_end; j_peel++)
+                        {
+                                operand_t *I_row = I_row_full + (j_peel * _stride_0) * (I_w_0 * _F_cb_0 * _G_b_0);
+                                operand_t *F_row = F_channel_block_input + 0;
+                                operand_t *O_row = O_row_full + j_peel * (O_w_w_pad_0 * _G_b_0 * _K_b_0);
+                                // Prologue with left padding
+                                kernel_left<_G_b_0, _K_b_0, _F_cb_0, _O_wb, _stride_0, _UNROLL_0, op_type_0, op_class_0>(
+                                    first,
+                                    F_h_0,
+                                    F_w_0,
+                                    I_w_0 * _C_ib,
+                                    l_pad_el_0,
+                                    pad_left_0,
+                                    I_row,
+                                    F_row,
+                                    O_row);
+
+                                float *I_col_full = I_row + W_full_index_0 * (_F_cb_0 * _G_b_0);
+                                float *O_col_full = O_row + l_pad_el_0 * (_G_b_0 * _K_b_0);
+                                // Steady State with microkernel
+                                for (index_t l = 0; l < O_w_full_0; l += _O_wb)
+                                {
+                                    operand_t *I_col = I_col_full + (l * _stride_0) * (_F_cb_0 * _G_b_0);
+                                    operand_t *F_col = F_row + 0;
+                                    operand_t *O_col = O_col_full + l * (_G_b_0 * _K_b_0);
+                                    // printf("O_col_full %p O_col %p l %d _C_ob %d _O_wb %d\n", O_col, O_col_full, l, (_G_b_0 * _K_b_0), _O_wb);
+                                    kernel<_G_b_0, _K_b_0, _F_cb_0, _O_wb, _stride_0, _UNROLL_0, op_type_0, op_class_0, fused_ewise_op_class_0, fused_ewise_op_type_0>(
+                                        first,
+                                        F_h_0,
+                                        F_w_0,
+                                        I_w_0 * _C_ib,
+                                        I_col,
+                                        F_col,
+                                        O_col);
+                                    // for (uint32_t o_idx = 0; o_idx < _K_b_0; o_idx++)
+                                    // {
+                                    //     printf("idx: %d offset %ld value %f\n", o_idx, O_col - O, O_col[o_idx]);
+                                    // }
+                                }
+
+                                // Epilogue for microkernel + right padding elements
+                                operand_t *I_col_left = I_col_full + (O_w_full_0 * _stride_0) * (_F_cb_0 * _G_b_0);
+                                operand_t *F_col_left = F_row + 0;
+                                operand_t *O_col_left = O_col_full + O_w_full_0 * (_G_b_0 * _K_b_0);
+                                kernel_right<_G_b_0, _K_b_0, _F_cb_0, _O_wb, _stride_0, _UNROLL_0, op_type_0, op_class_0, fused_ewise_op_class_0, fused_ewise_op_type_0>(
+                                    first,
+                                    F_h_0,
+                                    F_w_0,
+                                    I_w_0 * _C_ib,
+                                    O_w_left_0,
+                                    r_pad_el_0,
+                                    pad_right_0,
+                                    I_col_left,
+                                    F_col_left,
+                                    O_col_left);
+                        }
+
+                        // printf("I[416]: %f\n", O_inter[432]);
+                        operand_t *I_row_1 = O_channel_block_input + (j * _stride_1) * (I_w_1 * _F_cb_1 * _G_b_1);
+                        operand_t *F_1_row = F_1_channel_block + 0;
+                        operand_t *O_1_row = O_1_row_full + j * (O_w_w_pad_0 * _G_b_0 * _K_b_0);
+                        // Prologue with left padding
+                        kernel_left<_G_b_1, _K_b_1, _F_cb_1, _O_wb, _stride_1, _UNROLL_0, fused_ewise_op_type_0,  fused_ewise_op_class_0>(
+                            1,
+                            F_h_1,
+                            F_w_1,
+                            I_w_1 * _C_ib_1,
+                            l_pad_el_1,
+                            pad_left_1,
+                            I_row_1,
+                            F_1_row,
+                            O_1_row);
+
+                        float *I_col_full_1 = I_row_1 + W_full_index_1 * (_F_cb_1 * _G_b_1);
+                        float *O_1_col_full = O_1_row + l_pad_el_1 * (_G_b_1 * _K_b_1);
+                        // Steady State with microkernel
+                        for (index_t l = 0; l < O_w_full_1; l += _O_wb)
+                        {
+                                operand_t *I_col = I_col_full_1 + (l * _stride_1) * (_F_cb_1 * _G_b_1);
+                                operand_t *F_col = F_1_row + 0;
+                                operand_t *O_col = O_1_col_full + l * (_G_b_1 * _K_b_1);
+                                // printf("O_col_full %p O_col %p l %d _C_ob %d _O_wb %d\n", O_col, O_col_full, l, (_G_b_1 * _K_b_1), _O_wb);
+                                kernel<_G_b_1, _K_b_1, _F_cb_1, _O_wb, _stride_1, _UNROLL_0, fused_ewise_op_type_0, fused_ewise_op_class_0>(
+                                    1,
+                                    F_h_1,
+                                    F_w_1,
+                                    I_w_1 * _C_ib_1,
+                                    I_col,
+                                    F_col,
+                                    O_col);
+                                // for (uint32_t o_idx = 0; o_idx < _G_b_1; o_idx++)
+                                // {
+                                //     printf("idx: %d offset %ld value %f on %f %d %d %d %c\n", o_idx, O_col - O, O_col[o_idx], I_col[o_idx], _F_cb_1, _UNROLL_0, fused_ewise_op_class_0, fused_ewise_op_type_0);
+                                // }
+                        }
+
+                        // Epilogue for microkernel + right padding elements
+                        operand_t *I_col_left = I_col_full_1 + (O_w_full_1 * _stride_1) * (_F_cb_1 * _G_b_1);
+                        operand_t *F_col_left = F_1_row + 0;
+                        operand_t *O_col_left = O_1_col_full + O_w_full_1 * (_G_b_1 * _K_b_1);
+                        kernel_right<_G_b_1, _K_b_1, _F_cb_1, _O_wb, _stride_1, _UNROLL_0, fused_ewise_op_type_0, fused_ewise_op_class_0>(
+                            1,
+                            F_h_1,
+                            F_w_1,
+                            I_w_1 * _C_ib_1,
+                            O_w_left_1,
+                            r_pad_el_1,
+                            pad_right_1,
+                            I_col_left,
+                            F_col_left,
+                            O_col_left);
+                    }
+
+                    // First Operation
+                    //TODO : calculate any full rows that were missed above
+
+                    //  Epilogue with bottom padding
+                    operand_t *I_row_bot = I_row_full + (O_h_0 * _stride_0) * (I_w_0 * _F_cb_0 * _G_b_0);
+                    operand_t *F_row_bot = F_channel_block_input + 0;
+                    operand_t *O_row_bot = O_row_full + O_h_0 * (O_w_w_pad_0 * _G_b_0 * _K_b_0);
+
+                    kernel_bottom<_G_b_0, _K_b_0, _F_cb_0, _O_wb, _stride_0, _UNROLL_0, op_type_0, op_class_0>(
                         first,
                         F_h_0,
                         F_w_0,
