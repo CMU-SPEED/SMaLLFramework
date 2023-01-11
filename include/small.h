@@ -30,7 +30,7 @@
 #define SMALL_MINOR_VERSION  0
 #define SMALL_SUB_VERSON     0
 
-#define PARALLEL 1
+#define PARALLEL 0
 
 #include <small/interface.h>
 

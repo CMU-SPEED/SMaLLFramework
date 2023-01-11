@@ -896,12 +896,13 @@ void abstract_layer(
     //  Get total available threads
     // TODO: add error checking in case env variable isn't defined.
     int N = 1;
+    #if PARALLEL == 1
     char const *env_nt(std::getenv("OMP_NUM_THREADS"));
     if (nullptr != env_nt)
     {
         N = atoi(std::getenv("OMP_NUM_THREADS"));
     }
-
+    #endif
     //const int Channel_blocks = K / _K_b;
     //const int Group_blocks = G / _G_b;
 

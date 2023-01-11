@@ -34,9 +34,11 @@
 #define POOLING 1
 
 // from config.h, consider making command line options
-#define RUNS 1000
-#define PARALLEL 1
 
+#define RUNS 1000
+#ifndef PARALLEL
+#define PARALLEL 1
+#endif
 
 #define LIMIT 1e-2
 
