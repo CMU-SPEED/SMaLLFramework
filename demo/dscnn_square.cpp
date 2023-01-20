@@ -64,9 +64,11 @@ inline void dscnn_block(
 {
 
     DepthwiseConv2D(2, kernel_size, stride, t_pad, b_pad, l_pad, r_pad, input_channels, in_dims[0], in_dims[1], I, F_dw, O_intermediate);
-    uint32_t o_h, o_w;
-    op_dim(in_dims[0] + t_pad + b_pad, stride, kernel_size, o_h);
-    op_dim(in_dims[1] + l_pad + r_pad, stride, kernel_size, o_w);
+    //uint32_t o_h, o_w;
+    //op_dim(in_dims[0] + t_pad + b_pad, stride, kernel_size, o_h);
+    //op_dim(in_dims[1] + l_pad + r_pad, stride, kernel_size, o_w);
+    uint32_t o_h = output_dim(in_dims[0] + t_pad + b_pad, stride, kernel_size);
+    uint32_t o_w = output_dim(in_dims[1] + l_pad + r_pad, stride, kernel_size);
     ReLUActivation(1, input_channels, o_h, o_w, O_intermediate, O_intermediate);
     Conv2D(0, 1, 1, 0, 0, 0, 0, output_channels, input_channels, o_h, o_w, O_intermediate, F_1x1, O);
     ReLUActivation(1, output_channels, o_h, o_w, O, O);

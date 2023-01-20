@@ -1,3 +1,29 @@
+/*
+ * SMaLL Framework
+ *
+ * Copyright 2022 Carnegie Mellon University and Authors.
+ *
+ * THIS MATERIAL WAS PREPARED AS AN ACCOUNT OF WORK SPONSORED BY AN AGENCY OF
+ * THE UNITED STATES GOVERNMENT.  NEITHER THE UNITED STATES GOVERNMENT NOR THE
+ * UNITED STATES DEPARTMENT OF ENERGY, NOR THE UNITED STATES DEPARTMENT OF
+ * DEFENSE, NOR CARNEGIE MELLON UNIVERSITY, NOR ANY OF THEIR
+ * EMPLOYEES, NOR ANY JURISDICTION OR ORGANIZATION THAT HAS COOPERATED IN THE
+ * DEVELOPMENT OF THESE MATERIALS, MAKES ANY WARRANTY, EXPRESS OR IMPLIED, OR
+ * ASSUMES ANY LEGAL LIABILITY OR RESPONSIBILITY FOR THE ACCURACY, COMPLETENESS,
+ * OR USEFULNESS OR ANY INFORMATION, APPARATUS, PRODUCT, SOFTWARE, OR PROCESS
+ * DISCLOSED, OR REPRESENTS THAT ITS USE WOULD NOT INFRINGE PRIVATELY OWNED
+ * RIGHTS.
+ *
+ * Released under a BSD-style license, please see LICENSE file or contact
+ * permission@sei.cmu.edu for full terms.
+ *
+ * [DISTRIBUTION STATEMENT A] This material has been approved for public release
+ * and unlimited distribution.  Please see Copyright notice for non-US
+ * Government use and distribution.
+ *
+ * DMxx-xxxx
+ */
+
 #include <math.h>
 #include <assert.h>
 // #include <omp.h>
@@ -11,28 +37,10 @@
 
 typedef uint32_t index_t;
 typedef uint32_t dim_t;
-typedef float operand_t;
+//typedef float operand_t;
 
 #include <../reference/intrinsics.h>  // hardcode reference intrinsics ICK
-#include <small/abstract_layer.h>
-
-//****************************************************************************
-// As described in TF docs
-//  Calculates padding to the left and right of 1 dimension
-#define CALC_PADDING(I_dim, K_dim, stride, padding_front, padding_back)              \
-    {                                                                                \
-        uint32_t padding;                                                            \
-        if (I_dim % stride == 0)                                                     \
-        {                                                                            \
-            padding = (K_dim - stride > 0) ? K_dim - stride : 0;                     \
-        }                                                                            \
-        else                                                                         \
-        {                                                                            \
-            padding = (K_dim - (I_dim % stride) > 0) ? K_dim - (I_dim % stride) : 0; \
-        }                                                                            \
-        padding_front = padding / 2;                                                 \
-        padding_back = padding - padding_front;                                      \
-    }
+#include <small/abstract_layer.hpp>
 
 //****************************************************************************
 void check_Conv2D(int layer_num,
@@ -40,14 +48,16 @@ void check_Conv2D(int layer_num,
                   uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                   int output_channels, int input_channels,
                   int input_height, int input_width,
-                  operand_t *input_ptr, operand_t *filter_ptr, operand_t *output_ptr)
+                  float const *input_ptr,
+                  float const *filter_ptr,
+                  float       *output_ptr)
 {
     //Specific case for the first layer
     if (input_channels == 3)
     {
         if (stride == 1)
         {
-            abstract_layer<1, C_ob, 3, W_ob, 1, 1, 'c', 2, 1>(
+            abstract_layer<float, 1, C_ob, 3, W_ob, 1, 1, 'c', 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -59,7 +69,7 @@ void check_Conv2D(int layer_num,
         else if (stride == 2)
         {
 
-            abstract_layer<1, C_ob, 3, W_ob, 2, 1, 'c', 2, 1>(
+            abstract_layer<float, 1, C_ob, 3, W_ob, 2, 1, 'c', 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -77,7 +87,7 @@ void check_Conv2D(int layer_num,
     {
         if (stride == 1)
         {
-            abstract_layer<1, C_ob, C_ob, W_ob, 1, 1, 'c', 2, 1>(
+            abstract_layer<float, 1, C_ob, C_ob, W_ob, 1, 1, 'c', 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -89,7 +99,7 @@ void check_Conv2D(int layer_num,
         else if (stride == 2)
         {
 
-            abstract_layer<1, C_ob, C_ob, W_ob, 2, 1, 'c', 2, 1>(
+            abstract_layer<float, 1, C_ob, C_ob, W_ob, 2, 1, 'c', 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -111,14 +121,16 @@ void check_PartialConv2D(int layer_num,
                          uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                          int output_channels, int input_channels,
                          int input_height, int input_width,
-                         float *input_ptr, float *filter_ptr, float *output_ptr)
+                         float const *input_ptr,
+                         float const *filter_ptr,
+                         float       *output_ptr)
 {
     // Specific case for the first layer
     if (input_channels == 3)
     {
         if (stride == 1)
         {
-            abstract_layer<1, C_ob, 3, W_ob, 1, 1, 'c', 2, 0>(
+            abstract_layer<float, 1, C_ob, 3, W_ob, 1, 1, 'c', 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -129,7 +141,7 @@ void check_PartialConv2D(int layer_num,
         }
         else if (stride == 2)
         {
-            abstract_layer<1, C_ob, 3, W_ob, 2, 1, 'c', 2, 0>(
+            abstract_layer<float, 1, C_ob, 3, W_ob, 2, 1, 'c', 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -147,7 +159,7 @@ void check_PartialConv2D(int layer_num,
     {
         if (stride == 1)
         {
-            abstract_layer<1, C_ob, C_ob, W_ob, 1, 1, 'c', 2, 0>(
+            abstract_layer<float, 1, C_ob, C_ob, W_ob, 1, 1, 'c', 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -159,7 +171,7 @@ void check_PartialConv2D(int layer_num,
         else if (stride == 2)
         {
 
-            abstract_layer<1, C_ob, C_ob, W_ob, 2, 1, 'c', 2, 0>(
+            abstract_layer<float, 1, C_ob, C_ob, W_ob, 2, 1, 'c', 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -181,11 +193,12 @@ void check_Maxpool2D(int layer_num,
                      uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                      int input_channels,
                      int input_height, int input_width,
-                     float *input_ptr, float *output_ptr)
+                     float const *input_ptr,
+                     float       *output_ptr)
 {
     if (stride == 1)
     {
-        abstract_layer<C_ob, 1, 1, W_ob, 1, 1, 'p', 1, 1>(
+        abstract_layer<float, C_ob, 1, 1, W_ob, 1, 1, 'p', 1, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
@@ -197,7 +210,7 @@ void check_Maxpool2D(int layer_num,
     else if (stride == 2)
     {
 
-        abstract_layer<C_ob, 1, 1, W_ob, 2, 1, 'p', 1, 1>(
+        abstract_layer<float, C_ob, 1, 1, W_ob, 2, 1, 'p', 1, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
@@ -218,12 +231,14 @@ void check_DepthwiseConv2D(int layer_num,
                            uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                            int input_channels,
                            int input_height, int input_width,
-                           operand_t *input_ptr, operand_t *filter_ptr, operand_t *output_ptr)
+                           float const *input_ptr,
+                           float const *filter_ptr,
+                           float       *output_ptr)
 {
     if (stride == 1)
     {
 
-        abstract_layer<C_ob, 1, 1, W_ob, 1, 1, 'c', 1, 1>(
+        abstract_layer<float, C_ob, 1, 1, W_ob, 1, 1, 'c', 1, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
@@ -235,7 +250,7 @@ void check_DepthwiseConv2D(int layer_num,
     else if (stride == 2)
     {
 
-        abstract_layer<C_ob, 1, 1, W_ob, 2, 1, 'c', 1, 1>(
+        abstract_layer<float, C_ob, 1, 1, W_ob, 2, 1, 'c', 1, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
@@ -254,18 +269,17 @@ void check_DepthwiseConv2D(int layer_num,
 void check_ReLUActivation(int layer_num,
                           int input_channels,
                           int input_height, int input_width,
-                          float *input_ptr, float *output_ptr)
+                          float const *input_ptr,
+                          float       *output_ptr)
 {
-    uint32_t t_pad = 0, b_pad = 0;
-    uint32_t l_pad = 0, r_pad = 0;
     // printf("Cob = %d W_ob = %d\n", C_ob, W_ob);
-    abstract_layer<C_ob, 1, 1, W_ob, 1, 1, 'a', 0, 1>(
+    abstract_layer<float, C_ob, 1, 1, W_ob, 1, 1, 'a', 0, 1>(
         input_channels, // Output Channel Grouping
         1,              // Output Channels per group
         1,
         input_height, input_width,
         1, 1,
-        t_pad, l_pad, r_pad,  b_pad,
+        0, 0, 0, 0,
         input_ptr, NULL, output_ptr);
 
 }
@@ -273,9 +287,11 @@ void check_ReLUActivation(int layer_num,
 //****************************************************************************
 void check_Dense(int layer_num,
                  int output_elements, int input_elements,
-                 float *input_ptr, float *filter_ptr, float *output_ptr)
+                 float const *input_ptr,
+                 float const *filter_ptr,
+                 float       *output_ptr)
 {
-    abstract_layer<C_ob, 1, 1, W_ob, 1, 1, 'c', 1, 1>(
+    abstract_layer<float, C_ob, 1, 1, W_ob, 1, 1, 'c', 1, 1>(
         output_elements, // Output Channel Grouping
         1,              // Output Channels per group
         1,

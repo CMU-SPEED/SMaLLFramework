@@ -16,5 +16,5 @@ include_directories ( ${CMAKE_SOURCE_DIR}/src )
 #add_library(interface.o STATIC interface.cpp)
 #target_compile_definitions(interface.o PRIVATE uarch=${CMAKE_UARCH})
 
-add_library(interface_abstract.o STATIC interface_abstract.cpp)
-target_compile_definitions(interface_abstract.o PRIVATE uarch=${CMAKE_UARCH})
+#add_library(interface_abstract.o STATIC interface_abstract.cpp)
+#target_compile_definitions(interface_abstract.o PRIVATE uarch=${CMAKE_UARCH})

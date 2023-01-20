@@ -5,8 +5,8 @@ typedef float c_tile_t;
 
 //Architecture specific tiling params
 
-
 // __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
+
 
 // Initializations
 
@@ -14,12 +14,9 @@ typedef float c_tile_t;
   float c_tile[W_ob * C_ob];
 
 
-
 #define DEF_END_C(W_ob, C_ob) \
   float c_tile[W_ob * C_ob];
 
-
-//  float c_tile[W_ob * C_ob];
 
 #define ZERO_TILE_C(W_ob, C_ob)            \
   for (uint32_t kk = 0; kk < W_ob; kk++)   \
@@ -30,7 +27,6 @@ typedef float c_tile_t;
     }                                             \
   }
 
-//  float c_tile[W_ob * C_ob];
 
 #define ZERO_END_C(_W_ob, C_ob)                    \
   for (uint32_t kk = 0; kk < _W_ob; kk++)          \
@@ -126,7 +122,7 @@ typedef float c_tile_t;
 
 #define FMA_END_C(step, a, b, p_cur, W_ob, C_ob, W_last) \
   float *c_pixel;                                        \
-  float *a_channel = a + p_cur;                          \
+  float const *a_channel = a + p_cur;                          \
   for (uint32_t kk = 0; kk < W_last; kk++)               \
   {                                                      \
     float a_val = *(a_channel);                          \
@@ -142,7 +138,7 @@ typedef float c_tile_t;
 
 #define CONV_TILE_C(step, a, b, W_ob, C_ob) \
   float *c_pixel = c_tile;                           \
-  float *a_channel = a;                     \
+  float const *a_channel = a;                     \
   for (uint32_t kk = 0; kk < W_ob; kk++)   \
   {                                         \
     float a_val = *(a_channel);             \
@@ -159,7 +155,7 @@ typedef float c_tile_t;
 
 #define CONV_END_C(step, a, b, c_cur, _W_ob, C_ob) \
   float *c_pixel = c_cur;                                        \
-  float *a_channel = a;                          \
+  float const *a_channel = a;                          \
   for (uint32_t kk = 0; kk < _W_ob; kk++)               \
   {                                                      \
     float a_val = *(a_channel);                          \
@@ -179,11 +175,11 @@ typedef float c_tile_t;
 
 #define MAX_TILE_C(step, a, W_ob, C_ob)                                           \
   float *c_pixel = c_tile;                                                        \
-  float *a_pixel = a;                                                             \
+  float const *a_pixel = a;                                                             \
   for (uint32_t kk = 0; kk < W_ob; kk++)                                          \
   {                                                                               \
     float *c_channel = c_pixel;                                                   \
-    float *a_channel = a_pixel;                                                   \
+    float const *a_channel = a_pixel;                                                   \
     for (uint32_t jj = 0; jj < C_ob; jj++)                                        \
     {                                                                             \
       *(c_channel) = (*(a_channel) > *(c_channel)) ? *(a_channel) : *(c_channel); \
@@ -197,11 +193,11 @@ typedef float c_tile_t;
 
 #define MAX_END_C(step, a, b, c_cur, W_last, C_ob)                                          \
   float *c_pixel = c_cur;                                                        \
-  float *a_pixel = a;                                                             \
+  float const *a_pixel = a;                                                             \
   for (uint32_t kk = 0; kk < W_last; kk++)                                        \
   {                                                                               \
     float *c_channel = c_pixel;                                                   \
-    float *a_channel = a_pixel;                                                   \
+    float const *a_channel = a_pixel;                                                   \
     for (uint32_t jj = 0; jj < C_ob; jj++)                                        \
     {                                                                             \
       *(c_channel) = (*(a_channel) > *(c_channel)) ? *(a_channel) : *(c_channel); \
@@ -216,12 +212,12 @@ typedef float c_tile_t;
 #define DW_TILE_C(step, a, b, W_ob, C_ob)              \
   {                                                    \
     float *c_pixel = c_tile;                           \
-    float *a_pixel = a;                                \
+    float const *a_pixel = a;                                \
     for (uint32_t kk = 0; kk < W_ob; kk++)             \
     {                                                  \
       float *c_channel = c_pixel;                      \
-      float *a_channel = a_pixel;                      \
-      float *b_channel = b;                            \
+      float const *a_channel = a_pixel;                      \
+      float const *b_channel = b;                            \
       for (uint32_t jj = 0; jj < C_ob; jj++)           \
       {                                                \
         *(c_channel) += (*(a_channel) * *(b_channel)); \
@@ -237,12 +233,12 @@ typedef float c_tile_t;
 #define DW_END_C(step, a, b, c_cur, _W_ob, C_ob)               \
   {                                                    \
     float *c_pixel = c_cur;                           \
-    float *a_pixel = a;                                \
+    float const *a_pixel = a;                                \
     for (uint32_t kk = 0; kk < _W_ob; kk++)             \
     {                                                  \
       float *c_channel = c_pixel;                      \
-      float *a_channel = a_pixel;                      \
-      float *b_channel = b;                            \
+      float const *a_channel = a_pixel;                      \
+      float const *b_channel = b;                            \
       for (uint32_t jj = 0; jj < C_ob; jj++)           \
       {                                                \
         *(c_channel) += (*(a_channel) * *(b_channel)); \
@@ -255,18 +251,14 @@ typedef float c_tile_t;
     }                                                  \
   }
 
-
-
-
-
 // AVG Pooling
 #define ADD_TILE_C_G(I, W_ob_g, C_ob)      \
-  float *i_pixel = I;                      \
+  float const *i_pixel = I;                      \
   float *c_pixel = c_tile;                 \
   for (uint32_t mm = 0; mm < W_ob_g; mm++) \
   {                                        \
     float *c_channel = c_pixel;            \
-    float *i_channel = i_pixel;           \
+    float const *i_channel = i_pixel;           \
     for (uint32_t kk = 0; kk < C_ob; kk++) \
     {                                      \
       *c_channel += *i_channel;              \
@@ -278,12 +270,12 @@ typedef float c_tile_t;
   }
 
 #define ADD_LAST_C_G(I, W_last, C_ob)      \
-  float *i_pixel = I;                      \
+  float const *i_pixel = I;                      \
   float *c_pixel = c_tile;                 \
   for (uint32_t mm = 0; mm < W_last; mm++) \
   {                                        \
     float *c_channel = c_pixel;            \
-    float *i_channel = i_pixel;           \
+    float const *i_channel = i_pixel;           \
     for (uint32_t kk = 0; kk < C_ob; kk++) \
     {                                      \
       *c_channel += *i_channel;              \

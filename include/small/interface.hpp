@@ -58,12 +58,15 @@
  *                             depends on input image size, kernel, padding
  *                             and stride parameters.
  */
+template <typename OperandT>
 void Conv2D(int layer_num,
-            int kernel_size, int stride,
+            int kernel_size, int stride,  /// @todo dim_t?
             uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
             int output_channels, int input_channels,
             int input_height, int input_width,
-            float *input_ptr, float *filter_ptr, float *output_ptr);
+            OperandT const *input_ptr,
+            OperandT const *filter_ptr,
+            OperandT       *output_ptr);
 
 /**
  * Perform the computation for a 2D convolution layer.
@@ -90,12 +93,15 @@ void Conv2D(int layer_num,
  *                             depends on input image size, kernel, padding
  *                             and stride parameters.
  */
+template <typename OperandT>
 void Conv2D_rect(int layer_num,
                  int kernel_size_h, int kernel_size_w, int stride,
                  uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                  int output_channels, int input_channels,
                  int input_height, int input_width,
-                 float *input_ptr, float *filter_ptr, float *output_ptr);
+                 OperandT const *input_ptr,
+                 OperandT const *filter_ptr,
+                 OperandT       *output_ptr);
 
 /**
  * Perform the computation for a partial Conv2D layer??
@@ -121,42 +127,15 @@ void Conv2D_rect(int layer_num,
  *                             depends on input image size, kernel, padding
  *                             and stride parameters.
  */
+template <typename OperandT>
 void PartialConv2D(int layer_num,
                    int kernel_size, int stride,
                    uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                    int output_channels, int input_channels,
                    int input_height, int input_width,
-                   float *input_ptr, float *filter_ptr, float *output_ptr);
-
-/**
- * Perform the computation for a group of Conv2D layers??
- *
- * @param[in]  layer_num       Unused
- * @param[in]  kernel_size     Height and width dimensions of convolution window
- * @param[in]  stride          Number of pixels to skip in height and width
- *                             dimensions of the input between convolutions
- * @param[in]  t_pad           number of pixels of top padding
- * @param[in]  b_pad           number of pixels of bottom padding
- * @param[in]  l_pad           number of pixels of left padding
- * @param[in]  r_pad           number of pixels of right padding
- * @param[in]  input_channels  Number of channels associated with input image
- * @param[in]  input_height    Height of input image in pixels
- * @param[in]  input_width     Width of input image in pixels
- * @param[in]  input_ptr       Pointer to input (image x channels) data
- *                             size = Ci x iH x iW
- * @param[in]  filter_ptr      Pointer to convolution filter weights
- *                             size = Ci x kernel x kernel x Co
- * @param[out] output_ptr      Pointer to output data computed for layer
- *                             size = oH x oW x Co where the output image size
- *                             depends on input image size, kernel, padding
- *                             and stride parameters.
- */
-void GroupConv2D(int layer_num,
-                 int kernel_size, int stride,
-                 uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
-                 int input_channels,
-                 int input_height, int input_width,
-                 float *input_ptr, float *filter_ptr, float *output_ptr);
+                   OperandT const *input_ptr,
+                   OperandT const *filter_ptr,
+                   OperandT       *output_ptr);
 
 /**
  * Perform the computation for a depth-wise Conv2D layer.
@@ -181,12 +160,15 @@ void GroupConv2D(int layer_num,
  *                             depends on input image size, kernel, padding
  *                             and stride parameters.
  */
+template <typename OperandT>
 void DepthwiseConv2D(int layer_num,
                      int kernel_size, int stride,
                      uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                      int input_channels,
                      int input_height, int input_width,
-                     float *input_ptr, float *filter_ptr, float *output_ptr);
+                     OperandT const *input_ptr,
+                     OperandT const *filter_ptr,
+                     OperandT       *output_ptr);
 
 /**
  * Perform the computation for a 2D maxpool layer.
@@ -209,12 +191,14 @@ void DepthwiseConv2D(int layer_num,
  *                             depends on input image size, kernel, padding
  *                             and stride parameters.
  */
+template <typename OperandT>
 void Maxpool2D(int layer_num,
                int kernel_size, int stride,
                uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                int input_channels,
                int input_height, int input_width,
-               float *input_ptr, float *output_ptr);
+               OperandT const *input_ptr,
+               OperandT       *output_ptr);
 
 /**
  * Perform the computation for a 2D maxpool layer with a rectangular window
@@ -238,12 +222,14 @@ void Maxpool2D(int layer_num,
  *                             depends on input image size, kernel, padding
  *                             and stride parameters.
  */
+template <typename OperandT>
 void MaxPool2D_rect(int layer_num,
                     int kernel_size_h, int kernel_size_w, int stride,
                     uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                     int input_channels,
                     int input_height, int input_width,
-                    float *input_ptr, float *output_ptr);
+                    OperandT const *input_ptr,
+                    OperandT       *output_ptr);
 
 /**
  * Perform the computation for a rectified linear unit (ReLU) layer.
@@ -259,10 +245,12 @@ void MaxPool2D_rect(int layer_num,
  *                             depends on input image size, kernel, padding
  *                             and stride parameters.
  */
+template <typename OperandT>
 void ReLUActivation(int layer_num,
                     int input_channels,
                     int input_height, int input_width,
-                    float *input_ptr, float *output_ptr);
+                    OperandT const *input_ptr,
+                    OperandT       *output_ptr);
 
 /**
  * Perform the computation for a fully-connected layer?
@@ -274,9 +262,12 @@ void ReLUActivation(int layer_num,
  * @param[in]  filter_ptr      Pointer to convolution filter weights (how big?)
  * @param[out] output_ptr      Pointer to output data (how big?)
  */
+template <typename OperandT>
 void Dense(int layer_num,
            int output_elements, int input_elements,
-           float *input_ptr, float *filter_ptr, float *output_ptr);
+           OperandT const *input_ptr,
+           OperandT const *filter_ptr,
+           OperandT       *output_ptr);
 
 //****************************************************************************
 // Useful utility functions

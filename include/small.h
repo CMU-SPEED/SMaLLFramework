@@ -32,12 +32,15 @@
 
 #define PARALLEL 0
 
-#include <small/interface.h>
+// ================== Public API ====================
+#include <small/interface.hpp>           // template declarations only
 
+// ============ Implementation details ==============
 // Platform specific includes.
 // Use -I compile option to point to correct platform
 #include <params.h>
 #include <intrinsics.h>
 
 /// This must come after platform-specific includes.
-#include <small/abstract_layer.h>
+#include <small/abstract_layer.hpp>
+#include <small/interface_abstract.hpp>  // template defs of interface.hpp
