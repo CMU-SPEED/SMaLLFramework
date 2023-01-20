@@ -11,8 +11,6 @@ typedef float c_tile_t;
 // #define C_ib 16
 
 
-
-
 // Initializations
 #define DEF_TILE_C(_W_ob, _C_ob)\
 __m256 a_reg, b0, b1, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13;\
@@ -155,7 +153,7 @@ __m256 a_reg, b0, b1, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13
 
 #define CONV_END_C(step, a, b, c_cur, _W_ob, C_ob) \
   float *c_pixel;                                        \
-  float *a_channel = a;                          \
+  float const *a_channel = a;                          \
   for (uint32_t kk = 0; kk < _W_ob; kk++)               \
   {                                                      \
     float a_val = *(a_channel);                          \
@@ -199,7 +197,7 @@ __m256 a_reg, b0, b1, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13
 
 #define FMA_END_C(step, a, b, p_cur, W_ob, C_ob, W_last) \
   float *c_pixel;                                        \
-  float *a_channel = a + p_cur;                          \
+  float const *a_channel = a + p_cur;                          \
   for (uint32_t kk = 0; kk < W_last; kk++)               \
   {                                                      \
     float a_val = *(a_channel);                          \
@@ -243,11 +241,11 @@ __m256 a_reg, b0, b1, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13
 
 #define MAX_END_C(step, a, b, c_cur, W_last, C_ob)                                          \
   float *c_pixel = c_cur;                                                        \
-  float *a_pixel = a;                                                             \
+  float const *a_pixel = a;                                                             \
   for (uint32_t kk = 0; kk < W_last; kk++)                                        \
   {                                                                               \
     float *c_channel = c_pixel;                                                   \
-    float *a_channel = a_pixel;                                                   \
+    float const *a_channel = a_pixel;                                                   \
     for (uint32_t jj = 0; jj < C_ob; jj++)                                        \
     {                                                                             \
       *(c_channel) = (*(a_channel) > *(c_channel)) ? *(a_channel) : *(c_channel); \
@@ -290,12 +288,12 @@ __m256 a_reg, b0, b1, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13
 #define DW_END_C(step, a, b, c_cur, W_ob, C_ob)               \
   {                                                    \
     float *c_pixel = c_cur;                           \
-    float *a_pixel = a;                                \
+    float const *a_pixel = a;                                \
     for (uint32_t kk = 0; kk < W_ob; kk++)             \
     {                                                  \
       float *c_channel = c_pixel;                      \
-      float *a_channel = a_pixel;                      \
-      float *b_channel = b;                            \
+      float const *a_channel = a_pixel;                      \
+      float const *b_channel = b;                            \
       for (uint32_t jj = 0; jj < C_ob; jj++)           \
       {                                                \
         *(c_channel) += (*(a_channel) * *(b_channel)); \
@@ -313,11 +311,11 @@ a_channel++;                                   \
 // Same kernel as Pooling, set to zero to start.
 
 
-//________________________________________________________________
+//****************************************************************************
+// Fusion Kernels
+//****************************************************************************
 
 #if 0
-
-//Fusion Kernels
 
 #define LOAD_TILE_C_POOL(O, W_ob, C_ob)                                 \
     __m256 a_reg, b0, b1, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13; \
@@ -500,7 +498,7 @@ a_channel++;                                   \
     for (uint32_t kk = 0; kk < W_ob; kk++)      \
     {                                           \
         float *c_channel = c_pixel;             \
-        float *b_channel = b;                   \
+        float const *b_channel = b;             \
         for (uint32_t jj = 0; jj < C_ob; jj++)  \
         {                                       \
             *(c_channel) *= *(b_channel);       \
@@ -522,8 +520,8 @@ a_channel++;                                   \
                 float *p_pixel = p_row + ((O_col) / pool_stride) * C_ob; \
                 float *p_channel = p_pixel;                             \
                 float *c_channel = c_pixel;                             \
-                float *b = F;                                           \
-                float *b_channel = b;                                   \
+                float const *b = F;                                     \
+                float const *b_channel = b;                             \
                 for (uint32_t jj = 0; jj < C_ob; jj++)                  \
                 {                                                       \
                     *(p_channel) = *(c_channel) * *(b_channel);         \
@@ -539,8 +537,8 @@ a_channel++;                                   \
                     float *p_pixel = p_row + ((O_col - m_p) / pool_stride) * C_ob; \
                     float *p_channel = p_pixel;                         \
                     float *c_channel = c_pixel;                         \
-                    float *b = F + m_p * C_ob;                          \
-                    float *b_channel = b;                               \
+                    float const *b = F + m_p * C_ob;                    \
+                    float const *b_channel = b;                         \
                     for (uint32_t jj = 0; jj < C_ob; jj++)              \
                     {                                                   \
                         *(p_channel) += *(c_channel) * *(b_channel);    \
@@ -563,8 +561,8 @@ a_channel++;                                   \
                         float *p_pixel = p_row + ((O_col - m_p) / pool_stride) * C_ob; \
                         float *p_channel = p_pixel;                     \
                         float *c_channel = c_pixel;                     \
-                        float *b = F + n_p * pool_W_f * C_ob + m_p * C_ob; \
-                        float *b_channel = b;                           \
+                        float const *b = F + n_p * pool_W_f * C_ob + m_p * C_ob; \
+                        float const *b_channel = b;                     \
                         for (uint32_t jj = 0; jj < C_ob; jj++)          \
                         {                                               \
                             *(p_channel) += *(c_channel) * *(b_channel); \
@@ -594,8 +592,8 @@ a_channel++;                                   \
                     float *p_pixel = p_row + ((O_col) / pool_stride) * C_ob; \
                     float *p_channel = p_pixel;                         \
                     float *c_channel = c_pixel;                         \
-                    float *b = F;                                       \
-                    float *b_channel = b;                               \
+                    float const *b = F;                                 \
+                    float const *b_channel = b;                         \
                     for (uint32_t jj = 0; jj < C_ob; jj++)              \
                     {                                                   \
                         *(p_channel) = *(c_channel) * *(b_channel);     \
@@ -611,8 +609,8 @@ a_channel++;                                   \
                         float *p_pixel = p_row + ((O_col - m_p) / pool_stride) * C_ob; \
                         float *p_channel = p_pixel;                     \
                         float *c_channel = c_pixel;                     \
-                        float *b = F + m_p * C_ob;                      \
-                        float *b_channel = b;                           \
+                        float const *b = F + m_p * C_ob;                \
+                        float const *b_channel = b;                     \
                         for (uint32_t jj = 0; jj < C_ob; jj++)          \
                         {                                               \
                             *(p_channel) += *(c_channel) * *(b_channel); \
@@ -635,8 +633,8 @@ a_channel++;                                   \
                             float *p_pixel = p_row + ((O_col - m_p) / pool_stride) * C_ob; \
                             float *p_channel = p_pixel;                 \
                             float *c_channel = c_pixel;                 \
-                            float *b = F + n_p * pool_W_f * C_ob + m_p * C_ob; \
-                            float *b_channel = b;                       \
+                            float const *b = F + n_p * pool_W_f * C_ob + m_p * C_ob; \
+                            float const *b_channel = b;                 \
                             for (uint32_t jj = 0; jj < C_ob; jj++)      \
                             {                                           \
                                 *(p_channel) += *(c_channel) * *(b_channel); \

@@ -63,13 +63,12 @@ SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${GCC_AVX_COMPILE_FLAGS}")
 
 ### Build using CMake
 
-Create a build folder from the Top Level directory and run CMake.
+Create a build folder from the Top Level directory and run CMake.  Currently µarch can be REF (the default), ZEN2, or ARM.
 
 ```bash
 $ mkdir build
 $ cd build
 $ cmake ../ -DCMAKE_UARCH=<µarch>
-$ cmake ../ -DCMAKE_UARCH=<µarch> -DCMAKE_SMALL_DIR=<path-to/SMaLLFramework/src/>
 $ make
 ```
 
