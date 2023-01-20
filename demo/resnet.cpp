@@ -73,9 +73,11 @@ inline void resnet_block(
     // printf("before: %d, %.2f %.2f %.2f %.2f\n", 0, I[0], I[1], I[2], I[3]);
 
     Conv2D(2, kernel_size, stride, t_pad_0, b_pad_0, l_pad_0, r_pad_0, output_channels, input_channels, in_dims[0], in_dims[1], I, F_conv0, O_intermediate);
-    uint32_t o_h, o_w;
-    op_dim(in_dims[0] + t_pad_0 + b_pad_0, stride, kernel_size, o_h);
-    op_dim(in_dims[1] + l_pad_0 + r_pad_0, stride, kernel_size, o_w);
+    //uint32_t o_h, o_w;
+    //op_dim(in_dims[0] + t_pad_0 + b_pad_0, stride, kernel_size, o_h);
+    //op_dim(in_dims[1] + l_pad_0 + r_pad_0, stride, kernel_size, o_w);
+    uint32_t o_h = output_dim(in_dims[0] + t_pad_0 + b_pad_0, stride, kernel_size);
+    uint32_t o_w = output_dim(in_dims[1] + l_pad_0 + r_pad_0, stride, kernel_size);
 
     ReLUActivation(1, input_channels, o_h, o_w, O_intermediate, O_intermediate);
     if (scale_channels)
@@ -230,7 +232,7 @@ int main(int argc, char **argv)
 	  GROUPS(layer_num) = 1;       // output channels
 	  REDUCTION_HW(layer_num) = 1; // kernel size
 	  STRIDE(layer_num) = 2;       // stride
-	  
+
 	  SET_PADDING(layer_num, 0, 0, 0, 0);
 	  layer_num++; // 6,9
 	  //intermediate_dims.push_back(std::array<uint32_t, 2>(OUTPUT_DIMS(layer_num)));
