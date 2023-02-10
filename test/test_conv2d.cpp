@@ -15,6 +15,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <iomanip>
 #include <cmath>
 #include <random>
 
@@ -42,6 +43,14 @@ bool run_conv2d_config(LayerParams const &params)
     TEST_ASSERT(num_input_elts == params.C_i*params.H*params.W);
     TEST_ASSERT(nullptr != input_dc);
 
+    // Pack input data
+    RealT *packed_input_dc = small_alloc<RealT>(num_input_elts);
+    small::convert_tensor2dc<float>(input_dc,
+                                    small::INPUT,
+                                    1U, params.C_i, params.H, params.W,
+                                    C_ib, C_ob,
+                                    packed_input_dc);
+
     // Read filter data
     std::string filter_fname =
         get_pathname(data_dir, "filter", "conv2d",
@@ -52,6 +61,14 @@ bool run_conv2d_config(LayerParams const &params)
     uint32_t num_filter_elts = read_float_inputs(filter_fname, &filter_dc);
     TEST_ASSERT(num_filter_elts == params.C_i*params.k*params.k*params.C_o);
     TEST_ASSERT(nullptr != filter_dc);
+
+    // Pack filter data
+    RealT *packed_filter_dc = small_alloc<RealT>(num_filter_elts);
+    small::convert_tensor2dc<float>(filter_dc,
+                                    small::FILTER_CONV,
+                                    params.C_i, params.C_o, params.k, params.k,
+                                    C_ib, C_ob,
+                                    packed_filter_dc);
 
     // Read output regression data
     size_t Ho(compute_output_dim(params.H, params.k, params.s, params.p));
@@ -67,9 +84,17 @@ bool run_conv2d_config(LayerParams const &params)
     TEST_ASSERT(num_output_elts == params.C_o*Ho*Wo);
     TEST_ASSERT(nullptr != output_dc_answers);
 
+    // Pack output answer data
+    RealT *packed_output_dc_answers = small_alloc<RealT>(num_output_elts);
+    small::convert_tensor2dc<float>(output_dc_answers,
+                                    small::OUTPUT,
+                                    1U, params.C_o, Ho, Wo,
+                                    C_ib, C_ob,
+                                    packed_output_dc_answers);
+
     // Allocate output buffer
-    RealT *output_dc = small_alloc<RealT>(num_output_elts);
-    TEST_ASSERT(nullptr != output_dc);
+    RealT *packed_output_dc = small_alloc<RealT>(num_output_elts);
+    TEST_ASSERT(nullptr != packed_output_dc);
 
     uint8_t t_pad=0, b_pad=0, l_pad=0, r_pad=0;
     if (params.p == 'f')
@@ -83,27 +108,35 @@ bool run_conv2d_config(LayerParams const &params)
            params.k, params.s,
            t_pad, b_pad, l_pad, r_pad,
            params.C_o, params.C_i, params.H, params.W,
-           input_dc, filter_dc, output_dc);
+           packed_input_dc, packed_filter_dc, packed_output_dc);
 
     // Check answer
     bool passing = true;
     for (size_t ix = 0; ix < num_output_elts; ++ix)
     {
-        if (output_dc[ix] != output_dc_answers[ix])
+        if ((packed_output_dc[ix] != packed_output_dc_answers[ix]) &&
+            !almost_equal(packed_output_dc[ix], packed_output_dc_answers[ix]))
         {
             passing = false;
 
-        std::cout << "FAIL: Conv2D_out(" << ix << ")-->"
-                  << output_dc[ix] << " ?= " << output_dc_answers[ix]
-                  << std::endl;
+            std::cout << "FAIL: Conv2D_out(" << ix << ")-->"
+                      << std::setw(12) << std::setprecision(10)
+                      << packed_output_dc[ix] << "(computed) != "
+                      << std::setw(12) << std::setprecision(10)
+                      << packed_output_dc_answers[ix]
+                      << std::endl;
         }
     }
 
     free(input_dc);
+    free(packed_input_dc);
     free(filter_dc);
-    free(output_dc);
+    free(packed_filter_dc);
+    free(packed_output_dc);
     free(output_dc_answers);
+    free(packed_output_dc_answers);
 
+    if (passing) std::cerr << "Test PASSED\n";
     return passing;
 }
 

@@ -15,6 +15,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <iomanip>
 #include <random>
 #include <chrono>
 
@@ -169,6 +170,14 @@ bool run_relu_config(LayerParams const &params)
     TEST_ASSERT(nullptr != input_dc);
     TEST_ASSERT(num_input_elts == params.C_i*params.H*params.W);
 
+    // Pack input data
+    RealT *packed_input_dc = small_alloc<RealT>(num_input_elts);
+    small::convert_tensor2dc<float>(input_dc,
+                                    small::INPUT,
+                                    1U, params.C_i, params.H, params.W,
+                                    C_ib, C_ob,
+                                    packed_input_dc);
+
     // Read output regression data
     size_t Ho(compute_output_dim(params.H, params.k, params.s, params.p));
     size_t Wo(compute_output_dim(params.W, params.k, params.s, params.p));
@@ -184,30 +193,47 @@ bool run_relu_config(LayerParams const &params)
     TEST_ASSERT(nullptr != output_dc_answers);
     TEST_ASSERT(num_output_elts == params.C_i*Ho*Wo);
 
+    // Pack output answer data
+    RealT *packed_output_dc_answers = small_alloc<RealT>(num_output_elts);
+    small::convert_tensor2dc<float>(output_dc_answers,
+                                    small::OUTPUT,
+                                    1U, params.C_i, Ho, Wo,
+                                    C_ib, C_ob,
+                                    packed_output_dc_answers);
+
     // Allocate output buffer
-    RealT *output_dc = small_alloc<RealT>(num_output_elts);
-    TEST_ASSERT(nullptr != output_dc);
+    RealT *packed_output_dc = small_alloc<RealT>(num_output_elts);
+    TEST_ASSERT(nullptr != packed_output_dc);
 
     // Compute layer
-    ReLUActivation(0, params.C_i, params.H, params.W, input_dc, output_dc);
+    ReLUActivation(0,
+                   params.C_i,
+                   params.H, params.W,
+                   packed_input_dc, packed_output_dc);
 
     // Check answer
     bool passing = true;
     for (size_t ix = 0; ix < num_output_elts; ++ix)
     {
-        if (output_dc[ix] != output_dc_answers[ix])
+        if (packed_output_dc[ix] != packed_output_dc_answers[ix])
         {
             passing = false;
-        std::cout << "FAIL: ReLU_out(" << ix << ")-->"
-                  << output_dc[ix] << " ?= " << output_dc_answers[ix]
-                  << std::endl;
+            std::cout << "FAIL: ReLU_out(" << ix << ")-->"
+                      << std::setw(12) << std::setprecision(10)
+                      << packed_output_dc[ix] << "(computed) != "
+                      << std::setw(12) << std::setprecision(10)
+                      << packed_output_dc_answers[ix]
+                      << std::endl;
         }
     }
 
     free(input_dc);
-    free(output_dc);
+    free(packed_input_dc);
+    free(packed_output_dc);
     free(output_dc_answers);
+    free(packed_output_dc_answers);
 
+    if (passing) std::cerr << "Test PASSED\n";
     return passing;
 }
 
