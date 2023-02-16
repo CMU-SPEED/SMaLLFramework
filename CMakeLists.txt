@@ -71,8 +71,9 @@ else()
 endif()
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -w ${GCC_AVX_COMPILE_FLAGS}")
 
-SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall ${GCC_AVX_COMPILE_FLAGS}")
+# SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall ${GCC_AVX_COMPILE_FLAGS}")
 message("CXX_FLAGS:        ${CMAKE_CXX_FLAGS}")
 
 #add_subdirectory(src)

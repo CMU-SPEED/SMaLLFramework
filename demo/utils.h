@@ -101,11 +101,11 @@ void print_stats(std::vector<unsigned long long> v, const char *benchmark)
 //Allocation
 //****************************************************************************
 
-float * alloc (uint32_t numel)
+dtype * alloc (uint32_t numel)
 {
-    float *ptr_dc;
+    dtype *ptr_dc;
 
-    int ret = posix_memalign((void **)&ptr_dc, 64, numel * sizeof(float));
+    int ret = posix_memalign((void **)&ptr_dc, 64, numel * sizeof(dtype));
 
     if (ret)
     {
@@ -119,18 +119,18 @@ float * alloc (uint32_t numel)
 // Initialization Options
 //****************************************************************************
 
-void init(float * ptr, uint32_t numel)
+void init(dtype * ptr, uint32_t numel)
 {
-  float * cur_ptr = ptr;
+  dtype * cur_ptr = ptr;
   for(uint32_t i = 0 ; i < numel ; i++)
   {
-    *(cur_ptr++) = 2.0*((float) rand()/ RAND_MAX) - 1;
+    *(cur_ptr++) = 2.0*((dtype) rand()/ RAND_MAX) - 1;
   }
 }
 
-void init_ones(float *ptr, uint32_t numel)
+void init_ones(dtype *ptr, uint32_t numel)
 {
-  float *cur_ptr = ptr;
+  dtype *cur_ptr = ptr;
   for (uint32_t i = 0; i < numel; i++)
   {
     *(cur_ptr++) = 1.0;
@@ -139,9 +139,9 @@ void init_ones(float *ptr, uint32_t numel)
 }
 
 template<uint32_t _C_ob>
-void init_arange(float *ptr, uint32_t H, uint32_t W, uint32_t C)
+void init_arange(dtype *ptr, uint32_t H, uint32_t W, uint32_t C)
 {
-  float *cur_ptr = ptr;
+  dtype *cur_ptr = ptr;
   for (uint32_t i = 0; i < C; i+=_C_ob)
   {
     for(uint32_t j = 0 ; j < H; j++)
@@ -157,25 +157,25 @@ void init_arange(float *ptr, uint32_t H, uint32_t W, uint32_t C)
     }
   }
 }
-void init_norm(float *ptr, uint32_t numel, uint32_t C_o)
+void init_norm(dtype *ptr, uint32_t numel, uint32_t C_o)
 {
-  float *cur_ptr = ptr;
-  float norm = (1.0*C_o)/(1.0*numel);
+  dtype *cur_ptr = ptr;
+  dtype norm = (1.0*C_o)/(1.0*numel);
   for (uint32_t i = 0; i < numel; i++)
   {
     *(cur_ptr++) = norm;
   }
 }
-bool equals(uint32_t numel, float *unfused, float *fused, float tolerance = 1e-8)
+bool equals(uint32_t numel, dtype *unfused, dtype *fused, dtype tolerance = 1e-8)
 {
   bool check = 1;
-  float *unfused_ptr = unfused;
-  float *fused_ptr = fused;
+  dtype *unfused_ptr = unfused;
+  dtype *fused_ptr = fused;
   printf("begin correctness check\n");
 
   for (uint32_t i = 0; i < numel; i++)
   {
-    float diff = *(fused_ptr) - *(unfused_ptr);
+    dtype diff = *(fused_ptr) - *(unfused_ptr);
     // printf("%d %.4f %.4f %.4f\n", i, *(fused_ptr), *(unfused_ptr), diff);
 
     if(fabs(diff) > tolerance)

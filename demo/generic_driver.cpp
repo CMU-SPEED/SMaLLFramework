@@ -12,8 +12,11 @@
 #include <fstream>
 #include <time.h>
 
+typedef int32_t dtype;
+
 #include <small.h>
 #include "utils.h"
+
 #include "check_interface.h"
 
 /// @todo Which of these defines are needed?
@@ -52,6 +55,7 @@
 // #ifndef LAYER
 // #define LAYER
 // #endif
+
 
 //****************************************************************************
 //****************************************************************************
@@ -114,12 +118,12 @@ int main(int argc, char **argv)
     uint32_t out_dimensions = in_dimensions;
 #endif
 
-    float *input_dc = alloc(in_dimensions);
+    dtype *input_dc = alloc(in_dimensions);
     // fprintf(stderr, "i %lu\n", input_dc);
     // fflush(stderr);
 
-    float *out_dc = alloc(out_dimensions);
-    float *out_check_dc = alloc(out_dimensions);
+    dtype *out_dc = alloc(out_dimensions);
+    dtype *out_check_dc = alloc(out_dimensions);
     std::vector<uint32_t> intermediate_block_dimensions;
 
 #if PARALLEL
@@ -151,7 +155,7 @@ int main(int argc, char **argv)
     uint32_t filter_dimensions = (C_i * kernel_size * kernel_size);
 #endif
 #if LAYER < POOL
-    float *filter_dc = alloc(filter_dimensions);
+    dtype *filter_dc = alloc(filter_dimensions);
     // fprintf(stderr, "f %lu\n", filter_dc);
     // fflush(stderr);
     // printf("%d\n", in_dimensions);
@@ -347,8 +351,8 @@ int main(int argc, char **argv)
     printf("%.4f ", (sum_reference*1.0)/(sum*1.0));
 
     auto output_els = out_dimensions;
-    float compute_ops = 0.0;
-    float throughput = 0.0;
+    dtype compute_ops = 0.0;
+    dtype throughput = 0.0;
 
 #if LAYER == RELU
     compute_ops = output_els*(1.0);
@@ -371,8 +375,8 @@ int main(int argc, char **argv)
     throughput = (NUM_FMA * 2.0 * SIMD);
 #endif
 
-    //float peak_cycles = compute_ops/throughput;
-    //float scaled_peak_cycles = peak_cycles;
+    //dtype peak_cycles = compute_ops/throughput;
+    //dtype scaled_peak_cycles = peak_cycles;
     const int num_th = atoi(std::getenv("OMP_NUM_THREADS"));
     printf(" %.0f %.2f \n", throughput*num_th, (compute_ops) / (1.0 * sum));
 

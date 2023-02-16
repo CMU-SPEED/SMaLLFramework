@@ -15,6 +15,8 @@
 // #include <functional>
 #include <numeric>
 
+typedef float dtype;
+
 #include <small.h>
 #include "utils.h"
 
@@ -57,11 +59,11 @@ inline void dscnn_block(
     uint8_t b_pad,
     uint8_t l_pad,
     uint8_t r_pad,
-    float *I,
-    float *F_dw,
-    float *F_1x1,
-    float *O_intermediate,
-    float *O)
+    dtype *I,
+    dtype *F_dw,
+    dtype *F_1x1,
+    dtype *O_intermediate,
+    dtype *O)
 {
 
     DepthwiseConv2D(2, kernel_size, stride, t_pad, b_pad, l_pad, r_pad, input_channels, in_dims[0], in_dims[1], I, F_dw, O_intermediate);
@@ -148,7 +150,7 @@ int main(int argc, char **argv)
 
     //Create input tensor
     uint32_t input_dimensions = C_i*N*M;
-    float *input_dc = alloc(input_dimensions);
+    dtype *input_dc = alloc(input_dimensions);
     init(input_dc, input_dimensions);
 
     // std::vector<std::vector<uint64_t>> implementations;
@@ -257,13 +259,13 @@ int main(int argc, char **argv)
     //  Copy layer weights to temporaries
     // std::vector<uint32_t> filter_dimensions;
 
-    float *filter_fc_dc; //, *filter_conv_dc, *filter_1x1_1_dc, *filter_dw_1_dc;
-    std::vector<float *> filter_ptrs;
+    dtype *filter_fc_dc; //, *filter_conv_dc, *filter_1x1_1_dc, *filter_dw_1_dc;
+    std::vector<dtype *> filter_ptrs;
 
     // torch::Tensor weights;
     for (int l = 0; l < layer_num_total; l++)
     {
-        float *filter_ptr;
+        dtype *filter_ptr;
         // weights = layers[l]->weight; // conv_1x1->weight;
         uint32_t filter_dimensions = REDUCTION_H(l) * REDUCTION_W(l) * REDUCTION_C(l) * GROUP_C(l) * GROUPS(l);
         filter_ptr = alloc(filter_dimensions);
@@ -277,9 +279,9 @@ int main(int argc, char **argv)
     init(filter_fc_dc, filter_dimensions);
     filter_ptrs.push_back(filter_fc_dc);
 
-    float *inter_0_dc = alloc(max_numel_inter_0);
-    float *inter_1_dc = alloc(max_numel_inter_1);
-    float *output_dc = alloc(num_classes);
+    dtype *inter_0_dc = alloc(max_numel_inter_0);
+    dtype *inter_1_dc = alloc(max_numel_inter_1);
+    dtype *output_dc = alloc(num_classes);
 
     //uint32_t inter_h, inter_w;
 

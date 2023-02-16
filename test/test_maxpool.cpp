@@ -19,6 +19,8 @@
 #include <cmath>
 #include <random>
 
+typedef float dtype;
+
 #include <small.h>
 
 #include "Timer.hpp"

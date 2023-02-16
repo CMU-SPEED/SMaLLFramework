@@ -15,6 +15,8 @@
 // #include <functional>
 #include <numeric>
 
+typedef int16_t dtype;
+
 #include <small.h>
 #include "utils.h"
 
@@ -45,6 +47,7 @@
 #define LAYER DW_CONV
 #endif
 
+
 //****************************************************************************
 // The output of the block is stored in I
 // The weights must have been copied into F_1x1 and F_dw beforehand
@@ -57,11 +60,11 @@ inline void dscnn_block(
     uint8_t b_pad,
     uint8_t l_pad,
     uint8_t r_pad,
-    float *I,
-    float *F_dw,
-    float *F_1x1,
-    float *O_intermediate,
-    float *O)
+    dtype *I,
+    dtype *F_dw,
+    dtype *F_1x1,
+    dtype *O_intermediate,
+    dtype *O)
 {
 
     DepthwiseConv2D(2, kernel_size, stride, t_pad, b_pad, l_pad, r_pad, input_channels, in_dims[0], in_dims[1], I, F_dw, O_intermediate);
@@ -148,7 +151,7 @@ int main(int argc, char **argv)
 
     // Create input tensor
     uint32_t input_dimensions = C_i * N * M;
-    float *input_dc = alloc(input_dimensions);
+    dtype *input_dc = alloc(input_dimensions);
     init(input_dc, input_dimensions);
 
     // std::vector<std::vector<uint64_t>> implementations;
@@ -202,7 +205,7 @@ int main(int argc, char **argv)
     SET_PADDING(layer_num, 0, 0, 0, 0)
     layer_num++;
     // fc dims
-    printf("size of intermediate buffers from configuration: %d %d\n", max_numel_inter_0, max_numel_inter_1);
+    printf("size of intermediate buffers from configuration: %d %d\n", max_numel_inter_0*(sizeof(dtype)), max_numel_inter_1);
 
 
     printf("Layer num total: %d\n", layer_num_total);
@@ -226,12 +229,12 @@ int main(int argc, char **argv)
     // std::vector<uint32_t> filter_dimensions;
 
 
-    std::vector<float *> filter_ptrs;
+    std::vector<dtype *> filter_ptrs;
 
     // torch::Tensor weights;
     for (int l = 0; l < layer_num_total; l++)
     {
-        float *filter_ptr;
+        dtype *filter_ptr;
         // weights = layers[l]->weight; // conv_1x1->weight;
         uint32_t filter_dimensions = REDUCTION_HW(l) * REDUCTION_HW(l) * REDUCTION_C(l) * GROUP_C(l) * GROUPS(l);
         filter_ptr = alloc(filter_dimensions);
@@ -239,9 +242,9 @@ int main(int argc, char **argv)
         filter_ptrs.push_back(filter_ptr);
     }
 
-    float *inter_0_dc = alloc(max_numel_inter_0);
-    float *inter_1_dc = alloc(max_numel_inter_1);
-    float *output_dc = alloc(num_classes);
+    dtype *inter_0_dc = alloc(max_numel_inter_0);
+    dtype *inter_1_dc = alloc(max_numel_inter_1);
+    dtype *output_dc = alloc(num_classes);
 
     //uint32_t inter_h, inter_w;
 
@@ -256,7 +259,7 @@ int main(int argc, char **argv)
     Conv2D(0, 1, 1, 0, 0, 0, 0, GROUP_C(layer_num), REDUCTION_C(layer_num), 1, 1, input_dc, filter_ptrs[layer_num], inter_0_dc);
     ReLUActivation(1, 128, 1, 1, inter_0_dc, inter_0_dc);
 
-    float *out_inter_dc = inter_1_dc;
+    dtype *out_inter_dc = inter_1_dc;
     for (int cur_layer = 1; cur_layer < layer_num_total; cur_layer++)
     {
 
@@ -284,7 +287,7 @@ int main(int argc, char **argv)
         Conv2D(0, 1, 1, 0, 0, 0, 0, GROUP_C(layer_num), REDUCTION_C(layer_num), 1, 1, input_dc, filter_ptrs[layer_num], inter_0_dc);
         ReLUActivation(1, 128, 1, 1, inter_0_dc, inter_0_dc);
 
-        float * out_inter_dc = inter_1_dc;
+        dtype * out_inter_dc = inter_1_dc;
         for (int cur_layer = 1; cur_layer < layer_num_total; cur_layer++)
         {
 

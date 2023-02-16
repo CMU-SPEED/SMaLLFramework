@@ -11,6 +11,8 @@
 #include <algorithm> // std::min_element
 #include <iterator>
 
+typedef float dtype;
+
 #include <small.h>
 #include "utils.h"
 
@@ -41,6 +43,7 @@
 #define LAYER DW_CONV
 #endif
 
+
 //****************************************************************************
 // The output of the block is stored in O
 // The weights must have been copied into F_conv beforehand
@@ -59,10 +62,10 @@ inline void yolo_block(
     uint8_t b_pad_pool,
     uint8_t l_pad_pool,
     uint8_t r_pad_pool,
-    float *I,
-    float *F_conv,
-    float *O_intermediate,
-    float *O)
+    dtype *I,
+    dtype *F_conv,
+    dtype *O_intermediate,
+    dtype *O)
 {
 
     Conv2D(2, kernel_size, stride, t_pad, b_pad, l_pad, r_pad, output_channels, input_channels, in_dims[0], in_dims[1], I, F_conv, O_intermediate);
@@ -86,10 +89,10 @@ inline void conv_block(
     uint8_t b_pad,
     uint8_t l_pad,
     uint8_t r_pad,
-    float *I,
-    float *F_conv,
-    float *O_intermediate,
-    float *O)
+    dtype *I,
+    dtype *F_conv,
+    dtype *O_intermediate,
+    dtype *O)
 {
     Conv2D(2, kernel_size, stride, t_pad, b_pad, l_pad, r_pad, output_channels, input_channels, in_dims[0], in_dims[1], I, F_conv, O_intermediate);
     //uint32_t o_h, o_w;
@@ -161,7 +164,7 @@ int main(int argc, char **argv)
     //int stride = 1;
     // Create and Initialize Input tensors
     uint32_t input_dimensions = C_i * N * M;
-    float *input_dc = alloc(input_dimensions);
+    dtype *input_dc = alloc(input_dimensions);
     init(input_dc, input_dimensions);
     // std::cout<<a<<std::endl;
 
@@ -324,11 +327,11 @@ int main(int argc, char **argv)
     //_____________________setup______________________________________________
 
     //  Copy layer weights to temporaries
-    std::vector<float *> filter_ptrs;
+    std::vector<dtype *> filter_ptrs;
 
     for (int l = 0; l < conv_layer_num; l++)
     {
-        float *filter_ptr;
+        dtype *filter_ptr;
         // weights = layers[l]->weight; // conv_1x1->weight;
         uint32_t filter_dimensions = REDUCTION_HW(l) * REDUCTION_HW(l) * REDUCTION_C(l) * GROUP_C(l) * GROUPS(l);
         filter_ptr = alloc(filter_dimensions);
@@ -341,8 +344,8 @@ int main(int argc, char **argv)
 
     // allocate space for intermediate outputs (use the max sizes calculated previously)
     printf("Size of intermediate buffers: %d %d\n", max_numel_inter_0, max_numel_inter_1);
-    float *inter_0_dc = alloc(max_numel_inter_0);
-    float *inter_1_dc = alloc(max_numel_inter_1);
+    dtype *inter_0_dc = alloc(max_numel_inter_0);
+    dtype *inter_1_dc = alloc(max_numel_inter_1);
 
     //uint32_t inter_h, inter_w;
     layer_num = 0;
@@ -396,12 +399,12 @@ int main(int argc, char **argv)
                    inter_0_dc);
         layer_num++;
 
-        float *tmp = inter_0_dc;
+        dtype *tmp = inter_0_dc;
         inter_0_dc = inter_1_dc;
         inter_1_dc = tmp;
     }
 
-    //float *output_dc = inter_0_dc;
+    //dtype *output_dc = inter_0_dc;
 
     //_______________________________________end inference_________________________
 

@@ -10,7 +10,7 @@
 //-----------------------------------------------------------------------------
 
 //#include <LAGraph.h>
-
+typedef float dtype;
 #include <acutest.h>
 
 #include <small.h>

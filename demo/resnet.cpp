@@ -15,6 +15,8 @@
 // #include <functional>
 #include <numeric>
 
+typedef float dtype;
+
 #include <small.h>
 #include "utils.h"
 
@@ -62,12 +64,12 @@ inline void resnet_block(
     uint8_t b_pad_1,
     uint8_t l_pad_1,
     uint8_t r_pad_1,
-    float *I,
-    float *F_conv0,
-    float *F_conv1,
-    float *F_conv_1x1,
-    float *O_intermediate,
-    float *O)
+    dtype *I,
+    dtype *F_conv0,
+    dtype *F_conv1,
+    dtype *F_conv_1x1,
+    dtype *O_intermediate,
+    dtype *O)
 {
 
     // printf("before: %d, %.2f %.2f %.2f %.2f\n", 0, I[0], I[1], I[2], I[3]);
@@ -148,7 +150,7 @@ int main(int argc, char **argv)
     //int stride = 1;
     print_build_info_check();
     uint32_t input_dimensions = C_i * N * M;
-    float *input_dc = alloc(input_dimensions);
+    dtype *input_dc = alloc(input_dimensions);
     init(input_dc, input_dimensions);
     // std::vector<std::vector<uint64_t>> implementations;
 
@@ -287,13 +289,13 @@ int main(int argc, char **argv)
     //  Copy layer weights to temporaries
     // std::vector<uint32_t> filter_dimensions;
 
-    float *filter_fc_dc; //, *filter_conv_dc, *filter_1x1_1_dc, *filter_dw_1_dc;
-    std::vector<float *> filter_ptrs;
+    dtype *filter_fc_dc; //, *filter_conv_dc, *filter_1x1_1_dc, *filter_dw_1_dc;
+    std::vector<dtype *> filter_ptrs;
 
     // torch::Tensor weights;
     for (uint32_t l = 0; l < layer_num_total; l++)
     {
-        float *filter_ptr;
+        dtype *filter_ptr;
         // weights = layers[l]->weight; // conv_1x1->weight;
         uint32_t filter_dimensions = REDUCTION_HW(l) * REDUCTION_HW(l) * REDUCTION_C(l) * GROUP_C(l) * GROUPS(l);
         filter_ptr = alloc(filter_dimensions);
@@ -310,10 +312,10 @@ int main(int argc, char **argv)
     // copy input
     // allocate space for intermediate outputs (use the max sizes calculated previously)
     printf("max_numel_inter 0 : %d 1: %d\n", max_numel_inter_0, max_numel_inter_1);
-    float *inter_0_dc = alloc(max_numel_inter_0);
-    float *inter_1_dc = alloc(max_numel_inter_1);
-    float *inter_2_dc = alloc(max_numel_inter_0);
-    float *output_dc = alloc(num_classes);
+    dtype *inter_0_dc = alloc(max_numel_inter_0);
+    dtype *inter_1_dc = alloc(max_numel_inter_1);
+    dtype *inter_2_dc = alloc(max_numel_inter_0);
+    dtype *output_dc = alloc(num_classes);
 
     //uint32_t inter_h, inter_w;
 
@@ -353,7 +355,7 @@ int main(int argc, char **argv)
     {
         // printf("starting resnet block %d:\n\t", ds_layer);
 
-        float *O_intermediate = inter_2_dc;
+        dtype *O_intermediate = inter_2_dc;
         resnet_block<1>(intermediate_dims[layer_num], REDUCTION_C(layer_num), // Input dimensions
                         REDUCTION_HW(layer_num),
                         STRIDE(layer_num), // Params for the first convolution
@@ -439,7 +441,7 @@ int main(int argc, char **argv)
 
         for (int ds_layer = 1; ds_layer < resnet_blocks; ds_layer++)
         {
-            float *O_intermediate = inter_2_dc;
+            dtype *O_intermediate = inter_2_dc;
             resnet_block<1>(intermediate_dims[layer_num], REDUCTION_C(layer_num), // Input dimensions
                             REDUCTION_HW(layer_num),
                             STRIDE(layer_num), // Params for the first convolution
