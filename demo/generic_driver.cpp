@@ -149,6 +149,10 @@ int main(int argc, char **argv)
     // init_arange<C_ob>(input_dc, input_height, input_width, C_i);
     init(input_dc, in_dimensions);
 
+    for(int i = 0; i < in_dimensions; i++){
+        printf("%f ", (float)input_dc[i]); 
+    }
+    printf("\n");
 #if LAYER == CONV || LAYER == PARTIAL_CONV
     uint32_t filter_dimensions = (C_i * C_o * kernel_size * kernel_size);
 #elif LAYER == DW_CONV

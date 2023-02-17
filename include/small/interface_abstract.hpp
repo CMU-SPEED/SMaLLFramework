@@ -36,6 +36,47 @@
 
 #include <small/abstract_layer.hpp>
 
+int clip(int n, int upper, int lower=0)
+{
+    n = (n > lower) * n + !(n > lower) * lower;
+    return (n < upper) * n + !(n < upper) * upper;
+}
+
+//Quantization Functions
+template<typename Q_T, typename T>
+void Quantize(int num_elements, T * tensor_ptr, Q_T * quant_tensor_ptr)
+{
+    float scale_inv = (1.0 / quant_tensor_ptr->scale);
+    uint64_t max_val = (1 << 16) - 1;
+    for (int i = 0; i < num_elements; i++)
+    {
+        int quant_val = rint(quant_tensor_ptr->zero + (tensor_ptr[i] * scale_inv));
+        quant_tensor_ptr->tensor[i] = (quant_val< max_val)?quant_val:max_val;
+        printf("%f \t %d\n", tensor_ptr[i], quant_tensor_ptr->tensor[i]);
+    }
+}
+
+template <typename Q_T, typename T>
+void DeQuantize(int num_elements, T *tensor_ptr, Q_T *quant_tensor_ptr)
+{
+    for (int i = 0; i < num_elements; i++)
+    {
+        tensor_ptr[i] = (T)(quant_tensor_ptr->scale*(quant_tensor_ptr->tensor[i] - quant_tensor_ptr->zero));
+        // printf("%f\n", tensor_ptr[i]);
+    }
+}
+
+template <typename Q_T, typename T>
+void DebugDeQuantize(int num_elements, T *tensor_ptr, Q_T *quant_tensor_ptr)
+{
+    for (int i = 0; i < num_elements; i++)
+    {
+        printf("%f\t", tensor_ptr[i]);
+        tensor_ptr[i] = (T)(quant_tensor_ptr->scale * (quant_tensor_ptr->tensor[i] - quant_tensor_ptr->zero));
+        printf("%f\n", tensor_ptr[i]);
+    }
+}
+
 //****************************************************************************
 template <typename OperandT>
 void Conv2D(int layer_num,

@@ -119,12 +119,22 @@ dtype * alloc (uint32_t numel)
 // Initialization Options
 //****************************************************************************
 
-void init(dtype * ptr, uint32_t numel)
+void init(float * ptr, uint32_t numel)
 {
-  dtype * cur_ptr = ptr;
+  float * cur_ptr = ptr;
   for(uint32_t i = 0 ; i < numel ; i++)
   {
     *(cur_ptr++) = 2.0*((dtype) rand()/ RAND_MAX) - 1;
+  }
+}
+
+// template <typename>
+void init(dtype *ptr, uint32_t numel)
+{
+  dtype *cur_ptr = ptr;
+  for (uint32_t i = 0; i < numel; i++)
+  {
+        *(cur_ptr++) = rand()  % 100;
   }
 }
 
@@ -166,17 +176,17 @@ void init_norm(dtype *ptr, uint32_t numel, uint32_t C_o)
     *(cur_ptr++) = norm;
   }
 }
-bool equals(uint32_t numel, dtype *unfused, dtype *fused, dtype tolerance = 1e-8)
+bool equals(uint32_t numel, float *unfused, float *fused, float tolerance = 1e-8)
 {
   bool check = 1;
-  dtype *unfused_ptr = unfused;
-  dtype *fused_ptr = fused;
+  float *unfused_ptr = unfused;
+  float *fused_ptr = fused;
   printf("begin correctness check\n");
 
   for (uint32_t i = 0; i < numel; i++)
   {
-    dtype diff = *(fused_ptr) - *(unfused_ptr);
-    // printf("%d %.4f %.4f %.4f\n", i, *(fused_ptr), *(unfused_ptr), diff);
+    float diff = *(fused_ptr) - *(unfused_ptr);
+    printf("%d %.4f %.4f %.4f\n", i, *(fused_ptr), *(unfused_ptr), diff);
 
     if(fabs(diff) > tolerance)
     {
@@ -190,6 +200,29 @@ bool equals(uint32_t numel, dtype *unfused, dtype *fused, dtype tolerance = 1e-8
   return check;
 }
 
+bool equals(uint32_t numel, dtype *unfused, dtype *fused, dtype tolerance = 1e-8)
+{
+  bool check = 1;
+  dtype *unfused_ptr = unfused;
+  dtype *fused_ptr = fused;
+  printf("begin correctness check\n");
+
+  for (uint32_t i = 0; i < numel; i++)
+  {
+    dtype diff = *(fused_ptr) - *(unfused_ptr);
+    printf("%d %d %d %d\n", i, *(fused_ptr), *(unfused_ptr), diff);
+
+    if (fabs(diff) > tolerance)
+    {
+      printf("%d %d %d %d\n", i, *(fused_ptr), *(unfused_ptr), diff);
+      check = 0;
+    }
+    unfused_ptr++;
+    fused_ptr++;
+  }
+  printf("end of correctness check\n");
+  return check;
+}
 
 template<uint32_t num_ops, uint32_t trials>
 void write_results(uint64_t * fused_timing)
