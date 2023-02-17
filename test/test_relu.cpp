@@ -20,9 +20,11 @@
 #include <chrono>
 
 #include <small.h>
+#include <small/ReLU.hpp>
 
 #include "Timer.hpp"
 #include "test_utils.hpp"
+
 
 //****************************************************************************
 float* create_relu_data(size_t num_elements)
@@ -238,6 +240,89 @@ bool run_relu_config(LayerParams const &params)
 }
 
 //****************************************************************************
+
+//****************************************************************************
+template <typename RealT>
+bool run_relu_layer_config(LayerParams const &params)
+{
+#if 1
+    /// @todo add smart pointer to buffers
+    // Read input data
+    std::string in_fname =
+        get_pathname("../test/regression_data", "in", "relu",
+                     params,
+                     params.C_i*params.H*params.W);
+    std::cout << "\nReLU: input file = " << in_fname << std::endl;
+
+    small::ReLU<RealT> relu(params.H, params.W, params.C_i);
+
+    // Allocate the input buffer
+    small::Buffer<RealT> input_dc(relu.input_buffer_size());
+
+    uint32_t num_input_elts = read_float_inputs(in_fname, input_dc);
+    TEST_ASSERT(num_input_elts > 0);
+    TEST_ASSERT(num_input_elts == params.C_i*params.H*params.W);
+    TEST_ASSERT(num_input_elts == input_dc.size());
+
+    // Pack input data
+    small::Buffer<RealT> packed_input_dc(relu.input_buffer_size());
+    small::convert_tensor2dc<float>(input_dc,
+                                    small::INPUT,
+                                    1U, params.C_i, params.H, params.W,
+                                    C_ib, C_ob,
+                                    packed_input_dc);
+
+    // Read output regression data
+    size_t Ho(compute_output_dim(params.H, params.k, params.s, params.p));
+    size_t Wo(compute_output_dim(params.W, params.k, params.s, params.p));
+    std::cerr << "Output image dims: " << Ho << ", " << Wo << std::endl;
+    std::string out_fname =
+        get_pathname("../test/regression_data", "out", "relu",
+                     params,
+                     params.C_i*Ho*Wo);
+    std::cout << "ReLU: output file= " << out_fname << std::endl;
+
+    small::Buffer<RealT> output_dc_answers(relu.output_buffer_size());
+    uint32_t num_output_elts = read_float_inputs(out_fname, output_dc_answers);
+    TEST_ASSERT(num_output_elts > 0);
+    TEST_ASSERT(num_output_elts == params.C_i*Ho*Wo);
+    TEST_ASSERT(num_output_elts == output_dc_answers.size());
+
+    // Pack output answer data
+    small::Buffer<RealT> packed_output_dc_answers(relu.output_buffer_size());
+    small::convert_tensor2dc<float>(output_dc_answers,
+                                    small::OUTPUT,
+                                    1U, params.C_i, Ho, Wo,
+                                    C_ib, C_ob,
+                                    packed_output_dc_answers);
+
+    // Allocate output buffer
+    small::Buffer<RealT> packed_output_dc(relu.output_buffer_size());
+
+    // Compute layer
+    relu.compute_output(packed_input_dc, packed_output_dc);
+
+    // Check answer
+    bool passing = true;
+    for (size_t ix = 0; ix < num_output_elts; ++ix)
+    {
+        if (packed_output_dc[ix] != packed_output_dc_answers[ix])
+        {
+            passing = false;
+            std::cout << "FAIL: ReLU_out(" << ix << ")-->"
+                      << std::setw(12) << std::setprecision(10)
+                      << packed_output_dc[ix] << "(computed) != "
+                      << std::setw(12) << std::setprecision(10)
+                      << packed_output_dc_answers[ix]
+                      << std::endl;
+        }
+    }
+
+    return passing;
+#endif
+}
+
+//****************************************************************************
 void test_relu_regression_data(void)
 {
     std::vector<LayerParams> params =
@@ -246,17 +331,28 @@ void test_relu_regression_data(void)
         {16,  1,  6, 1, 1, 'v', 0},
         {96,  1,  6, 1, 1, 'v', 0},
         {96, 30, 30, 1, 1, 'v', 0}
-#if 0
-        , {16,  1,  1, 1, 1, 'f', 0},
-        {16,  1,  6, 1, 1, 'f', 0},
-        {96,  1,  6, 1, 1, 'f', 0},
-        {96, 30, 30, 1, 1, 'f', 0}
-#endif
     };
 
     for (LayerParams const &p : params)
     {
         TEST_CHECK(true == run_relu_config<float>(p));
+    }
+}
+
+//****************************************************************************
+void test_relu_layer_regression_data(void)
+{
+    std::vector<LayerParams> params =
+    {
+        {16,  1,  1, 1, 1, 'v', 0},  //Ci,Hi,Wi,k,s,p,Co
+        {16,  1,  6, 1, 1, 'v', 0},
+        {96,  1,  6, 1, 1, 'v', 0},
+        {96, 30, 30, 1, 1, 'v', 0}
+    };
+
+    for (LayerParams const &p : params)
+    {
+        TEST_CHECK(true == run_relu_layer_config<float>(p));
     }
 }
 
@@ -267,5 +363,6 @@ TEST_LIST = {
     {"relu_single_tile",  test_relu_single_tile},
     {"relu_large_tile",  test_relu_large_tile},
     {"relu_regression_data", test_relu_regression_data},
+    {"relu_layer_regression_data", test_relu_layer_regression_data},
     {NULL, NULL}
 };

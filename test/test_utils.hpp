@@ -33,6 +33,8 @@
 #include <stdlib.h>
 #include <arpa/inet.h>
 
+#include <small/buffers.hpp>
+
 struct LayerParams
 {
     size_t   C_i;
@@ -114,6 +116,53 @@ int read_float_inputs(std::string const &input_data_fname,
     // TODO: endian details
     ifs.read(reinterpret_cast<char*>(in_buf), num_elts*sizeof(RealT));
     return 0;
+}
+
+//****************************************************************************
+/// Read a binary file in the following format:
+///   - first 4 bytes is num_elements as uint32_t in network order
+///   - the rest of file are the 4 byte floating point numbers
+///
+/// param[out] in_buf  memory will be allocated to hold the floating point
+///                    numbers read from the file
+///
+/// @retval The number of elements stored in in_buf (0 if no allocation occured)
+///
+uint32_t read_float_inputs(std::string       const &input_data_fname,
+                           small::Buffer<float>    &in_buf)
+{
+    using RealT = float;
+
+    uint32_t in_n, num_elts;
+    std::ifstream ifs(input_data_fname, std::ios::binary);
+    if (!ifs)
+    {
+        std::cerr << "ERROR: failed to open file: " << input_data_fname
+                  << std::endl;
+        return 0;
+    }
+
+    // TODO: check if there are endian issues for cross platform
+    ifs.read(reinterpret_cast<char*>(&in_n), sizeof(uint32_t));
+    num_elts = ntohl(in_n);
+
+    if (num_elts < 1)
+    {
+        std::cerr << "ERROR: invalid number of elements in "
+                  << input_data_fname << std::endl;
+        return 0;
+    }
+
+    if (num_elts > in_buf.size())
+    {
+        std::cerr << "ERROR: buffer to small, " << in_buf.size()
+                  << " < " << num_elts << std::endl;
+        return 0;
+    }
+
+    ifs.read(reinterpret_cast<char*>(in_buf.data()), num_elts*sizeof(RealT));
+
+    return num_elts;
 }
 
 //****************************************************************************
@@ -234,254 +283,3 @@ size_t compute_output_dim(size_t input_dim,
 
     return 0;
 }
-
-//****************************************************************************
-//****************************************************************************
-
-namespace small
-{
-
-enum BufferTypeEnum
-{
-    INPUT,       // was 'i'
-    OUTPUT,      // was 'o'
-    FILTER_DW,   // was 'd', for LAYER = DW_CONV
-    FILTER_CONV, // was 'f', for LAYER = CONV, PARTIAL_CONV
-    FILTER_FC    // was 'l', for LAYER = FC
-};
-
-//****************************************************************************
-// Convert from NCHW Torch tensor formate to Direct Convolution format
-// If input tensor
-//      [1, C, H, W] --> [1, (C/_C_ib), H, W, _C_ib]
-// If output tensor
-//      [1, K, H, W] --> [1, (K/_C_ob), H, W, _C_ob]
-// If filter
-//     _C_ob = _K_b * _G_b
-//      If layer type == "conv" OR layer type == "fully connected"
-//          [K, C, F_h, F_w] --> [(K/_C_ob), (C/_C_ib), F_h, F_w, _C_ib, _C_ob]
-//      If layer type == "dw"
-//          [C, 1, F_h, F_w] --> [(C/_C_ob), F_h, F_w, 1, _C_ob]
-//****************************************************************************
-/// @todo templatize on buffer type only
-//template <uint32_t _C_ob, uint32_t _C_ib>
-template <class DataT>
-uint32_t convert_tensor2dc(DataT                 const *flat_t,
-                           BufferTypeEnum               type,
-                           uint32_t                     dim0, // C_o
-                           uint32_t                     dim1, // C_i
-                           uint32_t                     dim2, // H
-                           uint32_t                     dim3, // W
-                           uint32_t                     _C_ib,
-                           uint32_t                     _C_ob,
-                           DataT                       *dc_array)
-{
-    uint32_t dim_3, dim_2, dim_1, dim_0;
-    uint32_t ip_block, op_block;
-
-    dim_3 = dim0;
-    dim_2 = dim1;
-    dim_1 = dim2;
-    dim_0 = dim3;
-
-    // =============  Overrides for specific filter types ==============
-    if(type == FILTER_FC)
-    {
-        dim_1 = 1;
-        dim_0 = 1;
-    }
-
-    if (type == FILTER_DW)
-    {
-        //override _C_ib
-        _C_ib = 1;
-    }
-
-    if (type == FILTER_CONV)
-    {
-        if (dim1 < _C_ob)
-        {
-            //std::cerr << "HERE: dim1, C_ob: " << dim_1 << ", " << _C_ob << std::endl;;
-            _C_ib = 3;    /// @todo why is this a 3?
-        }
-    }
-
-    if (type == INPUT)
-    {
-        // input
-        ip_block = _C_ib;
-        op_block = 1;
-    }
-    else if (type == OUTPUT)
-    {
-        // output
-        ip_block = _C_ob;
-        op_block = 1;
-    }
-    else if (type == FILTER_CONV || type == FILTER_DW || type == FILTER_FC)
-    {
-        // filter
-        ip_block = _C_ib;
-        op_block = _C_ob;
-    }
-    else
-    {
-        /// @todo throw or return error code.
-        printf("ERROR: unsupported tensor buffer type\n");
-        return 0;
-    }
-
-    //fprintf(stderr, "copying tensor %d %d %d %d  --> %d %d %d %d %d %d\n",
-    //        dim_3, dim_2, dim_1, dim_0,
-    //        dim_3/op_block, dim_2/ip_block, dim_1, dim_0, ip_block, op_block);
-
-    // copying
-    uint32_t offset = 0;
-    for (uint32_t g = 0; g < dim_3; g += op_block)
-    {
-        uint32_t g_offset = g * dim_2 * dim_1 * dim_0;
-        for (uint32_t h = 0; h < dim_2; h += ip_block)
-        {
-            uint32_t h_offset = h * dim_1 * dim_0;
-            for (uint32_t i = 0; i < dim_1; i++)
-            {
-                uint32_t i_offset = i * dim_0;
-                for (uint32_t j = 0; j < dim_0; j++)
-                {
-                    uint32_t j_offset = j;
-                    for (uint32_t k = 0; k < ip_block; k++)
-                    {
-                        uint32_t k_offset = k * dim_1 * dim_0;
-                        for (uint32_t l = 0; l < op_block; l++)
-                        {
-                            int l_offset = l * dim_2 * dim_1 * dim_0;
-                            //printf("offset: %d\n", offset);fflush(0);
-                            //std::cerr << "dst index = " << offset << ", src index = "
-                            //          << (g_offset + l_offset +
-                            //              h_offset + k_offset +
-                            //              i_offset +
-                            //              j_offset)
-                            //          << std::endl;
-                            dc_array[offset++] =
-                                flat_t[g_offset + l_offset +
-                                       h_offset + k_offset +
-                                       i_offset +
-                                       j_offset];
-                        }
-                    }
-                }
-            }
-        }
-    }
-    return dim_3*dim_2*dim_1*dim_0;
-}
-
-//****************************************************************************
-template <class DataT>
-uint32_t convert_dc2tensor(DataT                 const *dc_array,
-                           BufferTypeEnum               type,
-                           uint32_t                     dim0, // C_o
-                           uint32_t                     dim1, // C_i
-                           uint32_t                     dim2, // H
-                           uint32_t                     dim3, // W
-                           uint32_t                     _C_ib,
-                           uint32_t                     _C_ob,
-                           DataT                       *flat_t)
-{
-    uint32_t dim_3, dim_2, dim_1, dim_0;
-    uint32_t ip_block, op_block;
-
-    dim_3 = dim0;
-    dim_2 = dim1;
-    dim_1 = dim2;
-    dim_0 = dim3;
-
-    // =============  Overrides for specific filter types ==============
-    if(type == FILTER_FC)
-    {
-        dim_1 = 1;
-        dim_0 = 1;
-    }
-
-    if (type == FILTER_DW)
-    {
-        //override _C_ib
-        _C_ib = 1;
-    }
-
-    if (type = FILTER_CONV)
-    {
-        if (dim_1 < _C_ob)
-            _C_ib = 3;    /// @todo why is this a 3?
-    }
-
-    if (type == INPUT)
-    {
-        // input
-        ip_block = _C_ib;
-        op_block = 1;
-    }
-    else if (type == OUTPUT)
-    {
-        // output
-        ip_block = _C_ob;
-        op_block = 1;
-    }
-    else if (type == FILTER_CONV || type == FILTER_DW || type == FILTER_FC)
-    {
-        // filter
-        ip_block = _C_ib;
-        op_block = _C_ob;
-    }
-    else
-    {
-        /// @todo throw or return error code.
-        printf("ERROR: unsupported tensor buffer type\n");
-        return 0;
-    }
-
-    //fprintf(stderr, "copying tensor %d %d %d %d  --> %d %d %d %d %d %d\n",
-    //        dim_3, dim_2, dim_1, dim_0,
-    //        dim_3/op_block, dim_2/ip_block, dim_1, dim_0, ip_block, op_block);
-
-    // copying
-    uint32_t offset = 0;
-    for (uint32_t g = 0; g < dim_3; g += op_block)
-    {
-        uint32_t g_offset = g * dim_2 * dim_1 * dim_0;
-        for (uint32_t h = 0; h < dim_2; h += ip_block)
-        {
-            uint32_t h_offset = h * dim_1 * dim_0;
-            for (uint32_t i = 0; i < dim_1; i++)
-            {
-                uint32_t i_offset = i * dim_0;
-                for (uint32_t j = 0; j < dim_0; j++)
-                {
-                    uint32_t j_offset = j;
-                    for (uint32_t k = 0; k < ip_block; k++)
-                    {
-                        uint32_t k_offset = k * dim_1 * dim_0;
-                        for (uint32_t l = 0; l < op_block; l++)
-                        {
-                            int l_offset = l * dim_2 * dim_1 * dim_0;
-                            // printf("offset: %d\n", offset);fflush(0);
-                            //std::cerr << "dst index = " << offset << ", src index = "
-                            //          << (g_offset + l_offset +
-                            //              h_offset + k_offset +
-                            //              i_offset +
-                            //              j_offset)
-                            //          << std::endl;
-                            flat_t[g_offset + l_offset +
-                                   h_offset + k_offset +
-                                   i_offset +
-                                   j_offset] = dc_array[offset++];
-                        }
-                    }
-                }
-            }
-        }
-    }
-    return dim_3*dim_2*dim_1*dim_0;
-}
-
-} // namespace small
