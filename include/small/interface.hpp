@@ -58,15 +58,15 @@
  *                             depends on input image size, kernel, padding
  *                             and stride parameters.
  */
-template <typename OperandT>
+template <typename ScalarT>
 void Conv2D(int layer_num,
             int kernel_size, int stride,  /// @todo dim_t?
             uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
             int output_channels, int input_channels,
             int input_height, int input_width,
-            OperandT const *input_ptr,
-            OperandT const *filter_ptr,
-            OperandT       *output_ptr);
+            ScalarT const *input_ptr,
+            ScalarT const *filter_ptr,
+            ScalarT       *output_ptr);
 
 /**
  * Perform the computation for a 2D convolution layer.
@@ -93,15 +93,15 @@ void Conv2D(int layer_num,
  *                             depends on input image size, kernel, padding
  *                             and stride parameters.
  */
-template <typename OperandT>
+template <typename ScalarT>
 void Conv2D_rect(int layer_num,
                  int kernel_size_h, int kernel_size_w, int stride,
                  uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                  int output_channels, int input_channels,
                  int input_height, int input_width,
-                 OperandT const *input_ptr,
-                 OperandT const *filter_ptr,
-                 OperandT       *output_ptr);
+                 ScalarT const *input_ptr,
+                 ScalarT const *filter_ptr,
+                 ScalarT       *output_ptr);
 
 /**
  * Perform the computation for a partial Conv2D layer??
@@ -127,15 +127,15 @@ void Conv2D_rect(int layer_num,
  *                             depends on input image size, kernel, padding
  *                             and stride parameters.
  */
-template <typename OperandT>
+template <typename ScalarT>
 void PartialConv2D(int layer_num,
                    int kernel_size, int stride,
                    uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                    int output_channels, int input_channels,
                    int input_height, int input_width,
-                   OperandT const *input_ptr,
-                   OperandT const *filter_ptr,
-                   OperandT       *output_ptr);
+                   ScalarT const *input_ptr,
+                   ScalarT const *filter_ptr,
+                   ScalarT       *output_ptr);
 
 /**
  * Perform the computation for a depth-wise Conv2D layer.
@@ -160,15 +160,15 @@ void PartialConv2D(int layer_num,
  *                             depends on input image size, kernel, padding
  *                             and stride parameters.
  */
-template <typename OperandT>
+template <typename ScalarT>
 void DepthwiseConv2D(int layer_num,
                      int kernel_size, int stride,
                      uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                      int input_channels,
                      int input_height, int input_width,
-                     OperandT const *input_ptr,
-                     OperandT const *filter_ptr,
-                     OperandT       *output_ptr);
+                     ScalarT const *input_ptr,
+                     ScalarT const *filter_ptr,
+                     ScalarT       *output_ptr);
 
 /**
  * Perform the computation for a 2D maxpool layer.
@@ -191,14 +191,14 @@ void DepthwiseConv2D(int layer_num,
  *                             depends on input image size, kernel, padding
  *                             and stride parameters.
  */
-template <typename OperandT>
+template <typename ScalarT>
 void Maxpool2D(int layer_num,
                int kernel_size, int stride,
                uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                int input_channels,
                int input_height, int input_width,
-               OperandT const *input_ptr,
-               OperandT       *output_ptr);
+               ScalarT const *input_ptr,
+               ScalarT       *output_ptr);
 
 /**
  * Perform the computation for a 2D maxpool layer with a rectangular window
@@ -222,14 +222,14 @@ void Maxpool2D(int layer_num,
  *                             depends on input image size, kernel, padding
  *                             and stride parameters.
  */
-template <typename OperandT>
+template <typename ScalarT>
 void MaxPool2D_rect(int layer_num,
                     int kernel_size_h, int kernel_size_w, int stride,
                     uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                     int input_channels,
                     int input_height, int input_width,
-                    OperandT const *input_ptr,
-                    OperandT       *output_ptr);
+                    ScalarT const *input_ptr,
+                    ScalarT       *output_ptr);
 
 /**
  * Perform the computation for a rectified linear unit (ReLU) layer.
@@ -245,12 +245,12 @@ void MaxPool2D_rect(int layer_num,
  *                             depends on input image size, kernel, padding
  *                             and stride parameters.
  */
-template <typename OperandT>
+template <typename ScalarT>
 void ReLUActivation(int layer_num,
                     int input_channels,
                     int input_height, int input_width,
-                    OperandT const *input_ptr,
-                    OperandT       *output_ptr);
+                    ScalarT const *input_ptr,
+                    ScalarT       *output_ptr);
 
 /**
  * Perform the computation for a fully-connected layer?
@@ -262,12 +262,12 @@ void ReLUActivation(int layer_num,
  * @param[in]  filter_ptr      Pointer to convolution filter weights (how big?)
  * @param[out] output_ptr      Pointer to output data (how big?)
  */
-template <typename OperandT>
+template <typename ScalarT>
 void Dense(int layer_num,
            int output_elements, int input_elements,
-           OperandT const *input_ptr,
-           OperandT const *filter_ptr,
-           OperandT       *output_ptr);
+           ScalarT const *input_ptr,
+           ScalarT const *filter_ptr,
+           ScalarT       *output_ptr);
 
 //****************************************************************************
 // Useful utility functions
@@ -301,6 +301,67 @@ inline void CALC_PADDING(uint32_t  I_dim,
     }
     padding_front = padding / 2;
     padding_back  = padding - padding_front;
+}
+
+/**
+ * When padding mode is 'f', compute front and back padding (for either
+ * horizontal or vertical dimension) based on corresponding image dimension
+ * and kernel dimension.  Call this twice to compute l,r and t,b pairs.
+ *
+ */
+inline uint8_t calc_front_padding(char      padding_type,
+                                  uint32_t  I_dim,
+                                  uint32_t  K_dim,
+                                  uint16_t  stride)
+{
+    if (padding_type == 'v') return 0;
+
+    uint32_t padding;
+    if (I_dim % stride == 0)
+    {
+        padding = (K_dim > stride) ?
+                   K_dim - stride :
+                   0;
+    }
+    else
+    {
+        padding = (K_dim > (I_dim % stride)) ?
+                  (K_dim - (I_dim % stride)) :
+                  0;
+    }
+
+    return padding / 2;
+}
+
+/**
+ * When padding mode is 'f', compute front and back padding (for either
+ * horizontal or vertical dimension) based on corresponding image dimension
+ * and kernel dimension.  Call this twice to compute l,r and t,b pairs.
+ *
+ */
+inline uint8_t calc_back_padding(char      padding_type,
+                                 uint32_t  I_dim,
+                                 uint32_t  K_dim,
+                                 uint16_t  stride)
+{
+    if (padding_type == 'v') return 0;
+
+    uint32_t padding;
+    if (I_dim % stride == 0)
+    {
+        padding = (K_dim > stride) ?
+                   K_dim - stride :
+                   0;
+    }
+    else
+    {
+        padding = (K_dim > (I_dim % stride)) ?
+                  (K_dim - (I_dim % stride)) :
+                  0;
+    }
+
+    uint32_t padding_front = padding / 2;
+    return (padding - padding_front);
 }
 
 #if 0

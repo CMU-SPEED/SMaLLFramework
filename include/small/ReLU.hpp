@@ -34,8 +34,8 @@ public:
     ReLU(uint32_t input_height, uint32_t input_width,
          uint32_t num_channels)
         : Layer<ScalarT>(),
-          m_input_width(input_width),
           m_input_height(input_height),
+          m_input_width(input_width),
           m_num_channels(num_channels),
           m_buffer_size(num_channels*input_height*input_width)
     {
@@ -51,13 +51,13 @@ public:
         // assert(output.size()== input_width*input_height);
         ReLUActivation(0, m_num_channels,
                        m_input_height, m_input_width,
-                       const_cast<float*>(input_dc.data()),  // HACK
+                       input_dc.data(),
                        output_dc.data());
     }
 
 private:
-    uint32_t const m_input_width;
     uint32_t const m_input_height;
+    uint32_t const m_input_width;
     uint32_t const m_num_channels;
     size_t const   m_buffer_size;
 };

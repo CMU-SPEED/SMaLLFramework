@@ -752,9 +752,9 @@ template <typename OperandT,
           dim_t _O_wb,
           dim_t _stride,
           dim_t _UNROLL,
-          char   op_type,
-          int8_t op_class,  // 'c' or 'a'
-          bool   rewrite_output>
+          char   op_type,  // 'c' (conv,dense), 'p' (pool), or 'a' (activation)
+          int8_t op_class, //  2  (conv),  1  (dense,pool), or '0' (activation)
+          bool   rewrite_output>  // 0 (partial conv), 1 (otherwise)
 void abstract_layer(
     dim_t G,   // Output Channel Grouping
     dim_t K,   // Output Channels per group
