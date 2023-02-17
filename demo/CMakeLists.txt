@@ -28,6 +28,17 @@ foreach( layer_name ${LAYER_NAMES} )
   set_property(TARGET ${demo_name} PROPERTY CXX_STANDARD 14)
 endforeach( layer_name ${LAYER_NAMES} )
 
+# quantized int layers
+foreach(layer_name ${LAYER_NAMES})
+  set(demo_name "test_interface_quant_${layer_name}.exe")
+  message("Adding executable: ${demo_name}")
+  add_executable(${demo_name} generic_quant_driver.cpp)
+
+  # target_link_libraries(${demo_name} check_interface.o)
+  target_compile_definitions(${demo_name} PRIVATE LAYER=${layer_name})
+  set_property(TARGET ${demo_name} PROPERTY CXX_STANDARD 14)
+endforeach(layer_name ${LAYER_NAMES})
+
 set(MODEL_SOURCES mobilenet.cpp resnet.cpp dscnn.cpp dscnn_square.cpp autoencoder.cpp tinyyolov2.cpp)
 message("In demo/CMakeLists.txt: ${MODEL_SOURCES}")
 

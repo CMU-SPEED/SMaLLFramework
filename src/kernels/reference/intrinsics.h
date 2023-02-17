@@ -18,23 +18,41 @@ typedef dtype c_tile_t;
   dtype c_tile[W_ob * C_ob];
 
 
-#define ZERO_TILE_C(W_ob, C_ob)            \
+// #define ZERO_TILE_C(W_ob, C_ob)            \
+//   for (uint32_t kk = 0; kk < W_ob; kk++)   \
+//   {                                        \
+//     for (uint32_t jj = 0; jj < C_ob; jj++) \
+//     {                                      \
+//       c_tile[kk * C_ob + jj] = 0.0;        \
+//     }                                             \
+//   }
+
+
+// #define ZERO_END_C(_W_ob, C_ob)                    \
+//   for (uint32_t kk = 0; kk < _W_ob; kk++)          \
+//   {                                               \
+//     for (uint32_t jj = 0; jj < C_ob; jj++)        \
+//     {                                             \
+//       c_tile[kk * C_ob + jj] = 0.0; \
+//     }                                             \
+//   }
+
+#define ZERO_TILE_C(W_ob, C_ob,z)            \
   for (uint32_t kk = 0; kk < W_ob; kk++)   \
   {                                        \
     for (uint32_t jj = 0; jj < C_ob; jj++) \
     {                                      \
-      c_tile[kk * C_ob + jj] = 0.0;        \
-    }                                             \
+      c_tile[kk * C_ob + jj] = z;        \
+    }                                      \
   }
 
-
-#define ZERO_END_C(_W_ob, C_ob)                    \
-  for (uint32_t kk = 0; kk < _W_ob; kk++)          \
-  {                                               \
-    for (uint32_t jj = 0; jj < C_ob; jj++)        \
-    {                                             \
-      c_tile[kk * C_ob + jj] = 0.0; \
-    }                                             \
+#define ZERO_END_C(_W_ob, C_ob,z)            \
+  for (uint32_t kk = 0; kk < _W_ob; kk++)  \
+  {                                        \
+    for (uint32_t jj = 0; jj < C_ob; jj++) \
+    {                                      \
+      c_tile[kk * C_ob + jj] = z;        \
+    }                                      \
   }
 
 // Loads
@@ -250,6 +268,8 @@ typedef dtype c_tile_t;
       c_pixel += C_ob;                                 \
     }                                                  \
   }
+
+
 
 // AVG Pooling
 #define ADD_TILE_C_G(I, W_ob_g, C_ob)      \

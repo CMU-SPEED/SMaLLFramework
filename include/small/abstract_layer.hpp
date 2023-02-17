@@ -196,7 +196,8 @@ void inline kernel_left(
     OperandT const *F,
     OperandT *O,
     dim_t H_lb = 0,
-    dim_t H_ub = 0)
+    dim_t H_ub = 0,
+    int zero = 0)
 {
 
     constexpr dim_t _C_ob = _G_b * _K_b;
@@ -215,7 +216,7 @@ void inline kernel_left(
 
     if (first)
     {
-        ZERO_END_C(r_pad_el, _C_ob);
+        ZERO_END_C(r_pad_el, _C_ob, zero);
 
         // Initialize with 0 for the padding elements
 
@@ -275,7 +276,8 @@ void inline kernel(
     dim_t H_lb = 0,
     dim_t H_ub = 0,
     dim_t W_lb = 0,
-    dim_t W_ub = 0)
+    dim_t W_ub = 0,
+    int zero = 0)
 {
     constexpr dim_t _C_ob = _G_b * _K_b;
     constexpr dim_t _C_ib = _G_b * _F_cb;
@@ -287,7 +289,7 @@ void inline kernel(
     DEF_TILE_C(_O_wb, _C_ob);
     if (first)
     {
-        ZERO_TILE_C(_O_wb, _C_ob);
+        ZERO_TILE_C(_O_wb, _C_ob, zero);
         if (op_type == 'p')
         {
             LOAD_TILE_C_strided(I, step, _O_wb, C_ob);
@@ -364,7 +366,8 @@ void inline kernel_pad(
     dim_t H_lb = 0,
     dim_t H_ub = 0,
     dim_t W_lb = 0,
-    dim_t W_ub = 0)
+    dim_t W_ub = 0,
+    int zero = 0)
 {
     constexpr dim_t _C_ob = _G_b * _K_b;
     constexpr dim_t _C_ib = _G_b * _F_cb;
@@ -376,7 +379,7 @@ void inline kernel_pad(
     DEF_TILE_C(_O_wb, _C_ob);
     if (first)
     {
-        ZERO_TILE_C(_O_wb, _C_ob);
+        ZERO_TILE_C(_O_wb, _C_ob, zero);
     }
     else
     {
@@ -451,7 +454,8 @@ void inline kernel_right(
     OperandT const *F,
     OperandT *O,
     dim_t H_lb = 0,
-    dim_t H_ub = 0)
+    dim_t H_ub = 0,
+    int zero = 0)
 {
     constexpr dim_t _C_ob = _G_b * _K_b;
     constexpr dim_t _C_ib = _G_b * _F_cb;
@@ -464,7 +468,7 @@ void inline kernel_right(
     {
         if (first)
         {
-            ZERO_END_C(O_w_left, _C_ob);
+            ZERO_END_C(O_w_left, _C_ob, zero);
 
             if (op_type == 'p' && H_lb == 0 && H_ub == 0)
             {
@@ -498,7 +502,7 @@ void inline kernel_right(
 
     if (first)
     {
-        ZERO_END_C(r_pad_el, _C_ob);
+        ZERO_END_C(r_pad_el, _C_ob,zero);
 
         // Initialize with 0 for the padding elements
 
@@ -769,7 +773,8 @@ void abstract_layer(
     // Data
     OperandT const *__restrict__ I,
     OperandT const *__restrict__ F,
-    OperandT *__restrict__ O)
+    OperandT *__restrict__ O,
+    int zero = 0)
 {
     // Output Elements with padding
     // Output Elements using the full filter

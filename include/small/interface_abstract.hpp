@@ -52,7 +52,7 @@ void Quantize(int num_elements, T * tensor_ptr, Q_T * quant_tensor_ptr)
     {
         int quant_val = rint(quant_tensor_ptr->zero + (tensor_ptr[i] * scale_inv));
         quant_tensor_ptr->tensor[i] = (quant_val< max_val)?quant_val:max_val;
-        printf("%f \t %d\n", tensor_ptr[i], quant_tensor_ptr->tensor[i]);
+        // printf("%f \t %d\n", tensor_ptr[i], quant_tensor_ptr->tensor[i]);
     }
 }
 
@@ -71,8 +71,8 @@ void DebugDeQuantize(int num_elements, T *tensor_ptr, Q_T *quant_tensor_ptr)
 {
     for (int i = 0; i < num_elements; i++)
     {
-        printf("%f\t", tensor_ptr[i]);
-        tensor_ptr[i] = (T)(quant_tensor_ptr->scale * (quant_tensor_ptr->tensor[i] - quant_tensor_ptr->zero));
+        printf("%d\t", quant_tensor_ptr->tensor[i]);
+        tensor_ptr[i] = (T)(quant_tensor_ptr->scale * ((T)(quant_tensor_ptr->tensor[i] - quant_tensor_ptr->zero)));
         printf("%f\n", tensor_ptr[i]);
     }
 }
@@ -315,7 +315,8 @@ void ReLUActivation(int layer_num,
                     int input_channels,
                     int input_height, int input_width,
                     OperandT const *input_ptr,
-                    OperandT       *output_ptr)
+                    OperandT       *output_ptr,
+                    int zero = 0)
 {
     abstract_layer<OperandT, C_ob, 1, 1, W_ob, 1, 1, 'a', 0, 1>(
         input_channels, // Output Channel Grouping
@@ -324,9 +325,26 @@ void ReLUActivation(int layer_num,
         input_height, input_width,
         1, 1,
         0, 0, 0, 0,
-        input_ptr, NULL, output_ptr);
+        input_ptr, NULL, output_ptr, zero);
 }
 
+// template <typename OperandT>
+// void QuantReLUActivation(int layer_num,
+//                     int input_channels,
+//                     int input_height, int input_width,
+//                     OperandT const *input_ptr,
+//                     OperandT *output_ptr,
+//                     int zero )
+// {
+//     abstract_layer<OperandT, C_ob, 1, 1, W_ob, 1, 1, 'a', 0, 1>(
+//         input_channels, // Output Channel Grouping
+//         1,              // Output Channels per group
+//         1,
+//         input_height, input_width,
+//         1, 1,
+//         0, 0, 0, 0,
+//         input_ptr, NULL, output_ptr);
+// }
 //****************************************************************************
 template <typename OperandT>
 void Dense(int layer_num,

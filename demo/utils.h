@@ -100,8 +100,8 @@ void print_stats(std::vector<unsigned long long> v, const char *benchmark)
 //****************************************************************************
 //Allocation
 //****************************************************************************
-
-dtype * alloc (uint32_t numel)
+template <typename dtype>
+dtype *alloc(uint32_t numel)
 {
     dtype *ptr_dc;
 
@@ -129,12 +129,12 @@ void init(float * ptr, uint32_t numel)
 }
 
 // template <typename>
-void init(dtype *ptr, uint32_t numel)
+void init(uint8_t *ptr, uint32_t numel)
 {
-  dtype *cur_ptr = ptr;
+  uint8_t *cur_ptr = ptr;
   for (uint32_t i = 0; i < numel; i++)
   {
-        *(cur_ptr++) = rand()  % 100;
+        *(cur_ptr++) = rand()  % 10;
   }
 }
 
