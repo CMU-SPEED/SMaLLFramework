@@ -81,8 +81,8 @@ int main(int argc, char **argv)
 
     if (padding == 'f')
     {
-        CALC_PADDING(input_height, kernel_size, stride, t_pad, b_pad);
-        CALC_PADDING(input_width, kernel_size, stride, l_pad, r_pad);
+        small::calc_padding(input_height, kernel_size, stride, t_pad, b_pad);
+        small::calc_padding(input_width, kernel_size, stride, l_pad, r_pad);
 
         // padding_front = r_pad;
         // padding_back = b_pad;
@@ -166,34 +166,29 @@ int main(int argc, char **argv)
     printf("checking\n");
 
 #if LAYER == RELU
-    check_ReLUActivation(0,
-                         C_i,
+    check_ReLUActivation(C_i,
                          input_height, input_width,
                          input_dc, out_check_dc);
 #elif LAYER == POOL
-    check_Maxpool2D(0,
-                    kernel_size, stride,
+    check_Maxpool2D(kernel_size, stride,
                     t_pad, b_pad, l_pad, r_pad,
                     C_i,
                     input_height, input_width,
                     input_dc, out_check_dc);
 #elif LAYER == DW_CONV
-    check_DepthwiseConv2D(0,
-                          kernel_size, stride,
+    check_DepthwiseConv2D(kernel_size, stride,
                           t_pad, b_pad, l_pad, r_pad,
                           C_i,
                           input_height, input_width,
                           input_dc, filter_dc, out_check_dc);
 #elif LAYER == CONV
-    check_Conv2D(0,
-                 kernel_size, stride,
+    check_Conv2D(kernel_size, stride,
                  t_pad, b_pad, l_pad, r_pad,
                  C_o, C_i,
                  input_height, input_width,
                  input_dc, filter_dc, out_check_dc);
 #elif LAYER == PARTIAL_CONV
-    check_PartialConv2D(0,
-                        kernel_size, stride,
+    check_PartialConv2D(kernel_size, stride,
                         t_pad, b_pad, l_pad, r_pad,
                         C_o, C_i,
                         input_height, input_width,
@@ -206,40 +201,35 @@ int main(int argc, char **argv)
     printf("computed with scalar kernels\n");
 
 #if LAYER == RELU
-    ReLUActivation(0,
-                   C_i,
-                   input_height, input_width,
-                   input_dc, out_dc);
+    small::ReLUActivation(C_i,
+                          input_height, input_width,
+                          input_dc, out_dc);
 #elif LAYER == POOL
-    Maxpool2D(0,
-              kernel_size, stride,
-              t_pad, b_pad, l_pad, r_pad,
-              C_i,
-              input_height, input_width,
-              input_dc, out_dc);
+    small::Maxpool2D(kernel_size, stride,
+                     t_pad, b_pad, l_pad, r_pad,
+                     C_i,
+                     input_height, input_width,
+                     input_dc, out_dc);
 #elif LAYER == DW_CONV
-    DepthwiseConv2D(0,
-                    kernel_size, stride,
-                    t_pad, b_pad, l_pad, r_pad,
-                    C_i,
-                    input_height, input_width,
-                    input_dc, filter_dc, out_dc);
+    small::DepthwiseConv2D(kernel_size, stride,
+                           t_pad, b_pad, l_pad, r_pad,
+                           C_i,
+                           input_height, input_width,
+                           input_dc, filter_dc, out_dc);
 #elif LAYER == CONV
-    Conv2D(0,
-           kernel_size, stride,
-           t_pad, b_pad, l_pad, r_pad,
-           C_o, C_i,
-           input_height, input_width,
-           input_dc, filter_dc, out_dc);
-#elif LAYER == PARTIAL_CONV
-    PartialConv2D(0,
-                  kernel_size, stride,
+    small::Conv2D(kernel_size, stride,
                   t_pad, b_pad, l_pad, r_pad,
                   C_o, C_i,
                   input_height, input_width,
                   input_dc, filter_dc, out_dc);
+#elif LAYER == PARTIAL_CONV
+    small::PartialConv2D(kernel_size, stride,
+                         t_pad, b_pad, l_pad, r_pad,
+                         C_o, C_i,
+                         input_height, input_width,
+                         input_dc, filter_dc, out_dc);
 // #elif LAYER == FC
-    // Dense(0, C_o, C_i, input_dc, filter_dc, out_dc);
+    // small::Dense(C_o, C_i, input_dc, filter_dc, out_dc);
 #endif
 
     assert(equals(out_dimensions, out_check_dc, out_dc, 1e-4));
@@ -250,34 +240,29 @@ int main(int argc, char **argv)
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
 
 #if LAYER == RELU
-        check_ReLUActivation(0,
-                             C_i,
+        check_ReLUActivation(C_i,
                              input_height, input_width,
                              input_dc, out_check_dc);
 #elif LAYER == POOL
-        check_Maxpool2D(0,
-                        kernel_size, stride,
+        check_Maxpool2D(kernel_size, stride,
                         t_pad, b_pad, l_pad, r_pad,
                         C_i,
                         input_height, input_width,
                         input_dc, out_check_dc);
 #elif LAYER == DW_CONV
-        check_DepthwiseConv2D(0,
-                              kernel_size, stride,
+        check_DepthwiseConv2D(kernel_size, stride,
                               t_pad, b_pad, l_pad, r_pad,
                               C_i,
                               input_height, input_width,
                               input_dc, filter_dc, out_check_dc);
 #elif LAYER == CONV
-        check_Conv2D(0,
-                     kernel_size, stride,
+        check_Conv2D(kernel_size, stride,
                      t_pad, b_pad, l_pad, r_pad,
                      C_o, C_i,
                      input_height, input_width,
                      input_dc, filter_dc, out_check_dc);
 #elif LAYER == PARTIAL_CONV
-        check_PartialConv2D(0,
-                            kernel_size, stride,
+        check_PartialConv2D(kernel_size, stride,
                             t_pad, b_pad, l_pad, r_pad,
                             C_o, C_i,
                             input_height, input_width,
@@ -302,34 +287,33 @@ int main(int argc, char **argv)
         // t0 = rdtsc();
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
 #if LAYER == RELU
-        ReLUActivation(0,
-                       C_i,
-                       input_height, input_width,
-                       input_dc, out_dc);
+        small::ReLUActivation(C_i,
+                              input_height, input_width,
+                              input_dc, out_dc);
 #elif LAYER == POOL
-        Maxpool2D(0, kernel_size, stride,
-                  t_pad, b_pad, l_pad, r_pad,
-                  C_i,
-                  input_height, input_width,
-                  input_dc, out_dc);
+        small::Maxpool2D(kernel_size, stride,
+                         t_pad, b_pad, l_pad, r_pad,
+                         C_i,
+                         input_height, input_width,
+                         input_dc, out_dc);
 #elif LAYER == DW_CONV
-        DepthwiseConv2D(0, kernel_size, stride,
-                        t_pad, b_pad, l_pad, r_pad,
-                        C_i,
-                        input_height, input_width,
-                        input_dc, filter_dc, out_dc);
+        small::DepthwiseConv2D(kernel_size, stride,
+                               t_pad, b_pad, l_pad, r_pad,
+                               C_i,
+                               input_height, input_width,
+                               input_dc, filter_dc, out_dc);
 #elif LAYER == CONV
-        Conv2D(0, kernel_size, stride,
-               t_pad, b_pad, l_pad, r_pad,
-               C_o, C_i,
-               input_height, input_width,
-               input_dc, filter_dc, out_dc);
-#elif LAYER == PARTIAL_CONV
-        PartialConv2D(0, kernel_size, stride,
+        small::Conv2D(kernel_size, stride,
                       t_pad, b_pad, l_pad, r_pad,
                       C_o, C_i,
                       input_height, input_width,
                       input_dc, filter_dc, out_dc);
+#elif LAYER == PARTIAL_CONV
+        small::PartialConv2D(kernel_size, stride,
+                             t_pad, b_pad, l_pad, r_pad,
+                             C_o, C_i,
+                             input_height, input_width,
+                             input_dc, filter_dc, out_dc);
 #endif
         // t1 = rdtsc();
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);

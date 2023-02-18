@@ -253,24 +253,8 @@ size_t compute_output_dim(size_t input_dim,
     }
     else if (padding == 'f')
     {
-        // int padding_elements;
-        // if (input_dim % stride == 0)
-        // {
-        //     padding_elements = ((kernel_dim - stride > 0) ?
-        //                         kernel_dim - stride :
-        //                         0);
-        // }
-        // else
-        // {
-        //     padding_elements = ((kernel_dim - (input_dim % stride) > 0) ?
-        //                         kernel_dim - (input_dim % stride) :
-        //                         0);
-        // }
-        // size_t padded_input_dim = input_dim + padding_elements;
-        // size_t output_dim = ((padded_input_dim - kernel_dim)/stride) - 1;
-
         uint8_t fpad, bpad;
-        CALC_PADDING(input_dim, kernel_dim, stride, fpad, bpad);
+        small::calc_padding(input_dim, kernel_dim, stride, fpad, bpad);
         size_t padded_input_dim = input_dim + fpad + bpad;
         size_t output_dim = 1 + (padded_input_dim - kernel_dim)/stride;
         std::cerr << "f output dim: " << output_dim << std::endl;

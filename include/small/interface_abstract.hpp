@@ -27,19 +27,17 @@
 #pragma once
 
 #include <math.h>
-// #include <assert.h>
-// #include <omp.h>
-// #include <stdio.h>
-//#include <stdlib.h>
 #include <stdint.h>
 #include <stdexcept>
 
 #include <small/abstract_layer.hpp>
 
+namespace small
+{
+
 //****************************************************************************
 template <typename OperandT>
-void Conv2D(int layer_num,
-            int kernel_size, int stride,  /// @todo dim_t?
+void Conv2D(int kernel_size, int stride,  /// @todo dim_t?
             uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
             int output_channels, int input_channels,
             int input_height, int input_width,
@@ -114,8 +112,7 @@ void Conv2D(int layer_num,
 
 //****************************************************************************
 template <typename OperandT>
-void PartialConv2D(int layer_num,
-                   int kernel_size, int stride,
+void PartialConv2D(int kernel_size, int stride,
                    uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                    int output_channels, int input_channels,
                    int input_height, int input_width,
@@ -188,8 +185,7 @@ void PartialConv2D(int layer_num,
 
 //****************************************************************************
 template <typename OperandT>
-void Maxpool2D(int layer_num,
-               int kernel_size, int stride,
+void Maxpool2D(int kernel_size, int stride,
                uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                int input_channels,
                int input_height, int input_width,
@@ -228,8 +224,7 @@ void Maxpool2D(int layer_num,
 
 //****************************************************************************
 template <typename OperandT>
-void DepthwiseConv2D(int layer_num,
-                     int kernel_size, int stride,
+void DepthwiseConv2D(int kernel_size, int stride,
                      uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                      int input_channels,
                      int input_height, int input_width,
@@ -270,8 +265,7 @@ void DepthwiseConv2D(int layer_num,
 
 //****************************************************************************
 template <typename OperandT>
-void ReLUActivation(int layer_num,
-                    int input_channels,
+void ReLUActivation(int input_channels,
                     int input_height, int input_width,
                     OperandT const *input_ptr,
                     OperandT       *output_ptr)
@@ -288,8 +282,7 @@ void ReLUActivation(int layer_num,
 
 //****************************************************************************
 template <typename OperandT>
-void Dense(int layer_num,
-           int output_elements, int input_elements,
+void Dense(int output_elements, int input_elements,
            OperandT const *input_ptr,
            OperandT const *filter_ptr,
            OperandT       *output_ptr)
@@ -306,8 +299,7 @@ void Dense(int layer_num,
 
 //****************************************************************************
 template <typename OperandT>
-void Conv2D_rect(int layer_num,
-                 int kernel_size_h, int kernel_size_w, int stride,
+void Conv2D_rect(int kernel_size_h, int kernel_size_w, int stride,
                  uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                  int output_channels, int input_channels,
                  int input_height, int input_width,
@@ -381,8 +373,7 @@ void Conv2D_rect(int layer_num,
 
 //****************************************************************************
 template <typename OperandT>
-void MaxPool2D_rect(int layer_num,
-                    int kernel_size_h, int kernel_size_w, int stride,
+void MaxPool2D_rect(int kernel_size_h, int kernel_size_w, int stride,
                     uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                     int input_channels,
                     int input_height, int input_width,
@@ -417,3 +408,5 @@ void MaxPool2D_rect(int layer_num,
         throw std::invalid_argument("MaxPool2D_rect ERROR: stride unsupported.");
     }
 }
+
+} // small

@@ -99,16 +99,15 @@ bool run_conv2d_config(LayerParams const &params)
     uint8_t t_pad=0, b_pad=0, l_pad=0, r_pad=0;
     if (params.p == 'f')
     {
-        CALC_PADDING(params.H, params.k, params.s, t_pad, b_pad);
-        CALC_PADDING(params.W, params.k, params.s, l_pad, r_pad);
+        small::calc_padding(params.H, params.k, params.s, t_pad, b_pad);
+        small::calc_padding(params.W, params.k, params.s, l_pad, r_pad);
     }
 
     // Compute layer
-    Conv2D(0,
-           params.k, params.s,
-           t_pad, b_pad, l_pad, r_pad,
-           params.C_o, params.C_i, params.H, params.W,
-           packed_input_dc, packed_filter_dc, packed_output_dc);
+    small::Conv2D(params.k, params.s,
+                  t_pad, b_pad, l_pad, r_pad,
+                  params.C_o, params.C_i, params.H, params.W,
+                  packed_input_dc, packed_filter_dc, packed_output_dc);
 
     // Check answer
     bool passing = true;

@@ -72,21 +72,32 @@ inline void resnet_block(
 
     // printf("before: %d, %.2f %.2f %.2f %.2f\n", 0, I[0], I[1], I[2], I[3]);
 
-    Conv2D(2, kernel_size, stride, t_pad_0, b_pad_0, l_pad_0, r_pad_0, output_channels, input_channels, in_dims[0], in_dims[1], I, F_conv0, O_intermediate);
-    //uint32_t o_h, o_w;
-    //op_dim(in_dims[0] + t_pad_0 + b_pad_0, stride, kernel_size, o_h);
-    //op_dim(in_dims[1] + l_pad_0 + r_pad_0, stride, kernel_size, o_w);
+    small::Conv2D(kernel_size, stride,
+                  t_pad_0, b_pad_0, l_pad_0, r_pad_0,
+                  output_channels, input_channels,
+                  in_dims[0], in_dims[1],
+                  I, F_conv0, O_intermediate);
+
     uint32_t o_h = output_dim(in_dims[0] + t_pad_0 + b_pad_0, stride, kernel_size);
     uint32_t o_w = output_dim(in_dims[1] + l_pad_0 + r_pad_0, stride, kernel_size);
 
-    ReLUActivation(1, input_channels, o_h, o_w, O_intermediate, O_intermediate);
+    small::ReLUActivation(input_channels,
+                          o_h, o_w,
+                          O_intermediate, O_intermediate);
     if (scale_channels)
     {
-        Conv2D(2, 1, stride, 0, 0, 0, 0, output_channels, input_channels, in_dims[0], in_dims[1], I, F_conv_1x1, O);
+        small::Conv2D(1, stride,
+                      0, 0, 0, 0,
+                      output_channels, input_channels,
+                      in_dims[0], in_dims[1], I, F_conv_1x1, O);
     }
 
-    PartialConv2D(0, kernel_size, 1, t_pad_1, b_pad_1, l_pad_1, r_pad_1, output_channels, output_channels, o_h, o_w, O_intermediate, F_conv1, O);
-    ReLUActivation(1, output_channels, o_h, o_w, O, O);
+    small::PartialConv2D(kernel_size, 1,
+                         t_pad_1, b_pad_1, l_pad_1, r_pad_1,
+                         output_channels, output_channels,
+                         o_h, o_w,
+                         O_intermediate, F_conv1, O);
+    small::ReLUActivation(output_channels, o_h, o_w, O, O);
 }
 
 #define REDUCTION_C(layer_num) layer_params[layer_num][0]
@@ -173,8 +184,8 @@ int main(int argc, char **argv)
     GROUPS(layer_num) = 1;
     REDUCTION_HW(layer_num) = 3; // kernel size
     STRIDE(layer_num) = 1;       // stride
-    CALC_PADDING(I_HEIGHT(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), t_pad, b_pad);
-    CALC_PADDING(I_WIDTH(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), l_pad, r_pad);
+    small::calc_padding(I_HEIGHT(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), t_pad, b_pad);
+    small::calc_padding(I_WIDTH(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), l_pad, r_pad);
     SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad)
     layer_num++; // 1
     auto inter_dim = INPUT_NUMEL(layer_num);
@@ -199,8 +210,8 @@ int main(int argc, char **argv)
         GROUPS(layer_num) = 1;                       // output channels
         REDUCTION_HW(layer_num) = 3;                 // kernel size
         STRIDE(layer_num) = layer_strides[ds_layer]; // stride
-        CALC_PADDING(I_HEIGHT(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), t_pad, b_pad);
-        CALC_PADDING(I_WIDTH(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), l_pad, r_pad);
+        small::calc_padding(I_HEIGHT(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), t_pad, b_pad);
+        small::calc_padding(I_WIDTH(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), l_pad, r_pad);
         SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad);
         layer_num++; // 2,4,7
         intermediate_dims.push_back(std::array<uint32_t, 2>(OUTPUT_DIMS(layer_num)));
@@ -214,8 +225,8 @@ int main(int argc, char **argv)
         GROUPS(layer_num) = 1;
         REDUCTION_HW(layer_num) = 3;
         STRIDE(layer_num) = 1;
-        CALC_PADDING(I_HEIGHT(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), t_pad, b_pad);
-        CALC_PADDING(I_WIDTH(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), l_pad, r_pad);
+        small::calc_padding(I_HEIGHT(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), t_pad, b_pad);
+        small::calc_padding(I_WIDTH(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), l_pad, r_pad);
         SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad);
         layer_num++; // 3,5,8
         inter_dim = INPUT_NUMEL(layer_num);
@@ -325,9 +336,15 @@ int main(int argc, char **argv)
 
     layer_num = 0;
     // printf("starting conv:\n\t");
-    Conv2D(0, REDUCTION_HW(layer_num), STRIDE(layer_num), PADDING(layer_num), GROUP_C(layer_num), REDUCTION_C(layer_num), I_HEIGHT(layer_num), I_WIDTH(layer_num), input_dc, filter_ptrs[layer_num], inter_0_dc);
+    small::Conv2D(REDUCTION_HW(layer_num), STRIDE(layer_num),
+                  PADDING(layer_num),
+                  GROUP_C(layer_num), REDUCTION_C(layer_num),
+                  I_HEIGHT(layer_num), I_WIDTH(layer_num),
+                  input_dc, filter_ptrs[layer_num], inter_0_dc);
     layer_num++;
-    ReLUActivation(1, GROUP_C(0), I_HEIGHT(layer_num), I_WIDTH(layer_num), inter_0_dc, inter_0_dc);
+    small::ReLUActivation(GROUP_C(0),
+                          I_HEIGHT(layer_num), I_WIDTH(layer_num),
+                          inter_0_dc, inter_0_dc);
     // printf("\n");
     // std::cout << "H: " << I_HEIGHT(layer_num) << " W: " << I_WIDTH(layer_num) << " C:" << GROUP_C(0) << std::endl;
 
@@ -373,9 +390,17 @@ int main(int argc, char **argv)
     }
 
     // printf("calling pool %d %d \n", layer_num, layers.size());
-    Maxpool2D(0, REDUCTION_HW(layer_num), STRIDE(layer_num), PADDING(layer_num), GROUPS(layer_num), I_HEIGHT(layer_num), I_WIDTH(layer_num), inter_0_dc, inter_1_dc);
+    small::Maxpool2D(REDUCTION_HW(layer_num), STRIDE(layer_num),
+                     PADDING(layer_num),
+                     GROUPS(layer_num),
+                     I_HEIGHT(layer_num), I_WIDTH(layer_num),
+                     inter_0_dc, inter_1_dc);
     // Dense(1, num_classes, GROUP_C(layer_num - 1), inter_1_dc, filter_fc_dc, output_dc);
-    Conv2D(0, 1, 1, 0, 0, 0, 0, num_classes, GROUP_C(layer_num_total - 1), 1, 1, inter_1_dc, filter_ptrs[layer_num_total - 1], output_dc);
+    small::Conv2D(1, 1,
+                  0, 0, 0, 0,
+                  num_classes, GROUP_C(layer_num_total - 1),
+                  1, 1,
+                  inter_1_dc, filter_ptrs[layer_num_total - 1], output_dc);
     // printf("%dx%d", GROUPS(layer_num_total - 1), num_classes);
     std::vector<uint32_t>
             inter_0_dims, inter_1_dims;
@@ -416,9 +441,15 @@ int main(int argc, char **argv)
 
         layer_num = 0;
 
-        Conv2D(0, REDUCTION_HW(layer_num), STRIDE(layer_num), PADDING(layer_num), GROUP_C(layer_num), REDUCTION_C(layer_num), I_HEIGHT(layer_num), I_WIDTH(layer_num), input_dc, filter_ptrs[layer_num], inter_0_dc);
+        small::Conv2D(REDUCTION_HW(layer_num), STRIDE(layer_num),
+                      PADDING(layer_num),
+                      GROUP_C(layer_num), REDUCTION_C(layer_num),
+                      I_HEIGHT(layer_num), I_WIDTH(layer_num),
+                      input_dc, filter_ptrs[layer_num], inter_0_dc);
         layer_num++;
-        ReLUActivation(1, GROUP_C(0), I_HEIGHT(layer_num), I_WIDTH(layer_num), inter_0_dc, inter_0_dc);
+        small::ReLUActivation(GROUP_C(0),
+                              I_HEIGHT(layer_num), I_WIDTH(layer_num),
+                              inter_0_dc, inter_0_dc);
 
         // std::cout << "H: " << I_HEIGHT(layer_num) << " W: " << I_WIDTH(layer_num) << " C:" << GROUP_C(0) << std::endl;
 
@@ -461,9 +492,15 @@ int main(int argc, char **argv)
         }
 
         // printf("calling pool %d %d \n", layer_num, layers.size());
-        Maxpool2D(0, REDUCTION_HW(layer_num), STRIDE(layer_num), PADDING(layer_num), GROUPS(layer_num), I_HEIGHT(layer_num), I_WIDTH(layer_num), inter_0_dc, inter_1_dc);
+        small::Maxpool2D(REDUCTION_HW(layer_num), STRIDE(layer_num),
+                         PADDING(layer_num),
+                         GROUPS(layer_num),
+                         I_HEIGHT(layer_num), I_WIDTH(layer_num),
+                         inter_0_dc, inter_1_dc);
         // Dense(1, num_classes, GROUP_C(layer_num - 1), inter_1_dc, filter_fc_dc, output_dc);
-        Conv2D(0, 1, 1, 0, 0, 0, 0, num_classes, GROUPS(layer_num_total - 1), 1, 1, inter_1_dc, filter_ptrs[layer_num_total - 1], output_dc);
+        small::Conv2D(1, 1,
+                      0, 0, 0, 0,
+                      num_classes, GROUPS(layer_num_total - 1), 1, 1, inter_1_dc, filter_ptrs[layer_num_total - 1], output_dc);
 
         // t1 = rdtsc();
         // MIN(sum_small, (t1 - t0));

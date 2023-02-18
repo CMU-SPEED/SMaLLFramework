@@ -64,16 +64,23 @@ inline void yolo_block(
     float *O_intermediate,
     float *O)
 {
+    small::Conv2D(kernel_size, stride,
+                  t_pad, b_pad, l_pad, r_pad,
+                  output_channels, input_channels,
+                  in_dims[0], in_dims[1],
+                  I, F_conv, O_intermediate);
 
-    Conv2D(2, kernel_size, stride, t_pad, b_pad, l_pad, r_pad, output_channels, input_channels, in_dims[0], in_dims[1], I, F_conv, O_intermediate);
-    //uint32_t o_h, o_w;
-    //op_dim(in_dims[0] + t_pad + b_pad, stride, kernel_size, o_h);
-    //op_dim(in_dims[1] + l_pad + r_pad, stride, kernel_size, o_w);
     uint32_t o_h = output_dim(in_dims[0] + t_pad + b_pad, stride, kernel_size);
     uint32_t o_w = output_dim(in_dims[1] + l_pad + r_pad, stride, kernel_size);
-    ReLUActivation(1, output_channels, o_h, o_w, O_intermediate, O_intermediate);
-    Maxpool2D(0, kernel_size_pool, stride_pool, t_pad_pool, b_pad_pool, l_pad_pool, r_pad_pool, output_channels, o_h, o_w, O_intermediate, O);
-    // ReLUActivation(1, output_channels, o_h, o_w, O, O);
+    small::ReLUActivation(output_channels,
+                          o_h, o_w,
+                          O_intermediate, O_intermediate);
+    small::Maxpool2D(kernel_size_pool, stride_pool,
+                     t_pad_pool, b_pad_pool, l_pad_pool, r_pad_pool,
+                     output_channels,
+                     o_h, o_w,
+                     O_intermediate, O);
+    // small::ReLUActivation(output_channels, o_h, o_w, O, O);
 }
 
 //****************************************************************************
@@ -91,13 +98,17 @@ inline void conv_block(
     float *O_intermediate,
     float *O)
 {
-    Conv2D(2, kernel_size, stride, t_pad, b_pad, l_pad, r_pad, output_channels, input_channels, in_dims[0], in_dims[1], I, F_conv, O_intermediate);
-    //uint32_t o_h, o_w;
-    //op_dim(in_dims[0] + t_pad + b_pad, stride, kernel_size, o_h);
-    //op_dim(in_dims[1] + l_pad + r_pad, stride, kernel_size, o_w);
+    small::Conv2D(kernel_size, stride,
+                  t_pad, b_pad, l_pad, r_pad,
+                  output_channels, input_channels,
+                  in_dims[0], in_dims[1],
+                  I, F_conv, O_intermediate);
+
     uint32_t o_h = output_dim(in_dims[0] + t_pad + b_pad, stride, kernel_size);
     uint32_t o_w = output_dim(in_dims[1] + l_pad + r_pad, stride, kernel_size);
-    ReLUActivation(1, output_channels, o_h, o_w, O_intermediate, O_intermediate);
+    small::ReLUActivation(output_channels,
+                          o_h, o_w,
+                          O_intermediate, O_intermediate);
 }
 
 #define REDUCTION_C(layer_num) layer_params[layer_num][0]
@@ -131,7 +142,6 @@ inline void conv_block(
 //****************************************************************************
 int main(int argc, char **argv)
 {
-
     if (argc < 4)
     {
         printf("USAGE: torch_pool <Input Height> <Input Width> <Input Channels> <Output Classes>");
@@ -187,8 +197,8 @@ int main(int argc, char **argv)
     GROUPS(layer_num) = 1;
     REDUCTION_HW(layer_num) = 3; // kernel size
     STRIDE(layer_num) = 1;       // stride
-    CALC_PADDING(I_HEIGHT(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), t_pad, b_pad);
-    CALC_PADDING(I_WIDTH(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), l_pad, r_pad);
+    small::calc_padding(I_HEIGHT(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), t_pad, b_pad);
+    small::calc_padding(I_WIDTH(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), l_pad, r_pad);
     SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad)
     layer_num++; // 1
     conv_layer_num++;
@@ -202,8 +212,8 @@ int main(int argc, char **argv)
     GROUPS(layer_num) = GROUP_C(layer_num - 1); // output channels
     REDUCTION_HW(layer_num) = 2;                // kernel size
     STRIDE(layer_num) = 2;                      // stride
-    CALC_PADDING(I_HEIGHT(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), t_pad, b_pad);
-    CALC_PADDING(I_WIDTH(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), l_pad, r_pad);
+    small::calc_padding(I_HEIGHT(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), t_pad, b_pad);
+    small::calc_padding(I_WIDTH(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), l_pad, r_pad);
     SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad)
     layer_num++; // 2
     pool_layer_num++;
@@ -225,8 +235,8 @@ int main(int argc, char **argv)
         GROUPS(layer_num) = 1;
         REDUCTION_HW(layer_num) = 3; // kernel size
         STRIDE(layer_num) = 1;       // stride
-        CALC_PADDING(I_HEIGHT(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), t_pad, b_pad);
-        CALC_PADDING(I_WIDTH(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), l_pad, r_pad);
+        small::calc_padding(I_HEIGHT(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), t_pad, b_pad);
+        small::calc_padding(I_WIDTH(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), l_pad, r_pad);
         SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad)
         layer_num++; // 3
         conv_layer_num++;
@@ -247,8 +257,8 @@ int main(int argc, char **argv)
         }
         else
         {
-            CALC_PADDING(I_HEIGHT(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), t_pad, b_pad);
-            CALC_PADDING(I_WIDTH(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), l_pad, r_pad);
+            small::calc_padding(I_HEIGHT(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), t_pad, b_pad);
+            small::calc_padding(I_WIDTH(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), l_pad, r_pad);
             SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad)
         }
         layer_num++; // 2
@@ -263,8 +273,8 @@ int main(int argc, char **argv)
     GROUPS(layer_num) = 1;       // GROUP_C(layer_num - 1);
     REDUCTION_HW(layer_num) = 3; // I_HEIGHT(layer_num);
     STRIDE(layer_num) = 1;
-    CALC_PADDING(I_HEIGHT(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), t_pad, b_pad);
-    CALC_PADDING(I_WIDTH(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), l_pad, r_pad);
+    small::calc_padding(I_HEIGHT(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), t_pad, b_pad);
+    small::calc_padding(I_WIDTH(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), l_pad, r_pad);
     SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad)
     layer_num++;
     conv_layer_num++;
@@ -277,8 +287,8 @@ int main(int argc, char **argv)
     GROUPS(layer_num) = 1;       // GROUP_C(layer_num - 1);
     REDUCTION_HW(layer_num) = 3; // I_HEIGHT(layer_num);
     STRIDE(layer_num) = 1;
-    CALC_PADDING(I_HEIGHT(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), t_pad, b_pad);
-    CALC_PADDING(I_WIDTH(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), l_pad, r_pad);
+    small::calc_padding(I_HEIGHT(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), t_pad, b_pad);
+    small::calc_padding(I_WIDTH(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), l_pad, r_pad);
     SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad)
     layer_num++;
     conv_layer_num++;

@@ -63,16 +63,23 @@ inline void dscnn_block(
     float *O_intermediate,
     float *O)
 {
+    small::DepthwiseConv2D(kernel_size, stride,
+                           t_pad, b_pad, l_pad, r_pad,
+                           input_channels,
+                           in_dims[0], in_dims[1],
+                           I, F_dw, O_intermediate);
 
-    DepthwiseConv2D(2, kernel_size, stride, t_pad, b_pad, l_pad, r_pad, input_channels, in_dims[0], in_dims[1], I, F_dw, O_intermediate);
-    //uint32_t o_h, o_w;
-    //op_dim(in_dims[0] + t_pad + b_pad, stride, kernel_size, o_h);
-    //op_dim(in_dims[1] + l_pad + r_pad, stride, kernel_size, o_w);
     uint32_t o_h = output_dim(in_dims[0] + t_pad + b_pad, stride, kernel_size);
     uint32_t o_w = output_dim(in_dims[1] + l_pad + r_pad, stride, kernel_size);
-    ReLUActivation(1, input_channels, o_h, o_w, O_intermediate, O_intermediate);
-    Conv2D(0, 1, 1, 0, 0, 0, 0, output_channels, input_channels, o_h, o_w, O_intermediate, F_1x1, O);
-    ReLUActivation(1, output_channels, o_h, o_w, O, O);
+    small::ReLUActivation(input_channels,
+                          o_h, o_w,
+                          O_intermediate, O_intermediate);
+    small::Conv2D(1, 1,
+                  0, 0, 0, 0,
+                  output_channels, input_channels,
+                  o_h, o_w,
+                  O_intermediate, F_1x1, O);
+    small::ReLUActivation(output_channels, o_h, o_w, O, O);
 }
 
 #define REDUCTION_C(layer_num) layer_params[layer_num][0]
@@ -253,15 +260,22 @@ int main(int argc, char **argv)
 
     layer_num = 0;
     // std::cout << "H: " << I_HEIGHT(layer_num) << " W: " << I_WIDTH(layer_num) << " C:" << GROUP_C(0) << std::endl;
-    Conv2D(0, 1, 1, 0, 0, 0, 0, GROUP_C(layer_num), REDUCTION_C(layer_num), 1, 1, input_dc, filter_ptrs[layer_num], inter_0_dc);
-    ReLUActivation(1, 128, 1, 1, inter_0_dc, inter_0_dc);
+    small::Conv2D(1, 1,
+                  0, 0, 0, 0,
+                  GROUP_C(layer_num), REDUCTION_C(layer_num),
+                  1, 1,
+                  input_dc, filter_ptrs[layer_num], inter_0_dc);
+    small::ReLUActivation(128, 1, 1, inter_0_dc, inter_0_dc);
 
     float *out_inter_dc = inter_1_dc;
     for (int cur_layer = 1; cur_layer < layer_num_total; cur_layer++)
     {
-
-        Conv2D(0, 1, 1, 0, 0, 0, 0, GROUP_C(layer_num), REDUCTION_C(layer_num), 1, 1, inter_0_dc, filter_ptrs[layer_num], out_inter_dc);
-        ReLUActivation(1, 128, 1, 1, out_inter_dc, inter_1_dc);
+        small::Conv2D(1, 1,
+                      0, 0, 0, 0,
+                      GROUP_C(layer_num), REDUCTION_C(layer_num),
+                      1, 1,
+                      inter_0_dc, filter_ptrs[layer_num], out_inter_dc);
+        small::ReLUActivation(128, 1, 1, out_inter_dc, inter_1_dc);
         layer_num++;
         inter_1_dc = inter_0_dc;
         inter_0_dc = out_inter_dc;
@@ -281,15 +295,22 @@ int main(int argc, char **argv)
 
         layer_num = 0;
         // std::cout << "H: " << I_HEIGHT(layer_num) << " W: " << I_WIDTH(layer_num) << " C:" << GROUP_C(0) << std::endl;
-        Conv2D(0, 1, 1, 0, 0, 0, 0, GROUP_C(layer_num), REDUCTION_C(layer_num), 1, 1, input_dc, filter_ptrs[layer_num], inter_0_dc);
-        ReLUActivation(1, 128, 1, 1, inter_0_dc, inter_0_dc);
+        small::Conv2D(1, 1,
+                      0, 0, 0, 0,
+                      GROUP_C(layer_num), REDUCTION_C(layer_num),
+                      1, 1,
+                      input_dc, filter_ptrs[layer_num], inter_0_dc);
+        small::ReLUActivation(128, 1, 1, inter_0_dc, inter_0_dc);
 
         float * out_inter_dc = inter_1_dc;
         for (int cur_layer = 1; cur_layer < layer_num_total; cur_layer++)
         {
-
-            Conv2D(0, 1, 1, 0, 0, 0, 0, GROUP_C(layer_num), REDUCTION_C(layer_num), 1, 1, inter_0_dc, filter_ptrs[layer_num], out_inter_dc);
-            ReLUActivation(1, 128, 1, 1, out_inter_dc, inter_1_dc);
+            small::Conv2D(1, 1,
+                          0, 0, 0, 0,
+                          GROUP_C(layer_num), REDUCTION_C(layer_num),
+                          1, 1,
+                          inter_0_dc, filter_ptrs[layer_num], out_inter_dc);
+            small::ReLUActivation(128, 1, 1, out_inter_dc, inter_1_dc);
             layer_num++;
             inter_1_dc = inter_0_dc;
             inter_0_dc = out_inter_dc;

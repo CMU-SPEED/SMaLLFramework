@@ -43,8 +43,7 @@ typedef uint32_t dim_t;
 #include <small/abstract_layer.hpp>
 
 //****************************************************************************
-void check_Conv2D(int layer_num,
-                  int kernel_size, int stride,
+void check_Conv2D(int kernel_size, int stride,
                   uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                   int output_channels, int input_channels,
                   int input_height, int input_width,
@@ -116,8 +115,7 @@ void check_Conv2D(int layer_num,
 }
 
 //****************************************************************************
-void check_PartialConv2D(int layer_num,
-                         int kernel_size, int stride,
+void check_PartialConv2D(int kernel_size, int stride,
                          uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                          int output_channels, int input_channels,
                          int input_height, int input_width,
@@ -188,8 +186,7 @@ void check_PartialConv2D(int layer_num,
 }
 
 //****************************************************************************
-void check_Maxpool2D(int layer_num,
-                     int kernel_size, int stride,
+void check_Maxpool2D(int kernel_size, int stride,
                      uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                      int input_channels,
                      int input_height, int input_width,
@@ -226,8 +223,7 @@ void check_Maxpool2D(int layer_num,
 }
 
 //****************************************************************************
-void check_DepthwiseConv2D(int layer_num,
-                           int kernel_size, int stride,
+void check_DepthwiseConv2D(int kernel_size, int stride,
                            uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                            int input_channels,
                            int input_height, int input_width,
@@ -266,8 +262,7 @@ void check_DepthwiseConv2D(int layer_num,
 }
 
 //****************************************************************************
-void check_ReLUActivation(int layer_num,
-                          int input_channels,
+void check_ReLUActivation(int input_channels,
                           int input_height, int input_width,
                           float const *input_ptr,
                           float       *output_ptr)
@@ -285,8 +280,7 @@ void check_ReLUActivation(int layer_num,
 }
 
 //****************************************************************************
-void check_Dense(int layer_num,
-                 int output_elements, int input_elements,
+void check_Dense(int output_elements, int input_elements,
                  float const *input_ptr,
                  float const *filter_ptr,
                  float       *output_ptr)

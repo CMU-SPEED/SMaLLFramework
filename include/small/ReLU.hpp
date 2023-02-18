@@ -49,10 +49,10 @@ public:
     {
         // assert(input.size() == input_width*input_height);
         // assert(output.size()== input_width*input_height);
-        ReLUActivation(0, m_num_channels,
-                       m_input_height, m_input_width,
-                       input_dc.data(),
-                       output_dc.data());
+        small::ReLUActivation(m_num_channels,
+                              m_input_height, m_input_width,
+                              input_dc.data(),
+                              output_dc.data());
     }
 
 private:

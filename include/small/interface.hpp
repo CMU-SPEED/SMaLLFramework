@@ -34,10 +34,12 @@
 
 #include <stdint.h> // for uint8_t
 
+namespace small
+{
+
 /**
  * Perform the computation for a 2D convolution layer.
  *
- * @param[in]  layer_num       Unused
  * @param[in]  kernel_size     Height and width dimensions of convolution window
  * @param[in]  stride          Number of pixels to skip in height and width
  *                             dimensions of the input between convolutions
@@ -59,8 +61,7 @@
  *                             and stride parameters.
  */
 template <typename ScalarT>
-void Conv2D(int layer_num,
-            int kernel_size, int stride,  /// @todo dim_t?
+void Conv2D(int kernel_size, int stride,  /// @todo dim_t?
             uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
             int output_channels, int input_channels,
             int input_height, int input_width,
@@ -71,7 +72,6 @@ void Conv2D(int layer_num,
 /**
  * Perform the computation for a 2D convolution layer.
  *
- * @param[in]  layer_num       Unused
  * @param[in]  kernel_size_h   Height dimension of convolution window
  * @param[in]  kernel_size_w   Width dimension of convolution window
  * @param[in]  stride          Number of pixels to skip in height and width
@@ -94,8 +94,7 @@ void Conv2D(int layer_num,
  *                             and stride parameters.
  */
 template <typename ScalarT>
-void Conv2D_rect(int layer_num,
-                 int kernel_size_h, int kernel_size_w, int stride,
+void Conv2D_rect(int kernel_size_h, int kernel_size_w, int stride,
                  uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                  int output_channels, int input_channels,
                  int input_height, int input_width,
@@ -106,7 +105,6 @@ void Conv2D_rect(int layer_num,
 /**
  * Perform the computation for a partial Conv2D layer??
  *
- * @param[in]  layer_num       Unused
  * @param[in]  kernel_size     Height and width dimensions of convolution window
  * @param[in]  stride          Number of pixels to skip in height and width
  *                             dimensions of the input between convolutions
@@ -128,8 +126,7 @@ void Conv2D_rect(int layer_num,
  *                             and stride parameters.
  */
 template <typename ScalarT>
-void PartialConv2D(int layer_num,
-                   int kernel_size, int stride,
+void PartialConv2D(int kernel_size, int stride,
                    uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                    int output_channels, int input_channels,
                    int input_height, int input_width,
@@ -140,7 +137,6 @@ void PartialConv2D(int layer_num,
 /**
  * Perform the computation for a depth-wise Conv2D layer.
  *
- * @param[in]  layer_num       Unused
  * @param[in]  kernel_size     Height and width dimensions of convolution window
  * @param[in]  stride          Number of pixels to skip in height and width
  *                             dimensions of the input between convolutions
@@ -161,8 +157,7 @@ void PartialConv2D(int layer_num,
  *                             and stride parameters.
  */
 template <typename ScalarT>
-void DepthwiseConv2D(int layer_num,
-                     int kernel_size, int stride,
+void DepthwiseConv2D(int kernel_size, int stride,
                      uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                      int input_channels,
                      int input_height, int input_width,
@@ -173,7 +168,6 @@ void DepthwiseConv2D(int layer_num,
 /**
  * Perform the computation for a 2D maxpool layer.
  *
- * @param[in]  layer_num       Unused
  * @param[in]  kernel_size     Height and width dimensions of convolution window
  * @param[in]  stride          Number of pixels to skip in height and width
  *                             dimensions of the input between convolutions
@@ -192,8 +186,7 @@ void DepthwiseConv2D(int layer_num,
  *                             and stride parameters.
  */
 template <typename ScalarT>
-void Maxpool2D(int layer_num,
-               int kernel_size, int stride,
+void Maxpool2D(int kernel_size, int stride,
                uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                int input_channels,
                int input_height, int input_width,
@@ -203,7 +196,6 @@ void Maxpool2D(int layer_num,
 /**
  * Perform the computation for a 2D maxpool layer with a rectangular window
  *
- * @param[in]  layer_num       Unused
  * @param[in]  kernel_size_h   Height dimension of convolution window
  * @param[in]  kernel_size_w   Width dimension of convolution window
  * @param[in]  stride          Number of pixels to skip in height and width
@@ -223,8 +215,7 @@ void Maxpool2D(int layer_num,
  *                             and stride parameters.
  */
 template <typename ScalarT>
-void MaxPool2D_rect(int layer_num,
-                    int kernel_size_h, int kernel_size_w, int stride,
+void MaxPool2D_rect(int kernel_size_h, int kernel_size_w, int stride,
                     uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                     int input_channels,
                     int input_height, int input_width,
@@ -234,7 +225,6 @@ void MaxPool2D_rect(int layer_num,
 /**
  * Perform the computation for a rectified linear unit (ReLU) layer.
  *
- * @param[in]  layer_num       Unused
  * @param[in]  input_channels  Number of channels associated with input image
  * @param[in]  input_height    Height of input image in pixels
  * @param[in]  input_width     Width of input image in pixels
@@ -246,8 +236,7 @@ void MaxPool2D_rect(int layer_num,
  *                             and stride parameters.
  */
 template <typename ScalarT>
-void ReLUActivation(int layer_num,
-                    int input_channels,
+void ReLUActivation(int input_channels,
                     int input_height, int input_width,
                     ScalarT const *input_ptr,
                     ScalarT       *output_ptr);
@@ -255,7 +244,6 @@ void ReLUActivation(int layer_num,
 /**
  * Perform the computation for a fully-connected layer?
  *
- * @param[in]  layer_num       Unused
  * @param[in]  output_elements ???
  * @param[in]  input_elements  ???
  * @param[in]  input_ptr       Pointer to input data (how big?)
@@ -263,8 +251,7 @@ void ReLUActivation(int layer_num,
  * @param[out] output_ptr      Pointer to output data (how big?)
  */
 template <typename ScalarT>
-void Dense(int layer_num,
-           int output_elements, int input_elements,
+void Dense(int output_elements, int input_elements,
            ScalarT const *input_ptr,
            ScalarT const *filter_ptr,
            ScalarT       *output_ptr);
@@ -280,7 +267,7 @@ void Dense(int layer_num,
  * and kernel dimension.  Call this twice to compute l,r and t,b pairs.
  *
  */
-inline void CALC_PADDING(uint32_t  I_dim,
+inline void calc_padding(uint32_t  I_dim,
                          uint32_t  K_dim,
                          uint16_t  stride,
                          uint8_t  &padding_front,
@@ -363,20 +350,4 @@ inline uint8_t calc_back_padding(char      padding_type,
     uint32_t padding_front = padding / 2;
     return (padding - padding_front);
 }
-
-#if 0
-#define CALC_PADDING(I_dim, K_dim, stride, padding_front, padding_back) \
-    {                                                                   \
-        uint32_t padding;                                               \
-        if (I_dim % stride == 0)                                        \
-        {                                                               \
-            padding = (K_dim - stride > 0) ? K_dim - stride : 0; \
-        }                                                               \
-        else                                                            \
-        {                                                               \
-            padding = (K_dim - (I_dim % stride) > 0) ? K_dim - (I_dim % stride) : 0; \
-        }                                                               \
-        padding_front = padding / 2;                                    \
-        padding_back = padding - padding_front;                         \
-    }
-#endif
+} // small

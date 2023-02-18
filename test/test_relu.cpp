@@ -67,7 +67,7 @@ void test_relu_single_element(void)
     RealT *output_dc = small_alloc<RealT>(num_input_elts);
     TEST_ASSERT(nullptr != output_dc);
 
-    ReLUActivation(0, C_i, H, W, input_dc, output_dc);
+    small::ReLUActivation(C_i, H, W, input_dc, output_dc);
 
     for (size_t ix = 0; ix < num_input_elts; ++ix)
     {
@@ -104,7 +104,7 @@ void test_relu_single_tile(void)
     RealT *output_dc = small_alloc<RealT>(num_input_elts);
     TEST_ASSERT(nullptr != output_dc);
 
-    ReLUActivation(0, C_i, H, W, input_dc, output_dc);
+    small::ReLUActivation(C_i, H, W, input_dc, output_dc);
 
     for (size_t ix = 0; ix < num_input_elts; ++ix)
     {
@@ -137,7 +137,7 @@ void test_relu_large_tile(void)
     RealT *output_dc = small_alloc<RealT>(num_input_elts);
     TEST_ASSERT(nullptr != output_dc);
 
-    ReLUActivation(0, C_i, H, W, input_dc, output_dc);
+    small::ReLUActivation(C_i, H, W, input_dc, output_dc);
 
     for (size_t ix = 0; ix < num_input_elts; ++ix)
     {
@@ -208,10 +208,9 @@ bool run_relu_config(LayerParams const &params)
     TEST_ASSERT(nullptr != packed_output_dc);
 
     // Compute layer
-    ReLUActivation(0,
-                   params.C_i,
-                   params.H, params.W,
-                   packed_input_dc, packed_output_dc);
+    small::ReLUActivation(params.C_i,
+                          params.H, params.W,
+                          packed_input_dc, packed_output_dc);
 
     // Check answer
     bool passing = true;
