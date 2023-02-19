@@ -30,6 +30,8 @@
 #include <stdio.h>
 #include <omp.h>
 
+#include <small/utils.hpp>
+
 // #define G_b    16
 // #define K_b    1
 // #define F_cb   1
@@ -38,38 +40,10 @@
 
 #define DEBUG 0
 
-/// @ todo only need one type.
-typedef uint32_t index_t;
-typedef uint32_t dim_t;
-
-//****************************************************************************
-// @todo unify op_dim and output_dim [IN PROCESS]
-
-// @todo replace macro with inline/constexpr(?) function
-
-#if 0
-#define op_dim(IN_dim, stride, K_dim, OUT_dim)   \
-    {                                            \
-        int out_elems = (int(IN_dim) - int(K_dim)) / stride + 1;        \
-        OUT_dim = (out_elems > 0 ) ? out_elems : 0;\
-    }
-#endif
-
-
-//****************************************************************************
-inline dim_t output_dim(dim_t input_dim, dim_t stride, dim_t kernel_dim)
+namespace small
 {
-    int out_elems = (int(input_dim) - int(kernel_dim))/ stride + 1;
-    return ((out_elems > 0) ? dim_t(out_elems) : 0U);
-}
-
-inline dim_t output_dim_new(dim_t input_dim, dim_t stride, dim_t kernel_dim)
+namespace detail
 {
-    return ((kernel_dim > input_dim)
-            ? 0U
-            : ((input_dim - kernel_dim)/stride + 1));
-}
-
 
 //****************************************************************************
 ///@todo Make this work?
@@ -820,8 +794,10 @@ void abstract_layer(
     //dim_t H_o_w_pad, W_o_w_pad;
     //op_dim((I_h + pad_top + pad_bottom), _stride, F_h, H_o_w_pad);
     //op_dim((I_w + pad_left + pad_right), _stride, F_w, W_o_w_pad);
-    dim_t H_o_w_pad = output_dim((I_h + pad_top  + pad_bottom), _stride, F_h);
-    dim_t W_o_w_pad = output_dim((I_w + pad_left + pad_right),  _stride, F_w);
+    dim_t H_o_w_pad = small::output_dim((I_h + pad_top  + pad_bottom),
+                                        _stride, F_h);
+    dim_t W_o_w_pad = small::output_dim((I_w + pad_left + pad_right),
+                                        _stride, F_w);
 
     const dim_t O_h_w_pad = H_o_w_pad;
     const dim_t O_w_w_pad = W_o_w_pad;
@@ -836,8 +812,8 @@ void abstract_layer(
     //dim_t H_o = 0, W_o_full = 0;
     //op_dim(I_h - H_full_index, _stride, F_h, H_o);
     //op_dim(I_w - W_full_index, _stride, F_w, W_o_full);
-    dim_t H_o =      output_dim((I_h - H_full_index), _stride, F_h);
-    dim_t W_o_full = output_dim((I_w - W_full_index), _stride, F_w);
+    dim_t H_o =      small::output_dim((I_h - H_full_index), _stride, F_h);
+    dim_t W_o_full = small::output_dim((I_w - W_full_index), _stride, F_w);
 
     // back padding elements
     dim_t H_back_index = H_full_index + _stride * (H_o);
@@ -846,8 +822,10 @@ void abstract_layer(
     //dim_t b_pad_el = 0, r_pad_el = 0;
     //op_dim((I_h + pad_bottom - H_back_index), _stride, F_h, b_pad_el);
     //op_dim((I_w + pad_right - W_back_index), _stride, F_w, r_pad_el);
-    dim_t b_pad_el = output_dim((I_h + pad_bottom - H_back_index), _stride, F_h);
-    dim_t r_pad_el = output_dim((I_w + pad_right  - W_back_index), _stride, F_w);
+    dim_t b_pad_el = small::output_dim((I_h + pad_bottom - H_back_index),
+                                       _stride, F_h);
+    dim_t r_pad_el = small::output_dim((I_w + pad_right  - W_back_index),
+                                       _stride, F_w);
 
     const dim_t O_h = H_o;
     const dim_t O_w = W_o_full;
@@ -1058,3 +1036,6 @@ void abstract_layer(
         }
     }
 }
+
+} // ns detail
+} // ns small

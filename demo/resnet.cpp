@@ -69,7 +69,6 @@ inline void resnet_block(
     float *O_intermediate,
     float *O)
 {
-
     // printf("before: %d, %.2f %.2f %.2f %.2f\n", 0, I[0], I[1], I[2], I[3]);
 
     small::Conv2D(kernel_size, stride,
@@ -78,8 +77,10 @@ inline void resnet_block(
                   in_dims[0], in_dims[1],
                   I, F_conv0, O_intermediate);
 
-    uint32_t o_h = output_dim(in_dims[0] + t_pad_0 + b_pad_0, stride, kernel_size);
-    uint32_t o_w = output_dim(in_dims[1] + l_pad_0 + r_pad_0, stride, kernel_size);
+    uint32_t o_h = small::output_dim(in_dims[0] + t_pad_0 + b_pad_0,
+                                     stride, kernel_size);
+    uint32_t o_w = small::output_dim(in_dims[1] + l_pad_0 + r_pad_0,
+                                     stride, kernel_size);
 
     small::ReLUActivation(input_channels,
                           o_h, o_w,

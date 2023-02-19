@@ -37,6 +37,7 @@
 namespace small
 {
 
+//****************************************************************************
 /**
  * Perform the computation for a 2D convolution layer.
  *
@@ -69,6 +70,7 @@ void Conv2D(int kernel_size, int stride,  /// @todo dim_t?
             ScalarT const *filter_ptr,
             ScalarT       *output_ptr);
 
+//****************************************************************************
 /**
  * Perform the computation for a 2D convolution layer.
  *
@@ -102,6 +104,7 @@ void Conv2D_rect(int kernel_size_h, int kernel_size_w, int stride,
                  ScalarT const *filter_ptr,
                  ScalarT       *output_ptr);
 
+//****************************************************************************
 /**
  * Perform the computation for a partial Conv2D layer??
  *
@@ -193,6 +196,7 @@ void Maxpool2D(int kernel_size, int stride,
                ScalarT const *input_ptr,
                ScalarT       *output_ptr);
 
+//****************************************************************************
 /**
  * Perform the computation for a 2D maxpool layer with a rectangular window
  *
@@ -222,6 +226,7 @@ void MaxPool2D_rect(int kernel_size_h, int kernel_size_w, int stride,
                     ScalarT const *input_ptr,
                     ScalarT       *output_ptr);
 
+//****************************************************************************
 /**
  * Perform the computation for a rectified linear unit (ReLU) layer.
  *
@@ -241,6 +246,7 @@ void ReLUActivation(int input_channels,
                     ScalarT const *input_ptr,
                     ScalarT       *output_ptr);
 
+//****************************************************************************
 /**
  * Perform the computation for a fully-connected layer?
  *
@@ -255,99 +261,4 @@ void Dense(int output_elements, int input_elements,
            ScalarT const *input_ptr,
            ScalarT const *filter_ptr,
            ScalarT       *output_ptr);
-
-//****************************************************************************
-// Useful utility functions
-//****************************************************************************
-
-
-/**
- * When padding mode is 'f', compute front and back padding (for either
- * horizontal or vertical dimension) based on corresponding image dimension
- * and kernel dimension.  Call this twice to compute l,r and t,b pairs.
- *
- */
-inline void calc_padding(uint32_t  I_dim,
-                         uint32_t  K_dim,
-                         uint16_t  stride,
-                         uint8_t  &padding_front,
-                         uint8_t  &padding_back)
-{
-    uint32_t padding;
-    if (I_dim % stride == 0)
-    {
-        padding = (K_dim > stride) ?
-                   K_dim - stride :
-                   0;
-    }
-    else
-    {
-        padding = (K_dim > (I_dim % stride)) ?
-                  (K_dim - (I_dim % stride)) :
-                  0;
-    }
-    padding_front = padding / 2;
-    padding_back  = padding - padding_front;
-}
-
-/**
- * When padding mode is 'f', compute front and back padding (for either
- * horizontal or vertical dimension) based on corresponding image dimension
- * and kernel dimension.  Call this twice to compute l,r and t,b pairs.
- *
- */
-inline uint8_t calc_front_padding(char      padding_type,
-                                  uint32_t  I_dim,
-                                  uint32_t  K_dim,
-                                  uint16_t  stride)
-{
-    if (padding_type == 'v') return 0;
-
-    uint32_t padding;
-    if (I_dim % stride == 0)
-    {
-        padding = (K_dim > stride) ?
-                   K_dim - stride :
-                   0;
-    }
-    else
-    {
-        padding = (K_dim > (I_dim % stride)) ?
-                  (K_dim - (I_dim % stride)) :
-                  0;
-    }
-
-    return padding / 2;
-}
-
-/**
- * When padding mode is 'f', compute front and back padding (for either
- * horizontal or vertical dimension) based on corresponding image dimension
- * and kernel dimension.  Call this twice to compute l,r and t,b pairs.
- *
- */
-inline uint8_t calc_back_padding(char      padding_type,
-                                 uint32_t  I_dim,
-                                 uint32_t  K_dim,
-                                 uint16_t  stride)
-{
-    if (padding_type == 'v') return 0;
-
-    uint32_t padding;
-    if (I_dim % stride == 0)
-    {
-        padding = (K_dim > stride) ?
-                   K_dim - stride :
-                   0;
-    }
-    else
-    {
-        padding = (K_dim > (I_dim % stride)) ?
-                  (K_dim - (I_dim % stride)) :
-                  0;
-    }
-
-    uint32_t padding_front = padding / 2;
-    return (padding - padding_front);
-}
-} // small
+} // ns small

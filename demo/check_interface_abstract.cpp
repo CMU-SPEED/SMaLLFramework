@@ -31,13 +31,14 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-//#include "../config.h"
-#include "check_interface.h"
-#include <params.h>  //platform specific params
+//****************************************************************************
+// Recreate include order of small.h but hijack interface.hpp and intrinsics.h
 
-typedef uint32_t index_t;
-typedef uint32_t dim_t;
-//typedef float operand_t;
+//#include "../config.h"
+#include <small/utils.hpp>
+#include "check_interface.h"
+
+#include <params.h>  //platform specific params
 
 #include <../reference/intrinsics.h>  // hardcode reference intrinsics ICK
 #include <small/abstract_layer.hpp>
@@ -56,7 +57,7 @@ void check_Conv2D(int kernel_size, int stride,
     {
         if (stride == 1)
         {
-            abstract_layer<float, 1, C_ob, 3, W_ob, 1, 1, 'c', 2, 1>(
+            small::detail::abstract_layer<float, 1, C_ob, 3, W_ob, 1, 1, 'c', 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -68,7 +69,7 @@ void check_Conv2D(int kernel_size, int stride,
         else if (stride == 2)
         {
 
-            abstract_layer<float, 1, C_ob, 3, W_ob, 2, 1, 'c', 2, 1>(
+            small::detail::abstract_layer<float, 1, C_ob, 3, W_ob, 2, 1, 'c', 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -86,7 +87,7 @@ void check_Conv2D(int kernel_size, int stride,
     {
         if (stride == 1)
         {
-            abstract_layer<float, 1, C_ob, C_ob, W_ob, 1, 1, 'c', 2, 1>(
+            small::detail::abstract_layer<float, 1, C_ob, C_ob, W_ob, 1, 1, 'c', 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -98,7 +99,7 @@ void check_Conv2D(int kernel_size, int stride,
         else if (stride == 2)
         {
 
-            abstract_layer<float, 1, C_ob, C_ob, W_ob, 2, 1, 'c', 2, 1>(
+            small::detail::abstract_layer<float, 1, C_ob, C_ob, W_ob, 2, 1, 'c', 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -128,7 +129,7 @@ void check_PartialConv2D(int kernel_size, int stride,
     {
         if (stride == 1)
         {
-            abstract_layer<float, 1, C_ob, 3, W_ob, 1, 1, 'c', 2, 0>(
+            small::detail::abstract_layer<float, 1, C_ob, 3, W_ob, 1, 1, 'c', 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -139,7 +140,7 @@ void check_PartialConv2D(int kernel_size, int stride,
         }
         else if (stride == 2)
         {
-            abstract_layer<float, 1, C_ob, 3, W_ob, 2, 1, 'c', 2, 0>(
+            small::detail::abstract_layer<float, 1, C_ob, 3, W_ob, 2, 1, 'c', 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -157,7 +158,7 @@ void check_PartialConv2D(int kernel_size, int stride,
     {
         if (stride == 1)
         {
-            abstract_layer<float, 1, C_ob, C_ob, W_ob, 1, 1, 'c', 2, 0>(
+            small::detail::abstract_layer<float, 1, C_ob, C_ob, W_ob, 1, 1, 'c', 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -169,7 +170,7 @@ void check_PartialConv2D(int kernel_size, int stride,
         else if (stride == 2)
         {
 
-            abstract_layer<float, 1, C_ob, C_ob, W_ob, 2, 1, 'c', 2, 0>(
+            small::detail::abstract_layer<float, 1, C_ob, C_ob, W_ob, 2, 1, 'c', 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -195,7 +196,7 @@ void check_Maxpool2D(int kernel_size, int stride,
 {
     if (stride == 1)
     {
-        abstract_layer<float, C_ob, 1, 1, W_ob, 1, 1, 'p', 1, 1>(
+        small::detail::abstract_layer<float, C_ob, 1, 1, W_ob, 1, 1, 'p', 1, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
@@ -207,7 +208,7 @@ void check_Maxpool2D(int kernel_size, int stride,
     else if (stride == 2)
     {
 
-        abstract_layer<float, C_ob, 1, 1, W_ob, 2, 1, 'p', 1, 1>(
+        small::detail::abstract_layer<float, C_ob, 1, 1, W_ob, 2, 1, 'p', 1, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
@@ -234,7 +235,7 @@ void check_DepthwiseConv2D(int kernel_size, int stride,
     if (stride == 1)
     {
 
-        abstract_layer<float, C_ob, 1, 1, W_ob, 1, 1, 'c', 1, 1>(
+        small::detail::abstract_layer<float, C_ob, 1, 1, W_ob, 1, 1, 'c', 1, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
@@ -246,7 +247,7 @@ void check_DepthwiseConv2D(int kernel_size, int stride,
     else if (stride == 2)
     {
 
-        abstract_layer<float, C_ob, 1, 1, W_ob, 2, 1, 'c', 1, 1>(
+        small::detail::abstract_layer<float, C_ob, 1, 1, W_ob, 2, 1, 'c', 1, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
@@ -268,7 +269,7 @@ void check_ReLUActivation(int input_channels,
                           float       *output_ptr)
 {
     // printf("Cob = %d W_ob = %d\n", C_ob, W_ob);
-    abstract_layer<float, C_ob, 1, 1, W_ob, 1, 1, 'a', 0, 1>(
+    small::detail::abstract_layer<float, C_ob, 1, 1, W_ob, 1, 1, 'a', 0, 1>(
         input_channels, // Output Channel Grouping
         1,              // Output Channels per group
         1,
@@ -285,7 +286,7 @@ void check_Dense(int output_elements, int input_elements,
                  float const *filter_ptr,
                  float       *output_ptr)
 {
-    abstract_layer<float, C_ob, 1, 1, W_ob, 1, 1, 'c', 1, 1>(
+    small::detail::abstract_layer<float, C_ob, 1, 1, W_ob, 1, 1, 'c', 1, 1>(
         output_elements, // Output Channel Grouping
         1,              // Output Channels per group
         1,

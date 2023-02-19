@@ -70,8 +70,10 @@ inline void yolo_block(
                   in_dims[0], in_dims[1],
                   I, F_conv, O_intermediate);
 
-    uint32_t o_h = output_dim(in_dims[0] + t_pad + b_pad, stride, kernel_size);
-    uint32_t o_w = output_dim(in_dims[1] + l_pad + r_pad, stride, kernel_size);
+    uint32_t o_h = small::output_dim(in_dims[0] + t_pad + b_pad,
+                                     stride, kernel_size);
+    uint32_t o_w = small::output_dim(in_dims[1] + l_pad + r_pad,
+                                     stride, kernel_size);
     small::ReLUActivation(output_channels,
                           o_h, o_w,
                           O_intermediate, O_intermediate);
@@ -104,8 +106,10 @@ inline void conv_block(
                   in_dims[0], in_dims[1],
                   I, F_conv, O_intermediate);
 
-    uint32_t o_h = output_dim(in_dims[0] + t_pad + b_pad, stride, kernel_size);
-    uint32_t o_w = output_dim(in_dims[1] + l_pad + r_pad, stride, kernel_size);
+    uint32_t o_h = small::output_dim(in_dims[0] + t_pad + b_pad,
+                                     stride, kernel_size);
+    uint32_t o_w = small::output_dim(in_dims[1] + l_pad + r_pad,
+                                     stride, kernel_size);
     small::ReLUActivation(output_channels,
                           o_h, o_w,
                           O_intermediate, O_intermediate);

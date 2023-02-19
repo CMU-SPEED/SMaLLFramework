@@ -33,6 +33,7 @@
 #define PARALLEL 0
 
 // ================== Public API ====================
+#include <small/utils.hpp>
 #include <small/interface.hpp>           // template declarations only
 
 // ============ Implementation details ==============
