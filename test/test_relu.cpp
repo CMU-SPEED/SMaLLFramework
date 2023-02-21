@@ -27,15 +27,14 @@
 
 
 //****************************************************************************
-float* create_relu_data(size_t num_elements)
+small::Buffer<float> create_relu_data(size_t num_elements)
 {
     using RealT = float;
 
     std::default_random_engine generator;
     std::normal_distribution<RealT> distribution{0.f, 1.f};  // what distribution is Torch::Tensor::randn?
 
-    RealT *input_dc = small_alloc<RealT>(num_elements);
-    TEST_ASSERT(nullptr != input_dc);
+    small::Buffer<RealT> input_dc(num_elements);
 
     for (size_t ix = 0; ix < num_elements; ++ix)
     {
@@ -61,11 +60,10 @@ void test_relu_single_element(void)
     //TEST_CHECK(C_i == C_o);
     size_t const num_input_elts = C_i*H*W;
 
-    RealT *input_dc = create_relu_data(num_input_elts);
+    small::Buffer<RealT> input_dc = create_relu_data(num_input_elts);
 
     //size_t num_output_elts = C_i*H*W;
-    RealT *output_dc = small_alloc<RealT>(num_input_elts);
-    TEST_ASSERT(nullptr != output_dc);
+    small::Buffer<RealT> output_dc(num_input_elts);
 
     small::ReLUActivation(C_i, H, W, input_dc, output_dc);
 
@@ -77,9 +75,6 @@ void test_relu_single_element(void)
         //std::cout << ix << ": ReLU(" << input_dc[ix] << ")-->" << output_dc[ix]
         //          << std::endl;
     }
-
-    free(input_dc);
-    free(output_dc);
 }
 
 //****************************************************************************
@@ -98,11 +93,10 @@ void test_relu_single_tile(void)
     //TEST_CHECK(C_i == C_o);
     size_t const num_input_elts = C_i*H*W;
 
-    RealT *input_dc = create_relu_data(num_input_elts);
+    small::Buffer<RealT> input_dc = create_relu_data(num_input_elts);
 
     //size_t num_output_elts = C_i*H*W;
-    RealT *output_dc = small_alloc<RealT>(num_input_elts);
-    TEST_ASSERT(nullptr != output_dc);
+    small::Buffer<RealT> output_dc(num_input_elts);
 
     small::ReLUActivation(C_i, H, W, input_dc, output_dc);
 
@@ -114,9 +108,6 @@ void test_relu_single_tile(void)
         //std::cout << ix << ": ReLU(" << input_dc[ix] << ")-->" << output_dc[ix]
         //          << std::endl;
     }
-
-    free(input_dc);
-    free(output_dc);
 }
 
 //****************************************************************************
@@ -131,11 +122,10 @@ void test_relu_large_tile(void)
     //TEST_CHECK(C_i == C_o);
     size_t const num_input_elts = C_i*H*W;
 
-    RealT *input_dc = create_relu_data(num_input_elts);
+    small::Buffer<RealT> input_dc = create_relu_data(num_input_elts);
 
     //size_t num_output_elts = C_i*H*W;
-    RealT *output_dc = small_alloc<RealT>(num_input_elts);
-    TEST_ASSERT(nullptr != output_dc);
+    small::Buffer<RealT> output_dc(num_input_elts);
 
     small::ReLUActivation(C_i, H, W, input_dc, output_dc);
 
@@ -147,9 +137,6 @@ void test_relu_large_tile(void)
         //std::cout << ix << ": ReLU(" << input_dc[ix] << ")-->" << output_dc[ix]
         //          << std::endl;
     }
-
-    free(input_dc);
-    free(output_dc);
 }
 
 //****************************************************************************
@@ -166,19 +153,16 @@ bool run_relu_config(LayerParams const &params)
                      params.C_i*params.H*params.W);
     std::cout << "\nReLU: input file = " << in_fname << std::endl;
 
-    RealT *input_dc = nullptr;
-    uint32_t num_input_elts = read_float_inputs(in_fname, &input_dc);
-    TEST_ASSERT(num_input_elts > 0);
-    TEST_ASSERT(nullptr != input_dc);
-    TEST_ASSERT(num_input_elts == params.C_i*params.H*params.W);
+    small::Buffer<RealT> input_dc = read_float_inputs(in_fname);
+    TEST_ASSERT(input_dc.size() == params.C_i*params.H*params.W);
 
     // Pack input data
-    RealT *packed_input_dc = small_alloc<RealT>(num_input_elts);
-    small::convert_tensor2dc<float>(input_dc,
-                                    small::INPUT,
-                                    1U, params.C_i, params.H, params.W,
-                                    C_ib, C_ob,
-                                    packed_input_dc);
+    small::Buffer<RealT> packed_input_dc(input_dc.size());
+    small::pack_buffer(input_dc,
+                       small::INPUT,
+                       1U, params.C_i, params.H, params.W,
+                       C_ib, C_ob,
+                       packed_input_dc);
 
     // Read output regression data
     size_t Ho(compute_output_dim(params.H, params.k, params.s, params.p));
@@ -189,23 +173,20 @@ bool run_relu_config(LayerParams const &params)
                      params,
                      params.C_i*Ho*Wo);
     std::cout << "ReLU: output file= " << out_fname << std::endl;
-    RealT *output_dc_answers = nullptr;
-    uint32_t num_output_elts = read_float_inputs(out_fname, &output_dc_answers);
-    TEST_ASSERT(num_output_elts > 0);
-    TEST_ASSERT(nullptr != output_dc_answers);
-    TEST_ASSERT(num_output_elts == params.C_i*Ho*Wo);
+
+    small::Buffer<RealT> output_dc_answers = read_float_inputs(out_fname);
+    TEST_ASSERT(output_dc_answers.size() == params.C_i*Ho*Wo);
 
     // Pack output answer data
-    RealT *packed_output_dc_answers = small_alloc<RealT>(num_output_elts);
-    small::convert_tensor2dc<float>(output_dc_answers,
-                                    small::OUTPUT,
-                                    1U, params.C_i, Ho, Wo,
-                                    C_ib, C_ob,
-                                    packed_output_dc_answers);
+    small::Buffer<RealT> packed_output_dc_answers(output_dc_answers.size());
+    small::pack_buffer(output_dc_answers,
+                       small::OUTPUT,
+                       1U, params.C_i, Ho, Wo,
+                       C_ib, C_ob,
+                       packed_output_dc_answers);
 
     // Allocate output buffer
-    RealT *packed_output_dc = small_alloc<RealT>(num_output_elts);
-    TEST_ASSERT(nullptr != packed_output_dc);
+    small::Buffer<RealT> packed_output_dc(output_dc_answers.size());
 
     // Compute layer
     small::ReLUActivation(params.C_i,
@@ -214,7 +195,7 @@ bool run_relu_config(LayerParams const &params)
 
     // Check answer
     bool passing = true;
-    for (size_t ix = 0; ix < num_output_elts; ++ix)
+    for (size_t ix = 0; ix < packed_output_dc.size(); ++ix)
     {
         if (packed_output_dc[ix] != packed_output_dc_answers[ix])
         {
@@ -227,12 +208,6 @@ bool run_relu_config(LayerParams const &params)
                       << std::endl;
         }
     }
-
-    free(input_dc);
-    free(packed_input_dc);
-    free(packed_output_dc);
-    free(output_dc_answers);
-    free(packed_output_dc_answers);
 
     if (passing) std::cerr << "Test PASSED\n";
     return passing;
@@ -244,7 +219,6 @@ bool run_relu_config(LayerParams const &params)
 template <typename RealT>
 bool run_relu_layer_config(LayerParams const &params)
 {
-#if 1
     /// @todo add smart pointer to buffers
     // Read input data
     std::string in_fname =
@@ -256,20 +230,18 @@ bool run_relu_layer_config(LayerParams const &params)
     small::ReLU<RealT> relu(params.H, params.W, params.C_i);
 
     // Allocate the input buffer
-    small::Buffer<RealT> input_dc(relu.input_buffer_size());
+    small::Buffer<RealT> input_dc = read_float_inputs(in_fname);
 
-    uint32_t num_input_elts = read_float_inputs(in_fname, input_dc);
-    TEST_ASSERT(num_input_elts > 0);
-    TEST_ASSERT(num_input_elts == params.C_i*params.H*params.W);
-    TEST_ASSERT(num_input_elts == input_dc.size());
+    TEST_ASSERT(input_dc.size() == relu.input_buffer_size());
+    TEST_ASSERT(params.C_i*params.H*params.W == relu.input_buffer_size());
 
     // Pack input data
-    small::Buffer<RealT> packed_input_dc(relu.input_buffer_size());
-    small::convert_tensor2dc<float>(input_dc,
-                                    small::INPUT,
-                                    1U, params.C_i, params.H, params.W,
-                                    C_ib, C_ob,
-                                    packed_input_dc);
+    small::Buffer<RealT> packed_input_dc(input_dc.size());
+    small::pack_buffer(input_dc,
+                       small::INPUT,
+                       1U, params.C_i, params.H, params.W,
+                       C_ib, C_ob,
+                       packed_input_dc);
 
     // Read output regression data
     size_t Ho(compute_output_dim(params.H, params.k, params.s, params.p));
@@ -281,19 +253,17 @@ bool run_relu_layer_config(LayerParams const &params)
                      params.C_i*Ho*Wo);
     std::cout << "ReLU: output file= " << out_fname << std::endl;
 
-    small::Buffer<RealT> output_dc_answers(relu.output_buffer_size());
-    uint32_t num_output_elts = read_float_inputs(out_fname, output_dc_answers);
-    TEST_ASSERT(num_output_elts > 0);
-    TEST_ASSERT(num_output_elts == params.C_i*Ho*Wo);
-    TEST_ASSERT(num_output_elts == output_dc_answers.size());
+    small::Buffer<RealT> output_dc_answers = read_float_inputs(out_fname);
+    TEST_ASSERT(relu.output_buffer_size() == params.C_i*Ho*Wo);
+    TEST_ASSERT(relu.output_buffer_size() == output_dc_answers.size());
 
     // Pack output answer data
     small::Buffer<RealT> packed_output_dc_answers(relu.output_buffer_size());
-    small::convert_tensor2dc<float>(output_dc_answers,
-                                    small::OUTPUT,
-                                    1U, params.C_i, Ho, Wo,
-                                    C_ib, C_ob,
-                                    packed_output_dc_answers);
+    small::pack_buffer(output_dc_answers,
+                       small::OUTPUT,
+                       1U, params.C_i, Ho, Wo,
+                       C_ib, C_ob,
+                       packed_output_dc_answers);
 
     // Allocate output buffer
     small::Buffer<RealT> packed_output_dc(relu.output_buffer_size());
@@ -303,7 +273,7 @@ bool run_relu_layer_config(LayerParams const &params)
 
     // Check answer
     bool passing = true;
-    for (size_t ix = 0; ix < num_output_elts; ++ix)
+    for (size_t ix = 0; ix < relu.output_buffer_size(); ++ix)
     {
         if (packed_output_dc[ix] != packed_output_dc_answers[ix])
         {
@@ -318,7 +288,6 @@ bool run_relu_layer_config(LayerParams const &params)
     }
 
     return passing;
-#endif
 }
 
 //****************************************************************************

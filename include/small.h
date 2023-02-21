@@ -30,17 +30,19 @@
 #define SMALL_MINOR_VERSION  0
 #define SMALL_SUB_VERSON     0
 
+/// @todo remove the following (add init() to set threading)
 #define PARALLEL 0
-
-// ================== Public API ====================
-#include <small/utils.hpp>
-#include <small/interface.hpp>           // template declarations only
 
 // ============ Implementation details ==============
 // Platform specific includes.
 // Use -I compile option to point to correct platform
 #include <params.h>
 #include <intrinsics.h>
+
+// ================== Public API ====================
+#include <small/utils.hpp>
+#include <small/buffers.hpp>      // Buffer, Tensor classes, utils
+#include <small/interface.hpp>    // template declarations only
 
 /// This must come after platform-specific includes.
 #include <small/abstract_layer.hpp>

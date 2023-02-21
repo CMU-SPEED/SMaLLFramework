@@ -40,20 +40,7 @@ typedef uint32_t dim_t;
 //****************************************************************************
 
 //****************************************************************************
-// @todo unify op_dim and output_dim [IN PROCESS]
-
-// @todo replace macro with inline/constexpr(?) function
-
-#if 0
-#define op_dim(IN_dim, stride, K_dim, OUT_dim)   \
-    {                                            \
-        int out_elems = (int(IN_dim) - int(K_dim)) / stride + 1;        \
-        OUT_dim = (out_elems > 0 ) ? out_elems : 0;\
-    }
-#endif
-
-
-//****************************************************************************
+// @todo make constexpr(?) function
 inline dim_t output_dim(dim_t input_dim, dim_t stride, dim_t kernel_dim)
 {
     int out_elems = (int(input_dim) - int(kernel_dim))/ stride + 1;
@@ -131,4 +118,6 @@ inline uint8_t calc_back_padding(char      padding_type,
     calc_padding(I_dim, K_dim, stride, front_padding, back_padding);
     return back_padding;
 }
+
+
 } // small

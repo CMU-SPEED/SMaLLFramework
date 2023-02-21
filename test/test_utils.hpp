@@ -128,8 +128,7 @@ int read_float_inputs(std::string const &input_data_fname,
 ///
 /// @retval The number of elements stored in in_buf (0 if no allocation occured)
 ///
-uint32_t read_float_inputs(std::string       const &input_data_fname,
-                           small::Buffer<float>    &in_buf)
+small::Buffer<float> read_float_inputs(std::string const &input_data_fname)
 {
     using RealT = float;
 
@@ -139,7 +138,7 @@ uint32_t read_float_inputs(std::string       const &input_data_fname,
     {
         std::cerr << "ERROR: failed to open file: " << input_data_fname
                   << std::endl;
-        return 0;
+        throw std::invalid_argument("read_float_inputs ERROR: failed to open file.");
     }
 
     // TODO: check if there are endian issues for cross platform
@@ -150,19 +149,13 @@ uint32_t read_float_inputs(std::string       const &input_data_fname,
     {
         std::cerr << "ERROR: invalid number of elements in "
                   << input_data_fname << std::endl;
-        return 0;
+        throw std::invalid_argument("read_float_inputs ERROR: invalid num elements.");
     }
 
-    if (num_elts > in_buf.size())
-    {
-        std::cerr << "ERROR: buffer to small, " << in_buf.size()
-                  << " < " << num_elts << std::endl;
-        return 0;
-    }
-
+    small::Buffer<float> in_buf(num_elts);
     ifs.read(reinterpret_cast<char*>(in_buf.data()), num_elts*sizeof(RealT));
 
-    return num_elts;
+    return in_buf;
 }
 
 //****************************************************************************

@@ -52,23 +52,23 @@ namespace small
  * @param[in]  input_channels  Number of channels associated with input image
  * @param[in]  input_height    Height of input image in pixels
  * @param[in]  input_width     Width of input image in pixels
- * @param[in]  input_ptr       Pointer to input (image x channels) data
+ * @param[in]  input_buf       Buffer of input (image x channels) data
  *                             size = Ci x iH x iW
- * @param[in]  filter_ptr      Pointer to convolution filter weights
+ * @param[in]  filter_buf      Buffer of convolution filter weights
  *                             size = Ci x kernel x kernel x Co
- * @param[out] output_ptr      Pointer to output data computed for layer
+ * @param[out] output_buf      Buffer of output data computed for layer
  *                             size = oH x oW x Co where the output image size
  *                             depends on input image size, kernel, padding
  *                             and stride parameters.
  */
-template <typename ScalarT>
+template <class ScalarT>
 void Conv2D(int kernel_size, int stride,  /// @todo dim_t?
             uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
             int output_channels, int input_channels,
             int input_height, int input_width,
-            ScalarT const *input_ptr,
-            ScalarT const *filter_ptr,
-            ScalarT       *output_ptr);
+            Buffer<ScalarT> const &input_buf,
+            Buffer<ScalarT> const &filter_buf,
+            Buffer<ScalarT>       &output_buf);
 
 //****************************************************************************
 /**
@@ -86,23 +86,23 @@ void Conv2D(int kernel_size, int stride,  /// @todo dim_t?
  * @param[in]  input_channels  Number of channels associated with input image
  * @param[in]  input_height    Height of input image in pixels
  * @param[in]  input_width     Width of input image in pixels
- * @param[in]  input_ptr       Pointer to input (image x channels) data
+ * @param[in]  input_buf       Buffer of input (image x channels) data
  *                             size = Ci x iH x iW
- * @param[in]  filter_ptr      Pointer to convolution filter weights
+ * @param[in]  filter_buf      Buffer of convolution filter weights
  *                             size = Ci x kernel x kernel x Co
- * @param[out] output_ptr      Pointer to output data computed for layer
+ * @param[out] output_buf      Buffer of output data computed for layer
  *                             size = oH x oW x Co where the output image size
  *                             depends on input image size, kernel, padding
  *                             and stride parameters.
  */
-template <typename ScalarT>
+template <class ScalarT>
 void Conv2D_rect(int kernel_size_h, int kernel_size_w, int stride,
                  uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                  int output_channels, int input_channels,
                  int input_height, int input_width,
-                 ScalarT const *input_ptr,
-                 ScalarT const *filter_ptr,
-                 ScalarT       *output_ptr);
+                 Buffer<ScalarT> const &input_buf,
+                 Buffer<ScalarT> const &filter_buf,
+                 Buffer<ScalarT>       &output_buf);
 
 //****************************************************************************
 /**
@@ -119,23 +119,23 @@ void Conv2D_rect(int kernel_size_h, int kernel_size_w, int stride,
  * @param[in]  input_channels  Number of channels associated with input image
  * @param[in]  input_height    Height of input image in pixels
  * @param[in]  input_width     Width of input image in pixels
- * @param[in]  input_ptr       Pointer to input (image x channels) data
+ * @param[in]  input_buf       Buffer of input (image x channels) data
  *                             size = Ci x iH x iW
- * @param[in]  filter_ptr      Pointer to convolution filter weights
+ * @param[in]  filter_buf      Buffer of convolution filter weights
  *                             size = Ci x kernel x kernel x Co
- * @param[out] output_ptr      Pointer to output data computed for layer
+ * @param[out] output_buf      Buffer of output data computed for layer
  *                             size = oH x oW x Co where the output image size
  *                             depends on input image size, kernel, padding
  *                             and stride parameters.
  */
-template <typename ScalarT>
+template <class ScalarT>
 void PartialConv2D(int kernel_size, int stride,
                    uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                    int output_channels, int input_channels,
                    int input_height, int input_width,
-                   ScalarT const *input_ptr,
-                   ScalarT const *filter_ptr,
-                   ScalarT       *output_ptr);
+                   Buffer<ScalarT> const &input_buf,
+                   Buffer<ScalarT> const &filter_buf,
+                   Buffer<ScalarT>       &output_buf);
 
 /**
  * Perform the computation for a depth-wise Conv2D layer.
@@ -150,23 +150,23 @@ void PartialConv2D(int kernel_size, int stride,
  * @param[in]  input_channels  Number of channels associated with input image
  * @param[in]  input_height    Height of input image in pixels
  * @param[in]  input_width     Width of input image in pixels
- * @param[in]  input_ptr       Pointer to input (image x channels) data
+ * @param[in]  input_buf       Buffer of input (image x channels) data
  *                             size = Ci x iH x iW
- * @param[in]  filter_ptr      Pointer to convolution filter weights
+ * @param[in]  filter_buf      Buffer of convolution filter weights
  *                             size = Ci x kernel x kernel x Co
- * @param[out] output_ptr      Pointer to output data computed for layer
+ * @param[out] output_buf      Buffer of output data computed for layer
  *                             size = oH x oW x Co where the output image size
  *                             depends on input image size, kernel, padding
  *                             and stride parameters.
  */
-template <typename ScalarT>
+template <class ScalarT>
 void DepthwiseConv2D(int kernel_size, int stride,
                      uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                      int input_channels,
                      int input_height, int input_width,
-                     ScalarT const *input_ptr,
-                     ScalarT const *filter_ptr,
-                     ScalarT       *output_ptr);
+                     Buffer<ScalarT> const &input_buf,
+                     Buffer<ScalarT> const &filter_buf,
+                     Buffer<ScalarT>       &output_buf);
 
 /**
  * Perform the computation for a 2D maxpool layer.
@@ -181,20 +181,20 @@ void DepthwiseConv2D(int kernel_size, int stride,
  * @param[in]  input_channels  Number of channels associated with input image
  * @param[in]  input_height    Height of input image in pixels
  * @param[in]  input_width     Width of input image in pixels
- * @param[in]  input_ptr       Pointer to input (image x channels) data
+ * @param[in]  input_buf       Buffer of input (image x channels) data
  *                             size = Ci x iH x iW
- * @param[out] output_ptr      Pointer to output data computed for layer
+ * @param[out] output_buf      Buffer of output data computed for layer
  *                             size = oH x oW x Co where the output image size
  *                             depends on input image size, kernel, padding
  *                             and stride parameters.
  */
-template <typename ScalarT>
+template <class ScalarT>
 void Maxpool2D(int kernel_size, int stride,
                uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                int input_channels,
                int input_height, int input_width,
-               ScalarT const *input_ptr,
-               ScalarT       *output_ptr);
+               Buffer<ScalarT> const &input_buf,
+               Buffer<ScalarT>       &output_buf);
 
 //****************************************************************************
 /**
@@ -211,20 +211,20 @@ void Maxpool2D(int kernel_size, int stride,
  * @param[in]  input_channels  Number of channels associated with input image
  * @param[in]  input_height    Height of input image in pixels
  * @param[in]  input_width     Width of input image in pixels
- * @param[in]  input_ptr       Pointer to input (image x channels) data
+ * @param[in]  input_buf       Buffer of input (image x channels) data
  *                             size = Ci x iH x iW
- * @param[out] output_ptr      Pointer to output data computed for layer
+ * @param[out] output_buf      Buffer of output data computed for layer
  *                             size = oH x oW x Co where the output image size
  *                             depends on input image size, kernel, padding
  *                             and stride parameters.
  */
-template <typename ScalarT>
+template <class ScalarT>
 void MaxPool2D_rect(int kernel_size_h, int kernel_size_w, int stride,
                     uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                     int input_channels,
                     int input_height, int input_width,
-                    ScalarT const *input_ptr,
-                    ScalarT       *output_ptr);
+                    Buffer<ScalarT> const &input_buf,
+                    Buffer<ScalarT>       &output_buf);
 
 //****************************************************************************
 /**
@@ -233,18 +233,18 @@ void MaxPool2D_rect(int kernel_size_h, int kernel_size_w, int stride,
  * @param[in]  input_channels  Number of channels associated with input image
  * @param[in]  input_height    Height of input image in pixels
  * @param[in]  input_width     Width of input image in pixels
- * @param[in]  input_ptr       Pointer to input (image x channels) data
+ * @param[in]  input_buf       Buffer of input (image x channels) data
  *                             size = Ci x iH x iW
- * @param[out] output_ptr      Pointer to output data computed for layer
+ * @param[out] output_buf      Buffer of output data computed for layer
  *                             size = oH x oW x Co where the output image size
  *                             depends on input image size, kernel, padding
  *                             and stride parameters.
  */
-template <typename ScalarT>
+template <class ScalarT>
 void ReLUActivation(int input_channels,
                     int input_height, int input_width,
-                    ScalarT const *input_ptr,
-                    ScalarT       *output_ptr);
+                    Buffer<ScalarT> const &input_buf,
+                    Buffer<ScalarT>       &output_buf);
 
 //****************************************************************************
 /**
@@ -252,13 +252,13 @@ void ReLUActivation(int input_channels,
  *
  * @param[in]  output_elements ???
  * @param[in]  input_elements  ???
- * @param[in]  input_ptr       Pointer to input data (how big?)
- * @param[in]  filter_ptr      Pointer to convolution filter weights (how big?)
- * @param[out] output_ptr      Pointer to output data (how big?)
+ * @param[in]  input_buf       Buffer of input data (how big?)
+ * @param[in]  filter_buf      Buffer of convolution filter weights (how big?)
+ * @param[out] output_buf      Buffer of output data (how big?)
  */
-template <typename ScalarT>
+template <class ScalarT>
 void Dense(int output_elements, int input_elements,
-           ScalarT const *input_ptr,
-           ScalarT const *filter_ptr,
-           ScalarT       *output_ptr);
+           Buffer<ScalarT> const &input_buf,
+           Buffer<ScalarT> const &filter_buf,
+           Buffer<ScalarT>       &output_buf);
 } // ns small

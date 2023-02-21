@@ -59,10 +59,10 @@ inline void yolo_block(
     uint8_t b_pad_pool,
     uint8_t l_pad_pool,
     uint8_t r_pad_pool,
-    float *I,
-    float *F_conv,
-    float *O_intermediate,
-    float *O)
+    small::Buffer<float> const &I,
+    small::Buffer<float> const &F_conv,
+    small::Buffer<float>       &O_intermediate,
+    small::Buffer<float>       &O)
 {
     small::Conv2D(kernel_size, stride,
                   t_pad, b_pad, l_pad, r_pad,
@@ -95,10 +95,10 @@ inline void conv_block(
     uint8_t b_pad,
     uint8_t l_pad,
     uint8_t r_pad,
-    float *I,
-    float *F_conv,
-    float *O_intermediate,
-    float *O)
+    small::Buffer<float> const &I,
+    small::Buffer<float> const &F_conv,
+    small::Buffer<float>       &O_intermediate,
+    small::Buffer<float>       &O)
 {
     small::Conv2D(kernel_size, stride,
                   t_pad, b_pad, l_pad, r_pad,
@@ -175,7 +175,8 @@ int main(int argc, char **argv)
     //int stride = 1;
     // Create and Initialize Input tensors
     uint32_t input_dimensions = C_i * N * M;
-    float *input_dc = alloc(input_dimensions);
+    small::Buffer<float> input_dc(input_dimensions);
+    //float *input_dc = alloc(input_dimensions);
     init(input_dc, input_dimensions);
     // std::cout<<a<<std::endl;
 
@@ -338,16 +339,19 @@ int main(int argc, char **argv)
     //_____________________setup______________________________________________
 
     //  Copy layer weights to temporaries
-    std::vector<float *> filter_ptrs;
+    std::vector<small::Buffer<float> *> filter_buf_ptrs;
 
     for (int l = 0; l < conv_layer_num; l++)
     {
-        float *filter_ptr;
+        //float *filter_ptr;
         // weights = layers[l]->weight; // conv_1x1->weight;
-        uint32_t filter_dimensions = REDUCTION_HW(l) * REDUCTION_HW(l) * REDUCTION_C(l) * GROUP_C(l) * GROUPS(l);
-        filter_ptr = alloc(filter_dimensions);
-        init(filter_ptr, filter_dimensions);
-        filter_ptrs.push_back(filter_ptr);
+        uint32_t filter_dimensions = REDUCTION_HW(l) * REDUCTION_HW(l) *
+            REDUCTION_C(l) * GROUP_C(l) * GROUPS(l);
+        small::Buffer<float> *filter_buf_ptr =
+            new small::Buffer<float>(filter_dimensions);
+        //filter_ptr = alloc(filter_dimensions);
+        init(*filter_buf_ptr, filter_dimensions);
+        filter_buf_ptrs.push_back(filter_buf_ptr);
     }
     printf("set up weights\n");
     //_______________________________________inference_________________________
@@ -355,12 +359,15 @@ int main(int argc, char **argv)
 
     // allocate space for intermediate outputs (use the max sizes calculated previously)
     printf("Size of intermediate buffers: %d %d\n", max_numel_inter_0, max_numel_inter_1);
-    float *inter_0_dc = alloc(max_numel_inter_0);
-    float *inter_1_dc = alloc(max_numel_inter_1);
+    small::Buffer<float> inter_0_dc(max_numel_inter_0);
+    small::Buffer<float> inter_1_dc(max_numel_inter_1);
+    //float *inter_0_dc = alloc(max_numel_inter_0);
+    //float *inter_1_dc = alloc(max_numel_inter_1);
 
     //uint32_t inter_h, inter_w;
     layer_num = 0;
-    yolo_block(intermediate_dims[layer_num], REDUCTION_C(layer_num), // Input dimensions
+    yolo_block(intermediate_dims[layer_num],
+               REDUCTION_C(layer_num), // Input dimensions
                REDUCTION_HW(layer_num),
                STRIDE(layer_num), // Params for the  convolution
                GROUP_C(layer_num),
@@ -369,7 +376,7 @@ int main(int argc, char **argv)
                STRIDE(layer_num + 1), // Params for the pooling
                PADDING(layer_num + 1),
                input_dc,
-               filter_ptrs[layer_num],
+               *filter_buf_ptrs[layer_num],
                inter_1_dc,
                inter_0_dc);
 
@@ -378,7 +385,8 @@ int main(int argc, char **argv)
     for (uint32_t ds_layer = 1U; ds_layer < ds_blocks; ds_layer++)
     {
         printf("layer %d\n", layer_num);
-        yolo_block(intermediate_dims[layer_num], REDUCTION_C(layer_num), // Input dimensions
+        yolo_block(intermediate_dims[layer_num],
+                   REDUCTION_C(layer_num), // Input dimensions
                    REDUCTION_HW(layer_num),
                    STRIDE(layer_num), // Params for the convolution
                    GROUP_C(layer_num),
@@ -387,12 +395,11 @@ int main(int argc, char **argv)
                    STRIDE(layer_num + 1), // Params for the pooling
                    PADDING(layer_num + 1),
                    inter_0_dc,
-                   filter_ptrs[ds_layer],
+                   *filter_buf_ptrs[ds_layer],
                    inter_1_dc,
                    inter_0_dc);
 
         layer_num += 2;
-
     }
 
     // //Epilogue layers with no pooling
@@ -405,30 +412,31 @@ int main(int argc, char **argv)
                    GROUP_C(layer_num),
                    PADDING(layer_num),
                    inter_0_dc,
-                   filter_ptrs[ds_blocks + epilogue_layer],
+                   *filter_buf_ptrs[ds_blocks + epilogue_layer],
                    inter_1_dc,
                    inter_0_dc);
         layer_num++;
 
-        float *tmp = inter_0_dc;
-        inter_0_dc = inter_1_dc;
-        inter_1_dc = tmp;
+        inter_0_dc.swap(inter_1_dc);
+        //float *tmp = inter_0_dc;
+        //inter_0_dc = inter_1_dc;
+        //inter_1_dc = tmp;
     }
 
     //float *output_dc = inter_0_dc;
 
-    //_______________________________________end inference_________________________
+    //__________________________________end inference_________________________
 
     // Free allocated weight buffers
 
-    for (size_t l = 0; l < filter_ptrs.size(); l++)
+    for (size_t l = 0; l < filter_buf_ptrs.size(); l++)
     {
-        free(filter_ptrs[l]);
+        delete filter_buf_ptrs[l];
     }
 
-    //====================================End SMaLL===================================
+    //===============================End SMaLL================================
 
-    //____________________________Correctness check_________________________________
+    //___________________________Correctness check____________________________
     // bool check = 1;
     // std::vector<uint32_t>
     //     inter_0_dims, inter_1_dims;
@@ -452,7 +460,7 @@ int main(int argc, char **argv)
     // assert(check == 1);
 
     // Free input and output buffers
-    free(input_dc);
-    free(inter_0_dc);
-    free(inter_1_dc);
+    //free(input_dc);
+    //free(inter_0_dc);
+    //free(inter_1_dc);
 }

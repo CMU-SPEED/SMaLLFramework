@@ -57,11 +57,11 @@ inline void dscnn_block(
     uint8_t b_pad,
     uint8_t l_pad,
     uint8_t r_pad,
-    float *I,
-    float *F_dw,
-    float *F_1x1,
-    float *O_intermediate,
-    float *O)
+    small::Buffer<float> const &I,
+    small::Buffer<float> const &F_dw,
+    small::Buffer<float> const &F_1x1,
+    small::Buffer<float>       &O_intermediate,
+    small::Buffer<float>       &O)
 {
     small::DepthwiseConv2D(kernel_size, stride,
                            t_pad, b_pad, l_pad, r_pad,
@@ -157,7 +157,8 @@ int main(int argc, char **argv)
 
     // Create input tensor
     uint32_t input_dimensions = C_i * N * M;
-    float *input_dc = alloc(input_dimensions);
+    small::Buffer<float> input_dc(input_dimensions);
+    //float *input_dc = alloc(input_dimensions);
     init(input_dc, input_dimensions);
 
     // std::vector<std::vector<uint64_t>> implementations;
@@ -235,22 +236,26 @@ int main(int argc, char **argv)
     // std::vector<uint32_t> filter_dimensions;
 
 
-    std::vector<float *> filter_ptrs;
+    std::vector<small::Buffer<float> *> filter_buf_ptrs;
 
     // torch::Tensor weights;
     for (int l = 0; l < layer_num_total; l++)
     {
-        float *filter_ptr;
+        //float *filter_ptr;
         // weights = layers[l]->weight; // conv_1x1->weight;
         uint32_t filter_dimensions = REDUCTION_HW(l) * REDUCTION_HW(l) * REDUCTION_C(l) * GROUP_C(l) * GROUPS(l);
-        filter_ptr = alloc(filter_dimensions);
-            init(filter_ptr, filter_dimensions);
-        filter_ptrs.push_back(filter_ptr);
+        small::Buffer<float> *filter_buf_ptr =
+            new small::Buffer<float>(filter_dimensions);
+        init(*filter_buf_ptr, filter_dimensions);
+        filter_buf_ptrs.push_back(filter_buf_ptr);
     }
 
-    float *inter_0_dc = alloc(max_numel_inter_0);
-    float *inter_1_dc = alloc(max_numel_inter_1);
-    float *output_dc = alloc(num_classes);
+    small::Buffer<float> inter_0_dc(max_numel_inter_0);
+    small::Buffer<float> inter_1_dc(max_numel_inter_1);
+    small::Buffer<float> output_dc(num_classes);
+    // float *inter_0_dc = alloc(max_numel_inter_0);
+    // float *inter_1_dc = alloc(max_numel_inter_1);
+    // float *output_dc = alloc(num_classes);
 
     //uint32_t inter_h, inter_w;
 
@@ -266,24 +271,31 @@ int main(int argc, char **argv)
                   0, 0, 0, 0,
                   GROUP_C(layer_num), REDUCTION_C(layer_num),
                   1, 1,
-                  input_dc, filter_ptrs[layer_num], inter_0_dc);
+                  input_dc, *filter_buf_ptrs[layer_num], inter_0_dc);
     small::ReLUActivation(128, 1, 1, inter_0_dc, inter_0_dc);
 
-    float *out_inter_dc = inter_1_dc;
+    //float *out_inter_dc = inter_1_dc;
     for (int cur_layer = 1; cur_layer < layer_num_total; cur_layer++)
     {
         small::Conv2D(1, 1,
                       0, 0, 0, 0,
                       GROUP_C(layer_num), REDUCTION_C(layer_num),
                       1, 1,
-                      inter_0_dc, filter_ptrs[layer_num], out_inter_dc);
-        small::ReLUActivation(128, 1, 1, out_inter_dc, inter_1_dc);
+                      inter_0_dc,
+                      *filter_buf_ptrs[layer_num],
+                      //out_inter_dc);
+                      inter_1_dc);
+        small::ReLUActivation(128, 1, 1,
+                              inter_1_dc, //out_inter_dc,
+                              inter_1_dc);
         layer_num++;
-        inter_1_dc = inter_0_dc;
-        inter_0_dc = out_inter_dc;
-        out_inter_dc = inter_1_dc;
+        inter_0_dc.swap(inter_1_dc);
+        //inter_1_dc = inter_0_dc;
+        //inter_0_dc = out_inter_dc;
+        //out_inter_dc = inter_1_dc;
     }
-    output_dc = inter_0_dc;
+    output_dc.swap(inter_0_dc);
+    //output_dc = inter_0_dc;
 
     printf("\n");
 
@@ -301,24 +313,32 @@ int main(int argc, char **argv)
                       0, 0, 0, 0,
                       GROUP_C(layer_num), REDUCTION_C(layer_num),
                       1, 1,
-                      input_dc, filter_ptrs[layer_num], inter_0_dc);
+                      input_dc, *filter_buf_ptrs[layer_num], inter_0_dc);
         small::ReLUActivation(128, 1, 1, inter_0_dc, inter_0_dc);
 
-        float * out_inter_dc = inter_1_dc;
+        //float * out_inter_dc = inter_1_dc;
         for (int cur_layer = 1; cur_layer < layer_num_total; cur_layer++)
         {
             small::Conv2D(1, 1,
                           0, 0, 0, 0,
                           GROUP_C(layer_num), REDUCTION_C(layer_num),
                           1, 1,
-                          inter_0_dc, filter_ptrs[layer_num], out_inter_dc);
-            small::ReLUActivation(128, 1, 1, out_inter_dc, inter_1_dc);
+                          inter_0_dc,
+                          *filter_buf_ptrs[layer_num],
+                          //out_inter_dc);
+                          inter_1_dc);
+
+            small::ReLUActivation(128, 1, 1,
+                                  inter_1_dc, //out_inter_dc,
+                                  inter_1_dc);
             layer_num++;
-            inter_1_dc = inter_0_dc;
-            inter_0_dc = out_inter_dc;
-            out_inter_dc = inter_1_dc;
+            inter_1_dc.swap(inter_0_dc);
+            //inter_1_dc = inter_0_dc;
+            //inter_0_dc = out_inter_dc;
+            //out_inter_dc = inter_1_dc;
         }
-        output_dc = inter_0_dc;
+        //output_dc = inter_0_dc;
+        output_dc.swap(inter_0_dc);
 
         // printf("calling pool %d %d \n", layer_num, layers.size());
         // t1 = rdtsc();
@@ -335,14 +355,14 @@ int main(int argc, char **argv)
     print_stats(small_timing, "SMaLL");
     printf("%d\n", atoi(std::getenv("OMP_NUM_THREADS")));
     // std::cout<<small_timing;
-    free(input_dc);
-    for (size_t l = 0; l < filter_ptrs.size(); l++)
+    //free(input_dc);
+    for (size_t l = 0; l < filter_buf_ptrs.size(); l++)
     {
-        free(filter_ptrs[l]);
+        delete filter_buf_ptrs[l];
     }
-    printf("deallocing %ld filters\n", filter_ptrs.size());
+    printf("deallocing %ld filters\n", filter_buf_ptrs.size());
 
-    free(inter_1_dc);
-    free(inter_0_dc);
+    //free(inter_1_dc);
+    //free(inter_0_dc);
 
 }

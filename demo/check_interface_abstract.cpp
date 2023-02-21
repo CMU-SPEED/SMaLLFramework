@@ -32,25 +32,27 @@
 #include <stdint.h>
 
 //****************************************************************************
-// Recreate include order of small.h but hijack interface.hpp and intrinsics.h
-
-//#include "../config.h"
-#include <small/utils.hpp>
-#include "check_interface.h"
+// Recreate include order of small.h but hijack interface.hpp, intrinsics.h
+// and interface_abstract.hpp (the contents of this file)
 
 #include <params.h>  //platform specific params
-
 #include <../reference/intrinsics.h>  // hardcode reference intrinsics ICK
+
+#include <small/utils.hpp>
+#include <small/buffers.hpp>
+#include "check_interface.h"
+
 #include <small/abstract_layer.hpp>
 
 //****************************************************************************
+template <>
 void check_Conv2D(int kernel_size, int stride,
                   uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                   int output_channels, int input_channels,
                   int input_height, int input_width,
-                  float const *input_ptr,
-                  float const *filter_ptr,
-                  float       *output_ptr)
+                  small::Buffer<float> const &input_buf,
+                  small::Buffer<float> const &filter_buf,
+                  small::Buffer<float>       &output_buf)
 {
     //Specific case for the first layer
     if (input_channels == 3)
@@ -64,7 +66,7 @@ void check_Conv2D(int kernel_size, int stride,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_ptr, filter_ptr, output_ptr);
+                input_buf.data(), filter_buf.data(), output_buf.data());
         }
         else if (stride == 2)
         {
@@ -76,7 +78,7 @@ void check_Conv2D(int kernel_size, int stride,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_ptr, filter_ptr, output_ptr);
+                input_buf.data(), filter_buf.data(), output_buf.data());
         }
         else
         {
@@ -94,7 +96,7 @@ void check_Conv2D(int kernel_size, int stride,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_ptr, filter_ptr, output_ptr);
+                input_buf.data(), filter_buf.data(), output_buf.data());
         }
         else if (stride == 2)
         {
@@ -106,7 +108,7 @@ void check_Conv2D(int kernel_size, int stride,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_ptr, filter_ptr, output_ptr);
+                input_buf.data(), filter_buf.data(), output_buf.data());
         }
         else
         {
@@ -116,13 +118,14 @@ void check_Conv2D(int kernel_size, int stride,
 }
 
 //****************************************************************************
+template <>
 void check_PartialConv2D(int kernel_size, int stride,
                          uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                          int output_channels, int input_channels,
                          int input_height, int input_width,
-                         float const *input_ptr,
-                         float const *filter_ptr,
-                         float       *output_ptr)
+                         small::Buffer<float> const &input_buf,
+                         small::Buffer<float> const &filter_buf,
+                         small::Buffer<float>       &output_buf)
 {
     // Specific case for the first layer
     if (input_channels == 3)
@@ -136,7 +139,7 @@ void check_PartialConv2D(int kernel_size, int stride,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_ptr, filter_ptr, output_ptr);
+                input_buf.data(), filter_buf.data(), output_buf.data());
         }
         else if (stride == 2)
         {
@@ -147,7 +150,7 @@ void check_PartialConv2D(int kernel_size, int stride,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_ptr, filter_ptr, output_ptr);
+                input_buf.data(), filter_buf.data(), output_buf.data());
         }
         else
         {
@@ -165,7 +168,7 @@ void check_PartialConv2D(int kernel_size, int stride,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_ptr, filter_ptr, output_ptr);
+                input_buf.data(), filter_buf.data(), output_buf.data());
         }
         else if (stride == 2)
         {
@@ -177,7 +180,7 @@ void check_PartialConv2D(int kernel_size, int stride,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_ptr, filter_ptr, output_ptr);
+                input_buf.data(), filter_buf.data(), output_buf.data());
         }
         else
         {
@@ -187,12 +190,13 @@ void check_PartialConv2D(int kernel_size, int stride,
 }
 
 //****************************************************************************
+template <>
 void check_Maxpool2D(int kernel_size, int stride,
                      uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                      int input_channels,
                      int input_height, int input_width,
-                     float const *input_ptr,
-                     float       *output_ptr)
+                     small::Buffer<float> const &input_buf,
+                     small::Buffer<float>       &output_buf)
 {
     if (stride == 1)
     {
@@ -203,7 +207,7 @@ void check_Maxpool2D(int kernel_size, int stride,
             input_height, input_width,
             kernel_size, kernel_size,
             t_pad, l_pad, r_pad, b_pad,
-            input_ptr, NULL, output_ptr);
+            input_buf.data(), NULL, output_buf.data());
     }
     else if (stride == 2)
     {
@@ -215,7 +219,7 @@ void check_Maxpool2D(int kernel_size, int stride,
             input_height, input_width,
             kernel_size, kernel_size,
             t_pad, l_pad, r_pad, b_pad,
-            input_ptr, NULL, output_ptr);
+            input_buf.data(), NULL, output_buf.data());
     }
     else
     {
@@ -224,13 +228,14 @@ void check_Maxpool2D(int kernel_size, int stride,
 }
 
 //****************************************************************************
+template <>
 void check_DepthwiseConv2D(int kernel_size, int stride,
                            uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                            int input_channels,
                            int input_height, int input_width,
-                           float const *input_ptr,
-                           float const *filter_ptr,
-                           float       *output_ptr)
+                           small::Buffer<float> const &input_buf,
+                           small::Buffer<float> const &filter_buf,
+                           small::Buffer<float>       &output_buf)
 {
     if (stride == 1)
     {
@@ -242,7 +247,7 @@ void check_DepthwiseConv2D(int kernel_size, int stride,
             input_height, input_width,
             kernel_size, kernel_size,
             t_pad, l_pad, r_pad, b_pad,
-            input_ptr, filter_ptr, output_ptr);
+            input_buf.data(), filter_buf.data(), output_buf.data());
     }
     else if (stride == 2)
     {
@@ -254,7 +259,7 @@ void check_DepthwiseConv2D(int kernel_size, int stride,
             input_height, input_width,
             kernel_size, kernel_size,
             t_pad, l_pad, r_pad, b_pad,
-            input_ptr, filter_ptr, output_ptr);
+            input_buf.data(), filter_buf.data(), output_buf.data());
     }
     else
     {
@@ -263,10 +268,11 @@ void check_DepthwiseConv2D(int kernel_size, int stride,
 }
 
 //****************************************************************************
+template <>
 void check_ReLUActivation(int input_channels,
                           int input_height, int input_width,
-                          float const *input_ptr,
-                          float       *output_ptr)
+                          small::Buffer<float> const &input_buf,
+                          small::Buffer<float>       &output_buf)
 {
     // printf("Cob = %d W_ob = %d\n", C_ob, W_ob);
     small::detail::abstract_layer<float, C_ob, 1, 1, W_ob, 1, 1, 'a', 0, 1>(
@@ -276,15 +282,16 @@ void check_ReLUActivation(int input_channels,
         input_height, input_width,
         1, 1,
         0, 0, 0, 0,
-        input_ptr, NULL, output_ptr);
+        input_buf.data(), NULL, output_buf.data());
 
 }
 
 //****************************************************************************
+template <>
 void check_Dense(int output_elements, int input_elements,
-                 float const *input_ptr,
-                 float const *filter_ptr,
-                 float       *output_ptr)
+                 small::Buffer<float> const &input_buf,
+                 small::Buffer<float> const &filter_buf,
+                 small::Buffer<float>       &output_buf)
 {
     small::detail::abstract_layer<float, C_ob, 1, 1, W_ob, 1, 1, 'c', 1, 1>(
         output_elements, // Output Channel Grouping
@@ -293,5 +300,5 @@ void check_Dense(int output_elements, int input_elements,
         1, input_elements,
         1, 1,
         0, 0, 0, 0,
-        input_ptr, filter_ptr, output_ptr);
+        input_buf.data(), filter_buf.data(), output_buf.data());
 }

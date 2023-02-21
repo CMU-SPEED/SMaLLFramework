@@ -105,6 +105,7 @@ int main(int argc, char **argv)
     //  Copy layer weights to temporaries
     // torch::Tensor weights = test_weights; // layer->weight;
 
+    /// @todo Consider changing dimensions to size_t
     uint32_t in_dimensions = (C_i * input_height * input_width);
 #if LAYER == CONV || LAYER == PARTIAL_CONV
     uint32_t output_rows =  ((input_height + t_pad + b_pad) - kernel_size)/stride + 1;
@@ -114,12 +115,15 @@ int main(int argc, char **argv)
     uint32_t out_dimensions = in_dimensions;
 #endif
 
-    float *input_dc = alloc(in_dimensions);
+    small::Buffer<float> input_dc(in_dimensions);
+    //float *input_dc = alloc(in_dimensions);
     // fprintf(stderr, "i %lu\n", input_dc);
     // fflush(stderr);
 
-    float *out_dc = alloc(out_dimensions);
-    float *out_check_dc = alloc(out_dimensions);
+    small::Buffer<float> out_dc(out_dimensions);
+    //float *out_dc = alloc(out_dimensions);
+    small::Buffer<float> out_check_dc(out_dimensions);
+    //float *out_check_dc = alloc(out_dimensions);
     std::vector<uint32_t> intermediate_block_dimensions;
 
 #if PARALLEL
@@ -151,7 +155,8 @@ int main(int argc, char **argv)
     uint32_t filter_dimensions = (C_i * kernel_size * kernel_size);
 #endif
 #if LAYER < POOL
-    float *filter_dc = alloc(filter_dimensions);
+    small::Buffer<float> filter_dc(filter_dimensions);
+    //float *filter_dc = alloc(filter_dimensions);
     // fprintf(stderr, "f %lu\n", filter_dc);
     // fflush(stderr);
     // printf("%d\n", in_dimensions);
@@ -360,10 +365,10 @@ int main(int argc, char **argv)
     const int num_th = atoi(std::getenv("OMP_NUM_THREADS"));
     printf(" %.0f %.2f \n", throughput*num_th, (compute_ops) / (1.0 * sum));
 
-    free(input_dc);
+    //free(input_dc);
 #if LAYER < POOL
-    free(filter_dc);
+    //free(filter_dc);
 #endif
-    free(out_check_dc);
-    free(out_dc);
+    //free(out_check_dc);
+    //free(out_dc);
 }

@@ -32,70 +32,12 @@
 
 #pragma once
 
-#include <stdlib.h> // for posix_memalign
+#include <vector>
+#include <iostream>  // Temporary for debugging only
 #include <exception>
 
 namespace small
 {
-    //************************************************************************
-    template <typename T>
-        T* alloc_buffer(size_t num_elements)
-    {
-        T *buffer;
-        if (0 != posix_memalign((void**)&buffer, 64, num_elements*sizeof(T)))
-        {
-            throw(std::bad_alloc());
-        }
-        return buffer;
-    }
-
-
-    //************************************************************************
-    template <typename T, size_t alignment=64UL>
-    struct small_alloc : std::allocator<T>
-    {
-        typedef typename std::allocator<T>::pointer pointer;
-        typedef typename std::allocator<T>::size_type size_type;
-
-        template<typename U>
-        struct rebind {
-            typedef small_alloc<U> other;
-        };
-
-        small_alloc() {}
-
-        template<typename U>
-        small_alloc(small_alloc<U> const& u)
-            :std::allocator<T>(u) {}
-
-        pointer allocate(size_type num_elements,
-                         std::allocator<void>::const_pointer = 0) {
-            std::cerr << "DEBUG: allocating " << num_elements*sizeof(T)
-                      << " bytes of aligned mem.\n";
-            pointer buffer;
-            if (0 != posix_memalign((void**)&buffer,
-                                    alignment,
-                                    num_elements*sizeof(T)))
-            {
-                throw std::bad_alloc();
-            }
-            return buffer;
-        }
-
-        void deallocate(pointer p, size_type) {
-            std::free(p);
-        }
-
-    };
-
-    //************************************************************************
-    template <class ScalarT>
-    using Buffer = std::vector<ScalarT, small::small_alloc<ScalarT>>;
-
-
-    //************************************************************************
-    //************************************************************************
-
     enum BufferTypeEnum
     {
         INPUT,       // was 'i'
@@ -232,22 +174,23 @@ namespace small
     }
 
     //************************************************************************
-    template <class ScalarT>
-    uint32_t convert_tensor2dc(small::Buffer<ScalarT> const &flat_t,
-                               BufferTypeEnum               type,
-                               uint32_t                     dim0, // C_o
-                               uint32_t                     dim1, // C_i
-                               uint32_t                     dim2, // H
-                               uint32_t                     dim3, // W
-                               uint32_t                     _C_ib,
-                               uint32_t                     _C_ob,
-                               small::Buffer<ScalarT>      &dc_array)
+    template <class BufferT>
+    uint32_t pack_buffer(BufferT          const &flat_t,
+                         BufferTypeEnum          type,
+                         uint32_t                dim0, // C_o
+                         uint32_t                dim1, // C_i
+                         uint32_t                dim2, // H
+                         uint32_t                dim3, // W
+                         uint32_t                _C_ib,
+                         uint32_t                _C_ob,
+                         BufferT                &dc_array)
     {
-        return convert_tensor2dc<ScalarT>(flat_t.data(),
-                                          type,
-                                          dim0, dim1, dim2, dim3,
-                                          _C_ib, _C_ob,
-                                          dc_array.data());
+        return convert_tensor2dc<typename BufferT::value_type>(
+            flat_t.data(),
+            type,
+            dim0, dim1, dim2, dim3,
+            _C_ib, _C_ob,
+            dc_array.data());
     }
 
     //************************************************************************
@@ -356,6 +299,26 @@ namespace small
             }
         }
         return dim_3*dim_2*dim_1*dim_0;
+    }
+
+    //************************************************************************
+    template <class BufferT>
+    uint32_t unpack_buffer(BufferT               const &dc_array,
+                           BufferTypeEnum               type,
+                           uint32_t                     dim0, // C_o
+                           uint32_t                     dim1, // C_i
+                           uint32_t                     dim2, // H
+                           uint32_t                     dim3, // W
+                           uint32_t                     _C_ib,
+                           uint32_t                     _C_ob,
+                           BufferT                     &flat_t)
+    {
+        return convert_dc2tensor<typename BufferT::value_type>(
+            dc_array.data(),
+            type,
+            dim0, dim1, dim2, dim3,
+            _C_ib, _C_ob,
+            flat_t.data());
     }
 
 } // namespace small

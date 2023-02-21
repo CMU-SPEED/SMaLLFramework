@@ -47,8 +47,7 @@
 
 //****************************************************************************
 // The output of the block is stored in I
-// The weights must have been copied into F_1x1 and F_dw beforehand
-template <bool scale_channels>
+//
 inline void resnet_block(
     std::array<uint32_t, 2> in_dims, uint32_t input_channels, // Input dimensions
     uint32_t kernel_size,
@@ -62,12 +61,12 @@ inline void resnet_block(
     uint8_t b_pad_1,
     uint8_t l_pad_1,
     uint8_t r_pad_1,
-    float *I,
-    float *F_conv0,
-    float *F_conv1,
-    float *F_conv_1x1,
-    float *O_intermediate,
-    float *O)
+    small::Buffer<float> const &I,              //float *I,
+    small::Buffer<float> const &F_conv0,        //float *F_conv0,
+    small::Buffer<float> const &F_conv1,        //float *F_conv1,
+    small::Buffer<float> const &F_conv_1x1,     //float *F_conv_1x1,
+    small::Buffer<float>       &O_intermediate, //float *O_intermediate,
+    small::Buffer<float>       &O)              //float *O)
 {
     // printf("before: %d, %.2f %.2f %.2f %.2f\n", 0, I[0], I[1], I[2], I[3]);
 
@@ -85,13 +84,61 @@ inline void resnet_block(
     small::ReLUActivation(input_channels,
                           o_h, o_w,
                           O_intermediate, O_intermediate);
-    if (scale_channels)
+
+    if (true) //(scale_channels)
     {
         small::Conv2D(1, stride,
                       0, 0, 0, 0,
                       output_channels, input_channels,
                       in_dims[0], in_dims[1], I, F_conv_1x1, O);
     }
+
+    small::PartialConv2D(kernel_size, 1,
+                         t_pad_1, b_pad_1, l_pad_1, r_pad_1,
+                         output_channels, output_channels,
+                         o_h, o_w,
+                         O_intermediate, F_conv1, O);
+    small::ReLUActivation(output_channels, o_h, o_w, O, O);
+}
+
+//****************************************************************************
+// The output of the block is stored in I
+//
+inline void resnet_block(
+    std::array<uint32_t, 2> in_dims, uint32_t input_channels, // Input dimensions
+    uint32_t kernel_size,
+    uint32_t stride,          // DWise Covolution parameters
+    uint32_t output_channels, // 1x1 Convolution parameters
+    uint8_t t_pad_0,
+    uint8_t b_pad_0,
+    uint8_t l_pad_0,
+    uint8_t r_pad_0,
+    uint8_t t_pad_1,
+    uint8_t b_pad_1,
+    uint8_t l_pad_1,
+    uint8_t r_pad_1,
+    small::Buffer<float> const &I,              //float *I,
+    small::Buffer<float> const &F_conv0,        //float *F_conv0,
+    small::Buffer<float> const &F_conv1,        //float *F_conv1,
+    small::Buffer<float>       &O_intermediate, //float *O_intermediate,
+    small::Buffer<float>       &O)              //float *O)
+{
+    // printf("before: %d, %.2f %.2f %.2f %.2f\n", 0, I[0], I[1], I[2], I[3]);
+
+    small::Conv2D(kernel_size, stride,
+                  t_pad_0, b_pad_0, l_pad_0, r_pad_0,
+                  output_channels, input_channels,
+                  in_dims[0], in_dims[1],
+                  I, F_conv0, O_intermediate);
+
+    uint32_t o_h = small::output_dim(in_dims[0] + t_pad_0 + b_pad_0,
+                                     stride, kernel_size);
+    uint32_t o_w = small::output_dim(in_dims[1] + l_pad_0 + r_pad_0,
+                                     stride, kernel_size);
+
+    small::ReLUActivation(input_channels,
+                          o_h, o_w,
+                          O_intermediate, O_intermediate);
 
     small::PartialConv2D(kernel_size, 1,
                          t_pad_1, b_pad_1, l_pad_1, r_pad_1,
@@ -160,7 +207,8 @@ int main(int argc, char **argv)
     //int stride = 1;
     print_build_info_check();
     uint32_t input_dimensions = C_i * N * M;
-    float *input_dc = alloc(input_dimensions);
+    small::Buffer<float> input_dc(input_dimensions);
+    //float *input_dc = alloc(input_dimensions);
     init(input_dc, input_dimensions);
     // std::vector<std::vector<uint64_t>> implementations;
 
@@ -299,33 +347,43 @@ int main(int argc, char **argv)
     //  Copy layer weights to temporaries
     // std::vector<uint32_t> filter_dimensions;
 
-    float *filter_fc_dc; //, *filter_conv_dc, *filter_1x1_1_dc, *filter_dw_1_dc;
-    std::vector<float *> filter_ptrs;
+    //float *filter_fc_dc; //, *filter_conv_dc, *filter_1x1_1_dc, *filter_dw_1_dc;
+    /// @todo use a vector of smart pointers if possible
+    std::vector<small::Buffer<float> *> filter_buf_ptrs;
 
     // torch::Tensor weights;
     for (uint32_t l = 0; l < layer_num_total; l++)
     {
-        float *filter_ptr;
+        //float *filter_ptr;
         // weights = layers[l]->weight; // conv_1x1->weight;
         uint32_t filter_dimensions = REDUCTION_HW(l) * REDUCTION_HW(l) * REDUCTION_C(l) * GROUP_C(l) * GROUPS(l);
-        filter_ptr = alloc(filter_dimensions);
-        init(filter_ptr, filter_dimensions);
-        filter_ptrs.push_back(filter_ptr);
+
+        small::Buffer<float> *filter_buf_ptr =
+            new small::Buffer<float>(filter_dimensions);
+        //float *filter_ptr = alloc(filter_dimensions);
+        init(*filter_buf_ptr, filter_dimensions);
+        filter_buf_ptrs.push_back(filter_buf_ptr);
     }
 
     uint32_t filter_dimensions = GROUP_C(layer_num_total) * num_classes;
     printf("Fc filter dims %d x %d\n", GROUP_C(layer_num_total - 1), num_classes);
-    filter_fc_dc = alloc(filter_dimensions);
-    init(filter_fc_dc, filter_dimensions);
-    filter_ptrs.push_back(filter_fc_dc);
+    small::Buffer<float> *filter_fc_dc_ptr =
+        new small::Buffer<float>(filter_dimensions);
+    init(*filter_fc_dc_ptr, filter_dimensions);
+    filter_buf_ptrs.push_back(filter_fc_dc_ptr);
 
     // copy input
     // allocate space for intermediate outputs (use the max sizes calculated previously)
     printf("max_numel_inter 0 : %d 1: %d\n", max_numel_inter_0, max_numel_inter_1);
-    float *inter_0_dc = alloc(max_numel_inter_0);
-    float *inter_1_dc = alloc(max_numel_inter_1);
-    float *inter_2_dc = alloc(max_numel_inter_0);
-    float *output_dc = alloc(num_classes);
+
+    small::Buffer<float> inter_0_dc(max_numel_inter_0);
+    //float *inter_0_dc = alloc(max_numel_inter_0);
+    small::Buffer<float> inter_1_dc(max_numel_inter_1);
+    //float *inter_1_dc = alloc(max_numel_inter_1);
+    small::Buffer<float> inter_2_dc(max_numel_inter_0);
+    //float *inter_2_dc = alloc(max_numel_inter_0);
+    small::Buffer<float> output_dc(num_classes);
+    //float *output_dc = alloc(num_classes);
 
     //uint32_t inter_h, inter_w;
 
@@ -341,7 +399,7 @@ int main(int argc, char **argv)
                   PADDING(layer_num),
                   GROUP_C(layer_num), REDUCTION_C(layer_num),
                   I_HEIGHT(layer_num), I_WIDTH(layer_num),
-                  input_dc, filter_ptrs[layer_num], inter_0_dc);
+                  input_dc, *filter_buf_ptrs[layer_num], inter_0_dc);
     layer_num++;
     small::ReLUActivation(GROUP_C(0),
                           I_HEIGHT(layer_num), I_WIDTH(layer_num),
@@ -350,18 +408,17 @@ int main(int argc, char **argv)
     // std::cout << "H: " << I_HEIGHT(layer_num) << " W: " << I_WIDTH(layer_num) << " C:" << GROUP_C(0) << std::endl;
 
     // printf("starting resnet block 0:\n\t");
-    resnet_block<0>(intermediate_dims[layer_num], REDUCTION_C(layer_num), // Input dimensions
-                    REDUCTION_HW(layer_num),
-                    STRIDE(layer_num), // Params for the first convolution
-                    GROUP_C(layer_num),
-                    PADDING(layer_num),
-                    PADDING(layer_num + 1),
-                    inter_0_dc,
-                    filter_ptrs[layer_num],
-                    filter_ptrs[layer_num + 1],
-                    NULL,
-                    inter_1_dc,
-                    inter_0_dc);
+    resnet_block(intermediate_dims[layer_num], REDUCTION_C(layer_num), // Input dimensions
+                 REDUCTION_HW(layer_num),
+                 STRIDE(layer_num), // Params for the first convolution
+                 GROUP_C(layer_num),
+                 PADDING(layer_num),
+                 PADDING(layer_num + 1),
+                 inter_0_dc,
+                 *filter_buf_ptrs[layer_num],
+                 *filter_buf_ptrs[layer_num + 1],
+                 inter_1_dc,
+                 inter_0_dc);
     // printf("\n");
 
     layer_num += 2;
@@ -371,23 +428,25 @@ int main(int argc, char **argv)
     {
         // printf("starting resnet block %d:\n\t", ds_layer);
 
-        float *O_intermediate = inter_2_dc;
-        resnet_block<1>(intermediate_dims[layer_num], REDUCTION_C(layer_num), // Input dimensions
-                        REDUCTION_HW(layer_num),
-                        STRIDE(layer_num), // Params for the first convolution
-                        GROUP_C(layer_num),
-                        PADDING(layer_num),                        PADDING(layer_num + 1),
-                        inter_0_dc,
-                        filter_ptrs[layer_num],
-                        filter_ptrs[layer_num + 1],
-                        filter_ptrs[layer_num + 2],
-                        inter_1_dc,
-                        O_intermediate);
+        //float *O_intermediate = inter_2_dc;
+        resnet_block(intermediate_dims[layer_num], REDUCTION_C(layer_num), // Input dimensions
+                     REDUCTION_HW(layer_num),
+                     STRIDE(layer_num), // Params for the first convolution
+                     GROUP_C(layer_num),
+                     PADDING(layer_num),                        PADDING(layer_num + 1),
+                     inter_0_dc,
+                     *filter_buf_ptrs[layer_num],
+                     *filter_buf_ptrs[layer_num + 1],
+                     *filter_buf_ptrs[layer_num + 2],
+                     inter_1_dc,
+                     inter_2_dc);
+                     //O_intermediate);
         layer_num += 3;
 
         // Since channels were scaled, switch the pointers between inter_2 and inter_0
-        inter_2_dc = inter_0_dc;
-        inter_0_dc = O_intermediate;
+        inter_2_dc.swap(inter_0_dc);
+        //inter_2_dc = inter_0_dc;
+        //inter_0_dc = O_intermediate;
     }
 
     // printf("calling pool %d %d \n", layer_num, layers.size());
@@ -401,10 +460,9 @@ int main(int argc, char **argv)
                   0, 0, 0, 0,
                   num_classes, GROUP_C(layer_num_total - 1),
                   1, 1,
-                  inter_1_dc, filter_ptrs[layer_num_total - 1], output_dc);
+                  inter_1_dc, *filter_buf_ptrs[layer_num_total - 1], output_dc);
     // printf("%dx%d", GROUPS(layer_num_total - 1), num_classes);
-    std::vector<uint32_t>
-            inter_0_dims, inter_1_dims;
+    std::vector<uint32_t> inter_0_dims, inter_1_dims;
 
     // for (int tens_dim_i = 0; tens_dim_i < inter_1.dim(); tens_dim_i++)
     // {
@@ -446,7 +504,7 @@ int main(int argc, char **argv)
                       PADDING(layer_num),
                       GROUP_C(layer_num), REDUCTION_C(layer_num),
                       I_HEIGHT(layer_num), I_WIDTH(layer_num),
-                      input_dc, filter_ptrs[layer_num], inter_0_dc);
+                      input_dc, *filter_buf_ptrs[layer_num], inter_0_dc);
         layer_num++;
         small::ReLUActivation(GROUP_C(0),
                               I_HEIGHT(layer_num), I_WIDTH(layer_num),
@@ -454,42 +512,42 @@ int main(int argc, char **argv)
 
         // std::cout << "H: " << I_HEIGHT(layer_num) << " W: " << I_WIDTH(layer_num) << " C:" << GROUP_C(0) << std::endl;
 
-        resnet_block<0>(intermediate_dims[layer_num], REDUCTION_C(layer_num), // Input dimensions
-                        REDUCTION_HW(layer_num),
-                        STRIDE(layer_num), // Params for the first convolution
-                        GROUP_C(layer_num),
-                        PADDING(layer_num),
-                        PADDING(layer_num + 1),
-                        inter_0_dc,
-                        filter_ptrs[layer_num],
-                        filter_ptrs[layer_num + 1],
-                        NULL,
-                        inter_1_dc,
-                        inter_0_dc);
+        resnet_block(intermediate_dims[layer_num], REDUCTION_C(layer_num), // Input dimensions
+                     REDUCTION_HW(layer_num),
+                     STRIDE(layer_num), // Params for the first convolution
+                     GROUP_C(layer_num),
+                     PADDING(layer_num),
+                     PADDING(layer_num + 1),
+                     inter_0_dc,
+                     *filter_buf_ptrs[layer_num],
+                     *filter_buf_ptrs[layer_num + 1],
+                     inter_1_dc,
+                     inter_0_dc);
         layer_num += 2;
         // std::cout << "Done with block 0 H: " << I_HEIGHT(layer_num) << " W: " << I_WIDTH(layer_num) << " C:" << GROUP_C(0) << std::endl;
 
         for (int ds_layer = 1; ds_layer < resnet_blocks; ds_layer++)
         {
-            float *O_intermediate = inter_2_dc;
-            resnet_block<1>(intermediate_dims[layer_num], REDUCTION_C(layer_num), // Input dimensions
-                            REDUCTION_HW(layer_num),
-                            STRIDE(layer_num), // Params for the first convolution
-                            GROUP_C(layer_num),
-                            PADDING(layer_num),
-                            PADDING(layer_num + 1),
-                            inter_0_dc,
-                            filter_ptrs[layer_num],
-                            filter_ptrs[layer_num + 1],
-                            filter_ptrs[layer_num + 2],
-                            inter_1_dc,
-                            O_intermediate);
+            //float *O_intermediate = inter_2_dc;
+            resnet_block(intermediate_dims[layer_num], REDUCTION_C(layer_num), // Input dimensions
+                         REDUCTION_HW(layer_num),
+                         STRIDE(layer_num), // Params for the first convolution
+                         GROUP_C(layer_num),
+                         PADDING(layer_num),
+                         PADDING(layer_num + 1),
+                         inter_0_dc,
+                         *filter_buf_ptrs[layer_num],
+                         *filter_buf_ptrs[layer_num + 1],
+                         *filter_buf_ptrs[layer_num + 2],
+                         inter_1_dc,
+                         inter_2_dc);
+                         //O_intermediate);
             layer_num += 3;
 
             // Since channels were scaled, switch the pointers between inter_2 and inter_0
-
-            inter_2_dc = inter_0_dc;
-            inter_0_dc = O_intermediate;
+            inter_2_dc.swap(inter_0_dc);
+            //inter_2_dc = inter_0_dc;
+            //inter_0_dc = O_intermediate;
         }
 
         // printf("calling pool %d %d \n", layer_num, layers.size());
@@ -501,12 +559,17 @@ int main(int argc, char **argv)
         // Dense(1, num_classes, GROUP_C(layer_num - 1), inter_1_dc, filter_fc_dc, output_dc);
         small::Conv2D(1, 1,
                       0, 0, 0, 0,
-                      num_classes, GROUPS(layer_num_total - 1), 1, 1, inter_1_dc, filter_ptrs[layer_num_total - 1], output_dc);
+                      num_classes,
+                      GROUPS(layer_num_total - 1),
+                      1, 1,
+                      inter_1_dc,
+                      *filter_buf_ptrs[layer_num_total - 1],
+                      output_dc);
 
         // t1 = rdtsc();
         // MIN(sum_small, (t1 - t0));
         // small_timing.push_back((t1 - t0));
-                clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
+        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
 
         auto diff = time_difference(time1, time2);
         sum_small = std::min<unsigned long long>(sum_small, diff);
@@ -520,15 +583,15 @@ int main(int argc, char **argv)
 
     printf("\n");
 
-    free(input_dc);
+    //free(input_dc);
 
-    for (size_t l = 0; l < filter_ptrs.size(); l++)
+    for (size_t l = 0; l < filter_buf_ptrs.size(); l++)
     {
-        free(filter_ptrs[l]);
+        delete filter_buf_ptrs[l];
     }
 
-    free(inter_0_dc);
-    free(inter_1_dc);
+    //free(inter_0_dc);
+    //free(inter_1_dc);
 
-    free(output_dc);
+    //free(output_dc);
 }

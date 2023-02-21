@@ -26,43 +26,53 @@
 
 #pragma once
 
+/// @todo Decide if we want to be generic wrt Buffer::value_type.
+///       Currently definitions in check_interface_abstract.cpp are
+///       fixed to float.
+
+template <class ScalarT>
 void check_Conv2D(int kernel_size, int stride,
                   uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                   int output_channels, int input_channels,
                   int input_height, int input_width,
-                  float const *input_ptr,
-                  float const *filter_ptr,
-                  float       *output_ptr);
+                  small::Buffer<ScalarT> const &input_buf,
+                  small::Buffer<ScalarT> const &filter_buf,
+                  small::Buffer<ScalarT>       &output_buf);
 
+template <class ScalarT>
 void check_PartialConv2D(int kernel_size, int stride,
                          uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                          int output_channels, int input_channels,
                          int input_height, int input_width,
-                         float const *input_ptr,
-                         float const *filter_ptr,
-                         float       *output_ptr);
+                         small::Buffer<ScalarT> const &input_buf,
+                         small::Buffer<ScalarT> const &filter_buf,
+                         small::Buffer<ScalarT>       &output_buf);
 
+template <class ScalarT>
 void check_DepthwiseConv2D(int kernel_size, int stride,
                            uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                            int input_channels,
                            int input_height, int input_width,
-                           float const *input_ptr,
-                           float const *filter_ptr,
-                           float       *output_ptr);
+                           small::Buffer<ScalarT> const &input_buf,
+                           small::Buffer<ScalarT> const &filter_buf,
+                           small::Buffer<ScalarT>       &output_buf);
 
+template <class ScalarT>
 void check_Maxpool2D(int kernel_size, int stride,
                      uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                      int input_channels,
                      int input_height, int input_width,
-                     float const *input_ptr,
-                     float       *output_ptr);
+                     small::Buffer<ScalarT> const &input_buf,
+                     small::Buffer<ScalarT>       &output_buf);
 
+template <class ScalarT>
 void check_ReLUActivation(int input_channels,
                           int input_height, int input_width,
-                          float const *input_ptr,
-                          float       *output_ptr);
+                          small::Buffer<ScalarT> const &input_buf,
+                          small::Buffer<ScalarT>       &output_buf);
 
+template <class ScalarT>
 void check_Dense(int output_elements, int input_elements,
-                 float const *input_ptr,
-                 float const *filter_ptr,
-                 float       *output_ptr);
+                 small::Buffer<ScalarT> const &input_buf,
+                 small::Buffer<ScalarT> const &filter_buf,
+                 small::Buffer<ScalarT>       &output_buf);
