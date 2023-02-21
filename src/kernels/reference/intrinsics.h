@@ -37,13 +37,15 @@ typedef dtype c_tile_t;
 //     }                                             \
 //   }
 
-#define ZERO_TILE_C(W_ob, C_ob,z)            \
-  for (uint32_t kk = 0; kk < W_ob; kk++)   \
-  {                                        \
-    for (uint32_t jj = 0; jj < C_ob; jj++) \
-    {                                      \
-      c_tile[kk * C_ob + jj] = z;        \
-    }                                      \
+#define ZERO_TILE_C(W_ob, C_ob, z)            \
+  for (uint32_t kk = 0; kk < W_ob; kk++)      \
+  {                                           \
+    for (uint32_t jj = 0; jj < C_ob; jj++)    \
+    {                                         \
+      c_tile[kk * C_ob + jj] = z;             \
+      printf("%u \t", c_tile[kk * C_ob + jj]); \
+    }                                         \
+    printf("\n");\
   }
 
 #define ZERO_END_C(_W_ob, C_ob,z)            \

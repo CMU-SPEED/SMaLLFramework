@@ -33,7 +33,7 @@
 #define PARALLEL 1
 
 // ================== Public API ====================
-#include <small/interface.hpp>           // template declarations only
+// #include <small/interface.hpp>           // template declarations only
 
 // ============ Implementation details ==============
 // Platform specific includes.
@@ -43,4 +43,6 @@
 
 /// This must come after platform-specific includes.
 #include <small/abstract_layer.hpp>
+// #include <small/q_abstract_layer.hpp>
+
 #include <small/interface_abstract.hpp>  // template defs of interface.hpp

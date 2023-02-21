@@ -34,7 +34,7 @@
 #include <stdint.h>
 #include <stdexcept>
 
-#include <small/abstract_layer.hpp>
+// #include <small/abstract_layer.hpp>
 
 int clip(int n, int upper, int lower=0)
 {
@@ -47,12 +47,15 @@ template<typename Q_T, typename T>
 void Quantize(int num_elements, T * tensor_ptr, Q_T * quant_tensor_ptr)
 {
     float scale_inv = (1.0 / quant_tensor_ptr->scale);
-    uint64_t max_val = (1 << 16) - 1;
+    uint64_t max_val = (1 << quant_tensor_ptr->b) - 1;
+    printf("%lu max scale inverse: %f \n", max_val, scale_inv);
+    int quant_val = rint(quant_tensor_ptr->zero + (0.0 * scale_inv));
+    printf("%f %d  \t %u\n", 0.0, quant_val);
     for (int i = 0; i < num_elements; i++)
     {
         int quant_val = rint(quant_tensor_ptr->zero + (tensor_ptr[i] * scale_inv));
         quant_tensor_ptr->tensor[i] = (quant_val< max_val)?quant_val:max_val;
-        // printf("%f \t %d\n", tensor_ptr[i], quant_tensor_ptr->tensor[i]);
+        printf("%f %d  \t %u\n", tensor_ptr[i], quant_val, quant_tensor_ptr->tensor[i]);
     }
 }
 
@@ -318,6 +321,7 @@ void ReLUActivation(int layer_num,
                     OperandT       *output_ptr,
                     int zero = 0)
 {
+    printf("relu zero %d \n", zero);
     abstract_layer<OperandT, C_ob, 1, 1, W_ob, 1, 1, 'a', 0, 1>(
         input_channels, // Output Channel Grouping
         1,              // Output Channels per group
