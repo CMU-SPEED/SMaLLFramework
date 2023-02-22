@@ -174,8 +174,8 @@ namespace small
     }
 
     //************************************************************************
-    template <class BufferT>
-    uint32_t pack_buffer(BufferT          const &flat_t,
+    template <class ScalarT>
+    uint32_t pack_buffer(Buffer<ScalarT>  const &flat_t,
                          BufferTypeEnum          type,
                          uint32_t                dim0, // C_o
                          uint32_t                dim1, // C_i
@@ -183,9 +183,9 @@ namespace small
                          uint32_t                dim3, // W
                          uint32_t                _C_ib,
                          uint32_t                _C_ob,
-                         BufferT                &dc_array)
+                         Buffer<ScalarT>        &dc_array)
     {
-        return convert_tensor2dc<typename BufferT::value_type>(
+        return convert_tensor2dc<ScalarT>(
             flat_t.data(),
             type,
             dim0, dim1, dim2, dim3,
@@ -302,18 +302,18 @@ namespace small
     }
 
     //************************************************************************
-    template <class BufferT>
-    uint32_t unpack_buffer(BufferT               const &dc_array,
-                           BufferTypeEnum               type,
-                           uint32_t                     dim0, // C_o
-                           uint32_t                     dim1, // C_i
-                           uint32_t                     dim2, // H
-                           uint32_t                     dim3, // W
-                           uint32_t                     _C_ib,
-                           uint32_t                     _C_ob,
-                           BufferT                     &flat_t)
+    template <class ScalarT>
+    uint32_t unpack_buffer(Buffer<ScalarT>  const &dc_array,
+                           BufferTypeEnum          type,
+                           uint32_t                dim0, // C_o
+                           uint32_t                dim1, // C_i
+                           uint32_t                dim2, // H
+                           uint32_t                dim3, // W
+                           uint32_t                _C_ib,
+                           uint32_t                _C_ob,
+                           Buffer<ScalarT>        &flat_t)
     {
-        return convert_dc2tensor<typename BufferT::value_type>(
+        return convert_dc2tensor<ScalarT>(
             dc_array.data(),
             type,
             dim0, dim1, dim2, dim3,
