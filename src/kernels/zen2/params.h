@@ -16,6 +16,8 @@
 
 namespace small
 {
+namespace detail
+{
     //************************************************************************
     // template <typename T>
     //     T* alloc_buffer(size_t num_elements)
@@ -30,20 +32,20 @@ namespace small
 
     //************************************************************************
     template <typename T, size_t alignment=64UL>
-    struct small_alloc : std::allocator<T>
+    struct buffer_allocator : std::allocator<T>
     {
         typedef typename std::allocator<T>::pointer pointer;
         typedef typename std::allocator<T>::size_type size_type;
 
         template<typename U>
         struct rebind {
-            typedef small_alloc<U> other;
+            typedef buffer_allocator<U> other;
         };
 
-        small_alloc() {}
+        buffer_allocator() {}
 
         template<typename U>
-        small_alloc(small_alloc<U> const& u)
+        buffer_allocator(buffer_allocator<U> const& u)
             :std::allocator<T>(u) {}
 
         pointer allocate(size_type num_elements,
@@ -63,21 +65,23 @@ namespace small
         }
 
     };
+} // detail
 
-    //************************************************************************
-    // Buffer class templated on size_t must be defined by a specific
-    // platform by defining in params.h of the platform-specific headers.
-    // Must have:
-    // - value_type typedef for the type of scalars stored in the buffer
-    // - data() method that returns raw pointer to data buffer
-    // - size() method that returns number of elements of sizeof(ScalarT) in
-    //          the data buffer.
-    // - swap() method that swaps the contents of two Buffer instances of the
-    //          same scalar type (shallow pointer swaps where possible)
-    // - operator[size_t] - element-wise access.
-    //
+//****************************************************************************
+// Buffer class templated on size_t must be defined by a specific
+// platform by defining in params.h of the platform-specific headers.
+// Must have:
+// - value_type typedef for the type of scalars stored in the buffer
+// - data() method that returns raw pointer to data buffer
+// - size() method that returns number of elements of sizeof(ScalarT) in
+//          the data buffer.
+// - swap() method that swaps the contents of two Buffer instances of the
+//          same scalar type (shallow pointer swaps where possible)
+// - operator[size_t] - element-wise access.
+//
 
-    //************************************************************************
-    template <class ScalarT>
-    using Buffer = std::vector<ScalarT, small::small_alloc<ScalarT>>;
-}
+//************************************************************************
+template <class ScalarT>
+using Buffer = std::vector<ScalarT, small::detail::buffer_allocator<ScalarT>>;
+
+} // small
