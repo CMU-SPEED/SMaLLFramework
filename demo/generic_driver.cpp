@@ -12,7 +12,7 @@
 #include <fstream>
 #include <time.h>
 
-typedef int32_t dtype;
+typedef uint8_t dtype;
 
 #include <small.h>
 #include "utils.h"
@@ -118,12 +118,12 @@ int main(int argc, char **argv)
     uint32_t out_dimensions = in_dimensions;
 #endif
 
-    dtype *input_dc = alloc(in_dimensions);
+    dtype *input_dc = alloc<dtype>(in_dimensions);
     // fprintf(stderr, "i %lu\n", input_dc);
     // fflush(stderr);
 
-    dtype *out_dc = alloc(out_dimensions);
-    dtype *out_check_dc = alloc(out_dimensions);
+    dtype *out_dc = alloc<dtype>(out_dimensions);
+    dtype *out_check_dc = alloc<dtype>(out_dimensions);
     std::vector<uint32_t> intermediate_block_dimensions;
 
 #if PARALLEL
@@ -159,7 +159,7 @@ int main(int argc, char **argv)
     uint32_t filter_dimensions = (C_i * kernel_size * kernel_size);
 #endif
 #if LAYER < POOL
-    dtype *filter_dc = alloc(filter_dimensions);
+    dtype *filter_dc = alloc<dtype>(filter_dimensions);
     // fprintf(stderr, "f %lu\n", filter_dc);
     // fflush(stderr);
     // printf("%d\n", in_dimensions);

@@ -2,66 +2,66 @@
 // We have timing, initialization, allocation, logging and equivalence checking
 
 #include <stdint.h>
-#include <sys/time.h>
-#include <string>
-#include <vector>
-#include <iterator>
-#include <fstream>
-#include <algorithm> // std::min_element
-#include <iterator>
-#include <array>
-#include <iostream>
-// #include<functional>
-#include <numeric>
+// #include <sys/time.h>
+// #include <string>
+// #include <vector>
+// #include <iterator>
+// #include <fstream>
+// #include <algorithm> // std::min_element
+// #include <iterator>
+// #include <array>
+// #include <iostream>
+// // #include<functional>
+// #include <numeric>
 
 //****************************************************************************
 //Timing
 //****************************************************************************
 
-// Change this to log min of all runs etc
-#define TIME_ZERO 0
+// // Change this to log min of all runs etc
+// #define TIME_ZERO 0
 
-//TODO: Change rdtsc(void) when moving to different architectures
-#if uarch == ZEN2
-static __inline__ unsigned long long rdtsc(void)
-{
-    unsigned hi, lo;
-    __asm__ __volatile__("rdtsc"
-                         : "=a"(lo), "=d"(hi));
-    return ((unsigned long long)lo) | (((unsigned long long)hi) << 32);
-}
-#elif uarch==ARM || uarch==REF
-#include <time.h>
-static __inline__ unsigned long long rdtsc(void)
-{
-    struct timespec gettime_now;
-    clock_gettime(CLOCK_REALTIME, &gettime_now);
-    return  gettime_now.tv_nsec ;
-}
-#endif
+// //TODO: Change rdtsc(void) when moving to different architectures
+// #if uarch == ZEN2
+// static __inline__ unsigned long long rdtsc(void)
+// {
+//     unsigned hi, lo;
+//     __asm__ __volatile__("rdtsc"
+//                          : "=a"(lo), "=d"(hi));
+//     return ((unsigned long long)lo) | (((unsigned long long)hi) << 32);
+// }
+// #elif uarch==ARM || uarch==REF
+// #include <time.h>
+// static __inline__ unsigned long long rdtsc(void)
+// {
+//     struct timespec gettime_now;
+//     clock_gettime(CLOCK_REALTIME, &gettime_now);
+//     return  gettime_now.tv_nsec ;
+// }
+// #endif
 
-/// @todo unnecessary?
-#define ACCUM_time(a, b) \
-    {                    \
-        a += b;          \
-    }
+// /// @todo unnecessary?
+// #define ACCUM_time(a, b) \
+//     {                    \
+//         a += b;          \
+//     }
 
-/// @todo unnecessary? Fix duplication with ACCUM_time
-#define REDUCE(a, b) \
-  {                  \
-    a += b;          \
-  }
+// /// @todo unnecessary? Fix duplication with ACCUM_time
+// #define REDUCE(a, b) \
+//   {                  \
+//     a += b;          \
+//   }
 
-/// @todo change to use std::min<T> directly
-#define MIN(a, b)            \
-    {                        \
-        a = (b < a) ? b : a; \
-    }
+// /// @todo change to use std::min<T> directly
+// #define MIN(a, b)            \
+//     {                        \
+//         a = (b < a) ? b : a; \
+//     }
 
-#define AVG(accum, trials, avg)       \
-    {                                 \
-        avg = (1.0 * accum) / trials; \
-    }
+// #define AVG(accum, trials, avg)       \
+//     {                                 \
+//         avg = (1.0 * accum) / trials; \
+//     }
 
 //****************************************************************************
 //logging
@@ -73,19 +73,19 @@ void print_build_info_check()
     printf("W_ob =  %d \n C_ob = %d \n SIMD = %d \n", W_ob, C_ob, SIMD);
 }
 
-void print_stats(std::vector<unsigned long long> v, const char *benchmark)
-{
-    if (v.size() != 0)
-    {
-        unsigned long long sum = std::accumulate(v.begin(), v.end(), 0.0);
-        unsigned long long mean = sum / v.size();
-        unsigned long long min_elem = *min_element(v.begin(), v.end());
-        unsigned long long max_elem = *max_element(v.begin(), v.end());
-        printf("Average for %s: %llu, \t ", benchmark, mean);
-        printf("Min for %s    : %llu, \t", benchmark, min_elem);
-        printf("Max for %s    : %llu \n", benchmark, max_elem);
-    }
-}
+// void print_stats(std::vector<unsigned long long> v, const char *benchmark)
+// {
+//     if (v.size() != 0)
+//     {
+//         unsigned long long sum = std::accumulate(v.begin(), v.end(), 0.0);
+//         unsigned long long mean = sum / v.size();
+//         unsigned long long min_elem = *min_element(v.begin(), v.end());
+//         unsigned long long max_elem = *max_element(v.begin(), v.end());
+//         printf("Average for %s: %llu, \t ", benchmark, mean);
+//         printf("Min for %s    : %llu, \t", benchmark, min_elem);
+//         printf("Max for %s    : %llu \n", benchmark, max_elem);
+//     }
+// }
 
 #define print_flops(ops, time)                      \
     {                                               \
@@ -100,20 +100,46 @@ void print_stats(std::vector<unsigned long long> v, const char *benchmark)
 //****************************************************************************
 //Allocation
 //****************************************************************************
+// #define MAX_BUFF_SIZE 50000000
+#define MAX_BUFF_SIZE 10000000
+dtype memory_buffer[MAX_BUFF_SIZE];
+dtype * cur_free_ptr = memory_buffer;
+uint32_t buf_offset = 0;
 template <typename dtype>
 dtype *alloc(uint32_t numel)
 {
     dtype *ptr_dc;
 
-    int ret = posix_memalign((void **)&ptr_dc, 64, numel * sizeof(dtype));
+    int ret = buf_offset + numel > MAX_BUFF_SIZE;
+
+
+    ptr_dc = cur_free_ptr + numel;
+    
+    // int ret = posix_memalign((void **)&ptr_dc, 64, numel * sizeof(dtype));
 
     if (ret)
     {
+      printf("cannot allocate space\n");
         return NULL;
+    }
+    else
+    {
+      buf_offset += numel;
+      cur_free_ptr += numel;
+      // printf("%d numel buffer %d\n", numel, buf_offset);
     }
     return ptr_dc;
 }
 
+uint32_t free_all()
+{
+  auto freed_space = buf_offset;
+  cur_free_ptr = memory_buffer;
+  buf_offset = 0;  
+
+  return freed_space;
+
+}
 
 //****************************************************************************
 // Initialization Options
@@ -226,21 +252,21 @@ void write_results(uint64_t * fused_timing)
   }
 }
 
-timespec time1, time2;
-long diff = 0;
+// timespec time1, time2;
+// long diff = 0;
 
-long time_difference(timespec start, timespec end)
-{
-  timespec temp;
-  if (end.tv_nsec < start.tv_nsec)
-  {
-    temp.tv_sec = end.tv_sec - start.tv_sec - 1;
-    temp.tv_nsec = 1000000000 + end.tv_nsec - start.tv_nsec;
-  }
-  else
-  {
-    temp.tv_sec = end.tv_sec - start.tv_sec;
-    temp.tv_nsec = end.tv_nsec - start.tv_nsec;
-  }
-  return (temp.tv_sec * 1000000000 + temp.tv_nsec);
-}
+// long time_difference(timespec start, timespec end)
+// {
+//   timespec temp;
+//   if (end.tv_nsec < start.tv_nsec)
+//   {
+//     temp.tv_sec = end.tv_sec - start.tv_sec - 1;
+//     temp.tv_nsec = 1000000000 + end.tv_nsec - start.tv_nsec;
+//   }
+//   else
+//   {
+//     temp.tv_sec = end.tv_sec - start.tv_sec;
+//     temp.tv_nsec = end.tv_nsec - start.tv_nsec;
+//   }
+//   return (temp.tv_sec * 1000000000 + temp.tv_nsec);
+// }
