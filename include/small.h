@@ -30,7 +30,7 @@
 #define SMALL_MINOR_VERSION  0
 #define SMALL_SUB_VERSON     0
 
-#define PARALLEL 1
+#define PARALLEL 0
 
 // ================== Public API ====================
 // #include <small/interface.hpp>           // template declarations only
@@ -42,7 +42,7 @@
 #include <intrinsics.h>
 
 /// This must come after platform-specific includes.
-#include <small/abstract_layer.hpp>
-// #include <small/q_abstract_layer.hpp>
+// #include <small/abstract_layer.hpp>
+#include <small/q_abstract_layer.hpp>
 
-#include <small/interface_abstract.hpp>  // template defs of interface.hpp
+#include <small/q_interface_abstract.hpp>  // template defs of interface.hpp

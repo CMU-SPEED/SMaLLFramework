@@ -199,14 +199,7 @@ void inline kernel_left(
 
     if (first)
     {
-        ZERO_END_C(r_pad_el, _C_ob, k_zero);;
-
-        // Initialize with 0 for the padding elements
-
-        // if (op_type == 'p')
-        // {
-        //     LOAD_END_C_strided(I, step, r_pad_el, _C_ob);
-        // }
+        ZERO_END_C(r_pad_el, _C_ob, k_zero);
     }
     else
     {
@@ -303,22 +296,6 @@ void inline kernel(
             {
                 OperandT const *b_cur = b + ii * _UNROLL * C_ob;
                 OperandT const *a_cur = a + ii * _UNROLL;
-
-                // if (op_type == 'c')
-                // {
-                //     if (op_class == 1)
-                //     {
-                //         DW_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob);
-                //     }
-                //     else if (op_class == 2)
-                //     {
-                //         CONV_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob);
-                //     }
-                // }
-                // else if (op_type == 'a' || op_type =='p')
-                // {
-                //     MAX_TILE_C(step, a_cur, _O_wb, _C_ob);
-                // }
                 ABSTRACT_OP(op_type, op_class, a_cur, b_cur); /// @todo pass _C_ob
             }
         }
@@ -391,22 +368,6 @@ void inline kernel_pad(
             {
                 OperandT const *b_cur = b + ii * _UNROLL * C_ob;
                 OperandT const *a_cur = a + ii * _UNROLL;
-
-                // if (op_type == 'c')
-                // {
-                //     if (op_class == 1)
-                //     {
-                //         DW_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob);
-                //     }
-                //     else if (op_class == 2)
-                //     {
-                //         CONV_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob);
-                //     }
-                // }
-                // else if (op_type == 'a' || op_type == 'p')
-                // {
-                //     MAX_TILE_C(step, a_cur, _O_wb, _C_ob);
-                // }
                 ABSTRACT_OP(op_type, op_class, a_cur, b_cur);
             }
         }
@@ -899,6 +860,7 @@ void abstract_layer(
             OperandT const *F_group = F + g * (K * F_c * F_h * F_w * _G_b);
             OperandT *O_group = O + g * (K * O_hxO_w * _G_b);
 
+            //resuse O_group as a uint32_t array
             for (index_t k = channel_tid; k < K / _K_b; k += T_channel)
             {
                 OperandT const *I_channel_block_output =
