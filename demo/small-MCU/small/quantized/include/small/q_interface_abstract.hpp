@@ -32,7 +32,7 @@
 // #include <stdio.h>
 // #include <stdlib.h>
 #include <stdint.h>
-#include <stdexcept>
+// #include <stdexcept>
 
 // #include <small/abstract_layer.hpp>
 
@@ -115,7 +115,6 @@ void Conv2D(int layer_num,
         else
         {
             // printf("This stride is unsupported, please change the interface.cpp file\n");
-            throw std::invalid_argument("Conv2D ERROR: stride unsupported.");
         }
     }
     else
@@ -145,7 +144,6 @@ void Conv2D(int layer_num,
         else
         {
             // printf("This stride is unsupported, please change the interface.cpp file\n");
-            throw std::invalid_argument("Conv2D ERROR: stride unsupported.");
         }
     }
 }
@@ -260,7 +258,7 @@ void Maxpool2D(int layer_num,
     else
     {
         // printf("This stride is unsupported, please change the interface.cpp file\n");
-        throw std::invalid_argument("Maxpool2D ERROR: stride unsupported.");
+        // throw std::invalid_argument("Maxpool2D ERROR: stride unsupported.");
     }
 }
 
@@ -302,7 +300,7 @@ void DepthwiseConv2D(int layer_num,
     else
     {
         // printf("This stride is unsupported, please change the interface.cpp file\n");
-        throw std::invalid_argument("DepthwiseConv2D ERROR: stride unsupported.");
+        // throw std::invalid_argument("DepthwiseConv2D ERROR: stride unsupported.");
     }
 }
 
@@ -399,7 +397,7 @@ void Conv2D_rect(int layer_num,
         else
         {
             // printf("This stride is unsupported, please change the interface.cpp file\n");
-            throw std::invalid_argument("Conv2D_rect ERROR: stride unsupported.");
+            // throw std::invalid_argument("Conv2D_rect ERROR: stride unsupported.");
         }
     }
     else
@@ -430,7 +428,7 @@ void Conv2D_rect(int layer_num,
         else
         {
             // printf("This stride is unsupported, please change the interface.cpp file\n");
-            throw std::invalid_argument("Conv2D_rect ERROR: stride unsupported.");
+            // throw std::invalid_argument("Conv2D_rect ERROR: stride unsupported.");
         }
     }
 }
@@ -470,7 +468,7 @@ void MaxPool2D_rect(int layer_num,
     else
     {
         // printf("This stride is unsupported, please change the interface.cpp file\n");
-        throw std::invalid_argument("MaxPool2D_rect ERROR: stride unsupported.");
+        // throw std::invalid_argument("MaxPool2D_rect ERROR: stride unsupported.");
     }
 }
 

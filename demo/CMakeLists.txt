@@ -51,3 +51,17 @@ foreach( model_source_file ${MODEL_SOURCES} )
     # target_link_libraries( ${model_exename} check_interface.o)
     set_property(TARGET ${model_exename} PROPERTY CXX_STANDARD 14)
 endforeach( model_source_file ${MODEL_SOURCES} )
+
+message("In demo/CMakeLists.txt: ${MODEL_SOURCES}")
+
+foreach(model_source_file ${MODEL_SOURCES})
+  get_filename_component(justname ${model_source_file} NAME)
+  string(REPLACE ".cpp" ".exe" model_exename ${justname})
+  set(model_exename "quant_model_${model_exename}")
+  message("Adding: ${model_exename}")
+  add_executable(${model_exename} ${model_source_file})
+  target_compile_definitions(${demo_name} PRIVATE QUANTZED=1)
+
+  # target_link_libraries( ${model_exename} check_interface.o)
+  set_property(TARGET ${model_exename} PROPERTY CXX_STANDARD 14)
+endforeach(model_source_file ${MODEL_SOURCES})

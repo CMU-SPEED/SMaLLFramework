@@ -15,7 +15,7 @@
 // #include <functional>
 #include <numeric>
 
-typedef uint8_t dtype;
+typedef float dtype;
 
 #include <small.h>
 #include "utils.h"
@@ -83,28 +83,34 @@ typedef uint8_t dtype;
     (O_HEIGHT(layer_num) * O_WIDTH(layer_num) * GROUP_C(layer_num - 1) * GROUPS(layer_num - 1))
 
 //****************************************************************************
-//****************************************************************************
-int main(int argc, char **argv)
+dtype *model_inference(uint32_t layer_num_total, uint16_t layer_params[30][10], dtype *filter_ptrs[30], dtype *input_dc, dtype *inter_0_dc, dtype *inter_1_dc)
 {
-    if (argc < 4)
+    int layer_num = 0;
+    Conv2D(0, 1, 1, 0, 0, 0, 0, GROUP_C(layer_num), REDUCTION_C(layer_num), 1, 1, input_dc, filter_ptrs[layer_num], inter_0_dc);
+    ReLUActivation(1, GROUP_C(layer_num), 1, 1, inter_0_dc, inter_0_dc);
+
+    dtype *out_inter_dc = inter_1_dc;
+    for (int cur_layer = 1; cur_layer < layer_num_total; cur_layer++)
     {
-        printf("USAGE: torch_pool <Input Height> <Input Width> <Input Channels> <Output Classes>");
-        return 0;
+
+        Conv2D(0, 1, 1, 0, 0, 0, 0, GROUP_C(layer_num), REDUCTION_C(layer_num), 1, 1, inter_0_dc, filter_ptrs[layer_num], out_inter_dc);
+        ReLUActivation(1, GROUP_C(layer_num), 1, 1, out_inter_dc, inter_1_dc);
+        layer_num++;
+        inter_1_dc = inter_0_dc;
+        inter_0_dc = out_inter_dc;
+        out_inter_dc = inter_1_dc;
     }
+    return inter_0_dc;
+}
+//****************************************************************************
+int main()
+{
 
-    int C_i = atoi(argv[1]);
+    int C_i = 128;
+    uint32_t N = 1;
+    uint32_t M = 1;
+    int num_classes = 16;
 
-    uint32_t N = atol(argv[2]);
-    uint32_t M = atol(argv[3]);
-
-
-    int num_classes = atol(argv[4]);
-
-    if (num_classes % 16 != 0)
-    {
-        printf("Number of output classes must be a multiple of 16\n");
-        exit(-1);
-    }
 
 
     // // Create and Initialize small tensors
@@ -120,7 +126,6 @@ int main(int argc, char **argv)
 
     uint16_t layer_params[30][10] = {1};
 
-    // std::vector<std::array<uint32_t, 2>> intermediate_dims;
     uint32_t intermediate_dims[30][2];
 
 
@@ -129,9 +134,8 @@ int main(int argc, char **argv)
     int layer_num = 0;
     uint32_t max_numel_inter_0 = 128, max_numel_inter_1 = 128;
 
-    // intermediate_dims.push_back(std::array<uint, 2>({M, N}));
-    intermediate_dims[layer_num][0] = M;
-    intermediate_dims[layer_num][0] = N;
+    intermediate_dims[layer_num][0] = 1;
+    intermediate_dims[layer_num][1] = 1;
 
     // conv
     REDUCTION_C(layer_num) = C_i; // input channels
@@ -141,9 +145,9 @@ int main(int argc, char **argv)
     STRIDE(layer_num) = 1;      // stride
     SET_PADDING(layer_num, 0, 0, 0, 0)
     layer_num++;
+    intermediate_dims[layer_num][0] = 1;
+    intermediate_dims[layer_num][1] = 1;
 
-    intermediate_dims[layer_num][layer_num] = O_WIDTH(layer_num);
-    intermediate_dims[layer_num][layer_num] = O_HEIGHT(layer_num);
     // common set up for model architecture
     for (int cur_layer = 1; cur_layer < layer_num_total-1; cur_layer++)
     {
@@ -155,10 +159,9 @@ int main(int argc, char **argv)
         STRIDE(layer_num) = 1; // stride
         SET_PADDING(layer_num, 0, 0, 0, 0)
         layer_num++; // 2
-        // intermediate_dims.push_back(std::array<uint, 2>(OUTPUT_DIMS(layer_num)));
-        intermediate_dims[layer_num][layer_num] = O_WIDTH(layer_num);
-        intermediate_dims[layer_num][layer_num] = O_HEIGHT(layer_num);
-        // std::cout << "dw " << layer_num << "  " << I_HEIGHT(layer_num) << " " << I_WIDTH(layer_num) << " " << GROUP_C(layer_num - 2) << std::endl;
+
+        intermediate_dims[layer_num][0] = 1;
+        intermediate_dims[layer_num][1] = 1;
     }
     REDUCTION_C(layer_num) = GROUP_C(layer_num-1);
     GROUP_C(layer_num) = num_classes;
@@ -167,12 +170,11 @@ int main(int argc, char **argv)
     STRIDE(layer_num) = 1;
     SET_PADDING(layer_num, 0, 0, 0, 0)
     layer_num++;
-    intermediate_dims[layer_num][layer_num] = O_WIDTH(layer_num);
-    intermediate_dims[layer_num][layer_num] = O_HEIGHT(layer_num);
-    // fc dims
-    // printf("size of intermediate buffers from configuration: %d %d\n", max_numel_inter_0*(sizeof(dtype)), max_numel_inter_1);
+    intermediate_dims[layer_num][0] = O_WIDTH(layer_num);
+    intermediate_dims[layer_num][1] = O_HEIGHT(layer_num);
 
 
+    #if SUMMARY == 1
     printf("Layer num total: %d\n", layer_num_total);
     for (auto i = 0; i < layer_num_total; i++)
     {
@@ -183,11 +185,10 @@ int main(int argc, char **argv)
         }
         printf("\b\b\n");
     }
-
+    #endif
 
 
     // Direct Convolution Setup
-
 
     dtype * filter_ptrs[30];
     for (int l = 0; l < layer_num_total; l++)
@@ -201,24 +202,9 @@ int main(int argc, char **argv)
 
     dtype *inter_0_dc = alloc<dtype>(max_numel_inter_0);
     dtype *inter_1_dc = alloc<dtype>(max_numel_inter_1);
-    dtype *output_dc = alloc<dtype>(num_classes);
+    dtype *output_dc;
 
-    layer_num = 0;
-    Conv2D(0, 1, 1, 0, 0, 0, 0, GROUP_C(layer_num), REDUCTION_C(layer_num), 1, 1, input_dc, filter_ptrs[layer_num], inter_0_dc);
-    ReLUActivation(1, GROUP_C(layer_num), 1, 1, inter_0_dc, inter_0_dc);
-
-    dtype *out_inter_dc = inter_1_dc;
-    for (int cur_layer = 1; cur_layer < layer_num_total; cur_layer++)
-    {
-
-        Conv2D(0, 1, 1, 0, 0, 0, 0, GROUP_C(layer_num), REDUCTION_C(layer_num), 1, 1, inter_0_dc, filter_ptrs[layer_num], out_inter_dc);
-        ReLUActivation(1, GROUP_C(layer_num), 1, 1, out_inter_dc, inter_1_dc);
-        layer_num++;
-        inter_1_dc = inter_0_dc;
-        inter_0_dc = out_inter_dc;
-        out_inter_dc = inter_1_dc;
-    }
-    output_dc = inter_0_dc;
+    output_dc = model_inference(layer_num_total, layer_params, filter_ptrs, input_dc, inter_0_dc, inter_1_dc);
 
     printf("\n");
 
@@ -230,22 +216,7 @@ int main(int argc, char **argv)
         // t0 = rdtsc();
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
 
-        layer_num = 0;
-        Conv2D(0, 1, 1, 0, 0, 0, 0, GROUP_C(layer_num), REDUCTION_C(layer_num), 1, 1, input_dc, filter_ptrs[layer_num], inter_0_dc);
-        ReLUActivation(1, 128, 1, 1, inter_0_dc, inter_0_dc);
-
-        dtype * out_inter_dc = inter_1_dc;
-        for (int cur_layer = 1; cur_layer < layer_num_total; cur_layer++)
-        {
-
-            Conv2D(0, 1, 1, 0, 0, 0, 0, GROUP_C(layer_num), REDUCTION_C(layer_num), 1, 1, inter_0_dc, filter_ptrs[layer_num], out_inter_dc);
-            ReLUActivation(1, 128, 1, 1, out_inter_dc, inter_1_dc);
-            layer_num++;
-            inter_1_dc = inter_0_dc;
-            inter_0_dc = out_inter_dc;
-            out_inter_dc = inter_1_dc;
-        }
-        output_dc = inter_0_dc;
+        output_dc = model_inference(layer_num_total, layer_params, filter_ptrs, input_dc, inter_0_dc, inter_1_dc);
 
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
         auto diff = time_difference(time1, time2);
@@ -256,12 +227,14 @@ int main(int argc, char **argv)
     print_cycles(sum_small);
     print_stats(small_timing, "SMaLL");
     printf("%d\n", atoi(std::getenv("OMP_NUM_THREADS")));
+
+    // Memory deallocation
     free(input_dc);
     for (size_t l = 0; l < layer_num_total; l++)
     {
         free(filter_ptrs[l]);
     }
-    printf("deallocing %ld filters\n", filter_ptrs.size());
+
 
     free(inter_1_dc);
     free(inter_0_dc);

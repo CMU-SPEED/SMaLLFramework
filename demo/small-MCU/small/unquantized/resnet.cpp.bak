@@ -1,28 +1,16 @@
 #include <math.h>
 #include <assert.h>
-// #include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <climits>
-// #include <vector>
-// #include <string>
-// #include <fstream>
-// #include <algorithm> // std::min_element
-// #include <iterator>
-// #include <array>
-// #include <iostream>
-// // #include <functional>
-// #include <numeric>
 
-typedef float dtype;
+typedef uint8_t dtype;
 
-#include <small.h>
-#include "utils.h"
+#include "include/small.h"
 
 /// @todo Which of these defines are needed?
 #ifndef RUNS
-#define RUNS 1000
+#define RUNS 1
 #endif
 #ifndef PARALLEL
 #define PARALLEL 0
@@ -75,8 +63,7 @@ inline void resnet_block(
     uint32_t o_h = output_dim(in_dims[0] + t_pad_0 + b_pad_0, stride, kernel_size);
     uint32_t o_w = output_dim(in_dims[1] + l_pad_0 + r_pad_0, stride, kernel_size);
     ReLUActivation(1, input_channels, o_h, o_w, O_intermediate, O_intermediate);
-    if (scale_channels)
-    {
+    if (scale_channels) {
         Conv2D(2, 1, stride, 0, 0, 0, 0, output_channels, input_channels, in_dims[0], in_dims[1], I, F_conv_1x1, O);
     }
     PartialConv2D(0, kernel_size, 1, t_pad_1, b_pad_1, l_pad_1, r_pad_1, output_channels, output_channels, o_h, o_w, O_intermediate, F_conv1, O);
@@ -108,10 +95,7 @@ inline void resnet_block(
 #define INPUT_NUMEL(layer_num) \
     (O_HEIGHT(layer_num) * O_WIDTH(layer_num) * GROUP_C(layer_num - 1) * GROUPS(layer_num - 1))
 
-
-//****************************************************************************
-dtype *model_inference(uint32_t layer_num_total, uint16_t layer_params[30][10], uint32_t intermediate_dims[30][2], dtype *filter_ptrs[30], dtype *input_dc, dtype *inter_0_dc, dtype *inter_1_dc, dtype *inter_2_dc)
-{
+dtype *model_inference(uint32_t layer_num_total, uint16_t layer_params[30][10], uint32_t intermediate_dims[30][2], dtype *filter_ptrs[30], dtype *input_dc, dtype *inter_0_dc, dtype *inter_1_dc, dtype * inter_2_dc) {
     auto layer_num = 0;
     Conv2D(0, REDUCTION_HW(layer_num), STRIDE(layer_num), PADDING(layer_num), GROUP_C(layer_num), REDUCTION_C(layer_num), I_HEIGHT(layer_num), I_WIDTH(layer_num), input_dc, filter_ptrs[layer_num], inter_0_dc);
     layer_num++;
@@ -133,8 +117,7 @@ dtype *model_inference(uint32_t layer_num_total, uint16_t layer_params[30][10], 
     layer_num += 2;
     auto resnet_blocks = 3;
     auto num_filters = layer_num_total - 1;
-    for (int ds_layer = 1; ds_layer < resnet_blocks; ds_layer++)
-    {
+    for (int ds_layer = 1; ds_layer < resnet_blocks; ds_layer++) {
         dtype *O_intermediate = inter_2_dc;
         resnet_block<1>(intermediate_dims[layer_num], REDUCTION_C(layer_num), // Input dimensions
                         REDUCTION_HW(layer_num),
@@ -160,20 +143,18 @@ dtype *model_inference(uint32_t layer_num_total, uint16_t layer_params[30][10], 
 }
 
 //****************************************************************************
-int main()
-{
+//****************************************************************************
+void inference() {
+    dtype buffer[200000];
+    dtype *buffer_ptr = buffer;
     int C_i = 3;
     uint32_t N = 32;
     uint32_t M = 32;
     int num_classes = 16;
 
     uint32_t input_dimensions = C_i * N * M;
-    dtype *input_dc = alloc<dtype>(input_dimensions);
-    init(input_dc, input_dimensions);
-
-    // calculate total number of weight elements
-    //uint32_t total_num_weights = 0;
-    // int layer_num = 0;
+    dtype *input_dc = buffer_ptr; buffer_ptr += input_dimensions;
+ 
     uint16_t layer_params[30][10] = {1};
     uint32_t intermediate_dims[30][2];
 
@@ -181,7 +162,7 @@ int main()
 
     // Set up model parameters
     uint32_t max_numel_inter_0 = 0, max_numel_inter_1 = 0;
-
+    
     intermediate_dims[0][0] = M;
     intermediate_dims[0][1] = N;
 
@@ -223,6 +204,7 @@ int main()
         intermediate_dims[layer_num][0] = O_WIDTH(layer_num);
         intermediate_dims[layer_num][1] = O_HEIGHT(layer_num);
 
+
         inter_dim = INPUT_NUMEL(layer_num);
         max_numel_inter_1 = (inter_dim > max_numel_inter_1) ? inter_dim : max_numel_inter_1;
 
@@ -240,8 +222,8 @@ int main()
         if (channel_multiplier != 1)
         {
 
-            intermediate_dims[layer_num][0] = O_WIDTH(layer_num - 2);
-            intermediate_dims[layer_num][1] = O_HEIGHT(layer_num - 2);
+            intermediate_dims[layer_num][0] = O_WIDTH(layer_num-2);
+            intermediate_dims[layer_num][1] = O_HEIGHT(layer_num-2);
             REDUCTION_C(layer_num) = in_channels; // input channels
             GROUP_C(layer_num) = in_channels * channel_multiplier;
             GROUPS(layer_num) = 1;       // output channels
@@ -279,79 +261,33 @@ int main()
     uint32_t layer_num_total = layer_num;
     auto num_filters = layer_num_total - 1;
 
-#if SUMMARY == 1
-    for (uint32_t i = 0; i < layer_num_total; i++)
-    {
-        printf("layer %d: ", i);
-	printf(" input_dims: %d %d ", I_HEIGHT(i), I_WIDTH(i));
-        for (auto j = 0; j < 10; j++)
-        {
-            printf("%d, ", layer_params[i][j]);
-        }
-	printf("\b\b");
-	//printf("input dims: %d %d ", I_HEIGHT(i+1), I_WIDTH(i+1));
-        printf("\n");
-    }
-    #endif
-
-    // std::vector<uint32_t> filter_dimensions;
-
+    //  Copy layer weights to temporaries
     dtype *filter_fc_dc;
     dtype *filter_ptrs[30];
-    for (uint32_t l = 0; l < num_filters - 1; l++)
-    {
+    for (uint32_t l = 0; l < num_filters - 1; l++) {
         dtype *filter_ptr;
         uint32_t filter_dimensions = REDUCTION_HW(l) * REDUCTION_HW(l) * REDUCTION_C(l) * GROUP_C(l) * GROUPS(l);
-        filter_ptr = alloc<dtype>(filter_dimensions);
-        init(filter_ptr, filter_dimensions);
+        filter_ptr = buffer_ptr; buffer_ptr += filter_dimensions;
         filter_ptrs[l] = filter_ptr;
     }
 
     uint32_t filter_dimensions = GROUP_C(layer_num_total - 1) * REDUCTION_C(layer_num_total - 1);
-    filter_fc_dc = alloc<dtype>(filter_dimensions);
-    init(filter_fc_dc, filter_dimensions);
+    filter_fc_dc = buffer_ptr; buffer_ptr += filter_dimensions;
     filter_ptrs[num_filters - 1] = filter_fc_dc;
 
     // copy input
     // allocate space for intermediate outputs (use the max sizes calculated previously)
-    dtype *inter_0_dc = alloc<dtype>(max_numel_inter_0);
-    dtype *inter_1_dc = alloc<dtype>(max_numel_inter_1);
-    dtype *inter_2_dc = alloc<dtype>(max_numel_inter_0);
+    dtype *inter_0_dc = buffer_ptr; buffer_ptr += max_numel_inter_0;
+    dtype *inter_1_dc = buffer_ptr; buffer_ptr += max_numel_inter_1;
+    dtype *inter_2_dc = buffer_ptr; buffer_ptr += max_numel_inter_0/2;
     dtype *output_dc;
 
-    output_dc = model_inference(layer_num_total, layer_params, intermediate_dims, filter_ptrs, input_dc, inter_0_dc, inter_1_dc, inter_2_dc);
 
-    unsigned long long sum_small;
-    sum_small = ULLONG_MAX;
-    std::vector<unsigned long long> small_timing;
-    for (int r = 0; r < RUNS; r++)
-    {
-        // t0 = rdtsc();
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
+    uint32_t start = time_us_32();
+    for (int r = 0; r < RUNS; r++) {
         output_dc = model_inference(layer_num_total, layer_params, intermediate_dims, filter_ptrs, input_dc, inter_0_dc, inter_1_dc, inter_2_dc);
-
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
-
-        auto diff = time_difference(time1, time2);
-        sum_small = std::min<unsigned long long>(sum_small, diff);
-        //MIN(sum_small, diff);
-        small_timing.push_back(diff);
     }
-
-    print_cycles(sum_small);
-    print_stats(small_timing, "SMaLL");
-    printf("%d\n", atoi(std::getenv("OMP_NUM_THREADS")));
-
-    printf("\n");
-
-    free(input_dc);
-
-    for (size_t l = 0; l < num_filters; l++)
-    {
-        free(filter_ptrs[l]);
-    }
-
-    free(inter_0_dc);
-    free(inter_1_dc);
-    free(inter_2_dc);
+    uint32_t stop = time_us_32();
+    uint32_t diff = stop - start;
+    printf("%u us\n", diff);
 }

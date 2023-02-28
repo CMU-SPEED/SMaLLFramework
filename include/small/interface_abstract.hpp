@@ -43,31 +43,31 @@ int clip(int n, int upper, int lower=0)
 }
 
 //Quantization Functions
-template<typename Q_T, typename T>
-void Quantize(int num_elements, T * tensor_ptr, Q_T * quant_tensor_ptr)
-{
-    float scale_inv = (1.0 / quant_tensor_ptr->scale);
-    uint64_t max_val = (1 << quant_tensor_ptr->b) - 1;
-    printf("%lu max scale inverse: %f \n", max_val, scale_inv);
-    int quant_val = rint(quant_tensor_ptr->zero + (0.0 * scale_inv));
-    printf("%f %d  \t %u\n", 0.0, quant_val);
-    for (int i = 0; i < num_elements; i++)
-    {
-        int quant_val = rint(quant_tensor_ptr->zero + (tensor_ptr[i] * scale_inv));
-        quant_tensor_ptr->tensor[i] = (quant_val< max_val)?quant_val:max_val;
-        printf("%f %d  \t %u\n", tensor_ptr[i], quant_val, quant_tensor_ptr->tensor[i]);
-    }
-}
+// template<typename Q_T, typename T>
+// void Quantize(int num_elements, T * tensor_ptr, Q_T * quant_tensor_ptr)
+// {
+//     float scale_inv = (1.0 / quant_tensor_ptr->scale);
+//     uint64_t max_val = (1 << quant_tensor_ptr->b) - 1;
+//     printf("%lu max scale inverse: %f \n", max_val, scale_inv);
+//     int quant_val = rint(quant_tensor_ptr->zero + (0.0 * scale_inv));
+//     printf("%f %d  \t %u\n", 0.0, quant_val);
+//     for (int i = 0; i < num_elements; i++)
+//     {
+//         int quant_val = rint(quant_tensor_ptr->zero + (tensor_ptr[i] * scale_inv));
+//         quant_tensor_ptr->tensor[i] = (quant_val< max_val)?quant_val:max_val;
+//         printf("%f %d  \t %u\n", tensor_ptr[i], quant_val, quant_tensor_ptr->tensor[i]);
+//     }
+// }
 
-template <typename Q_T, typename T>
-void DeQuantize(int num_elements, T *tensor_ptr, Q_T *quant_tensor_ptr)
-{
-    for (int i = 0; i < num_elements; i++)
-    {
-        tensor_ptr[i] = (T)(quant_tensor_ptr->scale*(quant_tensor_ptr->tensor[i] - quant_tensor_ptr->zero));
-        // printf("%f\n", tensor_ptr[i]);
-    }
-}
+// template <typename Q_T, typename T>
+// void DeQuantize(int num_elements, T *tensor_ptr, Q_T *quant_tensor_ptr)
+// {
+//     for (int i = 0; i < num_elements; i++)
+//     {
+//         tensor_ptr[i] = (T)(quant_tensor_ptr->scale*(quant_tensor_ptr->tensor[i] - quant_tensor_ptr->zero));
+//         // printf("%f\n", tensor_ptr[i]);
+//     }
+// }
 
 template <typename Q_T, typename T>
 void DebugDeQuantize(int num_elements, T *tensor_ptr, Q_T *quant_tensor_ptr)
@@ -321,7 +321,6 @@ void ReLUActivation(int layer_num,
                     OperandT       *output_ptr,
                     int zero = 0)
 {
-    printf("relu zero %d \n", zero);
     abstract_layer<OperandT, C_ob, 1, 1, W_ob, 1, 1, 'a', 0, 1>(
         input_channels, // Output Channel Grouping
         1,              // Output Channels per group
@@ -479,4 +478,23 @@ void MaxPool2D_rect(int layer_num,
         //printf("This stride is unsupported, please change the interface.cpp file\n");
         throw std::invalid_argument("MaxPool2D_rect ERROR: stride unsupported.");
     }
+}
+
+inline void CALC_PADDING(uint32_t I_dim,
+                         uint32_t K_dim,
+                         uint16_t stride,
+                         uint8_t &padding_front,
+                         uint8_t &padding_back)
+{
+    uint32_t padding;
+    if (I_dim % stride == 0)
+    {
+        padding = (K_dim > stride) ? K_dim - stride : 0;
+    }
+    else
+    {
+        padding = (K_dim > (I_dim % stride)) ? (K_dim - (I_dim % stride)) : 0;
+    }
+    padding_front = padding / 2;
+    padding_back = padding - padding_front;
 }

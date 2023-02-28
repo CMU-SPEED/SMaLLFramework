@@ -199,7 +199,7 @@ void inline kernel_left(
 
     if (first)
     {
-        ZERO_END_C(r_pad_el, _C_ob);
+        ZERO_END_C(r_pad_el, _C_ob, k_zero);
     }
     else
     {
@@ -265,7 +265,7 @@ void inline kernel(
     DEF_TILE_C(_O_wb, _C_ob);
     if (first)
     {
-        ZERO_TILE_C(_O_wb, _C_ob);
+        ZERO_TILE_C(_O_wb, _C_ob, k_zero);;
         if (op_type == 'p')
         {
             LOAD_TILE_C_strided(I, step, _O_wb, C_ob);
@@ -339,7 +339,7 @@ void inline kernel_pad(
     DEF_TILE_C(_O_wb, _C_ob);
     if (first)
     {
-        ZERO_TILE_C(_O_wb, _C_ob);
+        ZERO_TILE_C(_O_wb, _C_ob, k_zero);;
     }
     else
     {
@@ -412,7 +412,7 @@ void inline kernel_right(
     {
         if (first)
         {
-            ZERO_END_C(O_w_left, _C_ob);
+            ZERO_END_C(O_w_left, _C_ob, k_zero);;
 
             if (op_type == 'p' && H_lb == 0 && H_ub == 0)
             {
@@ -445,7 +445,7 @@ void inline kernel_right(
 
     if (first)
     {
-        ZERO_END_C(r_pad_el, _C_ob);
+        ZERO_END_C(r_pad_el, _C_ob,k_zero);;
 
         // Initialize with 0 for the padding elements
 

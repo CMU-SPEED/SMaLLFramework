@@ -101,45 +101,45 @@ void print_build_info_check()
 //Allocation
 //****************************************************************************
 // #define MAX_BUFF_SIZE 50000000
-#define MAX_BUFF_SIZE 10000000
-dtype memory_buffer[MAX_BUFF_SIZE];
-dtype * cur_free_ptr = memory_buffer;
-uint32_t buf_offset = 0;
-template <typename dtype>
-dtype *alloc(uint32_t numel)
-{
-    dtype *ptr_dc;
+// #define MAX_BUFF_SIZE 10000000
+// dtype memory_buffer[MAX_BUFF_SIZE];
+// dtype * cur_free_ptr = memory_buffer;
+// uint32_t buf_offset = 0;
+// template <typename dtype>
+// dtype *alloc(uint32_t numel)
+// {
+//     dtype *ptr_dc;
 
-    int ret = buf_offset + numel > MAX_BUFF_SIZE;
+//     int ret = buf_offset + numel > MAX_BUFF_SIZE;
 
 
-    ptr_dc = cur_free_ptr + numel;
+//     ptr_dc = cur_free_ptr + numel;
     
-    // int ret = posix_memalign((void **)&ptr_dc, 64, numel * sizeof(dtype));
+//     // int ret = posix_memalign((void **)&ptr_dc, 64, numel * sizeof(dtype));
 
-    if (ret)
-    {
-      printf("cannot allocate space\n");
-        return NULL;
-    }
-    else
-    {
-      buf_offset += numel;
-      cur_free_ptr += numel;
-      // printf("%d numel buffer %d\n", numel, buf_offset);
-    }
-    return ptr_dc;
-}
+//     if (ret)
+//     {
+//       printf("cannot allocate space\n");
+//         return NULL;
+//     }
+//     else
+//     {
+//       buf_offset += numel;
+//       cur_free_ptr += numel;
+//       // printf("%d numel buffer %d\n", numel, buf_offset);
+//     }
+//     return ptr_dc;
+// }
 
-uint32_t free_all()
-{
-  auto freed_space = buf_offset;
-  cur_free_ptr = memory_buffer;
-  buf_offset = 0;  
+// uint32_t free_all()
+// {
+//   auto freed_space = buf_offset;
+//   cur_free_ptr = memory_buffer;
+//   buf_offset = 0;  
 
-  return freed_space;
+//   return freed_space;
 
-}
+// }
 
 //****************************************************************************
 // Initialization Options
