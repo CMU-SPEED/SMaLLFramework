@@ -2,24 +2,23 @@
 # SMaLLFramework/CMakeLists.txt:  cmake script for SMaLL library
 #-------------------------------------------------------------------------------
 
-# SMaLLFramework, (c) 2022 by The SMaLLFramework Contributors, All Rights Reserved.
+# SMaLL, Software for Machine Learning Libraries
+# Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
 # SPDX-License-Identifier: BSD-3-Clause
-# See additional acknowledgments in the LICENSE file
+
+# For additional details (including references to third party source code and
+# other files) see the LICENSE file or contact permission@sei.cmu.edu. See
+# Contributors.txt for a full list of contributors. Created, in part, with
+# funding and support from the U.S. Government (see Acknowledgments.txt file).
+# DM23-0126
 
 #-------------------------------------------------------------------------------
 
-# CMakeLists.txt: instructions for cmake to build LAGraph.  An ANSI C11
-# compiler is required.  First, install any GraphBLAS library.  Alternatively,
-# use ../GraphBLAS (see comments below).
-#
 # To compile the SMaLLFramework library and its tests and benchmarks, and run the
 # tests:
 #
-# TODO: determine fate of CMAKE_SMALL_DIR from arm_support
-#
 #   cd build
 #   cmake .. -DCMAKE_UARCH=<µkernel_arch>
-#   cmake .. -DCMAKE_UARCH=<µkernal_arch> -DCMAKE_SMALL_DIR=<path-to/SMaLLFramework/src/>
 #   make
 #   make test
 #
@@ -30,9 +29,9 @@ cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 #set (CMAKE_MACOSX_RPATH TRUE)
 
 # version of SMaLLFramework
-set (SMaLLFramework_DATE "October 11, 2022" )
+set (SMaLLFramework_DATE "March 2, 2023" )
 set (SMaLLFramework_VERSION_MAJOR 0 )
-set (SMaLLFramework_VERSION_MINOR 2 )
+set (SMaLLFramework_VERSION_MINOR 3 )
 set (SMaLLFramework_VERSION_SUB   0 )
 
 project(SMaLLFramework
