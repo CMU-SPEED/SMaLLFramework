@@ -1,3 +1,12 @@
+# SMaLL, Software for Machine Learning Libraries
+# Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# For additional details (including references to third party source code and
+# other files) see the LICENSE file or contact permission@sei.cmu.edu. See
+# Contributors.txt for a full list of contributors. Created, in part, with
+# funding and support from the U.S. Government (see Acknowledgments.txt file).
+# DM23-0126
 
 W_ob = 6
 C_ob2 = 1
@@ -115,7 +124,7 @@ with open('intrinsics-gen.h', 'w') as f:
                         if kk == 0: # load b just before use
                             # s += ['b_{jj} = vld1q_f32(b + ({i} * SIMD + {ii})*C_ob + ({j} * {C_ob1} + {jj})*SIMD);\\'.format(i=i, ii=ii, j=j, C_ob1=C_ob1//SIMD, jj=jj)]
                             s += ['b_{jj} = vld1q_f32(bb + {ii}*C_ob + ({j} * {C_ob1} + {jj})*SIMD);\\'.format(ii=ii, j=j, C_ob1=C_ob1//SIMD, jj=jj)]
-                        
+
                         # s += ['{c} = vfmaq_laneq_f32({c}, b_{jj}, a_{kk}, {ii});\\'.format(c=c_tile[kk][j * (C_ob1//SIMD) + jj], kk=kk, jj=jj, ii=ii)]
                         # s += ['__asm__ volatile("fmla %[c].4s, %[b].4s, %[a].s[{ii}]\\n\\t" : [c] "+w"({c}) : [b] "w"(b_{jj}), [a] "w"(a_{kk}));'.format(
                         s += ['__asm__ volatile ("fmla %0.4s, %1.4s, %2.s[{ii}]" : "+w"({c}) : "w"(b_{jj}), "w"(a_{kk}));\\'.format(
@@ -129,7 +138,7 @@ with open('intrinsics-gen.h', 'w') as f:
 
     s += ['']
 
-    # 
+    #
 
     # max pooling / relu
     s += redefine('MAX_TILE_C')
@@ -137,7 +146,7 @@ with open('intrinsics-gen.h', 'w') as f:
     # compute
     s += ['float32x4_t av; \\']
     for kk in range(W_ob):
-        for jj in range(C_ob//SIMD): 
+        for jj in range(C_ob//SIMD):
             s += ['av = vld1q_f32(a + {k} * step + {j} * SIMD);\\'.format(k=kk, j=jj)]
             s += ['{c} = vmaxq_f32({c}, av);\\'.format(c=c_tile[kk][jj], k=kk, j=jj)]
     s += ['']
@@ -151,7 +160,7 @@ with open('intrinsics-gen.h', 'w') as f:
         s += ['float32x4_t b_{j} = vld1q_f32(b + {j}*SIMD);\\'.format(j=jj)]
     # compute
     for kk in range(W_ob):
-        for jj in range(C_ob//SIMD): 
+        for jj in range(C_ob//SIMD):
             s += ['av = vld1q_f32(a + {k} * step + {j} * SIMD);\\'.format(k=kk, j=jj)]
             s += ['{c} = vfmaq_f32({c}, av, b_{j});\\'.format(c=c_tile[kk][jj], j=jj)]
     s += ['']
