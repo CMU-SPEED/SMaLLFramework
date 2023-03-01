@@ -1,1 +1,0 @@
-../../../../../../../../SMaLLFramework/src/kernels/quantized_arm7E/intrinsics.h

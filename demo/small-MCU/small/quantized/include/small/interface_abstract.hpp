@@ -1,1 +1,0 @@
-../../../../../../../SMaLLFramework/include/small/interface_abstract.hpp
