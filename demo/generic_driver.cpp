@@ -1,3 +1,13 @@
+// SMaLL, Software for Machine Learning Libraries
+// Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
+// SPDX-License-Identifier: BSD-3-Clause
+//
+// For additional details (including references to third party source code and
+// other files) see the LICENSE file or contact permission@sei.cmu.edu. See
+// Contributors.txt for a full list of contributors. Created, in part, with
+// funding and support from the U.S. Government (see Acknowledgments.txt file).
+// DM23-0126
+
 
 #include <math.h>
 #include <assert.h>
@@ -12,7 +22,6 @@
 #include <fstream>
 #include <time.h>
 
-typedef uint8_t dtype;
 
 #include <small.h>
 #include "utils.h"
@@ -52,16 +61,11 @@ typedef uint8_t dtype;
 #define POOL 4
 #define RELU 5
 
-// #ifndef LAYER
-// #define LAYER
-// #endif
-
 
 //****************************************************************************
 //****************************************************************************
 int main(int argc, char **argv)
 {
-    // printf("%d \t %d\t ", BUFFER, PREFETCH);
     if (argc < 5)
     {
         printf("USAGE: torch_pool <Input Channels> <Input Height> <Input Width> <kernel heightand width> <stride> <padding 'v' or 'f'> <Output Channels> \n");
@@ -81,18 +85,11 @@ int main(int argc, char **argv)
     uint8_t t_pad = 0, b_pad = 0;
     uint8_t l_pad = 0, r_pad = 0;
 
-    //int padding_front = 0, padding_back = 0;
 
     if (padding == 'f')
     {
         CALC_PADDING(input_height, kernel_size, stride, t_pad, b_pad);
         CALC_PADDING(input_width, kernel_size, stride, l_pad, r_pad);
-
-        // padding_front = r_pad;
-        // padding_back = b_pad;
-        // t_pad = 0;
-        // b_pad = 0;
-        // l_pad = 0;
     }
 
 #if LAYER == CONV || LAYER == PARTIAL_CONV
@@ -119,39 +116,21 @@ int main(int argc, char **argv)
 #endif
 
     dtype *input_dc = alloc<dtype>(in_dimensions);
-    // fprintf(stderr, "i %lu\n", input_dc);
-    // fflush(stderr);
 
     dtype *out_dc = alloc<dtype>(out_dimensions);
     dtype *out_check_dc = alloc<dtype>(out_dimensions);
     std::vector<uint32_t> intermediate_block_dimensions;
 
-#if PARALLEL
-    // uint32_t num_threads = 1;
-    // if (char const *nt_str = std::getenv("OMP_NUM_THREADS"))
-    // {
-    //     int32_t nt(atoi(nt_str));
-    //     if (nt > 0)
-    //         num_threads = nt;
-    // }
-#endif
 
-    unsigned long long sum = ULLONG_MAX; //, sum_pool = ULLONG_MAX;
-    // volatile unsigned long long sum_fused = ULLONG_MAX;
-    // volatile unsigned long long sum_conv = ULLONG_MAX;
+    unsigned long long sum = ULLONG_MAX; 
     std::vector<uint64_t> unfused_timing;
 
 
     // Initialize Outputs to 0
 
-    // 3x3 unfused
     // Copy Inputs to their flat buffers
-    // init_arange<C_ob>(input_dc, input_height, input_width, C_i);
     init(input_dc, in_dimensions);
 
-    for(int i = 0; i < in_dimensions; i++){
-        printf("%f ", (float)input_dc[i]); 
-    }
     printf("\n");
 #if LAYER == CONV || LAYER == PARTIAL_CONV
     uint32_t filter_dimensions = (C_i * C_o * kernel_size * kernel_size);
@@ -160,10 +139,6 @@ int main(int argc, char **argv)
 #endif
 #if LAYER < POOL
     dtype *filter_dc = alloc<dtype>(filter_dimensions);
-    // fprintf(stderr, "f %lu\n", filter_dc);
-    // fflush(stderr);
-    // printf("%d\n", in_dimensions);
-    // init_ones(filter_dc, filter_dimensions);
     init(filter_dc, filter_dimensions);
 
 #endif

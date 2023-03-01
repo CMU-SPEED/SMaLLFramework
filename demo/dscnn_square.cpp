@@ -15,7 +15,7 @@
 // #include <functional>
 #include <numeric>
 
-typedef float dtype;
+// typedef float dtype;
 
 #include <small.h>
 #include "utils.h"
@@ -111,21 +111,11 @@ inline void dscnn_block(
 
 int main(int argc, char **argv)
 {
-    if (argc < 4)
-    {
-        printf("USAGE: torch_pool <Input Height> <Input Width> <Input Channels> <Output Classes>");
-        return 0;
-    }
 
-    // printf("layer %d %d %d \n", LAYER, uarch, W_ob);
-    int C_i = atoi(argv[1]);
-
-    uint32_t N = atol(argv[2]);
-    uint32_t M = atol(argv[3]);
-
-    // int C_i = atol(argv[3]);
-
-    int num_classes = atol(argv[4]);
+    int C_i = 3;
+    uint32_t N = 49;
+    uint32_t M = 10;
+    int num_classes = 16;
 
     // uint32_t check_blocks = atol(argv[5]);
     if (num_classes % 16 != 0)
@@ -133,21 +123,10 @@ int main(int argc, char **argv)
         printf("Number of output classes must be a multiple of 16\n");
         exit(-1);
     }
-    //int C_o = 32;
-    //int padding_elements = 0;
-    //int kernel_size = 3;
-    //int stride = 1;
-
-    // // Create and Initialize Pytorch tensors
-    // torch::manual_seed(1729);
-    // torch::Tensor a = torch::randn(C_i * N * M).reshape({1, C_i, N, M});
-    // a = torch::mul(a, 1.0);
-    // // print_shape(-1, a);
-    // // std::cout<<a<<std::endl;
 
     //Create input tensor
     uint32_t input_dimensions = C_i*N*M;
-    dtype *input_dc = alloc(input_dimensions);
+    dtype *input_dc = alloc<dtype>(input_dimensions);
     init(input_dc, input_dimensions);
 
     // std::vector<std::vector<uint64_t>> implementations;
@@ -254,20 +233,20 @@ int main(int argc, char **argv)
         dtype *filter_ptr;
         // weights = layers[l]->weight; // conv_1x1->weight;
         uint32_t filter_dimensions = REDUCTION_H(l) * REDUCTION_W(l) * REDUCTION_C(l) * GROUP_C(l) * GROUPS(l);
-        filter_ptr = alloc(filter_dimensions);
+        filter_ptr = alloc<dtype>(filter_dimensions);
         init(filter_ptr, filter_dimensions);
         filter_ptrs.push_back(filter_ptr);
     }
 
     uint32_t filter_dimensions = GROUP_C(layer_num_total) * num_classes;
     printf("Fc filter dims %d x %d\n", GROUP_C(layer_num_total-1) , num_classes);
-    filter_fc_dc = alloc(filter_dimensions);
+    filter_fc_dc = alloc<dtype>(filter_dimensions);
     init(filter_fc_dc, filter_dimensions);
     filter_ptrs.push_back(filter_fc_dc);
 
-    dtype *inter_0_dc = alloc(max_numel_inter_0);
-    dtype *inter_1_dc = alloc(max_numel_inter_1);
-    dtype *output_dc = alloc(num_classes);
+    dtype *inter_0_dc = alloc<dtype>(max_numel_inter_0);
+    dtype *inter_1_dc = alloc<dtype>(max_numel_inter_1);
+    dtype *output_dc = alloc<dtype>(num_classes);
 
     //uint32_t inter_h, inter_w;
 

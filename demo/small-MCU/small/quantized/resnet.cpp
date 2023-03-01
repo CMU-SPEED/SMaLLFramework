@@ -1,3 +1,13 @@
+// SMaLL, Software for Machine Learning Libraries
+//  Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
+//  SPDX-License-Identifier: BSD-3-Clause
+//
+//  For additional details (including references to third party source code and
+//  other files) see the LICENSE file or contact permission@sei.cmu.edu. See
+//  Contributors.txt for a full list of contributors. Created, in part, with
+//  funding and support from the U.S. Government (see Acknowledgments.txt file).
+//  DM23-0126
+
 #include <math.h>
 #include <assert.h>
 #include <stdio.h>
@@ -291,7 +301,7 @@ void inference() {
     dtype *inter_0_dc = (dtype *) alloc<dtype>(max_numel_inter_0 + C_ob*16*16*3);
     dtype *inter_1_dc = (dtype *) alloc<dtype>(max_numel_inter_1 + C_ob*16*16*3);
     dtype *inter_2_dc = (dtype *) alloc<dtype>((max_numel_inter_0 / 2) + C_ob*16*16*3);
-    qdtype *output_dc; //= (dtype *) alloc<dtype>(num_classes);
+    qdtype *output; //= (dtype *) alloc<dtype>(num_classes);
 
     qdtype q_inter_0;
     quantized_init(&q_inter_0, max_numel_inter_0);
@@ -304,16 +314,24 @@ void inference() {
     qdtype q_inter_2;
     quantized_init(&q_inter_2, (max_numel_inter_0 / 2));
     q_inter_2.tensor = inter_2_dc;
-    output_dc = model_inference(layer_num_total, layer_params, intermediate_dims, &(q_filter_ptrs[0]), &q_input, &q_inter_0, &q_inter_1, &q_inter_2);
+    output = model_inference(layer_num_total, layer_params, intermediate_dims, &(q_filter_ptrs[0]), &q_input, &q_inter_0, &q_inter_1, &q_inter_2);
 
     #ifdef NANO33BLE
     mbed::Timer t;
     t.start();
     for (int r = 0; r < RUNS; r++) {
-        output_dc = model_inference(layer_num_total, layer_params, intermediate_dims, &(q_filter_ptrs[0]), &q_input, &q_inter_0, &q_inter_1, &q_inter_2);
+        output = model_inference(layer_num_total, layer_params, intermediate_dims, &(q_filter_ptrs[0]), &q_input, &q_inter_0, &q_inter_1, &q_inter_2);
     }
     t.stop();
     Serial.println(t.elapsed_time().count());
+    #else
+    for (int i = 0; i < num_classes; i++)
+    {
+        printf("%d ", output->tensor[i]);
+    }
+    printf("\n");    
     #endif
+
+
     free_all();
 }

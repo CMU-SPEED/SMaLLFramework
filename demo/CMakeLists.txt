@@ -28,17 +28,6 @@ foreach( layer_name ${LAYER_NAMES} )
   set_property(TARGET ${demo_name} PROPERTY CXX_STANDARD 14)
 endforeach( layer_name ${LAYER_NAMES} )
 
-# quantized int layers
-foreach(layer_name ${LAYER_NAMES})
-  set(demo_name "test_interface_quant_${layer_name}.exe")
-  message("Adding executable: ${demo_name}")
-  add_executable(${demo_name} generic_quant_driver.cpp)
-
-  # target_link_libraries(${demo_name} check_interface.o)
-  target_compile_definitions(${demo_name} PRIVATE LAYER=${layer_name})
-  set_property(TARGET ${demo_name} PROPERTY CXX_STANDARD 14)
-endforeach(layer_name ${LAYER_NAMES})
-
 set(MODEL_SOURCES mobilenet.cpp resnet.cpp dscnn.cpp dscnn_square.cpp autoencoder.cpp tinyyolov2.cpp)
 message("In demo/CMakeLists.txt: ${MODEL_SOURCES}")
 
@@ -54,14 +43,3 @@ endforeach( model_source_file ${MODEL_SOURCES} )
 
 message("In demo/CMakeLists.txt: ${MODEL_SOURCES}")
 
-foreach(model_source_file ${MODEL_SOURCES})
-  get_filename_component(justname ${model_source_file} NAME)
-  string(REPLACE ".cpp" ".exe" model_exename ${justname})
-  set(model_exename "quant_model_${model_exename}")
-  message("Adding: ${model_exename}")
-  add_executable(${model_exename} ${model_source_file})
-  target_compile_definitions(${demo_name} PRIVATE QUANTZED=1)
-
-  # target_link_libraries( ${model_exename} check_interface.o)
-  set_property(TARGET ${model_exename} PROPERTY CXX_STANDARD 14)
-endforeach(model_source_file ${MODEL_SOURCES})

@@ -1,3 +1,13 @@
+// SMaLL, Software for Machine Learning Libraries
+// Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
+// SPDX-License-Identifier: BSD-3-Clause
+//
+// For additional details (including references to third party source code and
+// other files) see the LICENSE file or contact permission@sei.cmu.edu. See
+// Contributors.txt for a full list of contributors. Created, in part, with
+// funding and support from the U.S. Government (see Acknowledgments.txt file).
+// DM23-0126
+
 // A set of functions to enable testing
 // We have timing, initialization, allocation, logging and equivalence checking
 
@@ -188,7 +198,6 @@ bool equals(uint32_t numel, dtype *unfused, dtype *fused, dtype tolerance = 1e-8
   for (uint32_t i = 0; i < numel; i++)
   {
     dtype diff = *(fused_ptr) - *(unfused_ptr);
-    // printf("%d %d %d %d\n", i, *(fused_ptr), *(unfused_ptr), diff);
 
     if (fabs(diff) > tolerance)
     {
@@ -205,9 +214,6 @@ bool equals(uint32_t numel, dtype *unfused, dtype *fused, dtype tolerance = 1e-8
 template<uint32_t num_ops, uint32_t trials>
 void write_results(uint64_t * fused_timing)
 {
-  // std::string path = "Results/logfile";
-  // std::string path_to_log_file = path + file;
-  // FILE *outfile = fopen(path.c_str(), "w");
 
   fprintf(stderr, "Unfused ");
   for (uint32_t j = 0; j < num_ops; j++)

@@ -15,7 +15,6 @@
 // // #include <functional>
 // #include <numeric>
 
-typedef float dtype;
 
 #include <small.h>
 #include "utils.h"
