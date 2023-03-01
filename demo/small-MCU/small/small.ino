@@ -1,12 +1,14 @@
 #include "mbed.h"
+#define NANO33BLE 0
 
-// #include "models/autoencoder.cpp"
-// #include "models/dscnn.cpp"
-// #include "models/resnet.cpp"
+// #include "unquantized/autoencoder.cpp"
+// #include "unquantized/dscnn.cpp"
+// #include "unquantized/resnet.cpp"
 
-// #include "quant/autoencoder.cpp"
-// #include "quant/resnet.cpp"
-#include "quant/dscnn.cpp"
+// #include "quantized/autoencoder.cpp"
+// #include "quantized/resnet.cpp"
+#include "quantized/dscnn.cpp"
+
 
 void setup() {
   // put your setup code here, to run once:

@@ -38,18 +38,18 @@
 // ============ Implementation details ==============
 // Platform specific includes.
 // Use -I compile option to point to correct platform
-#include <params.h>
-#include <intrinsics.h>
-
+#include "kernels/quantized_arm7E/params.h"
+#include "kernels/quantized_arm7E/intrinsics.h"
+#include "kernels/quantized_arm7E/utils.h"
 /// This must come after platform-specific includes.
 // #include <small/abstract_layer.hpp>
 
 #if QUANTIZED == 1
-#include <small/q_abstract_layer.hpp>
-#include <small/q_interface_abstract.hpp>  // template defs of interface.hpp
+#include "small/q_abstract_layer.hpp"
+#include "small/q_interface_abstract.hpp"
 #else
-#include <small/abstract_layer.hpp>
-#include <small/interface_abstract.hpp> 
+#include "small/abstract_layer.hpp"
+#include "small/interface_abstract.hpp"
 #endif
 //USE THESE  IF Quantized
 

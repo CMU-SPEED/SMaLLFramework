@@ -5,28 +5,9 @@
 #include <stdint.h>
 #include <climits>
 
-#define QUANTIZED 1
-typedef uint8_t dtype;
-typedef int32_t atype;
-
-struct
-{                           // Structure declaration
-    dtype *tensor;          // Member (int variable)
-    float scale = 0.752941; // Member (string variable)
-    int32_t offset = 0;
-    int32_t multiplier = 1616928864;
-    int lshift = 0;
-    int rshift = 3;
-    int zero = 0;
-    int min_val = 255;
-    int max_val = 0;
-    uint8_t b = 8;
-} typedef qint32_t; // Structure variable
-
-typedef qint32_t qdtype;
 
 #include "include/small.h"
-#include "include/utils.h"
+// #include "include/utils.h"
 
 /// @todo Which of these defines are needed?
 #ifndef RUNS
@@ -284,7 +265,9 @@ void inference()
     qdtype q_inter_1;
     quantized_init(&q_inter_1, max_numel_inter_1);
     q_inter_1.tensor = inter_1_dc;
+    output_dc = model_inference(layer_num_total, layer_params, intermediate_dims, &(q_filter_ptrs[0]), &q_input, &q_inter_0, &q_inter_1);
 
+    #ifdef NANO33BLE
     mbed::Timer t;
     t.start();
     for (int r = 0; r < RUNS; r++) {
@@ -292,6 +275,6 @@ void inference()
     }
     t.stop();
     Serial.println(t.elapsed_time().count());
-
+    #endif
     free_all();
 }
