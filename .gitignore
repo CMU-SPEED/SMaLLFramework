@@ -3,7 +3,6 @@ build/
 src/old_src/
 old_drivers/
 CMakeFiles/
-*.txt
 !CMakeLists.txt
 Makefile
 *.cmake

@@ -1,0 +1,11 @@
+File: Contributors.txt
+
+See CONTRIBUTING.md for information on how you can Contribute to this project.
+
+Contributors:
+
+    Upasana Sridhar,   Carnegie Mellon University
+    Tze Meng Low,      Carnegie Mellon University
+    Nicolai Tukanov,   Carnegie Mellon University
+    Elliot Binder,     Carnegie Mellon University
+    Scott McMillan,    Software Engineering Institute, CMU
