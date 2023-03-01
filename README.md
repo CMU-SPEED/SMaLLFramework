@@ -3,30 +3,6 @@
 
 A portable high performance machine learning library framework.
 
-## Supported Features
-
-3 DNN Layers
-
-- Convolution Layer
-- MaxPooling Layer
-- ReLU Activation
-
-There is currently no support for padding other than “valid” padding
-
-## Tested Platforms and Architectures
-|Name|Architecture|Created|
-|---|---|---|
-|[AMD Zen2](platform_notes/AMD.md)|x86-64 | March 14 |
-|[< New >](platform_notes/New.md)|< your arch > | March 14 |
-
-## Upcoming
-
-1. Tests on an ARM platform
-2. Support for “full” padding
-3. Depthwise Convolution Layer
-4. Partial Convolution
-5. Group Convolution Layer
-
 ## Build Instructions
 
 ### Specify µArch
@@ -97,3 +73,13 @@ The Experiments folder has some scripts to run a variety of sizes with the frame
 - `Experiments/script_VGG_almost.sh` Runs layer sizes similar to VGGnet.
 - `Experiments/test_all.sh` Runs the 3 executables generated above through the VGGnet test. 
 - `Experiments/sweep_sizes.sh` Runs different problem sizes to test the loops
+
+
+
+## Supported Features
+
+3 DNN Layers
+
+- Convolution Layer
+- MaxPooling Layer
+- ReLU Activation
