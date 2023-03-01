@@ -28,7 +28,7 @@ foreach( layer_name ${LAYER_NAMES} )
   set_property(TARGET ${demo_name} PROPERTY CXX_STANDARD 14)
 endforeach( layer_name ${LAYER_NAMES} )
 
-set(MODEL_SOURCES mobilenet.cpp resnet.cpp dscnn.cpp dscnn_square.cpp autoencoder.cpp tinyyolov2.cpp)
+set(MODEL_SOURCES mobilenet.cpp resnet.cpp dscnn.cpp dscnn_square.cpp autoencoder.cpp)
 message("In demo/CMakeLists.txt: ${MODEL_SOURCES}")
 
 foreach( model_source_file ${MODEL_SOURCES} )
