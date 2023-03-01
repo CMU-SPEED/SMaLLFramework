@@ -432,8 +432,6 @@ float32x4_t bv[C_ob / SIMD];					     \
     }                                        \
   }
 
-// #include "enrique-dup.h"
 
-// vfmaq_laneq_f32(c_register, b_register, a_register, offset);
 
 #include "intrinsics-gen.h"
