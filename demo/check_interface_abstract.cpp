@@ -66,7 +66,7 @@ void check_Conv2D(int kernel_size, int stride,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf.data(), filter_buf.data(), output_buf.data());
+                input_buf, filter_buf, output_buf);
         }
         else if (stride == 2)
         {
@@ -78,7 +78,7 @@ void check_Conv2D(int kernel_size, int stride,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf.data(), filter_buf.data(), output_buf.data());
+                input_buf, filter_buf, output_buf);
         }
         else
         {
@@ -96,7 +96,7 @@ void check_Conv2D(int kernel_size, int stride,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf.data(), filter_buf.data(), output_buf.data());
+                input_buf, filter_buf, output_buf);
         }
         else if (stride == 2)
         {
@@ -108,7 +108,7 @@ void check_Conv2D(int kernel_size, int stride,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf.data(), filter_buf.data(), output_buf.data());
+                input_buf, filter_buf, output_buf);
         }
         else
         {
@@ -139,7 +139,7 @@ void check_PartialConv2D(int kernel_size, int stride,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf.data(), filter_buf.data(), output_buf.data());
+                input_buf, filter_buf, output_buf);
         }
         else if (stride == 2)
         {
@@ -150,7 +150,7 @@ void check_PartialConv2D(int kernel_size, int stride,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf.data(), filter_buf.data(), output_buf.data());
+                input_buf, filter_buf, output_buf);
         }
         else
         {
@@ -168,7 +168,7 @@ void check_PartialConv2D(int kernel_size, int stride,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf.data(), filter_buf.data(), output_buf.data());
+                input_buf, filter_buf, output_buf);
         }
         else if (stride == 2)
         {
@@ -180,7 +180,7 @@ void check_PartialConv2D(int kernel_size, int stride,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf.data(), filter_buf.data(), output_buf.data());
+                input_buf, filter_buf, output_buf);
         }
         else
         {
@@ -207,7 +207,7 @@ void check_Maxpool2D(int kernel_size, int stride,
             input_height, input_width,
             kernel_size, kernel_size,
             t_pad, l_pad, r_pad, b_pad,
-            input_buf.data(), NULL, output_buf.data());
+            input_buf, small::Buffer<float>(0), output_buf);  /// @todo HACK for no filters
     }
     else if (stride == 2)
     {
@@ -219,7 +219,7 @@ void check_Maxpool2D(int kernel_size, int stride,
             input_height, input_width,
             kernel_size, kernel_size,
             t_pad, l_pad, r_pad, b_pad,
-            input_buf.data(), NULL, output_buf.data());
+            input_buf, small::Buffer<float>(0), output_buf);  /// @todo HACK for no filters
     }
     else
     {
@@ -247,7 +247,7 @@ void check_DepthwiseConv2D(int kernel_size, int stride,
             input_height, input_width,
             kernel_size, kernel_size,
             t_pad, l_pad, r_pad, b_pad,
-            input_buf.data(), filter_buf.data(), output_buf.data());
+            input_buf, filter_buf, output_buf);
     }
     else if (stride == 2)
     {
@@ -259,7 +259,7 @@ void check_DepthwiseConv2D(int kernel_size, int stride,
             input_height, input_width,
             kernel_size, kernel_size,
             t_pad, l_pad, r_pad, b_pad,
-            input_buf.data(), filter_buf.data(), output_buf.data());
+            input_buf, filter_buf, output_buf);
     }
     else
     {
@@ -282,7 +282,7 @@ void check_ReLUActivation(int input_channels,
         input_height, input_width,
         1, 1,
         0, 0, 0, 0,
-        input_buf.data(), NULL, output_buf.data());
+        input_buf, small::Buffer<float>(0), output_buf);  /// @todo HACK for no filters
 
 }
 
@@ -300,5 +300,5 @@ void check_Dense(int output_elements, int input_elements,
         1, input_elements,
         1, 1,
         0, 0, 0, 0,
-        input_buf.data(), filter_buf.data(), output_buf.data());
+        input_buf, filter_buf, output_buf);
 }

@@ -85,7 +85,7 @@ namespace detail
     }
 
 //****************************************************************************
-template <typename OperandT,
+template <typename ScalarT,
           dim_t _G_b,
           dim_t _K_b,
           dim_t _F_cb,
@@ -101,8 +101,8 @@ void inline compute_with_padding(dim_t H_lb, dim_t H_ub,
                                  dim_t F_w,
                                  dim_t W_elements,
                                  dim_t input_col_stride,
-                                 OperandT const *F,
-                                 OperandT const *I,
+                                 ScalarT const *F,
+                                 ScalarT const *I,
                                  c_tile_t *c_cur    /// @todo need to deal with type
     )
 {
@@ -120,14 +120,14 @@ void inline compute_with_padding(dim_t H_lb, dim_t H_ub,
             /* This is C_ib because the microkernel stretches across groups*/
             int input_stencil_w = (m - W_lb) * _C_ib + input_stencil_h;
 
-            OperandT const *b = F + filter_offset_w;
-            OperandT const *a = I + input_stencil_w;
+            ScalarT const *b = F + filter_offset_w;
+            ScalarT const *a = I + input_stencil_w;
 
 	    //TODO: reintroduce convolution
             for (uint32_t ii = 0; ii < _F_cb/_UNROLL ; ii++)
             {
-                OperandT const *b_cur = b + ii * _UNROLL * C_ob;
-                OperandT const *a_cur = a + ii * _UNROLL;
+                ScalarT const *b_cur = b + ii * _UNROLL * C_ob;
+                ScalarT const *a_cur = a + ii * _UNROLL;
                 // printf("unrol k %d %f\n", ii*_UNROLL, a[ii * _UNROLL]);
                 // if (op_type == 'c')
                 // {
@@ -152,7 +152,7 @@ void inline compute_with_padding(dim_t H_lb, dim_t H_ub,
 
 
 //****************************************************************************
-template <typename OperandT,
+template <typename ScalarT,
           dim_t _G_b,
           dim_t _K_b,
           dim_t _F_cb,
@@ -168,9 +168,9 @@ void inline kernel_left(
     dim_t input_col_stride,
     dim_t r_pad_el,
     dim_t r_pad,
-    OperandT const *I,
-    OperandT const *F,
-    OperandT       *O,
+    ScalarT const *I,
+    ScalarT const *F,
+    ScalarT       *O,
     dim_t H_lb = 0,
     dim_t H_ub = 0)
 {
@@ -184,8 +184,8 @@ void inline kernel_left(
     DEF_END_C(_O_wb, _C_ob);
 
     // left padding elements
-    OperandT       *O_ptr = O;
-    OperandT const *I_ptr = I;
+    ScalarT       *O_ptr = O;
+    ScalarT const *I_ptr = I;
 
     int W_i_valid = r_pad;
 
@@ -209,7 +209,7 @@ void inline kernel_left(
     // dim_t c_cur = 0;
     for (uint32_t k_p = 0; k_p < r_pad_el; k_p++)
     {
-        compute_with_padding<OperandT, _G_b, _K_b, _F_cb, _O_wb, _stride,
+        compute_with_padding<ScalarT, _G_b, _K_b, _F_cb, _O_wb, _stride,
                              _UNROLL, op_type, op_class>(
                                  H_lb, H_UPPER,
                                  W_i_valid, F_w,
@@ -231,7 +231,7 @@ void inline kernel_left(
 }
 
 //****************************************************************************
-template <typename OperandT,
+template <typename ScalarT,
           dim_t _G_b,
           dim_t _K_b,
           dim_t _F_cb,
@@ -245,9 +245,9 @@ void inline kernel(
     dim_t F_h,
     dim_t F_w,
     dim_t input_col_stride,
-    OperandT const *I,
-    OperandT const *F,
-    OperandT       *O,
+    ScalarT const *I,
+    ScalarT const *F,
+    ScalarT       *O,
     dim_t H_lb = 0,
     dim_t H_ub = 0,
     dim_t W_lb = 0,
@@ -288,12 +288,12 @@ void inline kernel(
             //This is C_ob because the microkernel stretches across groups
             int input_stencil_w = (m - W_lb) * _C_ib + input_stencil_h;
 
-            OperandT const *b = F + filter_offset_w;
-            OperandT const *a = I + input_stencil_w;
+            ScalarT const *b = F + filter_offset_w;
+            ScalarT const *a = I + input_stencil_w;
             for (uint32_t ii = 0; ii < _F_cb/_UNROLL; ii++)
             {
-                OperandT const *b_cur = b + ii * _UNROLL * C_ob;
-                OperandT const *a_cur = a + ii * _UNROLL;
+                ScalarT const *b_cur = b + ii * _UNROLL * C_ob;
+                ScalarT const *a_cur = a + ii * _UNROLL;
 
                 // if (op_type == 'c')
                 // {
@@ -320,7 +320,7 @@ void inline kernel(
 
 //****************************************************************************
 //TODO: Explain the difference between kernel and kernel_pad
-template <typename OperandT,
+template <typename ScalarT,
           dim_t _G_b,
           dim_t _K_b,
           dim_t _F_cb,
@@ -334,9 +334,9 @@ void inline kernel_pad(
     dim_t F_h,
     dim_t F_w,
     dim_t input_col_stride,
-    OperandT const *I,
-    OperandT const *F,
-    OperandT       *O,
+    ScalarT const *I,
+    ScalarT const *F,
+    ScalarT       *O,
     dim_t H_lb = 0,
     dim_t H_ub = 0,
     dim_t W_lb = 0,
@@ -374,13 +374,13 @@ void inline kernel_pad(
             // This is C_ob because the microkernel stretches across groups
             int input_stencil_w = (m - W_lb) * _C_ib + input_stencil_h;
 
-            OperandT const *b = F + filter_offset_w;
-            OperandT const *a = I + input_stencil_w;
+            ScalarT const *b = F + filter_offset_w;
+            ScalarT const *a = I + input_stencil_w;
 
             for (uint32_t ii = 0; ii < _F_cb / _UNROLL; ii++)
             {
-                OperandT const *b_cur = b + ii * _UNROLL * C_ob;
-                OperandT const *a_cur = a + ii * _UNROLL;
+                ScalarT const *b_cur = b + ii * _UNROLL * C_ob;
+                ScalarT const *a_cur = a + ii * _UNROLL;
 
                 // if (op_type == 'c')
                 // {
@@ -406,7 +406,7 @@ void inline kernel_pad(
 }
 
 //****************************************************************************
-template <typename OperandT,
+template <typename ScalarT,
           dim_t _G_b,
           dim_t _K_b,
           dim_t _F_cb,
@@ -423,9 +423,9 @@ void inline kernel_right(
     dim_t O_w_left,
     dim_t r_pad_el,
     dim_t r_pad,
-    OperandT const *I,
-    OperandT const *F,
-    OperandT       *O,
+    ScalarT const *I,
+    ScalarT const *F,
+    ScalarT       *O,
     dim_t H_lb = 0,
     dim_t H_ub = 0)
 {
@@ -452,7 +452,7 @@ void inline kernel_right(
             LOAD_END_C(O, O_w_left, _C_ob);
         }
 
-        compute_with_padding<OperandT, _G_b, _K_b, _F_cb, _O_wb, _stride,
+        compute_with_padding<ScalarT, _G_b, _K_b, _F_cb, _O_wb, _stride,
                              _UNROLL, op_type, op_class>(
                                  H_lb, H_UPPER,
                                  0, F_w,
@@ -468,8 +468,8 @@ void inline kernel_right(
 
 
     //right padding elements
-    OperandT       *O_ptr = O + O_w_left * _C_ob;
-    OperandT const *I_ptr = I + O_w_left * step;
+    ScalarT       *O_ptr = O + O_w_left * _C_ob;
+    ScalarT const *I_ptr = I + O_w_left * step;
     // printf("padding %d \n", I_ptr - I);
     int W_i_valid = F_w - 1;
 
@@ -495,7 +495,7 @@ void inline kernel_right(
     // dim_t c_cur = 0;
     for (uint32_t k_p = 0; k_p < r_pad_el; k_p ++)
     {
-        compute_with_padding<OperandT, _G_b, _K_b, _F_cb, _O_wb, _stride,
+        compute_with_padding<ScalarT, _G_b, _K_b, _F_cb, _O_wb, _stride,
                              _UNROLL, op_type, op_class>(
                                  H_lb, H_UPPER,
                                  0, W_i_valid,
@@ -518,7 +518,7 @@ void inline kernel_right(
 }
 
 //****************************************************************************
-template <typename OperandT,
+template <typename ScalarT,
           dim_t _G_b,
           dim_t _K_b,
           dim_t _F_cb,
@@ -542,19 +542,19 @@ void inline kernel_bottom(
     dim_t O_w_left,
     dim_t r_pad_el,
     dim_t r_pad,
-    OperandT const *I,
-    OperandT const *F,
-    OperandT       *O)
+    ScalarT const *I,
+    ScalarT const *F,
+    ScalarT       *O)
 {
-    OperandT const *I_ptr = I;
-    OperandT       *O_ptr = O;
+    ScalarT const *I_ptr = I;
+    ScalarT       *O_ptr = O;
 
     int H_i_valid = F_h - 1;
 
     for (uint32_t j_p = 0; j_p < b_pad_el; j_p++)
     {
         // Prologue with left padding
-        kernel_left<OperandT, _G_b, _K_b, _F_cb, _O_wb, _stride,
+        kernel_left<ScalarT, _G_b, _K_b, _F_cb, _O_wb, _stride,
                     _UNROLL, op_type, op_class>(
             first,
             F_h,
@@ -568,16 +568,16 @@ void inline kernel_bottom(
             0,
             H_i_valid);
 
-        OperandT const *I_row_full = I + W_full_index * (_F_cb * _G_b);
-        OperandT       *O_row_full = O + l_pad_el * (_G_b * _K_b);
+        ScalarT const *I_row_full = I + W_full_index * (_F_cb * _G_b);
+        ScalarT       *O_row_full = O + l_pad_el * (_G_b * _K_b);
         // Steady State with microkernel
         for (index_t l = 0; l < O_w_full; l += _O_wb)
         {
-            OperandT const *I_col = I_row_full + (l * _stride) * (_F_cb * _G_b);
-            OperandT const *F_col = F + 0;
-            OperandT       *O_col = O_row_full + l * (_G_b * _K_b);
+            ScalarT const *I_col = I_row_full + (l * _stride) * (_F_cb * _G_b);
+            ScalarT const *F_col = F + 0;
+            ScalarT       *O_col = O_row_full + l * (_G_b * _K_b);
 
-            kernel_pad<OperandT, _G_b, _K_b, _F_cb, _O_wb, _stride,
+            kernel_pad<ScalarT, _G_b, _K_b, _F_cb, _O_wb, _stride,
                        _UNROLL, op_type, op_class>(
                 first,
                 F_h,
@@ -591,11 +591,11 @@ void inline kernel_bottom(
         }
 
         // Epilogue for microkernel + right padding elements
-        OperandT const *I_col_left =
+        ScalarT const *I_col_left =
             I_row_full + (O_w_full * _stride) * (_F_cb * _G_b);
-        OperandT const *F_col_left = F + 0;
-        OperandT       *O_col_left = O_row_full + O_w_full * (_G_b * _K_b);
-        kernel_right<OperandT, _G_b, _K_b, _F_cb, _O_wb, _stride,
+        ScalarT const *F_col_left = F + 0;
+        ScalarT       *O_col_left = O_row_full + O_w_full * (_G_b * _K_b);
+        kernel_right<ScalarT, _G_b, _K_b, _F_cb, _O_wb, _stride,
                      _UNROLL, op_type, op_class>(
             first,
             F_h,
@@ -617,7 +617,7 @@ void inline kernel_bottom(
 }
 
 //****************************************************************************
-template <typename OperandT,
+template <typename ScalarT,
           dim_t _G_b,
           dim_t _K_b,
           dim_t _F_cb,
@@ -641,19 +641,19 @@ void inline kernel_top(
     dim_t O_w_left,
     dim_t r_pad_el,
     dim_t r_pad,
-    OperandT const *I,
-    OperandT const *F,
-    OperandT       *O)
+    ScalarT const *I,
+    ScalarT const *F,
+    ScalarT       *O)
 {
-    OperandT const *I_ptr = I;
-    OperandT       *O_ptr = O;
+    ScalarT const *I_ptr = I;
+    ScalarT       *O_ptr = O;
 
     int H_i_valid = t_pad;
 
     for (uint32_t j_p = 0; j_p < t_pad_el; j_p++)
     {
         // Prologue with left padding
-        kernel_left<OperandT, _G_b, _K_b, _F_cb, _O_wb, _stride,
+        kernel_left<ScalarT, _G_b, _K_b, _F_cb, _O_wb, _stride,
                     _UNROLL, op_type, op_class>(
             first,
             F_h,
@@ -667,17 +667,17 @@ void inline kernel_top(
             H_i_valid,
             F_h);
 
-        OperandT const *I_row_full = I + W_full_index * (_F_cb * _G_b);
-        OperandT       *O_row_full = O + l_pad_el * (_G_b * _K_b);
+        ScalarT const *I_row_full = I + W_full_index * (_F_cb * _G_b);
+        ScalarT       *O_row_full = O + l_pad_el * (_G_b * _K_b);
         // Steady State with microkernel
         for (index_t l = 0; l < O_w_full; l += _O_wb)
         {
-            OperandT const *I_col =
+            ScalarT const *I_col =
                 I_row_full + (l * _stride) * (_F_cb * _G_b);
-            OperandT const *F_col = F + 0;
-            OperandT       *O_col = O_row_full + l * (_G_b * _K_b);
+            ScalarT const *F_col = F + 0;
+            ScalarT       *O_col = O_row_full + l * (_G_b * _K_b);
 
-            kernel_pad<OperandT, _G_b, _K_b, _F_cb, _O_wb, _stride,
+            kernel_pad<ScalarT, _G_b, _K_b, _F_cb, _O_wb, _stride,
                        _UNROLL, op_type, op_class>(
                 first,
                 F_h,
@@ -691,12 +691,12 @@ void inline kernel_top(
         }
 
         // Epilogue for microkernel + right padding elements
-        OperandT const *I_col_left =
+        ScalarT const *I_col_left =
             I_row_full + (O_w_full * _stride) * (_F_cb * _G_b);
-        OperandT const *F_col_left = F + 0;
-        OperandT       *O_col_left =
+        ScalarT const *F_col_left = F + 0;
+        ScalarT       *O_col_left =
             O_row_full + O_w_full * (_G_b * _K_b);
-        kernel_right<OperandT, _G_b, _K_b, _F_cb, _O_wb, _stride,
+        kernel_right<ScalarT, _G_b, _K_b, _F_cb, _O_wb, _stride,
                      _UNROLL, op_type, op_class>(
             first,
             F_h,
@@ -719,7 +719,7 @@ void inline kernel_top(
 
 //****************************************************************************
 //****************************************************************************
-template <typename OperandT,
+template <typename ScalarT,
           dim_t _G_b,
           dim_t _K_b,
           dim_t _F_cb,
@@ -746,13 +746,18 @@ void abstract_layer(
     dim_t pad_bottom,
 
     // Data
-    OperandT const * __restrict__ I,
-    OperandT const * __restrict__ F,
-    OperandT       * __restrict__ O)
+    Buffer<ScalarT> const &I_buf, //__restrict__
+    Buffer<ScalarT> const &F_buf, //__restrict__
+    Buffer<ScalarT>       &O_buf) //__restrict__
 {
     // Output Elements with padding
     // Output Elements using the full filter
 
+    ScalarT const *I = I_buf.data();
+    ScalarT const *F = NULL;
+    ScalarT       *O = O_buf.data();
+
+    if (op_type == 'c') F = F_buf.data(); // check_interface_abstract.cpp prevents constexpr if
 
 #if DEBUG == 1
     if (op_type == 'c')
@@ -889,17 +894,17 @@ void abstract_layer(
         // loops over output channels
         for (index_t g = group_tid; g < G / _G_b; g+= T_group)
         {
-            OperandT const *I_group = I + g * (F_c * I_h * I_w * _G_b);
-            OperandT const *F_group = F + g * (K * F_c * F_h * F_w * _G_b);
-            OperandT       *O_group = O + g * (K * O_hxO_w * _G_b);
+            ScalarT const *I_group = I + g * (F_c * I_h * I_w * _G_b);
+            ScalarT const *F_group = F + g * (K * F_c * F_h * F_w * _G_b);
+            ScalarT       *O_group = O + g * (K * O_hxO_w * _G_b);
 
             for (index_t k = channel_tid; k < K / _K_b; k+= T_channel)
             {
-                OperandT const *I_channel_block_output =
+                ScalarT const *I_channel_block_output =
                     I_group + 0;
-                OperandT const *F_channel_block_output =
+                ScalarT const *F_channel_block_output =
                     F_group + k * (F_c * F_h * F_w * _G_b * _K_b);
-                OperandT       *O_channel_block_output =
+                ScalarT       *O_channel_block_output =
                     O_group + k * (O_hxO_w * _G_b * _K_b);
 
                 // Loop over input channel reduction
@@ -907,21 +912,21 @@ void abstract_layer(
                 {
                     bool first = rewrite_output && (i == 0);
 
-                    OperandT const *I_channel_block_input =
+                    ScalarT const *I_channel_block_input =
                         I_channel_block_output + i * (I_h * I_w * _F_cb * _G_b);
-                    OperandT const *F_channel_block_input =
+                    ScalarT const *F_channel_block_input =
                         F_channel_block_output + i * (F_h * F_w * _F_cb * _G_b * _K_b);
-                    OperandT       *O_channel_block_input =
+                    ScalarT       *O_channel_block_input =
                         O_channel_block_output + 0;
 
                     // Loops over spatial dimensions of output
 
                     // Prologue with top padding
-                    OperandT const *I_row_top = I_channel_block_input;
-                    OperandT const *F_row_top = F_channel_block_input + 0;
-                    OperandT       *O_row_top = O_channel_block_input;
+                    ScalarT const *I_row_top = I_channel_block_input;
+                    ScalarT const *F_row_top = F_channel_block_input + 0;
+                    ScalarT       *O_row_top = O_channel_block_input;
 
-                    kernel_top<OperandT, _G_b, _K_b, _F_cb, _O_wb, _stride,
+                    kernel_top<ScalarT, _G_b, _K_b, _F_cb, _O_wb, _stride,
                                _UNROLL, op_type, op_class>(
                         first,
                         F_h,
@@ -941,20 +946,20 @@ void abstract_layer(
                         F_row_top,
                         O_row_top);
 
-                    OperandT const *I_row_full =
+                    ScalarT const *I_row_full =
                         I_row_top + H_full_index * I_w * (_F_cb * _G_b);
-                    OperandT       *O_row_full =
+                    ScalarT       *O_row_full =
                         O_row_top + t_pad_el * O_w_w_pad * (_G_b * _K_b);
                     // Steady State over rows
                     for (index_t j = height_tid; j < O_h; j+= T_height)
                     {
-                        OperandT const *I_row =
+                        ScalarT const *I_row =
                             I_row_full + (j * _stride) * (I_w * _F_cb * _G_b);
-                        OperandT const *F_row = F_channel_block_input + 0;
-                        OperandT       *O_row =
+                        ScalarT const *F_row = F_channel_block_input + 0;
+                        ScalarT       *O_row =
                             O_row_full + j * (O_w_w_pad * _G_b * _K_b);
                         // Prologue with left padding
-                        kernel_left<OperandT, _G_b, _K_b, _F_cb, _O_wb, _stride,
+                        kernel_left<ScalarT, _G_b, _K_b, _F_cb, _O_wb, _stride,
                                     _UNROLL, op_type, op_class>(
                             first,
                             F_h,
@@ -966,18 +971,18 @@ void abstract_layer(
                             F_row,
                             O_row);
 
-                        OperandT const *I_col_full =
+                        ScalarT const *I_col_full =
                             I_row + W_full_index * (_F_cb * _G_b);
-                        OperandT       *O_col_full = O_row + l_pad_el * (_G_b * _K_b);
+                        ScalarT       *O_col_full = O_row + l_pad_el * (_G_b * _K_b);
                         // Steady State with microkernel
                         for (index_t l = 0; l < O_w_full; l += _O_wb)
                         {
-                            OperandT const *I_col =
+                            ScalarT const *I_col =
                                 I_col_full + (l * _stride) * (_F_cb * _G_b);
-                            OperandT const *F_col = F_row + 0;
-                            OperandT       *O_col = O_col_full + l * (_G_b * _K_b);
+                            ScalarT const *F_col = F_row + 0;
+                            ScalarT       *O_col = O_col_full + l * (_G_b * _K_b);
 
-                            kernel<OperandT, _G_b, _K_b, _F_cb, _O_wb, _stride,
+                            kernel<ScalarT, _G_b, _K_b, _F_cb, _O_wb, _stride,
                                    _UNROLL, op_type, op_class>(
                                 first,
                                 F_h,
@@ -989,11 +994,11 @@ void abstract_layer(
                         }
 
                         // Epilogue for microkernel + right padding elements
-                        OperandT const *I_col_left =
+                        ScalarT const *I_col_left =
                             I_col_full + (O_w_full * _stride) * (_F_cb * _G_b);
-                        OperandT const *F_col_left = F_row + 0;
-                        OperandT       *O_col_left = O_col_full + O_w_full * (_G_b * _K_b);
-                        kernel_right<OperandT, _G_b, _K_b, _F_cb, _O_wb, _stride,
+                        ScalarT const *F_col_left = F_row + 0;
+                        ScalarT       *O_col_left = O_col_full + O_w_full * (_G_b * _K_b);
+                        kernel_right<ScalarT, _G_b, _K_b, _F_cb, _O_wb, _stride,
                                      _UNROLL, op_type, op_class>(
                             first,
                             F_h,
@@ -1007,12 +1012,12 @@ void abstract_layer(
                             O_col_left);
                     }
                     // Epilogue with bottom padding
-                    OperandT const *I_row_bot =
+                    ScalarT const *I_row_bot =
                         I_row_full + (O_h * _stride) * (I_w * _F_cb * _G_b);
-                    OperandT const *F_row_bot = F_channel_block_input + 0;
-                    OperandT       *O_row_bot = O_row_full + O_h * (O_w_w_pad * _G_b * _K_b);
+                    ScalarT const *F_row_bot = F_channel_block_input + 0;
+                    ScalarT       *O_row_bot = O_row_full + O_h * (O_w_w_pad * _G_b * _K_b);
 
-                    kernel_bottom<OperandT, _G_b, _K_b, _F_cb, _O_wb, _stride,
+                    kernel_bottom<ScalarT, _G_b, _K_b, _F_cb, _O_wb, _stride,
                                   _UNROLL, op_type, op_class>(
                         first,
                         F_h,
