@@ -1,12 +1,14 @@
+//****************************************************************************
 // SMaLL, Software for Machine Learning Libraries
-//  Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
-//  SPDX-License-Identifier: BSD-3-Clause
+// Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
+// SPDX-License-Identifier: BSD-3-Clause
 //
-//  For additional details (including references to third party source code and
-//  other files) see the LICENSE file or contact permission@sei.cmu.edu. See
-//  Contributors.txt for a full list of contributors. Created, in part, with
-//  funding and support from the U.S. Government (see Acknowledgments.txt file).
-//  DM23-0126
+// For additional details (including references to third party source code and
+// other files) see the LICENSE file or contact permission@sei.cmu.edu. See
+// Contributors.txt for a full list of contributors. Created, in part, with
+// funding and support from the U.S. Government (see Acknowledgments.txt file).
+// DM23-0126
+//****************************************************************************
 
 #include <math.h>
 #include <assert.h>
@@ -114,7 +116,7 @@ qdtype *model_inference(uint32_t layer_num_total, uint16_t layer_params[30][10],
     Conv2D_rect<dtype, qdtype>(0, REDUCTION_H(layer_num), REDUCTION_W(layer_num), STRIDE(layer_num), PADDING(layer_num), GROUP_C(layer_num), REDUCTION_C(layer_num), I_HEIGHT(layer_num), I_WIDTH(layer_num), input_dc, &filter_ptrs[layer_num], inter_0_dc);
     layer_num++;
     ReLUActivation<dtype, qdtype>(1, GROUP_C(0), I_HEIGHT(layer_num), I_WIDTH(layer_num), inter_0_dc, inter_0_dc);
-    
+
     auto ds_blocks = 4;
     for (int ds_layer = 0; ds_layer < ds_blocks; ds_layer++)
     {
