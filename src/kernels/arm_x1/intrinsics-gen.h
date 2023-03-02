@@ -1,3 +1,13 @@
+// SMaLL, Software for Machine Learning Libraries
+// Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
+// SPDX-License-Identifier: BSD-3-Clause
+//
+// For additional details (including references to third party source code and
+// other files) see the LICENSE file or contact permission@sei.cmu.edu. See
+// Contributors.txt for a full list of contributors. Created, in part, with
+// funding and support from the U.S. Government (see Acknowledgments.txt file).
+// DM23-0126
+
 #include <arm_neon.h>
 #ifdef DEF_TILE_C
 #undef DEF_TILE_C
@@ -1441,4 +1451,3 @@ av = vld1q_f32(a + 5 * step + 2 * SIMD);\
 c_5_2 = vfmaq_f32(c_5_2, av, b_2);\
 av = vld1q_f32(a + 5 * step + 3 * SIMD);\
 c_5_3 = vfmaq_f32(c_5_3, av, b_3);\
-

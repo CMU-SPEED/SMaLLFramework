@@ -1,3 +1,15 @@
+//****************************************************************************
+// SMaLL, Software for Machine Learning Libraries
+// Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
+// SPDX-License-Identifier: BSD-3-Clause
+//
+// For additional details (including references to third party source code and
+// other files) see the LICENSE file or contact permission@sei.cmu.edu. See
+// Contributors.txt for a full list of contributors. Created, in part, with
+// funding and support from the U.S. Government (see Acknowledgments.txt file).
+// DM23-0126
+//****************************************************************************
+
 #include <math.h>
 #include <assert.h>
 #include <omp.h>
@@ -90,7 +102,7 @@ dtype *model_inference(uint32_t layer_num_total, uint16_t layer_params[30][10], 
     ReLUActivation(1, GROUP_C(layer_num), 1, 1, inter_0_dc, inter_0_dc);
 
     dtype *out_inter_dc = inter_1_dc;
-    for (int cur_layer = 1; cur_layer < layer_num_total; cur_layer++)
+    for (uint32_t cur_layer = 1; cur_layer < layer_num_total; cur_layer++)
     {
 
         Conv2D(0, 1, 1, 0, 0, 0, 0, GROUP_C(layer_num), REDUCTION_C(layer_num), 1, 1, inter_0_dc, filter_ptrs[layer_num], out_inter_dc);
@@ -130,8 +142,8 @@ int main()
 
 
     // Set up model parameters
-    auto layer_num_total = 9;
-    int layer_num = 0;
+    auto layer_num_total = 9U;
+    uint32_t layer_num = 0;
     uint32_t max_numel_inter_0 = 128, max_numel_inter_1 = 128;
 
     intermediate_dims[layer_num][0] = 1;
@@ -149,7 +161,7 @@ int main()
     intermediate_dims[layer_num][1] = 1;
 
     // common set up for model architecture
-    for (int cur_layer = 1; cur_layer < layer_num_total-1; cur_layer++)
+    for (uint32_t cur_layer = 1; cur_layer+1 < layer_num_total; cur_layer++)
     {
 
         REDUCTION_C(layer_num) = GROUP_C(layer_num - 1); // input channels
@@ -176,7 +188,7 @@ int main()
 
     #if SUMMARY == 1
     printf("Layer num total: %d\n", layer_num_total);
-    for (auto i = 0; i < layer_num_total; i++)
+    for (uint32_t i = 0; i < layer_num_total; i++)
     {
         printf("%d: ", i);
         for (auto j = 0; j < 10; j++)
@@ -191,13 +203,13 @@ int main()
     // Direct Convolution Setup
 
     dtype * filter_ptrs[30];
-    for (int l = 0; l < layer_num_total; l++)
+    for (uint32_t l = 0; l < layer_num_total; l++)
     {
         dtype *filter_ptr;
         uint32_t filter_dimensions = REDUCTION_HW(l) * REDUCTION_HW(l) * REDUCTION_C(l) * GROUP_C(l) * GROUPS(l);
         filter_ptr = alloc<dtype>(filter_dimensions);
         init(filter_ptr, filter_dimensions);
-        filter_ptrs[l] = filter_ptr; 
+        filter_ptrs[l] = filter_ptr;
     }
 
     dtype *inter_0_dc = alloc<dtype>(max_numel_inter_0);

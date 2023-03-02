@@ -1,3 +1,15 @@
+//****************************************************************************
+// SMaLL, Software for Machine Learning Libraries
+// Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
+// SPDX-License-Identifier: BSD-3-Clause
+//
+// For additional details (including references to third party source code and
+// other files) see the LICENSE file or contact permission@sei.cmu.edu. See
+// Contributors.txt for a full list of contributors. Created, in part, with
+// funding and support from the U.S. Government (see Acknowledgments.txt file).
+// DM23-0126
+//****************************************************************************
+
 #include <math.h>
 #include <assert.h>
 #include <omp.h>
@@ -190,7 +202,7 @@ int main(int argc, char **argv)
     max_numel_inter_0 = (inter_dim > max_numel_inter_0) ? inter_dim : max_numel_inter_0;
     auto ds_blocks = 4;
 
-    int layer_num = 1;
+    size_t layer_num = 1;
 
     const int layer_strides[] = {1, 1, 1, 1};
     // dwise 1
@@ -268,7 +280,7 @@ int main(int argc, char **argv)
     //  Copy layer weights to temporaries
     dtype *filter_fc_dc;
     dtype *filter_ptrs[30];
-    for (int l = 0; l < num_filters - 1; l++)
+    for (size_t l = 0; l < num_filters - 1; l++)
     {
         dtype *filter_ptr;
         uint32_t filter_dimensions = REDUCTION_H(l) * REDUCTION_W(l) * REDUCTION_C(l) * GROUP_C(l) * GROUPS(l);

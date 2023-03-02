@@ -1,39 +1,14 @@
-
+//****************************************************************************
 // SMaLL, Software for Machine Learning Libraries
-//  Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
-//  SPDX-License-Identifier: BSD-3-Clause
+// Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
+// SPDX-License-Identifier: BSD-3-Clause
 //
-//  For additional details (including references to third party source code and
-//  other files) see the LICENSE file or contact permission@sei.cmu.edu. See
-//  Contributors.txt for a full list of contributors. Created, in part, with
-//  funding and support from the U.S. Government (see Acknowledgments.txt file).
-//  DM23-0126
-
-/*
- * SMaLL Framework
- *
- * Copyright 2022 Carnegie Mellon University and Authors.
- *
- * THIS MATERIAL WAS PREPARED AS AN ACCOUNT OF WORK SPONSORED BY AN AGENCY OF
- * THE UNITED STATES GOVERNMENT.  NEITHER THE UNITED STATES GOVERNMENT NOR THE
- * UNITED STATES DEPARTMENT OF ENERGY, NOR THE UNITED STATES DEPARTMENT OF
- * DEFENSE, NOR CARNEGIE MELLON UNIVERSITY, NOR ANY OF THEIR
- * EMPLOYEES, NOR ANY JURISDICTION OR ORGANIZATION THAT HAS COOPERATED IN THE
- * DEVELOPMENT OF THESE MATERIALS, MAKES ANY WARRANTY, EXPRESS OR IMPLIED, OR
- * ASSUMES ANY LEGAL LIABILITY OR RESPONSIBILITY FOR THE ACCURACY, COMPLETENESS,
- * OR USEFULNESS OR ANY INFORMATION, APPARATUS, PRODUCT, SOFTWARE, OR PROCESS
- * DISCLOSED, OR REPRESENTS THAT ITS USE WOULD NOT INFRINGE PRIVATELY OWNED
- * RIGHTS.
- *
- * Released under a BSD-style license, please see LICENSE file or contact
- * permission@sei.cmu.edu for full terms.
- *
- * [DISTRIBUTION STATEMENT A] This material has been approved for public release
- * and unlimited distribution.  Please see Copyright notice for non-US
- * Government use and distribution.
- *
- * DMxx-xxxx
- */
+// For additional details (including references to third party source code and
+// other files) see the LICENSE file or contact permission@sei.cmu.edu. See
+// Contributors.txt for a full list of contributors. Created, in part, with
+// funding and support from the U.S. Government (see Acknowledgments.txt file).
+// DM23-0126
+//****************************************************************************
 
 #pragma once
 
@@ -182,7 +157,7 @@ void inline compute_with_padding(dim_t H_lb, dim_t H_ub,
                                  OperandT const *I,
                                  c_tile_t *c_cur, /// @todo need to deal with type
                                  AccumT I_offset = 0,
-                                 AccumT F_offset = 0 
+                                 AccumT F_offset = 0
 )
 {
     constexpr dim_t _C_ob = _G_b * _K_b;
@@ -569,7 +544,7 @@ void inline kernel_right(
             OperandT * O_out_ptr = O_out;
             QUANTIZE_END_C(O_w_left, _C_ob, lshift, rshift, q_mul, zero, max_val, min_val);
             STORE_Q_END_C(O_out_ptr, O_w_left, _C_ob);
-        }   
+        }
         else
         {
             STORE_END_C(O, O_w_left, _C_ob);
@@ -702,7 +677,7 @@ void inline kernel_bottom(
             I_offset,
             F_offset,
             O_ptr_out,
-            lshift, 
+            lshift,
             rshift,
             q_mul,
             zero);
@@ -1096,7 +1071,7 @@ void abstract_layer(
         }
         OperandT * O_buf = O->tensor;
         AccumT I_offset = I->zero;
-  
+
 
         AccumT lshift = O->lshift;
         AccumT rshift = O->rshift;
