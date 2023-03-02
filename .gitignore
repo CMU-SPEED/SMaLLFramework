@@ -17,6 +17,7 @@ torch_pool_incomplete
 *.asm
 *.pdf
 perf*
+*.x
 torch_pool*
 seq_torch_pool*
 .vscode/
