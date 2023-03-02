@@ -65,6 +65,13 @@ For quantized uint8 inference
 - Q_REF
 - Q_ARM7E. (For the Arduino Nano 33 BLE)
 
+Run the same build instructions as above
+```
+$ mkdir build
+$ cd build
+$ cmake .. -DCMAKE_UARCH=Q_REF
+```
+
 Navigate to demo/small-MCU and run the setup script to make a standalone, arduino friendly build of SMaLL in the build directory. This use the Q_ARM7E platform
 ``` bash
 SMaLLFramework/ $ cd ./demo/small-MCU/
@@ -91,10 +98,16 @@ If running on the arduino, uncomment the appropriate model in small.ino
 
 
 
-<!-- ## Supported Features
+## Supported Features
 
-3 DNN Layers
+DNN Layers
 
-- Convolution Layer
-- MaxPooling Layer
-- ReLU Activation -->
+- Convolution Layer (square and rectangular filters) 
+- Depthwise Convolution Layer (only square filters)
+- MaxPooling Layer  (square and rectangular filters)
+
+With valid and same padding
+
+- Dense Layer
+- ReLU Activation
+
