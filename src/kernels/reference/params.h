@@ -8,6 +8,8 @@
 // funding and support from the U.S. Government (see Acknowledgments.txt file).
 // DM23-0126
 
+#pragma once
+
 typedef float dtype;
 
 #define W_ob 1

@@ -10,6 +10,8 @@
 
 //scalar versions of all the microkernels for platform portability
 
+#pragma once
+
 #define SIMD_EPILOGUE 1
 typedef dtype c_tile_t;
 

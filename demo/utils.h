@@ -1,3 +1,4 @@
+//****************************************************************************
 // SMaLL, Software for Machine Learning Libraries
 // Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
 // SPDX-License-Identifier: BSD-3-Clause
@@ -7,6 +8,7 @@
 // Contributors.txt for a full list of contributors. Created, in part, with
 // funding and support from the U.S. Government (see Acknowledgments.txt file).
 // DM23-0126
+//****************************************************************************
 
 // A set of functions to enable testing
 // We have timing, initialization, allocation, logging and equivalence checking
@@ -201,7 +203,7 @@ bool equals(uint32_t numel, dtype *unfused, dtype *fused, dtype tolerance = 1e-8
 
     if (fabs(diff) > tolerance)
     {
-      printf("%d %d %d %d\n", i, *(fused_ptr), *(unfused_ptr), diff);
+      printf("%d %f %f %f\n", i, *(fused_ptr), *(unfused_ptr), diff);
       check = 0;
     }
     unfused_ptr++;

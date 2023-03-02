@@ -2,12 +2,16 @@
 # demo/CMakeLists.txt:  cmake script for tests
 #-------------------------------------------------------------------------------
 
-# SMaLLFramework, (c) 2022 by The SMaLLFramework Contributors, All Rights Reserved.
+# SMaLL, Software for Machine Learning Libraries
+# Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
 # SPDX-License-Identifier: BSD-3-Clause
-# See additional acknowledgments in the LICENSE file
 
-#-------------------------------------------------------------------------------
-# This will only build tests from files with the name "test_*.c"
+# For additional details (including references to third party source code and
+# other files) see the LICENSE file or contact permission@sei.cmu.edu. See
+# Contributors.txt for a full list of contributors. Created, in part, with
+# funding and support from the U.S. Government (see Acknowledgments.txt file).
+# DM23-0126
+
 #-------------------------------------------------------------------------------
 
 include_directories ( ${CMAKE_SOURCE_DIR}/demo )
