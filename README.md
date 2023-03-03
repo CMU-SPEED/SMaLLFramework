@@ -42,10 +42,6 @@ For single precision floating point inference
 - ARM-A78 (Snapdragon 888 Gold)
 - ARM-X1 (Snapdragon 888 Prime)
 
-For quantized uint8 inference 
-- Q_REF
-- Q_ARM7E. (For the Arduino Nano 33 BLE)
-
 ```bash
 $ mkdir build
 $ cd build
@@ -65,11 +61,53 @@ Run with
 `./model_<model_name>.exe`
 
 
+For quantized uint8 inference 
+- Q_REF
+- Q_ARM7E. (For the Arduino Nano 33 BLE)
 
-<!-- ## Supported Features
+Run the same build instructions as above
+```
+$ mkdir build
+$ cd build
+$ cmake .. -DCMAKE_UARCH=Q_REF
+```
 
-3 DNN Layers
+Navigate to demo/small-MCU and run the setup script to make a standalone, arduino friendly build of SMaLL in the build directory. This use the Q_ARM7E platform
+``` bash
+SMaLLFramework/ $ cd ./demo/small-MCU/
+SMaLLFramework/demo/small-MCU $ ./setup_env.sh ../../build/demo ~/path-to-/SMaLLFramework/
+SMaLLFramework/demo/small-MCU $ cd ../../build/demo/small/
+```
+If you want to build c++ executables for each model
+```
+SMaLLFramework/build/demo/small $ make
+```
 
-- Convolution Layer
-- MaxPooling Layer
-- ReLU Activation -->
+If running on the arduino, uncomment the appropriate model in small.ino
+```c++
+#include "mbed.h"
+#define NANO33BLE 0
+
+
+// #include "quantized/autoencoder.cpp"
+// #include "quantized/resnet.cpp"
+#include "quantized/dscnn.cpp"
+
+```
+
+
+
+
+## Supported Features
+
+DNN Layers
+
+- Convolution Layer (square and rectangular filters) 
+- Depthwise Convolution Layer (only square filters)
+- MaxPooling Layer  (square and rectangular filters)
+
+With valid and same padding
+
+- Dense Layer
+- ReLU Activation
+
