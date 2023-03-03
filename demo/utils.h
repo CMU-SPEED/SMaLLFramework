@@ -1,5 +1,19 @@
+//****************************************************************************
+// SMaLL, Software for Machine Learning Libraries
+// Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
+// SPDX-License-Identifier: BSD-3-Clause
+//
+// For additional details (including references to third party source code and
+// other files) see the LICENSE file or contact permission@sei.cmu.edu. See
+// Contributors.txt for a full list of contributors. Created, in part, with
+// funding and support from the U.S. Government (see Acknowledgments.txt file).
+// DM23-0126
+//****************************************************************************
+
 // A set of functions to enable testing
 // We have timing, initialization, allocation, logging and equivalence checking
+
+#pragma once
 
 #include <stdint.h>
 #include <sys/time.h>
@@ -48,9 +62,9 @@ static __inline__ unsigned long long rdtsc(void)
 
 /// @todo unnecessary? Fix duplication with ACCUM_time
 #define REDUCE(a, b) \
-  {                  \
-    a += b;          \
-  }
+    {                \
+        a += b;      \
+    }
 
 /// @todo change to use std::min<T> directly
 #define MIN(a, b)            \
@@ -102,11 +116,12 @@ void print_stats(std::vector<unsigned long long> v, const char *benchmark)
 //****************************************************************************
 
 //****************************************************************************
+/// @todo merge the two inits and use enable if
 void init(small::Buffer<float> &ptr, uint32_t numel)
 {
     if (numel > ptr.size())
     {
-        throw std::invalid_argument("init ERROR: buffer too small.");
+        throw std::invalid_argument("init<float> ERROR: buffer too small.");
     }
 
     float *cur_ptr = ptr.data();
@@ -116,25 +131,40 @@ void init(small::Buffer<float> &ptr, uint32_t numel)
     }
 }
 
+// template <typename>
+void init(small::Buffer<uint8_t> &ptr, uint32_t numel)
+{
+    if (numel > ptr.size())
+    {
+        throw std::invalid_argument("init<uint8_t> ERROR: buffer too small.");
+    }
+
+    uint8_t *cur_ptr = ptr.data();
+    for (uint32_t i = 0; i < numel; i++)
+    {
+        *(cur_ptr++) = rand()  % 10;
+    }
+}
+
 //****************************************************************************
-void init_ones(small::Buffer<float> &ptr, uint32_t numel)
+template <class ScalarT>
+void init_ones(small::Buffer<ScalarT> &ptr, uint32_t numel)
 {
     if (numel > ptr.size())
     {
         throw std::invalid_argument("init_ones ERROR: buffer too small.");
     }
 
-    float *cur_ptr = ptr.data();
+    ScalarT *cur_ptr = ptr.data();
     for (size_t i = 0; i < numel; i++)
     {
-        *(cur_ptr++) = 1.0;
-        // printf("%.2f \n", *(cur_ptr - 1));
+        *(cur_ptr++) = (ScalarT)1;
     }
 }
 
 //****************************************************************************
-template<uint32_t _C_ob>
-void init_arange(small::Buffer<float> &ptr, uint32_t H, uint32_t W, uint32_t C)
+template<class ScalarT, uint32_t _C_ob>
+void init_arange(small::Buffer<ScalarT> &ptr, uint32_t H, uint32_t W, uint32_t C)
 {
     if (C * H * W > ptr.size())
     {
@@ -142,7 +172,7 @@ void init_arange(small::Buffer<float> &ptr, uint32_t H, uint32_t W, uint32_t C)
             "init_arange ERROR: buffer too small.");
     }
 
-    float *cur_ptr = ptr.data();
+    ScalarT *cur_ptr = ptr.data();
     for (size_t i = 0; i < C; i+=_C_ob)
     {
         for (size_t j = 0 ; j < H; j++)
@@ -151,8 +181,8 @@ void init_arange(small::Buffer<float> &ptr, uint32_t H, uint32_t W, uint32_t C)
             {
                 for (size_t ii = 0; ii < _C_ob; ii++)
                 {
-                    *(cur_ptr++) =  ii + i + k*(C) + j*(W*C);
-                    //  printf("%.2f \n", *(cur_ptr - 1));
+                    /// @todo Should this be: ii*i + k*C + j*(W*C) ??
+                    *(cur_ptr++) =  (ScalarT)(ii + i + k*(C) + j*(W*C));
                 }
             }
         }
@@ -160,6 +190,7 @@ void init_arange(small::Buffer<float> &ptr, uint32_t H, uint32_t W, uint32_t C)
 }
 
 //****************************************************************************
+/// @todo is this valid with other types?
 void init_norm(small::Buffer<float> &ptr, uint32_t numel, uint32_t C_o)
 {
     if (numel > ptr.size())
@@ -186,8 +217,8 @@ bool equals(uint32_t numel,
     float const *fused_ptr   = fused.data();
     printf("begin correctness check\n");
 
-    if ((unfused.size() > numel) ||
-        (fused.size() > numel))
+    if ((unfused.size() < numel) ||
+        (fused.size() < numel))
     {
         return false;
     }
@@ -215,12 +246,8 @@ bool equals(uint32_t numel,
 
 //****************************************************************************
 template<uint32_t num_ops, uint32_t trials>
-void write_results(uint64_t * fused_timing)
+void write_results(uint64_t *fused_timing)
 {
-    // std::string path = "Results/logfile";
-    // std::string path_to_log_file = path + file;
-    // FILE *outfile = fopen(path.c_str(), "w");
-
     fprintf(stderr, "Unfused ");
     for (uint32_t j = 0; j < num_ops; j++)
     {
@@ -229,7 +256,6 @@ void write_results(uint64_t * fused_timing)
     fprintf(stderr, "\n");
     for (uint32_t i = 0; i < trials; i++)
     {
-        // fprintf(stderr, "%lu\t", timing[i]);
         for (uint32_t j = 0; j < num_ops + 1 ; j++)
         {
             fprintf(stderr, "%lu\t", fused_timing[j*trials + i]);

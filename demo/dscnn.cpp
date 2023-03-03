@@ -1,3 +1,15 @@
+//****************************************************************************
+// SMaLL, Software for Machine Learning Libraries
+// Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
+// SPDX-License-Identifier: BSD-3-Clause
+//
+// For additional details (including references to third party source code and
+// other files) see the LICENSE file or contact permission@sei.cmu.edu. See
+// Contributors.txt for a full list of contributors. Created, in part, with
+// funding and support from the U.S. Government (see Acknowledgments.txt file).
+// DM23-0126
+//****************************************************************************
+
 #include <math.h>
 #include <assert.h>
 #include <omp.h>
@@ -14,6 +26,8 @@
 #include <iostream>
 // #include <functional>
 #include <numeric>
+
+typedef float dtype;
 
 #include <small.h>
 #include "utils.h"
@@ -49,7 +63,7 @@
 // The output of the block is stored in I
 // The weights must have been copied into F_1x1 and F_dw beforehand
 inline void dscnn_block(
-    std::array<uint32_t, 2> in_dims, uint32_t input_channels, // Input dimensions
+    uint32_t in_dims[2], uint32_t input_channels, // Input dimensions
     uint32_t kernel_size,
     uint32_t stride,          // DWise Covolution parameters
     uint32_t output_channels, // 1x1 Convolution parameters
@@ -57,11 +71,11 @@ inline void dscnn_block(
     uint8_t b_pad,
     uint8_t l_pad,
     uint8_t r_pad,
-    small::Buffer<float> const &I,              //float *I,
-    small::Buffer<float> const &F_dw,           //float *F_dw,
-    small::Buffer<float> const &F_1x1,          //float *F_1x1,
-    small::Buffer<float>       &O_intermediate, //float *O_intermediate,
-    small::Buffer<float>       &O)              //float *O)
+    small::Buffer<float> const &I,              //dtype *I,
+    small::Buffer<float> const &F_dw,           //dtype *F_dw,
+    small::Buffer<float> const &F_1x1,          //dtype *F_1x1,
+    small::Buffer<float>       &O_intermediate, //dtype *O_intermediate,
+    small::Buffer<float>       &O)              //dtype *O)
 {
     small::DepthwiseConv2D(kernel_size, stride,
                            t_pad, b_pad, l_pad, r_pad,
@@ -118,24 +132,73 @@ inline void dscnn_block(
     (O_HEIGHT(layer_num) * O_WIDTH(layer_num) * GROUP_C(layer_num - 1) * GROUPS(layer_num - 1))
 
 //****************************************************************************
+small::Buffer<float> &model_inference(
+    uint32_t layer_num_total,
+    uint16_t layer_params[30][10],
+    uint32_t intermediate_dims[30][2],
+    std::vector<small::Buffer<float> *> const &filter_buf_ptrs, //dtype *filter_ptrs[30],
+    small::Buffer<float> const &input_dc,   //dtype *input_dc,
+    small::Buffer<float>       &inter_0_dc, //dtype *inter_0_dc,
+    small::Buffer<float>       &inter_1_dc) //dtype *inter_1_dc)
+{
+    int layer_num = 0;
+
+    int num_filters = layer_num_total - 1;
+    small::Conv2D_rect(REDUCTION_H(layer_num), REDUCTION_W(layer_num),
+                       STRIDE(layer_num), PADDING(layer_num),
+                       GROUP_C(layer_num), REDUCTION_C(layer_num),
+                       I_HEIGHT(layer_num), I_WIDTH(layer_num),
+                       input_dc,
+                       *filter_buf_ptrs[layer_num],
+                       inter_0_dc);
+    layer_num++;
+    small::ReLUActivation(GROUP_C(0),
+                          I_HEIGHT(layer_num), I_WIDTH(layer_num),
+                          inter_0_dc,
+                          inter_0_dc);
+
+    auto ds_blocks = 4;
+    for (int ds_layer = 0; ds_layer < ds_blocks; ds_layer++)
+    {
+        dscnn_block(intermediate_dims[layer_num], GROUPS(layer_num), // Input dimensions
+                    REDUCTION_HW(layer_num),
+                    STRIDE(layer_num),      // DWise Covolution parameters
+                    GROUP_C(layer_num + 1), // 1x1 Convolution parameters
+                    PADDING(layer_num),
+                    inter_0_dc,
+                    *filter_buf_ptrs[layer_num],
+                    *filter_buf_ptrs[layer_num + 1],
+                    inter_1_dc,
+                    inter_0_dc);
+        layer_num += 2;
+    }
+
+    small::MaxPool2D_rect(REDUCTION_H(layer_num), REDUCTION_W(layer_num),
+                          STRIDE(layer_num), PADDING(layer_num),
+                          GROUPS(layer_num),
+                          I_HEIGHT(layer_num), I_WIDTH(layer_num),
+                          inter_0_dc,
+                          inter_1_dc);
+
+    layer_num++;
+    small::Conv2D(1, 1,
+                  0, 0, 0, 0,
+                  GROUP_C(layer_num), REDUCTION_C(layer_num),
+                  1, 1,
+                  inter_1_dc,
+                  *filter_buf_ptrs[num_filters - 1],
+                  inter_0_dc);
+
+    return inter_0_dc;
+}
+
 //****************************************************************************
 int main(int argc, char **argv)
 {
-    if (argc < 4)
-    {
-        printf("USAGE: %s <Input Height> <Input Width> <Input Channels> <Output Classes>", argv[0]);
-        return 0;
-    }
-
-    // printf("layer %d %d %d \n", LAYER, uarch, W_ob);
-    int C_i = atoi(argv[1]);
-
-    uint32_t N = atol(argv[2]);
-    uint32_t M = atol(argv[3]);
-
-    // int C_i = atol(argv[3]);
-
-    int num_classes = atol(argv[4]);
+    int C_i = 3;
+    uint32_t N = 49;
+    uint32_t M = 10;
+    int num_classes = 16;
 
     // uint32_t check_blocks = atol(argv[5]);
     if (num_classes % 16 != 0)
@@ -143,60 +206,49 @@ int main(int argc, char **argv)
         printf("Number of output classes must be a multiple of 16\n");
         exit(-1);
     }
-    //int C_o = 32;
-    //int padding_elements = 0;
-    //int kernel_size = 3;
-    //int stride = 1;
-
-    // // Create and Initialize Pytorch tensors
-    // torch::manual_seed(1729);
-    // torch::Tensor a = torch::randn(C_i * N * M).reshape({1, C_i, N, M});
-    // a = torch::mul(a, 1.0);
-    // // print_shape(-1, a);
-    // // std::cout<<a<<std::endl;
 
     //Create input tensor
     uint32_t input_dimensions = C_i*N*M;
     small::Buffer<float> input_dc(input_dimensions);
-    //float *input_dc = alloc(input_dimensions);
+    //dtype *input_dc = alloc<dtype>(input_dimensions);
     init(input_dc, input_dimensions);
 
-    // std::vector<std::vector<uint64_t>> implementations;
-
-    // calculate total number of weight elements
-    //uint32_t total_num_weights = 0;
-
-    uint16_t layer_params[30][10] = {1};
-
-    std::vector<std::array<uint32_t, 2>> intermediate_dims;
+    uint16_t layer_params[30][10] = {1};  // use vectors?
+    uint32_t intermediate_dims[30][2];    // use vectors?
 
     uint8_t t_pad, b_pad, r_pad, l_pad;
 
     // Set up model parameters
-    int layer_num = 0;
     uint32_t max_numel_inter_0 = 0, max_numel_inter_1 = 0;
 
-    intermediate_dims.push_back(std::array<uint, 2>({M, N}));
+    //intermediate_dims.push_back(std::array<uint, 2>({M, N}));
+    intermediate_dims[0][0] = M;
+    intermediate_dims[0][1] = N;
+
     // conv
-    REDUCTION_C(layer_num) = C_i; // input channels
-    GROUP_C(layer_num) = 64;      // output channels
-    GROUPS(layer_num) = 1;
-    REDUCTION_H(layer_num) = 3; // kernel size
-    REDUCTION_W(layer_num) = 1; //
-    STRIDE(layer_num) = 2;      // stride
-    printf("%d %d %d %d\n", N, M, I_HEIGHT(layer_num), I_WIDTH(layer_num));
-    small::calc_padding(I_HEIGHT(layer_num), REDUCTION_H(layer_num), STRIDE(layer_num), t_pad, b_pad);
-    small::calc_padding(I_WIDTH(layer_num), REDUCTION_W(layer_num), STRIDE(layer_num), l_pad, r_pad);
-    SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad)
-        printf("layer %d paddibg: %d %d %d %d\n", layer_num, PADDING(layer_num));
-    layer_num++; // 1
-    intermediate_dims.push_back(std::array<uint, 2>({5, 25}));
-    std::cout << "conv " << layer_num << "  " << I_HEIGHT(layer_num) << " " << I_WIDTH(layer_num) << " " << GROUP_C(layer_num - 1) << std::endl;
-    auto inter_dim = INPUT_NUMEL(layer_num);
-    max_numel_inter_0 = (inter_dim > max_numel_inter_0)? inter_dim : max_numel_inter_0;
-    // common set up for model architecture
+    REDUCTION_C(0) = C_i;
+    GROUP_C(0) = 64;
+    GROUPS(0) = 1;
+    REDUCTION_H(0) = 3;
+    REDUCTION_W(0) = 1;
+    STRIDE(0) = 2;
+    small::calc_padding(I_HEIGHT(0), REDUCTION_H(0), STRIDE(0), t_pad, b_pad);
+    small::calc_padding(I_WIDTH(0),  REDUCTION_W(0), STRIDE(0), l_pad, r_pad);
+    SET_PADDING(0, t_pad, b_pad, l_pad, r_pad);
+    SET_PADDING(0, 1, 1, 1, 1); /// @todo overrides previous statement?
+
+    //intermediate_dims.push_back(std::array<uint, 2>({5, 25}));
+    intermediate_dims[1][0] = 5;
+    intermediate_dims[1][1] = 25;
+
+    auto inter_dim = INPUT_NUMEL(1);
+    max_numel_inter_0 =
+        (inter_dim > max_numel_inter_0) ? inter_dim : max_numel_inter_0;
     auto ds_blocks = 4;
-    int layer_strides[] = {1, 1, 1, 1};
+
+    size_t layer_num = 1;
+
+    const int layer_strides[] = {1, 1, 1, 1};
     // dwise 1
     for (int ds_layer = 0; ds_layer < ds_blocks; ds_layer++)
     {
@@ -204,34 +256,36 @@ int main(int argc, char **argv)
 
         REDUCTION_C(layer_num) = 1; // input channels
         GROUP_C(layer_num) = 1;
-        GROUPS(layer_num) = GROUP_C(layer_num - 1);  // output channels
-        REDUCTION_HW(layer_num) = 3;                 // kernel size
+        GROUPS(layer_num) = GROUP_C(layer_num - 1); // output channels
+        REDUCTION_HW(layer_num) = 3;                // kernel size
+        REDUCTION_W(layer_num) = 3;
         STRIDE(layer_num) = layer_strides[ds_layer]; // stride
-        small::calc_padding(I_HEIGHT(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), t_pad, b_pad);
-        small::calc_padding(I_WIDTH(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), l_pad, r_pad);
+        small::calc_padding(I_HEIGHT(layer_num), REDUCTION_HW(layer_num),
+                            STRIDE(layer_num), t_pad, b_pad);
+        small::calc_padding(I_WIDTH(layer_num),  REDUCTION_HW(layer_num),
+                            STRIDE(layer_num), l_pad, r_pad);
         SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad)
-            layer_num++; // 2
-        intermediate_dims.push_back(std::array<uint, 2>(OUTPUT_DIMS(layer_num)));
-        // std::cout << "dw " << layer_num << "  " << I_HEIGHT(layer_num) << " " << I_WIDTH(layer_num) << " " << GROUP_C(layer_num - 2) << std::endl;
+        layer_num++; // 2
+        //intermediate_dims.push_back(std::array<uint, 2>(OUTPUT_DIMS(layer_num)));
+        intermediate_dims[layer_num][0] = O_WIDTH(layer_num);
+        intermediate_dims[layer_num][1] = O_HEIGHT(layer_num);
 
         inter_dim = INPUT_NUMEL(layer_num);
         max_numel_inter_1 = (inter_dim > max_numel_inter_1) ? inter_dim : max_numel_inter_1;
-
         REDUCTION_C(layer_num) = GROUPS(layer_num - 1);
         GROUP_C(layer_num) = (GROUPS(layer_num - 1)) * channel_multiplier;
         GROUPS(layer_num) = 1;
         REDUCTION_HW(layer_num) = 1;
+        REDUCTION_W(layer_num) = 1;
         STRIDE(layer_num) = 1;
         SET_PADDING(layer_num, 0, 0, 0, 0)
             layer_num++; // 3
         inter_dim = INPUT_NUMEL(layer_num);
         max_numel_inter_0 = (inter_dim > max_numel_inter_0) ? inter_dim : max_numel_inter_0;
-        intermediate_dims.push_back(std::array<uint, 2>(OUTPUT_DIMS(layer_num)));
-        // std::cout << intermediate_dims[layer_num - 1][0] << " " << intermediate_dims[layer_num - 1][1] << std::endl;
-        std::cout << "1x1 " << layer_num << "  " << I_HEIGHT(layer_num) << " " << I_WIDTH(layer_num) << " " << GROUP_C(layer_num - 1) << std::endl;
+        intermediate_dims[layer_num][0] = O_WIDTH(layer_num);
+        intermediate_dims[layer_num][1] = O_HEIGHT(layer_num);
     }
     // pooling dims
-    printf("%d pool layer num %d %d\n", layer_num, I_HEIGHT(layer_num), I_WIDTH(layer_num));
     REDUCTION_C(layer_num) = 1;
     GROUP_C(layer_num) = 1;
     GROUPS(layer_num) = GROUP_C(layer_num - 1);
@@ -239,11 +293,21 @@ int main(int argc, char **argv)
     REDUCTION_W(layer_num) = I_WIDTH(layer_num);
     STRIDE(layer_num) = 1;
     SET_PADDING(layer_num, 0, 0, 0, 0)
-        layer_num++;
-    // fc dims
-    printf("size of intermediate buffers from configuration: %d %d\n", max_numel_inter_0, max_numel_inter_1);
+    layer_num++;
 
-    auto layer_num_total = layer_num - 1;
+    intermediate_dims[layer_num][0] = 1;
+    intermediate_dims[layer_num][1] = 1;
+    REDUCTION_C(layer_num) = GROUPS(layer_num - 1);
+    GROUP_C(layer_num) = num_classes;
+    GROUPS(layer_num) = 1;
+    REDUCTION_HW(layer_num) = 1;
+    STRIDE(layer_num) = 1;
+    SET_PADDING(layer_num, 0, 0, 0, 0)
+    layer_num++;
+
+    auto layer_num_total = layer_num;
+    auto num_filters = layer_num_total - 1;
+#if SUMMARY ==1
     printf("Layer num total: %d", layer_num_total);
     // Direct Convolution Setup
     for (auto i = 0; i < layer_num_total; i++)
@@ -258,99 +322,49 @@ int main(int argc, char **argv)
         // printf("input dims: %d %d ", I_HEIGHT(i+1), I_WIDTH(i+1));
         printf("\n");
     }
-    //bool check = 1;
-    // #if PARALLEL
-    //     uint32_t num_threads = atoi(std::getenv("OMP_NUM_THREADS"));
-    // #endif
+#endif
 
     //  Copy layer weights to temporaries
     // std::vector<uint32_t> filter_dimensions;
 
-    //float *filter_fc_dc; //, *filter_conv_dc, *filter_1x1_1_dc, *filter_dw_1_dc;
+    //dtype *filter_fc_dc; //, *filter_conv_dc, *filter_1x1_1_dc, *filter_dw_1_dc;
+    //dtype *filter_ptrs[30];
     std::vector<small::Buffer<float> *> filter_buf_ptrs;
 
     // torch::Tensor weights;
-    for (int l = 0; l < layer_num_total; l++)
+    for (size_t l = 0; l < num_filters - 1; l++)  // was layer_num_total
     {
         //float *filter_ptr;
         // weights = layers[l]->weight; // conv_1x1->weight;
-        uint32_t filter_dimensions = REDUCTION_H(l) * REDUCTION_W(l) * REDUCTION_C(l) * GROUP_C(l) * GROUPS(l);
+        uint32_t filter_dimensions =
+            REDUCTION_H(l) * REDUCTION_W(l) * REDUCTION_C(l) *
+            GROUP_C(l) * GROUPS(l);
+        // dtype
         small::Buffer<float> *filter_buf_ptr =
             new small::Buffer<float>(filter_dimensions);
         init(*filter_buf_ptr, filter_dimensions);
         filter_buf_ptrs.push_back(filter_buf_ptr);
     }
 
-    uint32_t filter_dimensions = GROUP_C(layer_num_total) * num_classes;
-    printf("Fc filter dims %d x %d\n", GROUP_C(layer_num_total-1) , num_classes);
+    //uint32_t filter_dimensions = GROUP_C(layer_num_total) * num_classes;
+    uint32_t filter_dimensions = REDUCTION_C(layer_num_total - 1) * GROUP_C(layer_num_total - 1);
     small::Buffer<float> *filter_fc_dc_ptr =
         new small::Buffer<float>(filter_dimensions);
-    //filter_fc_dc = alloc(filter_dimensions);
-    init(*filter_fc_dc_ptr, filter_dimensions);
+    //filter_fc_dc = alloc<dtype>(filter_dimensions);
+    //init(*filter_fc_dc_ptr, filter_dimensions);   /// @todo init call removed in merge.
     filter_buf_ptrs.push_back(filter_fc_dc_ptr);
 
     small::Buffer<float> inter_0_dc(max_numel_inter_0);
     small::Buffer<float> inter_1_dc(max_numel_inter_1);
-    small::Buffer<float> output_dc(num_classes);
-    //float *inter_0_dc = alloc(max_numel_inter_0);
-    //float *inter_1_dc = alloc(max_numel_inter_1);
-    //float *output_dc = alloc(num_classes);
+    /// @todo how to deal with the following??
+    //dtype *inter_0_dc = alloc<dtype>(max_numel_inter_0 + max_numel_inter_1);
+    //dtype *inter_1_dc = inter_0_dc + max_numel_inter_0;
+    //dtype *output_dc;
 
-    //uint32_t inter_h, inter_w;
-
-    // C_i = 3;
-    // C_o = 32;
-    // stride = 2;
-    // kernel_size = 3;
-    // char padding = 'f';
-
-    layer_num = 0;
-
-    small::Conv2D_rect(REDUCTION_H(layer_num), REDUCTION_W(layer_num),
-                       STRIDE(layer_num), PADDING(layer_num),
-                       GROUP_C(layer_num), REDUCTION_C(layer_num),
-                       I_HEIGHT(layer_num), I_WIDTH(layer_num),
-                       input_dc, *filter_buf_ptrs[layer_num], inter_0_dc);
-    layer_num++;
-    small::ReLUActivation(GROUP_C(0),
-                          I_HEIGHT(layer_num), I_WIDTH(layer_num),
-                          inter_0_dc, inter_0_dc);
-
-
-    std::cout << "H: " << I_HEIGHT(layer_num)
-              << " W: " << I_WIDTH(layer_num)
-              << " C:" << GROUP_C(0) << std::endl;
-
-    for (int ds_layer = 0; ds_layer < ds_blocks; ds_layer++)
-    {
-        dscnn_block(
-            intermediate_dims[layer_num], GROUPS(layer_num), // Input dimensions
-            REDUCTION_HW(layer_num),
-            STRIDE(layer_num),      // DWise Covolution parameters
-            GROUP_C(layer_num + 1), // 1x1 Convolution parameters
-            PADDING(layer_num),
-            inter_0_dc,
-            *filter_buf_ptrs[layer_num],
-            *filter_buf_ptrs[layer_num + 1],
-            inter_1_dc,
-            inter_0_dc);
-        layer_num += 2;
-    }
-    // printf("calling pool %d %d \n", layer_num, layers.size());
-    small::MaxPool2D_rect(REDUCTION_H(layer_num), REDUCTION_W(layer_num),
-                          STRIDE(layer_num), PADDING(layer_num),
-                          GROUPS(layer_num),
-                          I_HEIGHT(layer_num), I_WIDTH(layer_num),
-                          inter_0_dc, inter_1_dc);
-    // small::Dense(num_classes, GROUP_C(layer_num - 1),
-    //              inter_1_dc, filter_fc_dc, output_dc);
-    small::Conv2D(1, 1,
-                  0, 0, 0, 0,
-                  num_classes, GROUP_C(layer_num_total - 1),
-                  1, 1,
-                  inter_1_dc, *filter_buf_ptrs[layer_num - 1], output_dc);
-
-    printf("\n");
+    //small::Buffer<float> &output_dc =
+        model_inference(layer_num_total, layer_params, intermediate_dims,
+                        filter_buf_ptrs,
+                        input_dc, inter_0_dc, inter_1_dc);
 
     unsigned long long sum_small; //, t0, t1;
     sum_small = ULLONG_MAX;
@@ -360,60 +374,19 @@ int main(int argc, char **argv)
         //t0 = rdtsc();
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
 
-        layer_num = 0;
-        small::Conv2D_rect(REDUCTION_H(layer_num), REDUCTION_W(layer_num),
-                           STRIDE(layer_num), PADDING(layer_num),
-                           GROUP_C(layer_num), REDUCTION_C(layer_num),
-                           I_HEIGHT(layer_num), I_WIDTH(layer_num),
-                           input_dc, *filter_buf_ptrs[layer_num], inter_0_dc);
+        //small::Buffer<float> &output_dc =
+            model_inference(layer_num_total, layer_params, intermediate_dims,
+                            filter_buf_ptrs,
+                            input_dc, inter_0_dc, inter_1_dc);
 
-        layer_num++;
-        small::ReLUActivation(GROUP_C(0),
-                              I_HEIGHT(layer_num), I_WIDTH(layer_num),
-                              inter_0_dc, inter_0_dc);
-
-        // std::cout << "H: " << I_HEIGHT(layer_num) << " W: " << I_WIDTH(layer_num) << " C:" << GROUP_C(0) << std::endl;
-
-        for (int ds_layer = 0; ds_layer < ds_blocks; ds_layer++)
-        {
-            dscnn_block(
-                intermediate_dims[layer_num], GROUPS(layer_num), // Input dimensions
-                REDUCTION_HW(layer_num),
-                STRIDE(layer_num),      // DWise Covolution parameters
-                GROUP_C(layer_num + 1), // 1x1 Convolution parameters
-                PADDING(layer_num),
-                inter_0_dc,
-                *filter_buf_ptrs[layer_num],
-                *filter_buf_ptrs[layer_num + 1],
-                inter_1_dc,
-                inter_0_dc);
-            layer_num += 2;
-        }
-        // printf("calling pool %d %d \n", layer_num, layers.size());
-        small::MaxPool2D_rect(REDUCTION_H(layer_num), REDUCTION_W(layer_num),
-                              STRIDE(layer_num), PADDING(layer_num),
-                              GROUPS(layer_num),
-                              I_HEIGHT(layer_num), I_WIDTH(layer_num),
-                              inter_0_dc, inter_1_dc);
-        // small::Dense(num_classes, GROUP_C(layer_num - 1), inter_1_dc, filter_fc_dc, output_dc);
-        small::Conv2D(1, 1,
-                      0, 0, 0, 0,
-                      num_classes, GROUP_C(layer_num_total - 1),
-                      1, 1,
-                      inter_1_dc, *filter_buf_ptrs[layer_num - 1], output_dc);
-        //t1 = rdtsc();
-        //MIN(sum_small, (t1 - t0));
-        //small_timing.push_back((t1 - t0));
-	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
+        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
         auto diff = time_difference(time1, time2);
         sum_small = std::min<unsigned long long>(sum_small, diff);
-        //MIN(sum_small, diff);
+        small_timing.push_back(diff);
     }
 
     print_cycles(sum_small);
     print_stats(small_timing, "SMaLL");
-    printf("%d\n", atoi(std::getenv("OMP_NUM_THREADS")));
-    // std::cout<<small_timing;
     //free(input_dc);
     for (size_t l = 0; l < filter_buf_ptrs.size(); l++)
     {
@@ -422,10 +395,5 @@ int main(int argc, char **argv)
     printf("deallocing %ld filters\n", filter_buf_ptrs.size());
 
     //free(inter_1_dc);
-    //printf("deallocing intermediates\n");
-
     //free(inter_0_dc);
-
-    //printf("deallocing intermediates\n");
-    //free(output_dc);
 }

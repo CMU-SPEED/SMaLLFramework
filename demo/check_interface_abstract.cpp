@@ -1,28 +1,14 @@
-/*
- * SMaLL Framework
- *
- * Copyright 2022 Carnegie Mellon University and Authors.
- *
- * THIS MATERIAL WAS PREPARED AS AN ACCOUNT OF WORK SPONSORED BY AN AGENCY OF
- * THE UNITED STATES GOVERNMENT.  NEITHER THE UNITED STATES GOVERNMENT NOR THE
- * UNITED STATES DEPARTMENT OF ENERGY, NOR THE UNITED STATES DEPARTMENT OF
- * DEFENSE, NOR CARNEGIE MELLON UNIVERSITY, NOR ANY OF THEIR
- * EMPLOYEES, NOR ANY JURISDICTION OR ORGANIZATION THAT HAS COOPERATED IN THE
- * DEVELOPMENT OF THESE MATERIALS, MAKES ANY WARRANTY, EXPRESS OR IMPLIED, OR
- * ASSUMES ANY LEGAL LIABILITY OR RESPONSIBILITY FOR THE ACCURACY, COMPLETENESS,
- * OR USEFULNESS OR ANY INFORMATION, APPARATUS, PRODUCT, SOFTWARE, OR PROCESS
- * DISCLOSED, OR REPRESENTS THAT ITS USE WOULD NOT INFRINGE PRIVATELY OWNED
- * RIGHTS.
- *
- * Released under a BSD-style license, please see LICENSE file or contact
- * permission@sei.cmu.edu for full terms.
- *
- * [DISTRIBUTION STATEMENT A] This material has been approved for public release
- * and unlimited distribution.  Please see Copyright notice for non-US
- * Government use and distribution.
- *
- * DMxx-xxxx
- */
+//****************************************************************************
+// SMaLL, Software for Machine Learning Libraries
+// Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
+// SPDX-License-Identifier: BSD-3-Clause
+//
+// For additional details (including references to third party source code and
+// other files) see the LICENSE file or contact permission@sei.cmu.edu. See
+// Contributors.txt for a full list of contributors. Created, in part, with
+// funding and support from the U.S. Government (see Acknowledgments.txt file).
+// DM23-0126
+//****************************************************************************
 
 #include <math.h>
 #include <assert.h>
@@ -36,7 +22,13 @@
 // and interface_abstract.hpp (the contents of this file)
 
 #include <params.h>  //platform specific params
+
+/// @todo this code currently does not support quantized.
+#if defined(QUANTIZED)
+#include <../quantized_reference/intrinsics.h>
+#else
 #include <../reference/intrinsics.h>  // hardcode reference intrinsics ICK
+#endif
 
 #include <small/utils.hpp>
 #include <small/buffers.hpp>
@@ -172,7 +164,6 @@ void check_PartialConv2D(int kernel_size, int stride,
         }
         else if (stride == 2)
         {
-
             small::detail::abstract_layer<float, 1, C_ob, C_ob, W_ob, 2, 1, 'c', 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
@@ -211,7 +202,6 @@ void check_Maxpool2D(int kernel_size, int stride,
     }
     else if (stride == 2)
     {
-
         small::detail::abstract_layer<float, C_ob, 1, 1, W_ob, 2, 1, 'p', 1, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
@@ -239,7 +229,6 @@ void check_DepthwiseConv2D(int kernel_size, int stride,
 {
     if (stride == 1)
     {
-
         small::detail::abstract_layer<float, C_ob, 1, 1, W_ob, 1, 1, 'c', 1, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
@@ -251,7 +240,6 @@ void check_DepthwiseConv2D(int kernel_size, int stride,
     }
     else if (stride == 2)
     {
-
         small::detail::abstract_layer<float, C_ob, 1, 1, W_ob, 2, 1, 'c', 1, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
@@ -283,7 +271,6 @@ void check_ReLUActivation(int input_channels,
         1, 1,
         0, 0, 0, 0,
         input_buf, small::Buffer<float>(0), output_buf);  /// @todo HACK for no filters
-
 }
 
 //****************************************************************************

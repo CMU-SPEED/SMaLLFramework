@@ -1,7 +1,21 @@
+//****************************************************************************
+// SMaLL, Software for Machine Learning Libraries
+// Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
+// SPDX-License-Identifier: BSD-3-Clause
+//
+// For additional details (including references to third party source code and
+// other files) see the LICENSE file or contact permission@sei.cmu.edu. See
+// Contributors.txt for a full list of contributors. Created, in part, with
+// funding and support from the U.S. Government (see Acknowledgments.txt file).
+// DM23-0126
+//****************************************************************************
+
 #pragma once
 
 #include <stdexcept>
 #include <stdint.h>
+
+#define QUANTIZED 1
 
 #define W_ob 2
 #define C_ob 1
@@ -16,6 +30,9 @@
 #define NUM_STORE 1
 
 
+typedef uint8_t dtype;
+typedef int32_t atype;
+
 namespace small
 {
 namespace detail
@@ -26,10 +43,10 @@ namespace detail
 //Allocation
 //****************************************************************************
 
-// #define MAX_BUFF_SIZE 50000000
-// #define MAX_BUFF_SIZE 10000000
-// #define MAX_BUFF_SIZE 200000
-#define MAX_BUFF_SIZE 208200
+//  #define MAX_BUFF_SIZE 50000000
+//  #define MAX_BUFF_SIZE 10000000
+//  #define MAX_BUFF_SIZE 200000
+    #define MAX_BUFF_SIZE 208200
 
     uint8_t  memory_buffer[MAX_BUFF_SIZE];
     uint8_t *current_free_ptr = memory_buffer;
@@ -63,6 +80,25 @@ namespace detail
     }
 
 } // detail
+
+
+#if 0
+struct
+{                           // Structure declaration
+    dtype *tensor;          // Member (int variable)
+    float scale = 0.752941; // Member (string variable)
+    int32_t offset = 0;
+    int32_t multiplier = 1616928864;
+    int lshift = 0;
+    int rshift = 3;
+    int zero = 0;
+    int min_val = 255;
+    int max_val = 0;
+    uint8_t b = 8;
+} typedef qint32_t; // Structure variable
+
+typedef qint32_t qdtype;
+#endif
 
 // define the Buffer type in the small namespace (qdtype becomes Buffer<dtype>)
 /// @todo if Arduino compiler supports concepts using the integer_type concept

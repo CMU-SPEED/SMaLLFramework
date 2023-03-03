@@ -1,3 +1,15 @@
+//****************************************************************************
+// SMaLL, Software for Machine Learning Libraries
+// Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
+// SPDX-License-Identifier: BSD-3-Clause
+//
+// For additional details (including references to third party source code and
+// other files) see the LICENSE file or contact permission@sei.cmu.edu. See
+// Contributors.txt for a full list of contributors. Created, in part, with
+// funding and support from the U.S. Government (see Acknowledgments.txt file).
+// DM23-0126
+//****************************************************************************
+
 #include <math.h>
 #include <assert.h>
 #include <omp.h>
@@ -14,6 +26,8 @@
 #include <iostream>
 // #include <functional>
 #include <numeric>
+
+// typedef float dtype;
 
 #include <small.h>
 #include "utils.h"
@@ -56,7 +70,7 @@ inline void dscnn_block(
     uint8_t b_pad,
     uint8_t l_pad,
     uint8_t r_pad,
-    small::Buffer<float> const &I,
+    small::Buffer<float> const &I,    /// @todo dtype
     small::Buffer<float> const &F_dw,
     small::Buffer<float> const &F_1x1,
     small::Buffer<float>       &O_intermediate,
@@ -119,21 +133,11 @@ inline void dscnn_block(
 //****************************************************************************
 int main(int argc, char **argv)
 {
-    if (argc < 4)
-    {
-        printf("USAGE: torch_pool <Input Height> <Input Width> <Input Channels> <Output Classes>");
-        return 0;
-    }
 
-    // printf("layer %d %d %d \n", LAYER, uarch, W_ob);
-    int C_i = atoi(argv[1]);
-
-    uint32_t N = atol(argv[2]);
-    uint32_t M = atol(argv[3]);
-
-    // int C_i = atol(argv[3]);
-
-    int num_classes = atol(argv[4]);
+    int C_i = 3;
+    uint32_t N = 49;
+    uint32_t M = 10;
+    int num_classes = 16;
 
     // uint32_t check_blocks = atol(argv[5]);
     if (num_classes % 16 != 0)
@@ -141,22 +145,11 @@ int main(int argc, char **argv)
         printf("Number of output classes must be a multiple of 16\n");
         exit(-1);
     }
-    //int C_o = 32;
-    //int padding_elements = 0;
-    //int kernel_size = 3;
-    //int stride = 1;
-
-    // // Create and Initialize Pytorch tensors
-    // torch::manual_seed(1729);
-    // torch::Tensor a = torch::randn(C_i * N * M).reshape({1, C_i, N, M});
-    // a = torch::mul(a, 1.0);
-    // // print_shape(-1, a);
-    // // std::cout<<a<<std::endl;
 
     //Create input tensor
     uint32_t input_dimensions = C_i*N*M;
     small::Buffer<float> input_dc(input_dimensions);
-    //float *input_dc = alloc(input_dimensions);
+    //dtype *input_dc = alloc<dytpe>(input_dimensions);
     init(input_dc, input_dimensions);
 
     // std::vector<std::vector<uint64_t>> implementations;
@@ -213,10 +206,13 @@ int main(int argc, char **argv)
         SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad)
         layer_num++; // 2
         intermediate_dims.push_back(std::array<uint, 2>(OUTPUT_DIMS(layer_num)));
-        // std::cout << "dw " << layer_num << "  " << I_HEIGHT(layer_num) << " " << I_WIDTH(layer_num) << " " << GROUP_C(layer_num - 2) << std::endl;
+        // std::cout << "dw " << layer_num << "  "
+        //           << I_HEIGHT(layer_num) << " " << I_WIDTH(layer_num) << " "
+        //           << GROUP_C(layer_num - 2) << std::endl;
 
         inter_dim = INPUT_NUMEL(layer_num);
-        max_numel_inter_1 = (inter_dim > max_numel_inter_1) ? inter_dim : max_numel_inter_1;
+        max_numel_inter_1 =
+            (inter_dim > max_numel_inter_1) ? inter_dim : max_numel_inter_1;
 
         REDUCTION_C(layer_num) = GROUPS(layer_num - 1);
         GROUP_C(layer_num) = (GROUPS(layer_num - 1)) * channel_multiplier;
@@ -226,13 +222,18 @@ int main(int argc, char **argv)
         SET_PADDING(layer_num, 0, 0, 0, 0)
         layer_num++; // 3
         inter_dim = INPUT_NUMEL(layer_num);
-        max_numel_inter_0 = (inter_dim > max_numel_inter_0) ? inter_dim : max_numel_inter_0;
+        max_numel_inter_0 =
+            (inter_dim > max_numel_inter_0) ? inter_dim : max_numel_inter_0;
         intermediate_dims.push_back(std::array<uint, 2>(OUTPUT_DIMS(layer_num)));
-        // std::cout << intermediate_dims[layer_num - 1][0] << " " << intermediate_dims[layer_num - 1][1] << std::endl;
-        std::cout << "1x1 " << layer_num << "  " << I_HEIGHT(layer_num) << " " << I_WIDTH(layer_num) << " " << GROUP_C(layer_num - 1) << std::endl;
+        // std::cout << intermediate_dims[layer_num - 1][0] << " "
+        //           << intermediate_dims[layer_num - 1][1] << std::endl;
+        std::cout << "1x1 " << layer_num << "  " << I_HEIGHT(layer_num) << " "
+                  << I_WIDTH(layer_num) << " " << GROUP_C(layer_num - 1)
+                  << std::endl;
     }
     // pooling dims
-    printf("%d pool layer num %d %d\n", layer_num, I_HEIGHT(layer_num), I_WIDTH(layer_num));
+    printf("%d pool layer num %d %d\n",
+           layer_num, I_HEIGHT(layer_num), I_WIDTH(layer_num));
     REDUCTION_C(layer_num) = 1;
     GROUP_C(layer_num) = 1;
     GROUPS(layer_num) = GROUP_C(layer_num - 1);
@@ -242,7 +243,8 @@ int main(int argc, char **argv)
     SET_PADDING(layer_num, 0, 0, 0, 0)
     layer_num++;
     // fc dims
-    printf("size of intermediate buffers from configuration: %d %d\n", max_numel_inter_0, max_numel_inter_1);
+    printf("size of intermediate buffers from configuration: %d %d\n",
+           max_numel_inter_0, max_numel_inter_1);
 
     auto layer_num_total = layer_num - 1;
     printf("Layer num total: %d", layer_num_total);
@@ -256,15 +258,17 @@ int main(int argc, char **argv)
     //  Copy layer weights to temporaries
     // std::vector<uint32_t> filter_dimensions;
 
-    //float *filter_fc_dc; //, *filter_conv_dc, *filter_1x1_1_dc, *filter_dw_1_dc;
+    //dtype *filter_fc_dc; //, *filter_conv_dc, *filter_1x1_1_dc, *filter_dw_1_dc;
     std::vector<small::Buffer<float> *> filter_buf_ptrs;
 
     // torch::Tensor weights;
     for (int l = 0; l < layer_num_total; l++)
     {
         // weights = layers[l]->weight; // conv_1x1->weight;
-        uint32_t filter_dimensions = REDUCTION_H(l) * REDUCTION_W(l) * REDUCTION_C(l) * GROUP_C(l) * GROUPS(l);
-        small::Buffer<float> *filter_buf_ptr =
+        uint32_t filter_dimensions =
+            REDUCTION_H(l) * REDUCTION_W(l) *
+            REDUCTION_C(l) * GROUP_C(l) * GROUPS(l);
+        small::Buffer<float> *filter_buf_ptr =    // dtype
             new small::Buffer<float>(filter_dimensions);
         init(*filter_buf_ptr, filter_dimensions);
         filter_buf_ptrs.push_back(filter_buf_ptr);
@@ -280,9 +284,9 @@ int main(int argc, char **argv)
     small::Buffer<float> inter_0_dc(max_numel_inter_0);
     small::Buffer<float> inter_1_dc(max_numel_inter_1);
     small::Buffer<float> output_dc(num_classes);
-    //float *inter_0_dc = alloc(max_numel_inter_0);
-    //float *inter_1_dc = alloc(max_numel_inter_1);
-    //float *output_dc = alloc(num_classes);
+    //dtype *inter_0_dc = alloc<dtype>(max_numel_inter_0);
+    //dtype *inter_1_dc = alloc<dtype>(max_numel_inter_1);
+    //dtype *output_dc  = alloc<dtype>(num_classes);
 
     //uint32_t inter_h, inter_w;
 
@@ -400,19 +404,16 @@ int main(int argc, char **argv)
     print_cycles(sum_small);
     print_stats(small_timing, "SMaLL");
     printf("%d\n", atoi(std::getenv("OMP_NUM_THREADS")));
-    // std::cout<<small_timing;
+
     //free(input_dc);
+
+    printf("deallocing %ld filters\n", filter_buf_ptrs.size());
     for (size_t l = 0; l < filter_buf_ptrs.size(); l++)
     {
         delete filter_buf_ptrs[l];
     }
-    printf("deallocing %ld filters\n", filter_buf_ptrs.size());
 
     //free(inter_1_dc);
-    //printf("deallocing intermediates\n");
-
     //free(inter_0_dc);
-
-    //printf("deallocing intermediates\n");
     //free(output_dc);
 }
