@@ -14,7 +14,8 @@
 
 //scalar versions of all the microkernels for platform portability
 #define SIMD_EPILOGUE 1
-typedef float c_tile_t;
+
+typedef small::FloatBuffer::value_type c_tile_t;
 
 #include<immintrin.h>
 //Architecture specific tiling params
@@ -253,13 +254,13 @@ __m256 a_reg, b0, b1, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13
   c10 = _mm256_max_ps(a_reg, c10);             \
   c11 = _mm256_max_ps(c12, c11);
 
-#define MAX_END_C(step, a, b, c_cur, W_last, C_ob)                                          \
-  float *c_pixel = c_cur;                                                        \
-  float const *a_pixel = a;                                                             \
+#define MAX_END_C(step, a, c_cur, W_last, C_ob)                                   \
+  float *c_pixel = c_cur;                                                         \
+  float const *a_pixel = a;                                                       \
   for (uint32_t kk = 0; kk < W_last; kk++)                                        \
   {                                                                               \
     float *c_channel = c_pixel;                                                   \
-    float const *a_channel = a_pixel;                                                   \
+    float const *a_channel = a_pixel;                                             \
     for (uint32_t jj = 0; jj < C_ob; jj++)                                        \
     {                                                                             \
       *(c_channel) = (*(a_channel) > *(c_channel)) ? *(a_channel) : *(c_channel); \

@@ -24,16 +24,15 @@ namespace small
 {
 
 //****************************************************************************
-template <typename ScalarT=float>
-class ReLU : public Layer<ScalarT>
+template <typename BufferT>
+class ReLU : public Layer<BufferT>
 {
 public:
-    typedef ScalarT data_type;
-    typedef typename Layer<ScalarT>::buffer_type buffer_type;
+    typedef typename BufferT::value_type data_type;
 
     ReLU(uint32_t input_height, uint32_t input_width,
          uint32_t num_channels)
-        : Layer<ScalarT>(),
+        : Layer<BufferT>(),
           m_input_height(input_height),
           m_input_width(input_width),
           m_num_channels(num_channels),
@@ -44,8 +43,8 @@ public:
     virtual size_t  input_buffer_size() const { return m_buffer_size; }
     virtual size_t output_buffer_size() const { return m_buffer_size; }
 
-    virtual void compute_output(buffer_type const &input_dc,
-                                buffer_type       &output_dc)
+    virtual void compute_output(BufferT const &input_dc,
+                                BufferT       &output_dc)
     {
         // assert(input.size() == input_width*input_height);
         // assert(output.size()== input_width*input_height);

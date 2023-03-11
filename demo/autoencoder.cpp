@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <climits>
+
 #include <vector>
 #include <string>
 #include <fstream>
@@ -27,7 +28,6 @@
 // #include <functional>
 #include <numeric>
 
-// typedef float dtype;
 
 #include <small.h>
 #include "utils.h"
@@ -94,13 +94,13 @@
 
 //****************************************************************************
 // Prior: returned dtype*
-small::Buffer<float> &model_inference(
+small::FloatBuffer &model_inference(
     uint32_t layer_num_total,
     uint16_t layer_params[30][10],
-    std::vector<small::Buffer<float>*> const &filter_buf_ptrs, //dtype *filter_ptrs[30],
-    small::Buffer<float> const &input_dc,   //dtype *input_dc,
-    small::Buffer<float>       &inter_0_dc, //dtype *inter_0_dc,
-    small::Buffer<float>       &inter_1_dc) //dtype *inter_1_dc)
+    std::vector<small::FloatBuffer*> const &filter_buf_ptrs, //dtype *filter_ptrs[30],
+    small::FloatBuffer const &input_dc,   //dtype *input_dc,
+    small::FloatBuffer       &inter_0_dc, //dtype *inter_0_dc,
+    small::FloatBuffer       &inter_1_dc) //dtype *inter_1_dc)
 {
     int layer_num = 0;
     small::Conv2D(1, 1,
@@ -138,21 +138,21 @@ small::Buffer<float> &model_inference(
     }
     return inter_0_dc;
 }
+
 //****************************************************************************
-int main()
+//****************************************************************************
+void inference()
 {
     int C_i = 128;
     uint32_t N = 1;
     uint32_t M = 1;
     int num_classes = 16;
 
-    // // Create and Initialize small tensors
-
     // Create input tensor
     uint32_t input_dimensions = C_i * N * M;
-    small::Buffer<float> input_dc(input_dimensions);
+    small::FloatBuffer input_dc(input_dimensions);
     //dtype *input_dc = alloc<dtype>(input_dimensions);
-    init(input_dc, input_dimensions);
+    small::init(input_dc, input_dimensions);
 
     // ================================================
     // calculate total number of weight elements
@@ -217,7 +217,7 @@ int main()
     }
 #endif
 
-    std::vector<small::Buffer<float> *> filter_buf_ptrs;
+    std::vector<small::FloatBuffer *> filter_buf_ptrs;
     //dtype * filter_ptrs[30];
 
     // Direct Convolution Setup
@@ -227,20 +227,20 @@ int main()
         uint32_t filter_dimensions =
             REDUCTION_HW(l) * REDUCTION_HW(l) * REDUCTION_C(l) *
             GROUP_C(l) * GROUPS(l);
-        small::Buffer<float> *filter_buf_ptr =
-            new small::Buffer<float>(filter_dimensions);
+        small::FloatBuffer *filter_buf_ptr =
+            new small::FloatBuffer(filter_dimensions);
         init(*filter_buf_ptr, filter_dimensions);
         filter_buf_ptrs.push_back(filter_buf_ptr);
     }
 
-    small::Buffer<float> inter_0_dc(max_numel_inter_0);
-    small::Buffer<float> inter_1_dc(max_numel_inter_1);
+    small::FloatBuffer inter_0_dc(max_numel_inter_0);
+    small::FloatBuffer inter_1_dc(max_numel_inter_1);
     //dtype *inter_0_dc = alloc<dtype>(max_numel_inter_0);
     //dtype *inter_1_dc = alloc<dtype>(max_numel_inter_1);
     //dtype *output_dc;
 
     // always returns a reference to inter_0_dc
-    //small::Buffer<float> &output_dc =
+    //small::FloatBuffer &output_dc =
         model_inference(layer_num_total, layer_params,
                         filter_buf_ptrs,
                         input_dc,
@@ -258,7 +258,7 @@ int main()
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
 
         // always returns a reference to inter_0_dc
-        //small::Buffer<float> &output_dc =
+        //small::FloatBuffer &output_dc =
             model_inference(layer_num_total, layer_params,
                             filter_buf_ptrs,
                             input_dc,
@@ -282,4 +282,13 @@ int main()
 
     //free(inter_1_dc);
     //free(inter_0_dc);
+}
+
+//****************************************************************************
+// For non-arduino platforms.  ... move to driver.cpp?
+//****************************************************************************
+int main()
+{
+    inference();
+    return 0;
 }

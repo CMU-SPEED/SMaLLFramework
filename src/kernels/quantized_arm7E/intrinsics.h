@@ -10,24 +10,22 @@
 // DM23-0126
 //****************************************************************************
 
-//scalar versions of all the microkernels for platform portability
-
 #pragma once
 
-//accumi
+// scalar versions of all the microkernels for platform portability
+
+// accumi
 #define SIMD_EPILOGUE 1
 typedef dtype c_tile_out_t;
 typedef atype c_tile_t;
 
-<<<<<<< HEAD
 // Initializations
 
-#define DEF_TILE_C(W_ob, C_ob)\
+#define DEF_TILE_C(W_ob, C_ob) \
   c_tile_t c_tile[W_ob * C_ob];
 
 #define DEF_END_C(W_ob, C_ob) \
   c_tile_t c_tile[W_ob * C_ob];
-
 
 // USED
 #define ZERO_TILE_C(W_ob, C_ob, z)         \
@@ -39,7 +37,7 @@ typedef atype c_tile_t;
     }                                      \
   }
 
-#define ZERO_END_C(_W_ob, C_ob,z)          \
+#define ZERO_END_C(_W_ob, C_ob, z)         \
   for (uint32_t kk = 0; kk < _W_ob; kk++)  \
   {                                        \
     for (uint32_t jj = 0; jj < C_ob; jj++) \
@@ -69,7 +67,7 @@ typedef atype c_tile_t;
     }                                                                    \
   }
 
-//Pooling Loads
+// Pooling Loads
 
 // strided loads
 #define LOAD_TILE_C_strided(O, step, _W_ob, _C_ob)                        \
@@ -451,7 +449,7 @@ typedef atype c_tile_t;
 
 // USED
 #if C_ob == 16 && W_ob == 1
-#define MAX_Q_TILE_C(step, a, W_ob, C_ob, a_offset, b_offset)     \
+#define MAX_Q_TILE_C(step, a, W_ob, C_ob, a_offset)     \
   atype a_val = *(a) + a_offset;                                  \
   {                                                               \
     atype c_val = c_tile[0 * C_ob + 0x0];                         \
@@ -518,7 +516,7 @@ typedef atype c_tile_t;
     c_tile[0 * C_ob + 0xF] = ((a_val) > c_val) ? (a_val) : c_val; \
   }
 #else
-#define MAX_Q_TILE_C(step, a, W_ob, C_ob, a_offset, b_offset)                                               \
+#define MAX_Q_TILE_C(step, a, W_ob, C_ob, a_offset)                                               \
   c_tile_t *c_pixel = c_tile;                                                                               \
   dtype const *a_pixel = a;                                                                                 \
   for (uint32_t kk = 0; kk < W_ob; kk++)                                                                    \
@@ -535,7 +533,7 @@ typedef atype c_tile_t;
     c_pixel += C_ob;                                                                                        \
   }
 #endif
-#define MAX_Q_END_C(step, a, b, c_cur, W_last, C_ob, a_offset, b_offset)                                    \
+#define MAX_Q_END_C(step, a, c_cur, W_last, C_ob, a_offset)                                    \
   c_tile_t *c_pixel = c_cur;                                                                                \
   dtype const *a_pixel = a;                                                                                 \
   for (uint32_t kk = 0; kk < W_last; kk++)                                                                  \

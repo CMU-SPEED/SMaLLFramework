@@ -13,90 +13,52 @@
 #pragma once
 
 #include <math.h>
-// #include <assert.h>
-// #include <omp.h>
-// #include <stdio.h>
-// #include <stdlib.h>
 #include <stdint.h>
 #include <stdexcept>
 
-// #include <small/abstract_layer.hpp>
+#include <small/q_abstract_layer.hpp>
 
-int clip(int n, int upper, int lower = 0)
+namespace small
 {
-    n = (n > lower) * n + !(n > lower) * lower;
-    return (n < upper) * n + !(n < upper) * upper;
-}
-
-// Quantization Functions
-template <typename Q_T, typename T>
-void Quantize(int num_elements, T *tensor_ptr, Q_T *quant_tensor_ptr)
-{
-    float scale_inv = (1.0 / quant_tensor_ptr->scale);
-    uint64_t max_val = (1 << quant_tensor_ptr->b) - 1;
-    int quant_val = rint(quant_tensor_ptr->zero + (0.0 * scale_inv));
-    for (int i = 0; i < num_elements; i++)
-    {
-        int quant_val = rint(quant_tensor_ptr->zero + (tensor_ptr[i] * scale_inv));
-        quant_tensor_ptr->tensor[i] = (quant_val < max_val) ? quant_val : max_val;
-    }
-}
-
-template <typename Q_T, typename T>
-void DeQuantize(int num_elements, T *tensor_ptr, Q_T *quant_tensor_ptr)
-{
-    for (int i = 0; i < num_elements; i++)
-    {
-        tensor_ptr[i] = (T)(quant_tensor_ptr->scale * (quant_tensor_ptr->tensor[i] - quant_tensor_ptr->zero));
-    }
-}
-
-template <typename Q_T, typename T>
-void DebugDeQuantize(int num_elements, T *tensor_ptr, Q_T *quant_tensor_ptr)
-{
-    for (int i = 0; i < num_elements; i++)
-    {
-        tensor_ptr[i] = (T)(quant_tensor_ptr->scale * ((T)(quant_tensor_ptr->tensor[i] - quant_tensor_ptr->zero)));
-    }
-}
 
 //****************************************************************************
-template <typename OperandT, typename Q_type>
-void Conv2D(int layer_num,
-            int kernel_size, int stride, /// @todo dim_t?
+template <class BufferT>
+void Conv2D(int kernel_size, int stride,  /// @todo dim_t?
             uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
             int output_channels, int input_channels,
             int input_height, int input_width,
-            Q_type const *input_ptr,
-            Q_type const *filter_ptr,
-            Q_type *output_ptr)
+            BufferT const &input_buf,
+            BufferT const &filter_buf,
+            BufferT       &output_buf)
 {
-    /// @todo do we need another specific case for input_channels==1?
+    /// @todo We need another specific case for input_channels==1 (maybe more)
 
     // Specific case for the first layer
     if (input_channels == 3)
     {
         if (stride == 1)
         {
-            abstract_layer<OperandT, Q_type, int32_t,1, C_ob, 3, W_ob, 1, 1, 'c', 2, 1>(
+            detail::abstract_layer<BufferT,
+                                   1, C_ob, 3, W_ob, 1, 1, 'c', 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_ptr, filter_ptr, output_ptr);
+                input_buf, filter_buf, output_buf);
         }
         else if (stride == 2)
         {
-            abstract_layer<OperandT, Q_type, int32_t,1, C_ob, 3, W_ob, 2, 1, 'c', 2, 1>(
+            detail::abstract_layer<BufferT,
+                                   1, C_ob, 3, W_ob, 2, 1, 'c', 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_ptr, filter_ptr, output_ptr);
+                input_buf, filter_buf, output_buf);
         }
         else
         {
@@ -108,25 +70,27 @@ void Conv2D(int layer_num,
     {
         if (stride == 1)
         {
-            abstract_layer<OperandT, Q_type, int32_t,1, C_ob, C_ob, W_ob, 1, UNROLL, 'c', 2, 1>(
+            detail::abstract_layer<BufferT,
+                                   1, C_ob, C_ob, W_ob, 1, UNROLL, 'c', 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_ptr, filter_ptr, output_ptr);
+                input_buf, filter_buf, output_buf);
         }
         else if (stride == 2)
         {
-            abstract_layer<OperandT, Q_type, int32_t,1, C_ob, C_ob, W_ob, 2, UNROLL, 'c', 2, 1>(
+            detail::abstract_layer<BufferT,
+                                   1, C_ob, C_ob, W_ob, 2, UNROLL, 'c', 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_ptr, filter_ptr, output_ptr);
+                input_buf, filter_buf, output_buf);
         }
         else
         {
@@ -137,41 +101,44 @@ void Conv2D(int layer_num,
 }
 
 //****************************************************************************
-template <typename OperandT, typename Q_type>
-void PartialConv2D(int layer_num,
-                   int kernel_size, int stride,
+template <class BufferT>
+void PartialConv2D(int kernel_size, int stride,
                    uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                    int output_channels, int input_channels,
                    int input_height, int input_width,
-                   Q_type const *input_ptr,
-                   Q_type const *filter_ptr,
-                   Q_type *output_ptr)
+                   BufferT const &input_buf,
+                   BufferT const &filter_buf,
+                   BufferT       &output_buf)
 {
+    /// @todo We need another specific case for input_channels==1 (maybe more)
+
     // Specific case for the first layer
     if (input_channels == 3)
     {
         if (stride == 1)
         {
-            abstract_layer<OperandT, Q_type, int32_t,1, C_ob, 3, W_ob, 1, 1, 'c', 2, 0>(
+            detail::abstract_layer<BufferT,
+                                   1, C_ob, 3, W_ob, 1, 1, 'c', 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_ptr, filter_ptr, output_ptr);
+                input_buf, filter_buf, output_buf);
         }
         else if (stride == 2)
         {
 
-            abstract_layer<OperandT, Q_type, int32_t,1, C_ob, 3, W_ob, 2, 1, 'c', 2, 0>(
+            detail::abstract_layer<BufferT,
+                                   1, C_ob, 3, W_ob, 2, 1, 'c', 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_ptr, filter_ptr, output_ptr);
+                input_buf, filter_buf, output_buf);
         }
         else
         {
@@ -182,26 +149,28 @@ void PartialConv2D(int layer_num,
     {
         if (stride == 1)
         {
-            abstract_layer<OperandT, Q_type, int32_t,1, C_ob, C_ob, W_ob, 1, UNROLL, 'c', 2, 0>(
+            detail::abstract_layer<BufferT,
+                                   1, C_ob, C_ob, W_ob, 1, UNROLL, 'c', 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_ptr, filter_ptr, output_ptr);
+                input_buf, filter_buf, output_buf);
         }
         else if (stride == 2)
         {
 
-            abstract_layer<OperandT, Q_type, int32_t,1, C_ob, C_ob, W_ob, 2, UNROLL, 'c', 2, 0>(
+            detail::abstract_layer<BufferT,
+                                   1, C_ob, C_ob, W_ob, 2, UNROLL, 'c', 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_ptr, filter_ptr, output_ptr);
+                input_buf, filter_buf, output_buf);
         }
         else
         {
@@ -211,37 +180,38 @@ void PartialConv2D(int layer_num,
 }
 
 //****************************************************************************
-template <typename OperandT, typename Q_type>
-void Maxpool2D(int layer_num,
-               int kernel_size, int stride,
+template <class BufferT>
+void Maxpool2D(int kernel_size, int stride,
                uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                int input_channels,
                int input_height, int input_width,
-               Q_type const *input_ptr,
-               Q_type *output_ptr)
+               BufferT const &input_buf,
+               BufferT       &output_buf)
 {
     if (stride == 1)
     {
-        abstract_layer<OperandT, Q_type, int32_t,C_ob, 1, 1, W_ob, 1, 1, 'p', 1, 1>(
+        detail::abstract_layer<BufferT,
+                               C_ob, 1, 1, W_ob, 1, 1, 'p', 1, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
             input_height, input_width,
             kernel_size, kernel_size,
             t_pad, l_pad, r_pad, b_pad,
-            input_ptr, NULL, output_ptr);
+            input_buf, output_buf);
     }
     else if (stride == 2)
     {
 
-        abstract_layer<OperandT, Q_type, int32_t,C_ob, 1, 1, W_ob, 2, 1, 'p', 1, 1>(
+        detail::abstract_layer<BufferT,
+                               C_ob, 1, 1, W_ob, 2, 1, 'p', 1, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
             input_height, input_width,
             kernel_size, kernel_size,
             t_pad, l_pad, r_pad, b_pad,
-            input_ptr, NULL, output_ptr);
+            input_buf, output_buf);
     }
     else
     {
@@ -251,39 +221,40 @@ void Maxpool2D(int layer_num,
 }
 
 //****************************************************************************
-template <typename OperandT, typename Q_type>
-void DepthwiseConv2D(int layer_num,
-                     int kernel_size, int stride,
+template <class BufferT>
+void DepthwiseConv2D(int kernel_size, int stride,
                      uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                      int input_channels,
                      int input_height, int input_width,
-                     Q_type const *input_ptr,
-                     Q_type const *filter_ptr,
-                     Q_type *output_ptr)
+                     BufferT const &input_buf,
+                     BufferT const &filter_buf,
+                     BufferT       &output_buf)
 {
     if (stride == 1)
     {
 
-        abstract_layer<OperandT, Q_type, int32_t,C_ob, 1, 1, W_ob, 1, 1, 'c', 1, 1>(
+        detail::abstract_layer<BufferT,
+                               C_ob, 1, 1, W_ob, 1, 1, 'c', 1, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
             input_height, input_width,
             kernel_size, kernel_size,
             t_pad, l_pad, r_pad, b_pad,
-            input_ptr, filter_ptr, output_ptr);
+            input_buf, filter_buf, output_buf);
     }
     else if (stride == 2)
     {
 
-        abstract_layer<OperandT, Q_type, int32_t,C_ob, 1, 1, W_ob, 2, 1, 'c', 1, 1>(
+        detail::abstract_layer<BufferT,
+                               C_ob, 1, 1, W_ob, 2, 1, 'c', 1, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
             input_height, input_width,
             kernel_size, kernel_size,
             t_pad, l_pad, r_pad, b_pad,
-            input_ptr, filter_ptr, output_ptr);
+            input_buf, filter_buf, output_buf);
     }
     else
     {
@@ -293,94 +264,79 @@ void DepthwiseConv2D(int layer_num,
 }
 
 //****************************************************************************
-template <typename OperandT, typename Q_type>
-void ReLUActivation(int layer_num,
-                    int input_channels,
+/// @todo why is this the only layer with 'zero' param?
+template <class BufferT>
+void ReLUActivation(int input_channels,
                     int input_height, int input_width,
-                    Q_type const *input_ptr,
-                    Q_type *output_ptr,
+                    BufferT const &input_buf,
+                    BufferT       &output_buf,
                     int zero = 0)
 {
-    abstract_layer<OperandT, Q_type, int32_t,C_ob, 1, 1, W_ob, 1, 1, 'a', 0, 1>(
+    detail::abstract_layer<BufferT,
+                           C_ob, 1, 1, W_ob, 1, 1, 'a', 0, 1>(
         input_channels, // Output Channel Grouping
         1,              // Output Channels per group
         1,
         input_height, input_width,
         1, 1,
         0, 0, 0, 0,
-        input_ptr, NULL, output_ptr, zero);
+        input_buf, output_buf, zero);
 }
 
-// template <typename OperandT, typename Q_type>
-// void QuantReLUActivation(int layer_num,
-//                     int input_channels,
-//                     int input_height, int input_width,
-//                     Q_type const *input_ptr,
-//                     Q_type *output_ptr,
-//                     int zero )
-// {
-//     abstract_layer<OperandT, Q_type, int32_t,C_ob, 1, 1, W_ob, 1, 1, 'a', 0, 1>(
-//         input_channels, // Output Channel Grouping
-//         1,              // Output Channels per group
-//         1,
-//         input_height, input_width,
-//         1, 1,
-//         0, 0, 0, 0,
-//         input_ptr, NULL, output_ptr);
-// }
 //****************************************************************************
-template <typename OperandT, typename Q_type>
-void Dense(int layer_num,
-           int output_elements, int input_elements,
-           Q_type const *input_ptr,
-           Q_type const *filter_ptr,
-           Q_type *output_ptr)
+template <class BufferT>
+void Dense(int output_elements, int input_elements,
+           BufferT const &input_buf,
+           BufferT const &filter_buf,
+           BufferT       &output_buf)
 {
-    abstract_layer<OperandT, Q_type, int32_t,C_ob, 1, 1, W_ob, 1, 1, 'c', 1, 1>(
+    detail::abstract_layer<BufferT,
+                           C_ob, 1, 1, W_ob, 1, 1, 'c', 1, 1>(
         output_elements, // Output Channel Grouping
         1,               // Output Channels per group
         1,
         1, input_elements,
         1, 1,
         0, 0, 0, 0,
-        input_ptr, filter_ptr, output_ptr);
+        input_buf, filter_buf, output_buf);
 }
 
 //****************************************************************************
-template <typename OperandT, typename Q_type>
-void Conv2D_rect(int layer_num,
-                 int kernel_size_h, int kernel_size_w, int stride,
+template <class BufferT>
+void Conv2D_rect(int kernel_size_h, int kernel_size_w, int stride,
                  uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                  int output_channels, int input_channels,
                  int input_height, int input_width,
-                 Q_type const *input_ptr,
-                 Q_type const *filter_ptr,
-                 Q_type *output_ptr)
+                 BufferT const &input_buf,
+                 BufferT const &filter_buf,
+                 BufferT       &output_buf)
 {
     // Specific case for the first layer
     if (input_channels == 3)
     {
         if (stride == 1)
         {
-            abstract_layer<OperandT, Q_type, int32_t,1, C_ob, 3, W_ob, 1, 1, 'c', 2, 1>(
+            detail::abstract_layer<BufferT,
+                                   1, C_ob, 3, W_ob, 1, 1, 'c', 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
                 input_height, input_width,
                 kernel_size_h, kernel_size_w,
                 t_pad, l_pad, r_pad, b_pad,
-                input_ptr, filter_ptr, output_ptr);
+                input_buf, filter_buf, output_buf);
         }
         else if (stride == 2)
         {
-            abstract_layer<OperandT, Q_type, int32_t,1, C_ob, 3, W_ob, 2, 1, 'c', 2, 1>( // unroll?
-                1,                                                       // Output Channel Grouping
-                output_channels,                                         // Output Channels per group
+            detail::abstract_layer<BufferT,
+                                   1, C_ob, 3, W_ob, 2, 1, 'c', 2, 1>( // unroll?
+                1,               // Output Channel Grouping
+                output_channels, // Output Channels per group
                 input_channels,
                 input_height, input_width,
                 kernel_size_h, kernel_size_w,
                 t_pad, l_pad, r_pad, b_pad,
-                input_ptr, filter_ptr, output_ptr);
+                input_buf, filter_buf, output_buf);
         }
         else
         {
@@ -392,26 +348,28 @@ void Conv2D_rect(int layer_num,
     {
         if (stride == 1)
         {
-            abstract_layer<OperandT, Q_type, int32_t,1, C_ob, C_ob, W_ob, 1, UNROLL, 'c', 2, 1>(
+            detail::abstract_layer<BufferT,
+                                   1, C_ob, C_ob, W_ob, 1, UNROLL, 'c', 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
                 input_height, input_width,
                 kernel_size_h, kernel_size_w,
                 t_pad, l_pad, r_pad, b_pad,
-                input_ptr, filter_ptr, output_ptr);
+                input_buf, filter_buf, output_buf);
         }
         else if (stride == 2)
         {
 
-            abstract_layer<OperandT, Q_type, int32_t,1, C_ob, C_ob, W_ob, 2, UNROLL, 'c', 2, 1>(
+            detail::abstract_layer<BufferT,
+                                   1, C_ob, C_ob, W_ob, 2, UNROLL, 'c', 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
                 input_height, input_width,
                 kernel_size_h, kernel_size_w,
                 t_pad, l_pad, r_pad, b_pad,
-                input_ptr, filter_ptr, output_ptr);
+                input_buf, filter_buf, output_buf);
         }
         else
         {
@@ -422,36 +380,37 @@ void Conv2D_rect(int layer_num,
 }
 
 //****************************************************************************
-template <typename OperandT, typename Q_type>
-void MaxPool2D_rect(int layer_num,
-                    int kernel_size_h, int kernel_size_w, int stride,
+template <class BufferT>
+void MaxPool2D_rect(int kernel_size_h, int kernel_size_w, int stride,
                     uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                     int input_channels,
                     int input_height, int input_width,
-                    Q_type const *input_ptr,
-                    Q_type *output_ptr)
+                    BufferT const &input_buf,
+                    BufferT       &output_buf)
 {
     if (stride == 1)
     {
-        abstract_layer<OperandT, Q_type, int32_t,C_ob, 1, 1, W_ob, 1, 1, 'p', 1, 1>(
+        detail::abstract_layer<BufferT,
+                               C_ob, 1, 1, W_ob, 1, 1, 'p', 1, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
             input_height, input_width,
             kernel_size_h, kernel_size_w,
             t_pad, l_pad, r_pad, b_pad,
-            input_ptr, NULL, output_ptr);
+            input_buf, output_buf);
     }
     else if (stride == 2)
     {
-        abstract_layer<OperandT, Q_type, int32_t,C_ob, 1, 1, W_ob, 2, 1, 'p', 1, 1>(
+        detail::abstract_layer<BufferT,
+                               C_ob, 1, 1, W_ob, 2, 1, 'p', 1, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
             input_height, input_width,
             kernel_size_h, kernel_size_w,
             t_pad, l_pad, r_pad, b_pad,
-            input_ptr, NULL, output_ptr);
+            input_buf, output_buf);
     }
     else
     {
@@ -460,21 +419,4 @@ void MaxPool2D_rect(int layer_num,
     }
 }
 
-inline void CALC_PADDING(uint32_t I_dim,
-                         uint32_t K_dim,
-                         uint16_t stride,
-                         uint8_t &padding_front,
-                         uint8_t &padding_back)
-{
-    uint32_t padding;
-    if (I_dim % stride == 0)
-    {
-        padding = (K_dim > stride) ? K_dim - stride : 0;
-    }
-    else
-    {
-        padding = (K_dim > (I_dim % stride)) ? (K_dim - (I_dim % stride)) : 0;
-    }
-    padding_front = padding / 2;
-    padding_back = padding - padding_front;
-}
+} // small

@@ -47,14 +47,14 @@ namespace small
  *                             depends on input image size, kernel, padding
  *                             and stride parameters.
  */
-template <class ScalarT>
-void Conv2D(int kernel_size, int stride,  /// @todo dim_t?
+template <class BufferT>                    /// @todo Create a buffer concept?
+void Conv2D(int kernel_size, int stride,    /// @todo use dim_t?
             uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
             int output_channels, int input_channels,
             int input_height, int input_width,
-            Buffer<ScalarT> const &input_buf,
-            Buffer<ScalarT> const &filter_buf,
-            Buffer<ScalarT>       &output_buf);
+            BufferT const &input_buf,
+            BufferT const &filter_buf,
+            BufferT       &output_buf);
 
 //****************************************************************************
 /**
@@ -81,14 +81,14 @@ void Conv2D(int kernel_size, int stride,  /// @todo dim_t?
  *                             depends on input image size, kernel, padding
  *                             and stride parameters.
  */
-template <class ScalarT>
+template <class BufferT>
 void Conv2D_rect(int kernel_size_h, int kernel_size_w, int stride,
                  uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                  int output_channels, int input_channels,
                  int input_height, int input_width,
-                 Buffer<ScalarT> const &input_buf,
-                 Buffer<ScalarT> const &filter_buf,
-                 Buffer<ScalarT>       &output_buf);
+                 BufferT const &input_buf,
+                 BufferT const &filter_buf,
+                 BufferT       &output_buf);
 
 //****************************************************************************
 /**
@@ -114,14 +114,14 @@ void Conv2D_rect(int kernel_size_h, int kernel_size_w, int stride,
  *                             depends on input image size, kernel, padding
  *                             and stride parameters.
  */
-template <class ScalarT>
+template <class BufferT>
 void PartialConv2D(int kernel_size, int stride,
                    uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                    int output_channels, int input_channels,
                    int input_height, int input_width,
-                   Buffer<ScalarT> const &input_buf,
-                   Buffer<ScalarT> const &filter_buf,
-                   Buffer<ScalarT>       &output_buf);
+                   BufferT const &input_buf,
+                   BufferT const &filter_buf,
+                   BufferT       &output_buf);
 
 /**
  * Perform the computation for a depth-wise Conv2D layer.
@@ -145,14 +145,14 @@ void PartialConv2D(int kernel_size, int stride,
  *                             depends on input image size, kernel, padding
  *                             and stride parameters.
  */
-template <class ScalarT>
+template <class BufferT>
 void DepthwiseConv2D(int kernel_size, int stride,
                      uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                      int input_channels,
                      int input_height, int input_width,
-                     Buffer<ScalarT> const &input_buf,
-                     Buffer<ScalarT> const &filter_buf,
-                     Buffer<ScalarT>       &output_buf);
+                     BufferT const &input_buf,
+                     BufferT const &filter_buf,
+                     BufferT       &output_buf);
 
 /**
  * Perform the computation for a 2D maxpool layer.
@@ -174,13 +174,13 @@ void DepthwiseConv2D(int kernel_size, int stride,
  *                             depends on input image size, kernel, padding
  *                             and stride parameters.
  */
-template <class ScalarT>
+template <class BufferT>
 void Maxpool2D(int kernel_size, int stride,
                uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                int input_channels,
                int input_height, int input_width,
-               Buffer<ScalarT> const &input_buf,
-               Buffer<ScalarT>       &output_buf);
+               BufferT const &input_buf,
+               BufferT       &output_buf);
 
 //****************************************************************************
 /**
@@ -204,13 +204,13 @@ void Maxpool2D(int kernel_size, int stride,
  *                             depends on input image size, kernel, padding
  *                             and stride parameters.
  */
-template <class ScalarT>
+template <class BufferT>
 void MaxPool2D_rect(int kernel_size_h, int kernel_size_w, int stride,
                     uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                     int input_channels,
                     int input_height, int input_width,
-                    Buffer<ScalarT> const &input_buf,
-                    Buffer<ScalarT>       &output_buf);
+                    BufferT const &input_buf,
+                    BufferT       &output_buf);
 
 //****************************************************************************
 /**
@@ -226,11 +226,11 @@ void MaxPool2D_rect(int kernel_size_h, int kernel_size_w, int stride,
  *                             depends on input image size, kernel, padding
  *                             and stride parameters.
  */
-template <class ScalarT>
+template <class BufferT>
 void ReLUActivation(int input_channels,
                     int input_height, int input_width,
-                    Buffer<ScalarT> const &input_buf,
-                    Buffer<ScalarT>       &output_buf);
+                    BufferT const &input_buf,
+                    BufferT       &output_buf);
 
 //****************************************************************************
 /**
@@ -242,9 +242,9 @@ void ReLUActivation(int input_channels,
  * @param[in]  filter_buf      Buffer of convolution filter weights (how big?)
  * @param[out] output_buf      Buffer of output data (how big?)
  */
-template <class ScalarT>
+template <class BufferT>
 void Dense(int output_elements, int input_elements,
-           Buffer<ScalarT> const &input_buf,
-           Buffer<ScalarT> const &filter_buf,
-           Buffer<ScalarT>       &output_buf);
+           BufferT const &input_buf,
+           BufferT const &filter_buf,
+           BufferT       &output_buf);
 } // ns small

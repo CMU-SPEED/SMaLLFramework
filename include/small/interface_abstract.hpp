@@ -22,23 +22,23 @@ namespace small
 {
 
 //****************************************************************************
-template <class ScalarT>
+template <class BufferT>
 void Conv2D(int kernel_size, int stride,  /// @todo dim_t?
             uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
             int output_channels, int input_channels,
             int input_height, int input_width,
-            Buffer<ScalarT> const &input_buf,
-            Buffer<ScalarT> const &filter_buf,
-            Buffer<ScalarT>       &output_buf)
+            BufferT const &input_buf,
+            BufferT const &filter_buf,
+            BufferT       &output_buf)
 {
     /// @todo We need another specific case for input_channels==1 (maybe more)
 
-    //Specific case for the first layer
+    // Specific case for the first layer
     if (input_channels == 3)
     {
         if (stride == 1)
         {
-            detail::abstract_layer<typename Buffer<ScalarT>::value_type,
+            detail::abstract_layer<BufferT,
                                    1, C_ob, 3, W_ob, 1, 1, 'c', 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
@@ -46,11 +46,11 @@ void Conv2D(int kernel_size, int stride,  /// @todo dim_t?
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf, filter_buf, output_buf);
+                &input_buf, &filter_buf, &output_buf);
         }
         else if (stride == 2)
         {
-            detail::abstract_layer<typename Buffer<ScalarT>::value_type,
+            detail::abstract_layer<BufferT,
                                    1, C_ob, 3, W_ob, 2, 1, 'c', 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
@@ -58,11 +58,11 @@ void Conv2D(int kernel_size, int stride,  /// @todo dim_t?
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf, filter_buf, output_buf);
+                &input_buf, &filter_buf, &output_buf);
         }
         else
         {
-            //printf("This stride is unsupported, please change the interface.cpp file\n");
+            // printf("This stride is unsupported, please change the interface.cpp file\n");
             throw std::invalid_argument("Conv2D ERROR: stride unsupported.");
         }
     }
@@ -70,7 +70,7 @@ void Conv2D(int kernel_size, int stride,  /// @todo dim_t?
     {
         if (stride == 1)
         {
-            detail::abstract_layer<typename Buffer<ScalarT>::value_type,
+            detail::abstract_layer<BufferT,
                                    1, C_ob, C_ob, W_ob, 1, UNROLL, 'c', 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
@@ -78,11 +78,11 @@ void Conv2D(int kernel_size, int stride,  /// @todo dim_t?
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf, filter_buf, output_buf);
+                &input_buf, &filter_buf, &output_buf);
         }
         else if (stride == 2)
         {
-            detail::abstract_layer<typename Buffer<ScalarT>::value_type,
+            detail::abstract_layer<BufferT,
                                    1, C_ob, C_ob, W_ob, 2, UNROLL, 'c', 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
@@ -90,25 +90,25 @@ void Conv2D(int kernel_size, int stride,  /// @todo dim_t?
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf, filter_buf, output_buf);
+                &input_buf, &filter_buf, &output_buf);
         }
         else
         {
-            //printf("This stride is unsupported, please change the interface.cpp file\n");
+            // printf("This stride is unsupported, please change the interface.cpp file\n");
             throw std::invalid_argument("Conv2D ERROR: stride unsupported.");
         }
     }
 }
 
 //****************************************************************************
-template <class ScalarT>
+template <class BufferT>
 void PartialConv2D(int kernel_size, int stride,
                    uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                    int output_channels, int input_channels,
                    int input_height, int input_width,
-                   Buffer<ScalarT> const &input_buf,
-                   Buffer<ScalarT> const &filter_buf,
-                   Buffer<ScalarT>       &output_buf)
+                   BufferT const &input_buf,
+                   BufferT const &filter_buf,
+                   BufferT       &output_buf)
 {
     /// @todo We need another specific case for input_channels==1 (maybe more)
 
@@ -117,7 +117,7 @@ void PartialConv2D(int kernel_size, int stride,
     {
         if (stride == 1)
         {
-            detail::abstract_layer<typename Buffer<ScalarT>::value_type,
+            detail::abstract_layer<BufferT,
                                    1, C_ob, 3, W_ob, 1, 1, 'c', 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
@@ -125,12 +125,12 @@ void PartialConv2D(int kernel_size, int stride,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf, filter_buf, output_buf);
+                &input_buf, &filter_buf, &output_buf);
         }
         else if (stride == 2)
         {
 
-            detail::abstract_layer<typename Buffer<ScalarT>::value_type,
+            detail::abstract_layer<BufferT,
                                    1, C_ob, 3, W_ob, 2, 1, 'c', 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
@@ -138,18 +138,18 @@ void PartialConv2D(int kernel_size, int stride,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf, filter_buf, output_buf);
+                &input_buf, &filter_buf, &output_buf);
         }
         else
         {
-            //printf("This stride is unsupported, please change the interface.cpp file\n");
+            // printf("This stride is unsupported, please change the interface.cpp file\n");
         }
     }
     else
     {
         if (stride == 1)
         {
-            detail::abstract_layer<typename Buffer<ScalarT>::value_type,
+            detail::abstract_layer<BufferT,
                                    1, C_ob, C_ob, W_ob, 1, UNROLL, 'c', 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
@@ -157,12 +157,12 @@ void PartialConv2D(int kernel_size, int stride,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf, filter_buf, output_buf);
+                &input_buf, &filter_buf, &output_buf);
         }
         else if (stride == 2)
         {
 
-            detail::abstract_layer<typename Buffer<ScalarT>::value_type,
+            detail::abstract_layer<BufferT,
                                    1, C_ob, C_ob, W_ob, 2, UNROLL, 'c', 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
@@ -170,27 +170,27 @@ void PartialConv2D(int kernel_size, int stride,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf, filter_buf, output_buf);
+                &input_buf, &filter_buf, &output_buf);
         }
         else
         {
-            //printf("This stride is unsupported, please change the interface.cpp file\n");
+            // printf("This stride is unsupported, please change the interface.cpp file\n");
         }
     }
 }
 
 //****************************************************************************
-template <class ScalarT>
+template <class BufferT>
 void Maxpool2D(int kernel_size, int stride,
                uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                int input_channels,
                int input_height, int input_width,
-               Buffer<ScalarT> const &input_buf,
-               Buffer<ScalarT>       &output_buf)
+               BufferT const &input_buf,
+               BufferT       &output_buf)
 {
     if (stride == 1)
     {
-        detail::abstract_layer<typename Buffer<ScalarT>::value_type,
+        detail::abstract_layer<BufferT,
                                C_ob, 1, 1, W_ob, 1, 1, 'p', 1, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
@@ -198,12 +198,12 @@ void Maxpool2D(int kernel_size, int stride,
             input_height, input_width,
             kernel_size, kernel_size,
             t_pad, l_pad, r_pad, b_pad,
-            input_buf, Buffer<ScalarT>(0), output_buf);  /// @todo HACK for no filters
+            &input_buf, (BufferT*)nullptr, &output_buf);
     }
     else if (stride == 2)
     {
 
-        detail::abstract_layer<typename Buffer<ScalarT>::value_type,
+        detail::abstract_layer<BufferT,
                                C_ob, 1, 1, W_ob, 2, 1, 'p', 1, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
@@ -211,29 +211,29 @@ void Maxpool2D(int kernel_size, int stride,
             input_height, input_width,
             kernel_size, kernel_size,
             t_pad, l_pad, r_pad, b_pad,
-            input_buf, Buffer<ScalarT>(0), output_buf);  /// @todo HACK for no filters
+            &input_buf, (BufferT*)nullptr, &output_buf);
     }
     else
     {
-        //printf("This stride is unsupported, please change the interface.cpp file\n");
+        // printf("This stride is unsupported, please change the interface.cpp file\n");
         throw std::invalid_argument("Maxpool2D ERROR: stride unsupported.");
     }
 }
 
 //****************************************************************************
-template <class ScalarT>
+template <class BufferT>
 void DepthwiseConv2D(int kernel_size, int stride,
                      uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                      int input_channels,
                      int input_height, int input_width,
-                     Buffer<ScalarT> const &input_buf,
-                     Buffer<ScalarT> const &filter_buf,
-                     Buffer<ScalarT>       &output_buf)
+                     BufferT const &input_buf,
+                     BufferT const &filter_buf,
+                     BufferT       &output_buf)
 {
     if (stride == 1)
     {
 
-        detail::abstract_layer<typename Buffer<ScalarT>::value_type,
+        detail::abstract_layer<BufferT,
                                C_ob, 1, 1, W_ob, 1, 1, 'c', 1, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
@@ -241,12 +241,12 @@ void DepthwiseConv2D(int kernel_size, int stride,
             input_height, input_width,
             kernel_size, kernel_size,
             t_pad, l_pad, r_pad, b_pad,
-            input_buf, filter_buf, output_buf);
+            &input_buf, &filter_buf, &output_buf);
     }
     else if (stride == 2)
     {
 
-        detail::abstract_layer<typename Buffer<ScalarT>::value_type,
+        detail::abstract_layer<BufferT,
                                C_ob, 1, 1, W_ob, 2, 1, 'c', 1, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
@@ -254,23 +254,23 @@ void DepthwiseConv2D(int kernel_size, int stride,
             input_height, input_width,
             kernel_size, kernel_size,
             t_pad, l_pad, r_pad, b_pad,
-            input_buf, filter_buf, output_buf);
+            &input_buf, &filter_buf, &output_buf);
     }
     else
     {
-        //printf("This stride is unsupported, please change the interface.cpp file\n");
+        // printf("This stride is unsupported, please change the interface.cpp file\n");
         throw std::invalid_argument("DepthwiseConv2D ERROR: stride unsupported.");
     }
 }
 
 //****************************************************************************
-template <class ScalarT>
+template <class BufferT>
 void ReLUActivation(int input_channels,
                     int input_height, int input_width,
-                    Buffer<ScalarT> const &input_buf,
-                    Buffer<ScalarT>       &output_buf)
+                    BufferT const &input_buf,
+                    BufferT       &output_buf)
 {
-    detail::abstract_layer<typename Buffer<ScalarT>::value_type,
+    detail::abstract_layer<BufferT,
                            C_ob, 1, 1, W_ob, 1, 1, 'a', 0, 1>(
         input_channels, // Output Channel Grouping
         1,              // Output Channels per group
@@ -278,43 +278,43 @@ void ReLUActivation(int input_channels,
         input_height, input_width,
         1, 1,
         0, 0, 0, 0,
-        input_buf, Buffer<ScalarT>(0), output_buf);  /// @todo HACK for no filters
+        &input_buf, (BufferT*)nullptr, &output_buf);
 }
 
 //****************************************************************************
-template <class ScalarT>
+template <class BufferT>
 void Dense(int output_elements, int input_elements,
-           Buffer<ScalarT> const &input_buf,
-           Buffer<ScalarT> const &filter_buf,
-           Buffer<ScalarT>       &output_buf)
+           BufferT const &input_buf,
+           BufferT const &filter_buf,
+           BufferT       &output_buf)
 {
-    detail::abstract_layer<typename Buffer<ScalarT>::value_type,
+    detail::abstract_layer<BufferT,
                            C_ob, 1, 1, W_ob, 1, 1, 'c', 1, 1>(
         output_elements, // Output Channel Grouping
-        1,              // Output Channels per group
+        1,               // Output Channels per group
         1,
         1, input_elements,
         1, 1,
         0, 0, 0, 0,
-        input_buf, filter_buf, output_buf);
+        &input_buf, &filter_buf, &output_buf);
 }
 
 //****************************************************************************
-template <class ScalarT>
+template <class BufferT>
 void Conv2D_rect(int kernel_size_h, int kernel_size_w, int stride,
                  uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                  int output_channels, int input_channels,
                  int input_height, int input_width,
-                 Buffer<ScalarT> const &input_buf,
-                 Buffer<ScalarT> const &filter_buf,
-                 Buffer<ScalarT>       &output_buf)
+                 BufferT const &input_buf,
+                 BufferT const &filter_buf,
+                 BufferT       &output_buf)
 {
     // Specific case for the first layer
     if (input_channels == 3)
     {
         if (stride == 1)
         {
-            detail::abstract_layer<typename Buffer<ScalarT>::value_type,
+            detail::abstract_layer<BufferT,
                                    1, C_ob, 3, W_ob, 1, 1, 'c', 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
@@ -322,23 +322,23 @@ void Conv2D_rect(int kernel_size_h, int kernel_size_w, int stride,
                 input_height, input_width,
                 kernel_size_h, kernel_size_w,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf, filter_buf, output_buf);
+                &input_buf, &filter_buf, &output_buf);
         }
         else if (stride == 2)
         {
-            detail::abstract_layer<typename Buffer<ScalarT>::value_type,
-                                   1, C_ob, 3, W_ob, 2, 1, 'c', 2, 1>(  // unroll?
+            detail::abstract_layer<BufferT,
+                                   1, C_ob, 3, W_ob, 2, 1, 'c', 2, 1>( // unroll?
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
                 input_height, input_width,
                 kernel_size_h, kernel_size_w,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf, filter_buf, output_buf);
+                &input_buf, &filter_buf, &output_buf);
         }
         else
         {
-            //printf("This stride is unsupported, please change the interface.cpp file\n");
+            // printf("This stride is unsupported, please change the interface.cpp file\n");
             throw std::invalid_argument("Conv2D_rect ERROR: stride unsupported.");
         }
     }
@@ -346,7 +346,7 @@ void Conv2D_rect(int kernel_size_h, int kernel_size_w, int stride,
     {
         if (stride == 1)
         {
-            detail::abstract_layer<typename Buffer<ScalarT>::value_type,
+            detail::abstract_layer<BufferT,
                                    1, C_ob, C_ob, W_ob, 1, UNROLL, 'c', 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
@@ -354,12 +354,12 @@ void Conv2D_rect(int kernel_size_h, int kernel_size_w, int stride,
                 input_height, input_width,
                 kernel_size_h, kernel_size_w,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf, filter_buf, output_buf);
+                &input_buf, &filter_buf, &output_buf);
         }
         else if (stride == 2)
         {
 
-            detail::abstract_layer<typename Buffer<ScalarT>::value_type,
+            detail::abstract_layer<BufferT,
                                    1, C_ob, C_ob, W_ob, 2, UNROLL, 'c', 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
@@ -367,28 +367,28 @@ void Conv2D_rect(int kernel_size_h, int kernel_size_w, int stride,
                 input_height, input_width,
                 kernel_size_h, kernel_size_w,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf, filter_buf, output_buf);
+                &input_buf, &filter_buf, &output_buf);
         }
         else
         {
-            //printf("This stride is unsupported, please change the interface.cpp file\n");
+            // printf("This stride is unsupported, please change the interface.cpp file\n");
             throw std::invalid_argument("Conv2D_rect ERROR: stride unsupported.");
         }
     }
 }
 
 //****************************************************************************
-template <class ScalarT>
+template <class BufferT>
 void MaxPool2D_rect(int kernel_size_h, int kernel_size_w, int stride,
                     uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                     int input_channels,
                     int input_height, int input_width,
-                    Buffer<ScalarT> const &input_buf,
-                    Buffer<ScalarT>       &output_buf)
+                    BufferT const &input_buf,
+                    BufferT       &output_buf)
 {
     if (stride == 1)
     {
-        detail::abstract_layer<typename Buffer<ScalarT>::value_type,
+        detail::abstract_layer<BufferT,
                                C_ob, 1, 1, W_ob, 1, 1, 'p', 1, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
@@ -396,11 +396,11 @@ void MaxPool2D_rect(int kernel_size_h, int kernel_size_w, int stride,
             input_height, input_width,
             kernel_size_h, kernel_size_w,
             t_pad, l_pad, r_pad, b_pad,
-            input_buf, Buffer<ScalarT>(0), output_buf);  /// @todo HACK for no filters
+            &input_buf, (BufferT*)nullptr, &output_buf);
     }
     else if (stride == 2)
     {
-        detail::abstract_layer<typename Buffer<ScalarT>::value_type,
+        detail::abstract_layer<BufferT,
                                C_ob, 1, 1, W_ob, 2, 1, 'p', 1, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
@@ -408,11 +408,11 @@ void MaxPool2D_rect(int kernel_size_h, int kernel_size_w, int stride,
             input_height, input_width,
             kernel_size_h, kernel_size_w,
             t_pad, l_pad, r_pad, b_pad,
-            input_buf, Buffer<ScalarT>(0), output_buf);  /// @todo HACK for no filters
+            &input_buf, (BufferT*)nullptr, &output_buf);
     }
     else
     {
-        //printf("This stride is unsupported, please change the interface.cpp file\n");
+        // printf("This stride is unsupported, please change the interface.cpp file\n");
         throw std::invalid_argument("MaxPool2D_rect ERROR: stride unsupported.");
     }
 }

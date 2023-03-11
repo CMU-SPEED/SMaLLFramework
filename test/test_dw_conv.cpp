@@ -29,7 +29,6 @@
 std::string const data_dir("../test/regression_data");
 
 //****************************************************************************
-template <typename RealT>
 bool run_dw_config(LayerParams const &params)
 {
     /// @todo add smart pointer to buffers
@@ -40,11 +39,11 @@ bool run_dw_config(LayerParams const &params)
                      params.C_i*params.H*params.W);
     std::cout << "\nDepthwiseConv: input file = " << in_fname << std::endl;
 
-    small::Buffer<RealT> input_dc = read_float_inputs(in_fname);
+    small::FloatBuffer input_dc = read_float_inputs(in_fname);
     TEST_ASSERT(input_dc.size() == params.C_i*params.H*params.W);
 
     // Pack input data
-    small::Buffer<RealT> packed_input_dc(input_dc.size());
+    small::FloatBuffer packed_input_dc(input_dc.size());
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
@@ -58,11 +57,11 @@ bool run_dw_config(LayerParams const &params)
                      params.C_i*params.k*params.k);
     std::cout << "DepthwiseConv: filter file= " << filter_fname << std::endl;
 
-    small::Buffer<RealT> filter_dc = read_float_inputs(filter_fname);
+    small::FloatBuffer filter_dc = read_float_inputs(filter_fname);
     TEST_ASSERT(filter_dc.size() == params.C_i*params.k*params.k);
 
     // Pack filter data
-    small::Buffer<RealT> packed_filter_dc(filter_dc.size());
+    small::FloatBuffer packed_filter_dc(filter_dc.size());
     small::pack_buffer(filter_dc,
                        small::FILTER_CONV,
                        params.C_i, params.C_o, params.k, params.k,
@@ -78,11 +77,11 @@ bool run_dw_config(LayerParams const &params)
                      params.C_i*Ho*Wo);
     std::cout << "DepthwiseConv: output file= " << out_fname << std::endl;
 
-    small::Buffer<RealT> output_dc_answers = read_float_inputs(out_fname);
+    small::FloatBuffer output_dc_answers = read_float_inputs(out_fname);
     TEST_ASSERT(output_dc_answers.size() == params.C_i*Ho*Wo);
 
     // Pack output answer data
-    small::Buffer<RealT> packed_output_dc_answers(output_dc_answers.size());
+    small::FloatBuffer packed_output_dc_answers(output_dc_answers.size());
     small::pack_buffer(output_dc_answers,
                        small::OUTPUT,
                        1U, params.C_i, Ho, Wo,
@@ -90,7 +89,7 @@ bool run_dw_config(LayerParams const &params)
                        packed_output_dc_answers);
 
     // Allocate output buffer
-    small::Buffer<RealT> packed_output_dc(output_dc_answers.size());
+    small::FloatBuffer packed_output_dc(output_dc_answers.size());
 
     uint8_t t_pad=0, b_pad=0, l_pad=0, r_pad=0;
     if (params.p == 'f')
@@ -150,7 +149,7 @@ void test_dw_regression_data(void)
     };
     for (LayerParams const &p: params)
     {
-        TEST_CHECK(true == run_dw_config<float>(p));
+        TEST_CHECK(true == run_dw_config(p));
     }
 }
 

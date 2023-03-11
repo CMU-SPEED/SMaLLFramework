@@ -6,4 +6,10 @@ THIS WORK IS FUNDED IN PART BY:
     with Carnegie Mellon University for the operation of the Software
     Engineering Institute, a federally funded research and development center.
 
-2.  A gift from Meta (formally Facebook) as part of the AI Systems HW SW Co-Design Award
+2.  A gift from Meta (formally Facebook) as part of the AI Systems HW/SW
+    Co-Design Award.
+
+
+THIS WORK BUILDS UPON THE FOLLOWING PRIOR WORKS:
+
+1.  

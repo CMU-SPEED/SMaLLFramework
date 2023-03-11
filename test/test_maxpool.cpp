@@ -29,7 +29,6 @@
 std::string const data_dir("../test/regression_data");
 
 //****************************************************************************
-template <typename RealT>
 bool run_maxpool_config(LayerParams const &params)
 {
     /// @todo add smart pointer to buffers
@@ -40,11 +39,11 @@ bool run_maxpool_config(LayerParams const &params)
                      params.C_i*params.H*params.W);
     std::cout << "\nMaxpool: input file = " << in_fname << std::endl;
 
-    small::Buffer<RealT> input_dc = read_float_inputs(in_fname);
+    small::FloatBuffer input_dc = read_float_inputs(in_fname);
     TEST_ASSERT(input_dc.size() == params.C_i*params.H*params.W);
 
     // Pack input data
-    small::Buffer<RealT> packed_input_dc(input_dc.size());
+    small::FloatBuffer packed_input_dc(input_dc.size());
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
@@ -61,11 +60,11 @@ bool run_maxpool_config(LayerParams const &params)
                      params.C_i*Ho*Wo);
     std::cout << "Maxpool: output file= " << out_fname << std::endl;
 
-    small::Buffer<RealT> output_dc_answers = read_float_inputs(out_fname);
+    small::FloatBuffer output_dc_answers = read_float_inputs(out_fname);
     TEST_ASSERT(output_dc_answers.size() == params.C_i*Ho*Wo);
 
     // Pack output answer data
-    small::Buffer<RealT> packed_output_dc_answers(output_dc_answers.size());
+    small::FloatBuffer packed_output_dc_answers(output_dc_answers.size());
     small::pack_buffer(output_dc_answers,
                        small::OUTPUT,
                        1U, params.C_i, Ho, Wo,
@@ -73,7 +72,7 @@ bool run_maxpool_config(LayerParams const &params)
                        packed_output_dc_answers);
 
     // Allocate output buffer
-    small::Buffer<RealT> packed_output_dc(output_dc_answers.size());
+    small::FloatBuffer packed_output_dc(output_dc_answers.size());
 
     uint8_t t_pad=0, b_pad=0, l_pad=0, r_pad=0;
     if (params.p == 'f')
@@ -128,7 +127,7 @@ void test_maxpool_regression_data(void)
     };
     for (LayerParams const &p: params)
     {
-        TEST_CHECK(true == run_maxpool_config<float>(p));
+        TEST_CHECK(true == run_maxpool_config(p));
     }
 }
 

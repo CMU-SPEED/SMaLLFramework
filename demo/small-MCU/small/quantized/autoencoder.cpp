@@ -17,12 +17,13 @@
 #include <stdint.h>
 #include <climits>
 
+// This should be set by the build system for now.
+#ifndef QUANTIZED
 #define QUANTIZED 1
+#endif
 
-//Move struct def to params
-
-#include "include/small.h"
-
+/
+#include <small.h>
 
 /// @todo Which of these defines are needed?
 #ifndef RUNS
@@ -50,8 +51,6 @@
 #ifndef LAYER
 #define LAYER DW_CONV
 #endif
-
-
 
 #define REDUCTION_C(layer_num) layer_params[layer_num][0]
 #define GROUP_C(layer_num) layer_params[layer_num][1]
@@ -86,30 +85,59 @@
 #define INPUT_NUMEL(layer_num) \
     (O_HEIGHT(layer_num) * O_WIDTH(layer_num) * GROUP_C(layer_num - 1) * GROUPS(layer_num - 1))
 
-
-
-qdtype * model_inference(uint32_t layer_num_total, uint16_t layer_params[30][10], qdtype *filter_ptrs, qdtype *input_dc, qdtype *inter_0_dc, qdtype *inter_1_dc)
+//****************************************************************************
+// Prior: returned qdtype *
+small::QUInt8Buffer &model_inference(
+    uint32_t layer_num_total,
+    uint16_t layer_params[30][10],
+    //qdtype *filter_ptrs,
+    //std::vector<small::QUInt8Buffer*> const &filter_buf_ptrs,
+    small::QUInt8Buffer const *filter_buf_ptrs,
+    small::QUInt8Buffer const &input_dc,
+    small::QUInt8Buffer       &inter_0_dc,
+    small::QUInt8Buffer       &inter_1_dc)
 {
     int layer_num = 0;
-    Conv2D<dtype, qdtype > (0, 1, 1, 0, 0, 0, 0, GROUP_C(layer_num), REDUCTION_C(layer_num), 1, 1, input_dc, &(filter_ptrs[layer_num]), inter_0_dc);
-    ReLUActivation<dtype, qdtype>(1, GROUP_C(layer_num), 1, 1, inter_0_dc, inter_0_dc);
+    small::Conv2D(1, 1,
+                  0, 0, 0, 0,
+                  GROUP_C(layer_num), REDUCTION_C(layer_num),
+                  1, 1,
+                  input_dc,
+                  *filter_buf_ptrs[layer_num],
+                  inter_0_dc);
 
-    qdtype * out_inter_dc = inter_1_dc;
-    for (int cur_layer = 1; cur_layer < layer_num_total; cur_layer++)
+    small::ReLUActivation(GROUP_C(layer_num),
+                          1, 1,
+                          inter_0_dc, inter_0_dc);
+
+    //qdtype * out_inter_dc = inter_1_dc;
+    for (uint32_t cur_layer = 1; cur_layer < layer_num_total; cur_layer++)
     {
-        Conv2D<dtype, qdtype>(0, 1, 1, 0, 0, 0, 0, GROUP_C(layer_num), REDUCTION_C(layer_num), 1, 1, inter_0_dc, &(filter_ptrs[layer_num]), out_inter_dc);
-        ReLUActivation<dtype, qdtype>(1, GROUP_C(layer_num), 1, 1, out_inter_dc, inter_1_dc);
+        small::Conv2D(1, 1,
+                      0, 0, 0, 0,
+                      GROUP_C(layer_num), REDUCTION_C(layer_num),
+                      1, 1,
+                      inter_0_dc,
+                      *filter_buf_ptrs[layer_num],
+                      inter_1_dc); //out_inter_dc);
+
+        small::ReLUActivation(GROUP_C(layer_num),
+                              1, 1,
+                              inter_1_dc, // out_inter_dc,
+                              inter_1_dc);
         layer_num++;
-        inter_1_dc = inter_0_dc;
-        inter_0_dc = out_inter_dc;
-        out_inter_dc = inter_1_dc;
+        inter_0_dc.swap(inter_1_dc);
+        //inter_1_dc = inter_0_dc;
+        //inter_0_dc = out_inter_dc;
+        //out_inter_dc = inter_1_dc;
     }
     return inter_0_dc;
 }
 
 //****************************************************************************
 //****************************************************************************
-void inference() {
+void inference()
+{
     int C_i = 128;
     uint32_t N = 1;
     uint32_t M = 1;
@@ -117,25 +145,29 @@ void inference() {
 
     // Create input tensor
     uint32_t input_dimensions = C_i * N * M;
-    dtype *input_dc = (dtype *) alloc<dtype>(input_dimensions);
-    init(input_dc, input_dimensions);
+    small::QUInt8Buffer input_dc(input_dimensions);
+    //dtype *input_dc = (dtype *) alloc<dtype>(input_dimensions);  // dtype = uint8_t?
+    small::init(input_dc, input_dimensions);
+    input_dc.quantized_init();
+    //qdtype q_input;
+    //small::quantized_init(&q_input, input_dimensions);
+    //q_input.tensor = input_dc;
 
-    qdtype q_input;
-    quantized_init(&q_input, input_dimensions);
-    q_input.tensor = input_dc;
+    // ================================================
     // calculate total number of weight elements
+    // ================================================
 
     uint16_t layer_params[30][10] = {1};
-
     uint32_t intermediate_dims[30][2];
 
     // Set up model parameters
-    auto layer_num_total = 9;
-    int layer_num = 0;
+    auto layer_num_total = 9U;
+    uint32_t layer_num = 0;
     uint32_t max_numel_inter_0 = 128, max_numel_inter_1 = 128;
 
     intermediate_dims[layer_num][0] = 1;
     intermediate_dims[layer_num][1] = 1;
+
     // conv
     REDUCTION_C(layer_num) = C_i; // input channels
     GROUP_C(layer_num) = 128;      // output channels
@@ -148,8 +180,8 @@ void inference() {
     intermediate_dims[layer_num][1] = 1;
 
     // common set up for model architecture
-    for (int cur_layer = 1; cur_layer < layer_num_total-1; cur_layer++) {
-
+    for (uint32_t cur_layer = 1; cur_layer+1 < layer_num_total; cur_layer++)
+    {
         REDUCTION_C(layer_num) = GROUP_C(layer_num - 1); // input channels
         GROUP_C(layer_num) = GROUP_C(layer_num - 1);
         GROUPS(layer_num) = 1;  // output channels
@@ -171,11 +203,15 @@ void inference() {
     intermediate_dims[layer_num][0] = O_WIDTH(layer_num);
     intermediate_dims[layer_num][1] = O_HEIGHT(layer_num);
 
+    QUInt8Buffer *filter_buf_ptrs[30];
+    //qdtype q_filter_ptrs[30];
+
     // Direct Convolution Setup
-    qdtype q_filter_ptrs[30];
     for (int l = 0; l < layer_num_total; l++) {
         dtype *filter_ptr;
-        uint32_t filter_dimensions = REDUCTION_HW(l) * REDUCTION_HW(l) * REDUCTION_C(l) * GROUP_C(l) * GROUPS(l);
+        uint32_t filter_dimensions =
+            REDUCTION_HW(l) * REDUCTION_HW(l) * REDUCTION_C(l) *
+            GROUP_C(l) * GROUPS(l);
         filter_ptr = (dtype *) alloc<dtype>(filter_dimensions);
         init(filter_ptr, filter_dimensions);
         quantized_init(&(q_filter_ptrs[l]), filter_dimensions);
@@ -211,5 +247,5 @@ void inference() {
     printf("\n");
 
 #endif
-    free_all();
+    small::free_all();
 }

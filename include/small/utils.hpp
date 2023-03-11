@@ -72,6 +72,28 @@ inline void calc_padding(uint32_t  I_dim,
 }
 
 //****************************************************************************
+#if 0
+inline void CALC_PADDING(uint32_t I_dim,
+                         uint32_t K_dim,
+                         uint16_t stride,
+                         uint8_t &padding_front,
+                         uint8_t &padding_back)
+{
+    uint32_t padding;
+    if (I_dim % stride == 0)
+    {
+        padding = (K_dim > stride) ? K_dim - stride : 0;
+    }
+    else
+    {
+        padding = (K_dim > (I_dim % stride)) ? (K_dim - (I_dim % stride)) : 0;
+    }
+    padding_front = padding / 2;
+    padding_back = padding - padding_front;
+}
+#endif
+
+//****************************************************************************
 /**
  * @todo Find a better way to set const members of the Layer classes
  * @todo consider moving to Layer class.
@@ -105,5 +127,55 @@ inline uint8_t calc_back_padding(char      padding_type,
     return back_padding;
 }
 
+
+//****************************************************************************
+//****************************************************************************
+inline int clip(int n, int upper, int lower = 0)
+{
+    n = (n > lower) * n + !(n > lower) * lower;
+    return (n < upper) * n + !(n < upper) * upper;
+}
+
+//****************************************************************************
+// Quantization Functions
+template <typename Q_T, typename T>
+void Quantize(int num_elements, T const *tensor_ptr, Q_T *quant_tensor_ptr)
+{
+    float scale_inv = (1.0 / quant_tensor_ptr->scale);
+    uint64_t max_val = (1 << quant_tensor_ptr->b) - 1;
+    int quant_val = rint(quant_tensor_ptr->zero + (0.0 * scale_inv));
+    for (int i = 0; i < num_elements; i++)
+    {
+        int quant_val = rint(quant_tensor_ptr->zero + (tensor_ptr[i] * scale_inv));
+        quant_tensor_ptr->tensor[i] =
+            (quant_val < max_val) ? quant_val : max_val;
+    }
+}
+
+//****************************************************************************
+template <typename Q_T, typename T>
+void DeQuantize(int num_elements, T *tensor_ptr, Q_T const *quant_tensor_ptr)
+{
+    for (int i = 0; i < num_elements; i++)
+    {
+        tensor_ptr[i] =
+            static_cast<T>(
+                quant_tensor_ptr->scale *
+                (quant_tensor_ptr->tensor[i] - quant_tensor_ptr->zero));
+    }
+}
+
+//****************************************************************************
+template <typename Q_T, typename T>
+void DebugDeQuantize(int num_elements, T *tensor_ptr, Q_T const *quant_tensor_ptr)
+{
+    for (int i = 0; i < num_elements; i++)
+    {
+        tensor_ptr[i] =
+            static_cast<T>(
+                quant_tensor_ptr->scale *
+                ((T)(quant_tensor_ptr->tensor[i] - quant_tensor_ptr->zero)));
+    }
+}
 
 } // small

@@ -116,11 +116,11 @@ int main(int argc, char **argv)
     uint32_t out_dimensions = in_dimensions;
 #endif
 
-    small::Buffer<float> input_dc(in_dimensions);
+    small::FloatBuffer input_dc(in_dimensions);
     //dtype *input_dc = alloc<dtype>(in_dimensions);
-    small::Buffer<float> out_dc(out_dimensions);
+    small::FloatBuffer out_dc(out_dimensions);
     //dtype *out_dc = alloc<dtype>(out_dimensions);
-    small::Buffer<float> out_check_dc(out_dimensions);
+    small::FloatBuffer out_check_dc(out_dimensions);
     //dtype *out_check_dc = alloc<dtype>(out_dimensions);
     std::vector<uint32_t> intermediate_block_dimensions;
 
@@ -139,7 +139,7 @@ int main(int argc, char **argv)
     uint32_t filter_dimensions = (C_i * kernel_size * kernel_size);
 #endif
 #if LAYER < POOL
-    small::Buffer<float> filter_dc(filter_dimensions);
+    small::FloatBuffer filter_dc(filter_dimensions);
     //dtype *filter_dc = alloc<dtype>(filter_dimensions);
     init(filter_dc, filter_dimensions);
 #endif

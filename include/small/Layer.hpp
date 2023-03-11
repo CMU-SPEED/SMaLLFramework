@@ -22,23 +22,22 @@
 namespace small
 {
 //****************************************************************************
-template <typename ScalarT=float>
+template <typename BufferT>
 class Layer
 {
 public:
-    typedef typename small::Buffer<ScalarT> buffer_type;
 
     Layer() {};
 
     virtual size_t  input_buffer_size() const = 0;
     virtual size_t output_buffer_size() const = 0;
 
-    virtual void compute_output(buffer_type const &input,
-                                buffer_type       &output) = 0;
+    virtual void compute_output(BufferT const &input,
+                                BufferT       &output) = 0;
 
-    static Buffer<ScalarT> allocate_buffer(size_t num_elements)
+    static BufferT allocate_buffer(size_t num_elements)
     {
-        return Buffer<ScalarT>(num_elements);
+        return BufferT(num_elements);
     }
 
 protected:

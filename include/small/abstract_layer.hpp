@@ -14,7 +14,9 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#if PARALLEL == 1
 #include <omp.h>
+#endif
 
 #include <small/utils.hpp>
 
@@ -32,28 +34,9 @@ namespace detail
 {
 
 //****************************************************************************
-///@todo Make this work?
-/// @todo add parameters: step, W_elements, _C_ob
-#define ABSTRACT_OP_END(op_type, op_class, a_cur, b_cur, c_cur)       \
-    if (op_type == 'c')                                               \
-    {                                                                 \
-        if (op_class == 1)                                            \
-        {                                                             \
-            DW_END_C(step, a_cur, b_cur, c_cur, W_elements, _C_ob);   \
-        }                                                             \
-        else if (op_class == 2)                                       \
-        {                                                             \
-            CONV_END_C(step, a_cur, b_cur, c_cur, W_elements, _C_ob); \
-        }                                                             \
-    }                                                                 \
-    else if (op_type == 'a' || op_type == 'p')                        \
-    {                                                                 \
-        MAX_END_C(step, a_cur, b_cur, c_cur, W_elements, _C_ob);      \
-    }
-
-//****************************************************************************
 /// @todo add parameters: step, _O_wb, _C_ob
-#define ABSTRACT_OP(op_type, op_class, a_cur, b_cur)       \
+/// @todo use constexpr if on op_type and op_class in calling code
+#define ABSTRACT_OP(op_type, op_class, a_cur, b_cur, a_offset, b_offset)       \
     if (op_type == 'c')                                    \
     {                                                      \
         if (op_class == 1)                                 \
@@ -71,7 +54,27 @@ namespace detail
     }
 
 //****************************************************************************
+/// @todo add parameters: step, W_elements, _C_ob
+#define ABSTRACT_OP_END(op_type, op_class, a_cur, b_cur, c_cur, a_offset, b_offset)       \
+    if (op_type == 'c')                                               \
+    {                                                                 \
+        if (op_class == 1)                                            \
+        {                                                             \
+            DW_END_C(step, a_cur, b_cur, c_cur, W_elements, _C_ob);   \
+        }                                                             \
+        else if (op_class == 2)                                       \
+        {                                                             \
+            CONV_END_C(step, a_cur, b_cur, c_cur, W_elements, _C_ob); \
+        }                                                             \
+    }                                                                 \
+    else if (op_type == 'a' || op_type == 'p')                        \
+    {                                                                 \
+        MAX_END_C(step, a_cur, c_cur, W_elements, _C_ob);             \
+    }
+
+//****************************************************************************
 template <typename ScalarT,
+          typename AccumT,
           dim_t _G_b,
           dim_t _K_b,
           dim_t _F_cb,
@@ -89,7 +92,9 @@ void inline compute_with_padding(dim_t H_lb, dim_t H_ub,
                                  dim_t input_col_stride,
                                  ScalarT const *F,
                                  ScalarT const *I,
-                                 c_tile_t *c_cur    /// @todo need to deal with type
+                                 c_tile_t *c_cur, /// @todo need to deal with type
+                                 AccumT I_offset = 0,
+                                 AccumT F_offset = 0
     )
 {
     constexpr dim_t _C_ob = _G_b * _K_b;
@@ -114,7 +119,8 @@ void inline compute_with_padding(dim_t H_lb, dim_t H_ub,
             {
                 ScalarT const *b_cur = b + ii * _UNROLL * C_ob;
                 ScalarT const *a_cur = a + ii * _UNROLL;
-                ABSTRACT_OP_END(op_type, op_class, a_cur, b_cur, c_cur);
+                ABSTRACT_OP_END(op_type, op_class, a_cur, b_cur, c_cur,
+                                I_offset, F_offset);
             }
         }
     }
@@ -122,6 +128,7 @@ void inline compute_with_padding(dim_t H_lb, dim_t H_ub,
 
 //****************************************************************************
 template <typename ScalarT,
+          typename AccumT,
           dim_t _G_b,
           dim_t _K_b,
           dim_t _F_cb,
@@ -144,7 +151,6 @@ void inline kernel_left(
     dim_t H_ub = 0,
     int k_zero = 0)
 {
-
     constexpr dim_t _C_ob = _G_b * _K_b;
     // constexpr dim_t _C_ib = _G_b * _F_cb;
     // constexpr dim_t step = _stride * _C_ib;
@@ -171,7 +177,8 @@ void inline kernel_left(
     // dim_t c_cur = 0;
     for (uint32_t k_p = 0; k_p < r_pad_el; k_p++)
     {
-        compute_with_padding<ScalarT, _G_b, _K_b, _F_cb, _O_wb, _stride,
+        compute_with_padding<ScalarT, AccumT,
+                             _G_b, _K_b, _F_cb, _O_wb, _stride,
                              _UNROLL, op_type, op_class>(
             H_lb, H_UPPER,
             W_i_valid, F_w,
@@ -194,6 +201,7 @@ void inline kernel_left(
 
 //****************************************************************************
 template <typename ScalarT,
+          typename AccumT,
           dim_t _G_b,
           dim_t _K_b,
           dim_t _F_cb,
@@ -214,7 +222,9 @@ void inline kernel(
     dim_t H_ub = 0,
     dim_t W_lb = 0,
     dim_t W_ub = 0,
-    int k_zero = 0)
+    int k_zero = 0,
+    AccumT I_offset = 0,
+    AccumT F_offset = 0)
 {
     constexpr dim_t _C_ob = _G_b * _K_b;
     constexpr dim_t _C_ib = _G_b * _F_cb;
@@ -237,9 +247,6 @@ void inline kernel(
         LOAD_TILE_C(O, _O_wb, _C_ob);
     }
 
-    // int updates = 0;
-    // uint32_t step = _C_ob;//stride*_C_ob;
-    // int count = 0;
     for (uint32_t n = H_lb; n < H_UPPER; n++)
     {
         int filter_offset_h = n * F_w * _F_cb * _G_b * _K_b;
@@ -257,7 +264,8 @@ void inline kernel(
             {
                 ScalarT const *b_cur = b + ii * _UNROLL * C_ob;
                 ScalarT const *a_cur = a + ii * _UNROLL;
-                ABSTRACT_OP(op_type, op_class, a_cur, b_cur); /// @todo pass _C_ob
+                ABSTRACT_OP(op_type, op_class, a_cur, b_cur,
+                            I_offset, F_offset); /// @todo pass _C_ob
             }
         }
     }
@@ -266,8 +274,9 @@ void inline kernel(
 }
 
 //****************************************************************************
-//TODO: Explain the difference between kernel and kernel_pad
+// TODO: Explain the difference between kernel and kernel_pad
 template <typename ScalarT,
+          typename AccumT,
           dim_t _G_b,
           dim_t _K_b,
           dim_t _F_cb,
@@ -288,7 +297,9 @@ void inline kernel_pad(
     dim_t H_ub = 0,
     dim_t W_lb = 0,
     dim_t W_ub = 0,
-    int k_zero = 0)
+    int k_zero = 0,
+    AccumT I_offset = 0,
+    AccumT F_offset = 0)
 {
     constexpr dim_t _C_ob = _G_b * _K_b;
     constexpr dim_t _C_ib = _G_b * _F_cb;
@@ -330,7 +341,8 @@ void inline kernel_pad(
                 ScalarT const *b_cur = b + ii * _UNROLL * C_ob;
                 ScalarT const *a_cur = a + ii * _UNROLL;
 
-                ABSTRACT_OP(op_type, op_class, a_cur, b_cur);
+                ABSTRACT_OP(op_type, op_class, a_cur, b_cur,
+                            I_offset, F_offset);
             }
         }
     }
@@ -340,6 +352,7 @@ void inline kernel_pad(
 
 //****************************************************************************
 template <typename ScalarT,
+          typename AccumT,
           dim_t _G_b,
           dim_t _K_b,
           dim_t _F_cb,
@@ -386,7 +399,8 @@ void inline kernel_right(
             LOAD_END_C(O, O_w_left, _C_ob);
         }
 
-        compute_with_padding<ScalarT, _G_b, _K_b, _F_cb, _O_wb, _stride,
+        compute_with_padding<ScalarT, AccumT,
+                             _G_b, _K_b, _F_cb, _O_wb, _stride,
                              _UNROLL, op_type, op_class>(
             H_lb, H_UPPER,
             0, F_w,
@@ -403,7 +417,6 @@ void inline kernel_right(
     //right padding elements
     ScalarT       *O_ptr = O + O_w_left * _C_ob;
     ScalarT const *I_ptr = I + O_w_left * step;
-
     int W_i_valid = F_w - 1;
 
     if (first)
@@ -426,7 +439,8 @@ void inline kernel_right(
     // dim_t c_cur = 0;
     for (uint32_t k_p = 0; k_p < r_pad_el; k_p++)
     {
-        compute_with_padding<ScalarT, _G_b, _K_b, _F_cb, _O_wb, _stride,
+        compute_with_padding<ScalarT, AccumT,
+                             _G_b, _K_b, _F_cb, _O_wb, _stride,
                              _UNROLL, op_type, op_class>(
             H_lb, H_UPPER,
             0, W_i_valid,
@@ -447,6 +461,7 @@ void inline kernel_right(
 
 //****************************************************************************
 template <typename ScalarT,
+          typename AccumT,
           dim_t _G_b,
           dim_t _K_b,
           dim_t _F_cb,
@@ -483,7 +498,8 @@ void inline kernel_bottom(
     for (uint32_t j_p = 0; j_p < b_pad_el; j_p++)
     {
         // Prologue with left padding
-        kernel_left<ScalarT, _G_b, _K_b, _F_cb, _O_wb, _stride,
+        kernel_left<ScalarT, AccumT,
+                    _G_b, _K_b, _F_cb, _O_wb, _stride,
                     _UNROLL, op_type, op_class>(
             first,
             F_h,
@@ -507,7 +523,8 @@ void inline kernel_bottom(
             ScalarT const *F_col = F + 0;
             ScalarT       *O_col = O_row_full + l * (_G_b * _K_b);
 
-            kernel_pad<ScalarT, _G_b, _K_b, _F_cb, _O_wb, _stride,
+            kernel_pad<ScalarT, AccumT,
+                       _G_b, _K_b, _F_cb, _O_wb, _stride,
                        _UNROLL, op_type, op_class>(
                 first,
                 F_h,
@@ -526,7 +543,8 @@ void inline kernel_bottom(
             I_row_full + (O_w_full * _stride) * (_F_cb * _G_b);
         ScalarT const *F_col_left = F + 0;
         ScalarT       *O_col_left = O_row_full + O_w_full * (_G_b * _K_b);
-        kernel_right<ScalarT, _G_b, _K_b, _F_cb, _O_wb, _stride,
+        kernel_right<ScalarT, AccumT,
+                     _G_b, _K_b, _F_cb, _O_wb, _stride,
                      _UNROLL, op_type, op_class>(
             first,
             F_h,
@@ -550,13 +568,14 @@ void inline kernel_bottom(
 
 //****************************************************************************
 template <typename ScalarT,
+          typename AccumT,
           dim_t _G_b,
           dim_t _K_b,
           dim_t _F_cb,
           dim_t _O_wb,
           dim_t _stride,
           dim_t _UNROLL,
-          char op_type,
+          char   op_type,
           int8_t op_class>
 void inline kernel_top(
     bool first,
@@ -586,7 +605,8 @@ void inline kernel_top(
     for (uint32_t j_p = 0; j_p < t_pad_el; j_p++)
     {
         // Prologue with left padding
-        kernel_left<ScalarT, _G_b, _K_b, _F_cb, _O_wb, _stride,
+        kernel_left<ScalarT, AccumT,
+                    _G_b, _K_b, _F_cb, _O_wb, _stride,
                     _UNROLL, op_type, op_class>(
             first,
             F_h,
@@ -611,7 +631,8 @@ void inline kernel_top(
             ScalarT const *F_col = F + 0;
             ScalarT       *O_col = O_row_full + l * (_G_b * _K_b);
 
-            kernel_pad<ScalarT, _G_b, _K_b, _F_cb, _O_wb, _stride,
+            kernel_pad<ScalarT, AccumT,
+                       _G_b, _K_b, _F_cb, _O_wb, _stride,
                        _UNROLL, op_type, op_class>(
                 first,
                 F_h,
@@ -630,7 +651,8 @@ void inline kernel_top(
         ScalarT const *F_col_left = F + 0;
         ScalarT       *O_col_left =
             O_row_full + O_w_full * (_G_b * _K_b);
-        kernel_right<ScalarT, _G_b, _K_b, _F_cb, _O_wb, _stride,
+        kernel_right<ScalarT, AccumT,
+                     _G_b, _K_b, _F_cb, _O_wb, _stride,
                      _UNROLL, op_type, op_class>(
             first,
             F_h,
@@ -654,7 +676,9 @@ void inline kernel_top(
 
 //****************************************************************************
 //****************************************************************************
-template <typename ScalarT,
+
+//****************************************************************************
+template <typename BufferT,
           dim_t _G_b,
           dim_t _K_b,
           dim_t _F_cb,
@@ -674,33 +698,39 @@ void abstract_layer(
     dim_t F_h, // Filter height
     dim_t F_w, // Filter width
 
-    // Padding values
-    dim_t pad_top,
+    dim_t pad_top,    // Padding values
     dim_t pad_left,
     dim_t pad_right,
     dim_t pad_bottom,
 
-    // Data
-    Buffer<ScalarT> const &I_buf, //__restrict__
-    Buffer<ScalarT> const &F_buf, //__restrict__
-    Buffer<ScalarT>       &O_buf, //__restrict__
+    BufferT const *__restrict__ I,    // Data
+    BufferT const *__restrict__ F,
+    BufferT       *__restrict__ O,
 
     int zero = 0)
 {
-    // Output Elements with padding
-    // Output Elements using the full filter
+    using ScalarT = typename BufferT::value_type;
+    using AccumT  = typename BufferT::accum_type;
 
-    ScalarT const *__restrict__ I = I_buf.data();
-    ScalarT const *__restrict__ F = NULL;
-    ScalarT       *__restrict__ O = O_buf.data();
+    //Pointers to buffers inside Buffer class
+    ScalarT const *I_buf = I->data();  //__restrict__ ?
 
-    /// @todo HACK-ey
-    if (op_type == 'c') F = F_buf.data(); // check_interface_abstract.cpp prevents constexpr if
+    ScalarT const *F_buf = nullptr;
+    if constexpr(op_type == 'c')  // if (F != nullptr)
+    {
+        F_buf = F->data();
+    }
+
+    ScalarT       *O_buf = O->data();  //__restrict__ ?
 
 #if DEBUG == 1
     if (op_type == 'c')
     {
         printf("conv class: %d \n", op_class);
+    }
+    else if (op_type == 'p')
+    {
+        printf("pool class: %d \n", op_class);
     }
     else if (op_type == 'a')
     {
@@ -710,7 +740,6 @@ void abstract_layer(
 
     // calculate output dimensions based on input params.
     constexpr dim_t _C_ib = _F_cb * _G_b;
-    // constexpr dim_t _C_ob = _K_b * _G_b;
 
     /*
      * Data layout (slowest to fastest changing dimensions):
@@ -729,12 +758,9 @@ void abstract_layer(
 
     //************************************************************************
     // Deriving padding parameters
-    //
-    // SET_PADDING_PARAMS(I_h, I_w, pad_top, pad_bottom, pad_left, pad_right,
-    //                    _stride, F_h, F_w);
 
     //  To calculate offsets to next output row, next output block
-    dim_t H_o_w_pad = small::output_dim((I_h + pad_top  + pad_bottom),
+    dim_t H_o_w_pad = small::output_dim((I_h + pad_top + pad_bottom),
                                         _stride, F_h);
     dim_t W_o_w_pad = small::output_dim((I_w + pad_left + pad_right),
                                         _stride, F_w);
@@ -758,7 +784,7 @@ void abstract_layer(
 
     dim_t b_pad_el = small::output_dim((I_h + pad_bottom - H_back_index),
                                        _stride, F_h);
-    dim_t r_pad_el = small::output_dim((I_w + pad_right  - W_back_index),
+    dim_t r_pad_el = small::output_dim((I_w + pad_right - W_back_index),
                                        _stride, F_w);
 
     const dim_t O_h = H_o;
@@ -792,7 +818,6 @@ void abstract_layer(
     // Set up parallelism for the channel loops
 
     //  Get total available threads
-    // TODO: add error checking in case env variable isn't defined.
     int N = 1;
 #if PARALLEL == 1
     char const *env_nt(std::getenv("OMP_NUM_THREADS"));
@@ -816,18 +841,23 @@ void abstract_layer(
 #pragma omp parallel num_threads(N)
 #endif
     {
+#if PARALLEL == 1
         auto t_id = omp_get_thread_num();
+#else
+        auto t_id = 0;
+#endif
         auto height_tid = t_id % T_height;
         auto channel_tid = ((t_id) / (T_height)) % T_channel;
         auto group_tid = ((t_id / (T_channel * T_height))) % T_group;
+
         // loops over output channels
         for (index_t g = group_tid; g < G / _G_b; g += T_group)
         {
-            ScalarT const *I_group = I + g * (F_c * I_h * I_w * _G_b);
-            ScalarT const *F_group = F + g * (K * F_c * F_h * F_w * _G_b);
-            ScalarT       *O_group = O + g * (K * O_hxO_w * _G_b);
+            ScalarT const *I_group = I_buf + g * (F_c * I_h * I_w * _G_b);
+            ScalarT const *F_group = F_buf + g * (K * F_c * F_h * F_w * _G_b);
+            ScalarT       *O_group = O_buf + g * (K * O_hxO_w * _G_b);
 
-            //resuse O_group as a uint32_t array
+            // resuse O_group as a uint32_t array
             for (index_t k = channel_tid; k < K / _K_b; k += T_channel)
             {
                 ScalarT const *I_channel_block_output =
@@ -856,7 +886,8 @@ void abstract_layer(
                     ScalarT const *F_row_top = F_channel_block_input + 0;
                     ScalarT       *O_row_top = O_channel_block_input;
 
-                    kernel_top<ScalarT, _G_b, _K_b, _F_cb, _O_wb, _stride,
+                    kernel_top<ScalarT, AccumT,
+                               _G_b, _K_b, _F_cb, _O_wb, _stride,
                                _UNROLL, op_type, op_class>(
                         first,
                         F_h,
@@ -890,7 +921,8 @@ void abstract_layer(
                         ScalarT       *O_row =
                             O_row_full + j * (O_w_w_pad * _G_b * _K_b);
                         // Prologue with left padding
-                        kernel_left<ScalarT, _G_b, _K_b, _F_cb, _O_wb, _stride,
+                        kernel_left<ScalarT, AccumT,
+                                    _G_b, _K_b, _F_cb, _O_wb, _stride,
                                     _UNROLL, op_type, op_class>(
                             first,
                             F_h,
@@ -916,7 +948,8 @@ void abstract_layer(
                             ScalarT const *F_col = F_row + 0;
                             ScalarT       *O_col = O_col_full + l * (_G_b * _K_b);
 
-                            kernel<ScalarT, _G_b, _K_b, _F_cb, _O_wb, _stride,
+                            kernel<ScalarT, AccumT,
+                                   _G_b, _K_b, _F_cb, _O_wb, _stride,
                                    _UNROLL, op_type, op_class>(
                                 first,
                                 F_h,
@@ -937,7 +970,8 @@ void abstract_layer(
                             I_col_full + (O_w_full * _stride) * (_F_cb * _G_b);
                         ScalarT const *F_col_left = F_row + 0;
                         ScalarT       *O_col_left = O_col_full + O_w_full * (_G_b * _K_b);
-                        kernel_right<ScalarT, _G_b, _K_b, _F_cb, _O_wb, _stride,
+                        kernel_right<ScalarT, AccumT,
+                                     _G_b, _K_b, _F_cb, _O_wb, _stride,
                                      _UNROLL, op_type, op_class>(
                             first,
                             F_h,
@@ -959,7 +993,8 @@ void abstract_layer(
                     ScalarT const *F_row_bot = F_channel_block_input + 0;
                     ScalarT       *O_row_bot = O_row_full + O_h * (O_w_w_pad * _G_b * _K_b);
 
-                    kernel_bottom<ScalarT, _G_b, _K_b, _F_cb, _O_wb, _stride,
+                    kernel_bottom<ScalarT, AccumT,
+                                  _G_b, _K_b, _F_cb, _O_wb, _stride,
                                   _UNROLL, op_type, op_class>(
                         first,
                         F_h,

@@ -70,11 +70,11 @@ inline void dscnn_block(
     uint8_t b_pad,
     uint8_t l_pad,
     uint8_t r_pad,
-    small::Buffer<float> const &I,    /// @todo dtype
-    small::Buffer<float> const &F_dw,
-    small::Buffer<float> const &F_1x1,
-    small::Buffer<float>       &O_intermediate,
-    small::Buffer<float>       &O)
+    small::FloatBuffer const &I,    /// @todo dtype
+    small::FloatBuffer const &F_dw,
+    small::FloatBuffer const &F_1x1,
+    small::FloatBuffer       &O_intermediate,
+    small::FloatBuffer       &O)
 {
     small::DepthwiseConv2D(kernel_size, stride,
                            t_pad, b_pad, l_pad, r_pad,
@@ -148,7 +148,7 @@ int main(int argc, char **argv)
 
     //Create input tensor
     uint32_t input_dimensions = C_i*N*M;
-    small::Buffer<float> input_dc(input_dimensions);
+    small::FloatBuffer input_dc(input_dimensions);
     //dtype *input_dc = alloc<dytpe>(input_dimensions);
     init(input_dc, input_dimensions);
 
@@ -259,7 +259,7 @@ int main(int argc, char **argv)
     // std::vector<uint32_t> filter_dimensions;
 
     //dtype *filter_fc_dc; //, *filter_conv_dc, *filter_1x1_1_dc, *filter_dw_1_dc;
-    std::vector<small::Buffer<float> *> filter_buf_ptrs;
+    std::vector<small::FloatBuffer *> filter_buf_ptrs;
 
     // torch::Tensor weights;
     for (int l = 0; l < layer_num_total; l++)
@@ -268,22 +268,22 @@ int main(int argc, char **argv)
         uint32_t filter_dimensions =
             REDUCTION_H(l) * REDUCTION_W(l) *
             REDUCTION_C(l) * GROUP_C(l) * GROUPS(l);
-        small::Buffer<float> *filter_buf_ptr =    // dtype
-            new small::Buffer<float>(filter_dimensions);
+        small::FloatBuffer *filter_buf_ptr =    // dtype
+            new small::FloatBuffer(filter_dimensions);
         init(*filter_buf_ptr, filter_dimensions);
         filter_buf_ptrs.push_back(filter_buf_ptr);
     }
 
     uint32_t filter_dimensions = GROUP_C(layer_num_total) * num_classes;
     printf("Fc filter dims %d x %d\n", GROUP_C(layer_num_total-1) , num_classes);
-    auto filter_fc_dc_ptr = new small::Buffer<float>(filter_dimensions);
+    auto filter_fc_dc_ptr = new small::FloatBuffer(filter_dimensions);
     //filter_fc_dc = alloc(filter_dimensions);
     init(*filter_fc_dc_ptr, filter_dimensions);
     filter_buf_ptrs.push_back(filter_fc_dc_ptr);
 
-    small::Buffer<float> inter_0_dc(max_numel_inter_0);
-    small::Buffer<float> inter_1_dc(max_numel_inter_1);
-    small::Buffer<float> output_dc(num_classes);
+    small::FloatBuffer inter_0_dc(max_numel_inter_0);
+    small::FloatBuffer inter_1_dc(max_numel_inter_1);
+    small::FloatBuffer output_dc(num_classes);
     //dtype *inter_0_dc = alloc<dtype>(max_numel_inter_0);
     //dtype *inter_1_dc = alloc<dtype>(max_numel_inter_1);
     //dtype *output_dc  = alloc<dtype>(num_classes);

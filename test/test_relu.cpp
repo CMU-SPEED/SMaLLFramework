@@ -28,14 +28,12 @@
 
 
 //****************************************************************************
-small::Buffer<float> create_relu_data(size_t num_elements)
+small::FloatBuffer create_relu_data(size_t num_elements)
 {
-    using RealT = float;
-
     std::default_random_engine generator;
-    std::normal_distribution<RealT> distribution{0.f, 1.f};  // what distribution is Torch::Tensor::randn?
+    std::normal_distribution<float> distribution{0.f, 1.f};  // what distribution is Torch::Tensor::randn?
 
-    small::Buffer<RealT> input_dc(num_elements);
+    small::FloatBuffer input_dc(num_elements);
 
     for (size_t ix = 0; ix < num_elements; ++ix)
     {
@@ -48,8 +46,6 @@ small::Buffer<float> create_relu_data(size_t num_elements)
 //****************************************************************************
 void test_relu_single_element(void)
 {
-    using RealT = float;
-
     size_t const C_i = 16;
     size_t const H = 1;
     size_t const W = 1;
@@ -61,10 +57,10 @@ void test_relu_single_element(void)
     //TEST_CHECK(C_i == C_o);
     size_t const num_input_elts = C_i*H*W;
 
-    small::Buffer<RealT> input_dc = create_relu_data(num_input_elts);
+    small::FloatBuffer input_dc = create_relu_data(num_input_elts);
 
     //size_t num_output_elts = C_i*H*W;
-    small::Buffer<RealT> output_dc(num_input_elts);
+    small::FloatBuffer output_dc(num_input_elts);
 
     small::ReLUActivation(C_i, H, W, input_dc, output_dc);
 
@@ -81,8 +77,6 @@ void test_relu_single_element(void)
 //****************************************************************************
 void test_relu_single_tile(void)
 {
-    using RealT = float;
-
     size_t const C_i = 16;
     size_t const H = 1;
     size_t const W = 6;
@@ -94,10 +88,10 @@ void test_relu_single_tile(void)
     //TEST_CHECK(C_i == C_o);
     size_t const num_input_elts = C_i*H*W;
 
-    small::Buffer<RealT> input_dc = create_relu_data(num_input_elts);
+    small::FloatBuffer input_dc = create_relu_data(num_input_elts);
 
     //size_t num_output_elts = C_i*H*W;
-    small::Buffer<RealT> output_dc(num_input_elts);
+    small::FloatBuffer output_dc(num_input_elts);
 
     small::ReLUActivation(C_i, H, W, input_dc, output_dc);
 
@@ -114,8 +108,6 @@ void test_relu_single_tile(void)
 //****************************************************************************
 void test_relu_large_tile(void)
 {
-    using RealT = float;
-
     size_t const C_i = 16;
     size_t const H = 30;
     size_t const W = 30;
@@ -123,10 +115,10 @@ void test_relu_large_tile(void)
     //TEST_CHECK(C_i == C_o);
     size_t const num_input_elts = C_i*H*W;
 
-    small::Buffer<RealT> input_dc = create_relu_data(num_input_elts);
+    small::FloatBuffer input_dc = create_relu_data(num_input_elts);
 
     //size_t num_output_elts = C_i*H*W;
-    small::Buffer<RealT> output_dc(num_input_elts);
+    small::FloatBuffer output_dc(num_input_elts);
 
     small::ReLUActivation(C_i, H, W, input_dc, output_dc);
 
@@ -143,7 +135,6 @@ void test_relu_large_tile(void)
 //****************************************************************************
 
 //****************************************************************************
-template <typename RealT>
 bool run_relu_config(LayerParams const &params)
 {
     /// @todo add smart pointer to buffers
@@ -154,11 +145,11 @@ bool run_relu_config(LayerParams const &params)
                      params.C_i*params.H*params.W);
     std::cout << "\nReLU: input file = " << in_fname << std::endl;
 
-    small::Buffer<RealT> input_dc = read_float_inputs(in_fname);
+    small::FloatBuffer input_dc = read_float_inputs(in_fname);
     TEST_ASSERT(input_dc.size() == params.C_i*params.H*params.W);
 
     // Pack input data
-    small::Buffer<RealT> packed_input_dc(input_dc.size());
+    small::FloatBuffer packed_input_dc(input_dc.size());
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
@@ -175,11 +166,11 @@ bool run_relu_config(LayerParams const &params)
                      params.C_i*Ho*Wo);
     std::cout << "ReLU: output file= " << out_fname << std::endl;
 
-    small::Buffer<RealT> output_dc_answers = read_float_inputs(out_fname);
+    small::FloatBuffer output_dc_answers = read_float_inputs(out_fname);
     TEST_ASSERT(output_dc_answers.size() == params.C_i*Ho*Wo);
 
     // Pack output answer data
-    small::Buffer<RealT> packed_output_dc_answers(output_dc_answers.size());
+    small::FloatBuffer packed_output_dc_answers(output_dc_answers.size());
     small::pack_buffer(output_dc_answers,
                        small::OUTPUT,
                        1U, params.C_i, Ho, Wo,
@@ -187,7 +178,7 @@ bool run_relu_config(LayerParams const &params)
                        packed_output_dc_answers);
 
     // Allocate output buffer
-    small::Buffer<RealT> packed_output_dc(output_dc_answers.size());
+    small::FloatBuffer packed_output_dc(output_dc_answers.size());
 
     // Compute layer
     small::ReLUActivation(params.C_i,
@@ -217,7 +208,6 @@ bool run_relu_config(LayerParams const &params)
 //****************************************************************************
 
 //****************************************************************************
-template <typename RealT>
 bool run_relu_layer_config(LayerParams const &params)
 {
     /// @todo add smart pointer to buffers
@@ -228,16 +218,16 @@ bool run_relu_layer_config(LayerParams const &params)
                      params.C_i*params.H*params.W);
     std::cout << "\nReLU: input file = " << in_fname << std::endl;
 
-    small::ReLU<RealT> relu(params.H, params.W, params.C_i);
+    small::ReLU<small::FloatBuffer> relu(params.H, params.W, params.C_i);
 
     // Allocate the input buffer
-    small::Buffer<RealT> input_dc = read_float_inputs(in_fname);
+    small::FloatBuffer input_dc = read_float_inputs(in_fname);
 
     TEST_ASSERT(input_dc.size() == relu.input_buffer_size());
     TEST_ASSERT(params.C_i*params.H*params.W == relu.input_buffer_size());
 
     // Pack input data
-    small::Buffer<RealT> packed_input_dc(input_dc.size());
+    small::FloatBuffer packed_input_dc(input_dc.size());
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
@@ -254,12 +244,12 @@ bool run_relu_layer_config(LayerParams const &params)
                      params.C_i*Ho*Wo);
     std::cout << "ReLU: output file= " << out_fname << std::endl;
 
-    small::Buffer<RealT> output_dc_answers = read_float_inputs(out_fname);
+    small::FloatBuffer output_dc_answers = read_float_inputs(out_fname);
     TEST_ASSERT(relu.output_buffer_size() == params.C_i*Ho*Wo);
     TEST_ASSERT(relu.output_buffer_size() == output_dc_answers.size());
 
     // Pack output answer data
-    small::Buffer<RealT> packed_output_dc_answers(relu.output_buffer_size());
+    small::FloatBuffer packed_output_dc_answers(relu.output_buffer_size());
     small::pack_buffer(output_dc_answers,
                        small::OUTPUT,
                        1U, params.C_i, Ho, Wo,
@@ -267,7 +257,7 @@ bool run_relu_layer_config(LayerParams const &params)
                        packed_output_dc_answers);
 
     // Allocate output buffer
-    small::Buffer<RealT> packed_output_dc(relu.output_buffer_size());
+    small::FloatBuffer packed_output_dc(relu.output_buffer_size());
 
     // Compute layer
     relu.compute_output(packed_input_dc, packed_output_dc);
@@ -304,7 +294,7 @@ void test_relu_regression_data(void)
 
     for (LayerParams const &p : params)
     {
-        TEST_CHECK(true == run_relu_config<float>(p));
+        TEST_CHECK(true == run_relu_config(p));
     }
 }
 
@@ -321,7 +311,7 @@ void test_relu_layer_regression_data(void)
 
     for (LayerParams const &p : params)
     {
-        TEST_CHECK(true == run_relu_layer_config<float>(p));
+        TEST_CHECK(true == run_relu_layer_config(p));
     }
 }
 

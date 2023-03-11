@@ -118,7 +118,7 @@ int read_float_inputs(std::string const &input_data_fname,
 ///
 /// @retval The number of elements stored in in_buf (0 if no allocation occured)
 ///
-small::Buffer<float> read_float_inputs(std::string const &input_data_fname)
+small::FloatBuffer read_float_inputs(std::string const &input_data_fname)
 {
     using RealT = float;
 
@@ -142,7 +142,7 @@ small::Buffer<float> read_float_inputs(std::string const &input_data_fname)
         throw std::invalid_argument("read_float_inputs ERROR: invalid num elements.");
     }
 
-    small::Buffer<float> in_buf(num_elts);
+    small::FloatBuffer in_buf(num_elts);
     ifs.read(reinterpret_cast<char*>(in_buf.data()), num_elts*sizeof(RealT));
 
     return in_buf;

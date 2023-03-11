@@ -1,6 +1,8 @@
 SMaLL: Software from Machine Learning Libraries
 
-Copyright 2023 Carnegie Mellon University.
+Copyright 2023 by the SMaLL Contributors (see Contributors.txt for a full list
+of Contributors; see CONTRIBUTING.md for more information on how you can
+Contribute to this project). All Rights Reserved.
 
 BSD (SEI)
 
@@ -23,14 +25,8 @@ contact permission@sei.cmu.edu.
 
 ACKNOWLEDGMENTS AND DISCLAIMERS:
 
-This material is based upon work funded and supported by the Department of
-Defense under Contract No. FA8702-15-D-0002 with Carnegie Mellon University for
-the operation of the Software Engineering Institute, a federally funded research
-and development center.
-
-The view, opinions, and/or findings contained in this material are those of the
-author(s) and should not be construed as an official Government position,
-policy, or decision, unless designated by other documentation.
+Created in part with funding and support from the United States Government (see
+Acknowledgments.txt file).
 
 NO WARRANTY. THIS CARNEGIE MELLON UNIVERSITY AND SOFTWARE ENGINEERING INSTITUTE
 MATERIAL IS FURNISHED ON AN "AS-IS" BASIS. CARNEGIE MELLON UNIVERSITY MAKES NO

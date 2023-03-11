@@ -10,7 +10,7 @@
 // DM23-0126
 //****************************************************************************
 
-#include<stdio.h>
+#include <stdio.h>
 
 // #include "unquantized/autoencoder.cpp"
 // #include "unquantized/dscnn.cpp"
@@ -30,15 +30,19 @@
 #include "quantized/resnet.cpp"
 #elif MODEL==dscnn
 #include "quantized/dscnn.cpp"
+#else
+#error ERROR: Unrecognized MODEL macro.
 #endif
+
+//****************************************************************************
 int main(int argc, char ** argv)
 {
 #if MODEL == autoencoder
- printf("quantized/autoencoder.cpp");
+    printf("quantized/autoencoder.cpp");
 #elif MODEL == resnet
- printf("quantized/resnet.cpp");
+    printf("quantized/resnet.cpp");
 #elif MODEL == dscnn
- printf("quantized/dscnn.cpp");
+    printf("quantized/dscnn.cpp");
 #endif
     inference();
 }

@@ -71,11 +71,11 @@ inline void dscnn_block(
     uint8_t b_pad,
     uint8_t l_pad,
     uint8_t r_pad,
-    small::Buffer<float> const &I,              //dtype *I,
-    small::Buffer<float> const &F_dw,           //dtype *F_dw,
-    small::Buffer<float> const &F_1x1,          //dtype *F_1x1,
-    small::Buffer<float>       &O_intermediate, //dtype *O_intermediate,
-    small::Buffer<float>       &O)              //dtype *O)
+    small::FloatBuffer const &I,              //dtype *I,
+    small::FloatBuffer const &F_dw,           //dtype *F_dw,
+    small::FloatBuffer const &F_1x1,          //dtype *F_1x1,
+    small::FloatBuffer       &O_intermediate, //dtype *O_intermediate,
+    small::FloatBuffer       &O)              //dtype *O)
 {
     small::DepthwiseConv2D(kernel_size, stride,
                            t_pad, b_pad, l_pad, r_pad,
@@ -132,14 +132,14 @@ inline void dscnn_block(
     (O_HEIGHT(layer_num) * O_WIDTH(layer_num) * GROUP_C(layer_num - 1) * GROUPS(layer_num - 1))
 
 //****************************************************************************
-small::Buffer<float> &model_inference(
+small::FloatBuffer &model_inference(
     uint32_t layer_num_total,
     uint16_t layer_params[30][10],
     uint32_t intermediate_dims[30][2],
-    std::vector<small::Buffer<float> *> const &filter_buf_ptrs, //dtype *filter_ptrs[30],
-    small::Buffer<float> const &input_dc,   //dtype *input_dc,
-    small::Buffer<float>       &inter_0_dc, //dtype *inter_0_dc,
-    small::Buffer<float>       &inter_1_dc) //dtype *inter_1_dc)
+    std::vector<small::FloatBuffer *> const &filter_buf_ptrs, //dtype *filter_ptrs[30],
+    small::FloatBuffer const &input_dc,   //dtype *input_dc,
+    small::FloatBuffer       &inter_0_dc, //dtype *inter_0_dc,
+    small::FloatBuffer       &inter_1_dc) //dtype *inter_1_dc)
 {
     int layer_num = 0;
 
@@ -209,7 +209,7 @@ int main(int argc, char **argv)
 
     //Create input tensor
     uint32_t input_dimensions = C_i*N*M;
-    small::Buffer<float> input_dc(input_dimensions);
+    small::FloatBuffer input_dc(input_dimensions);
     //dtype *input_dc = alloc<dtype>(input_dimensions);
     init(input_dc, input_dimensions);
 
@@ -329,7 +329,7 @@ int main(int argc, char **argv)
 
     //dtype *filter_fc_dc; //, *filter_conv_dc, *filter_1x1_1_dc, *filter_dw_1_dc;
     //dtype *filter_ptrs[30];
-    std::vector<small::Buffer<float> *> filter_buf_ptrs;
+    std::vector<small::FloatBuffer *> filter_buf_ptrs;
 
     // torch::Tensor weights;
     for (size_t l = 0; l < num_filters - 1; l++)  // was layer_num_total
@@ -340,28 +340,28 @@ int main(int argc, char **argv)
             REDUCTION_H(l) * REDUCTION_W(l) * REDUCTION_C(l) *
             GROUP_C(l) * GROUPS(l);
         // dtype
-        small::Buffer<float> *filter_buf_ptr =
-            new small::Buffer<float>(filter_dimensions);
+        small::FloatBuffer *filter_buf_ptr =
+            new small::FloatBuffer(filter_dimensions);
         init(*filter_buf_ptr, filter_dimensions);
         filter_buf_ptrs.push_back(filter_buf_ptr);
     }
 
     //uint32_t filter_dimensions = GROUP_C(layer_num_total) * num_classes;
     uint32_t filter_dimensions = REDUCTION_C(layer_num_total - 1) * GROUP_C(layer_num_total - 1);
-    small::Buffer<float> *filter_fc_dc_ptr =
-        new small::Buffer<float>(filter_dimensions);
+    small::FloatBuffer *filter_fc_dc_ptr =
+        new small::FloatBuffer(filter_dimensions);
     //filter_fc_dc = alloc<dtype>(filter_dimensions);
     //init(*filter_fc_dc_ptr, filter_dimensions);   /// @todo init call removed in merge.
     filter_buf_ptrs.push_back(filter_fc_dc_ptr);
 
-    small::Buffer<float> inter_0_dc(max_numel_inter_0);
-    small::Buffer<float> inter_1_dc(max_numel_inter_1);
+    small::FloatBuffer inter_0_dc(max_numel_inter_0);
+    small::FloatBuffer inter_1_dc(max_numel_inter_1);
     /// @todo how to deal with the following??
     //dtype *inter_0_dc = alloc<dtype>(max_numel_inter_0 + max_numel_inter_1);
     //dtype *inter_1_dc = inter_0_dc + max_numel_inter_0;
     //dtype *output_dc;
 
-    //small::Buffer<float> &output_dc =
+    //small::FloatBuffer &output_dc =
         model_inference(layer_num_total, layer_params, intermediate_dims,
                         filter_buf_ptrs,
                         input_dc, inter_0_dc, inter_1_dc);
@@ -374,7 +374,7 @@ int main(int argc, char **argv)
         //t0 = rdtsc();
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
 
-        //small::Buffer<float> &output_dc =
+        //small::FloatBuffer &output_dc =
             model_inference(layer_num_total, layer_params, intermediate_dims,
                             filter_buf_ptrs,
                             input_dc, inter_0_dc, inter_1_dc);

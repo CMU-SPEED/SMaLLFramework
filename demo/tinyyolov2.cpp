@@ -1,3 +1,15 @@
+//****************************************************************************
+// SMaLL, Software for Machine Learning Libraries
+// Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
+// SPDX-License-Identifier: BSD-3-Clause
+//
+// For additional details (including references to third party source code and
+// other files) see the LICENSE file or contact permission@sei.cmu.edu. See
+// Contributors.txt for a full list of contributors. Created, in part, with
+// funding and support from the U.S. Government (see Acknowledgments.txt file).
+// DM23-0126
+//****************************************************************************
+
 #include <math.h>
 #include <assert.h>
 #include <omp.h>
@@ -59,10 +71,10 @@ inline void yolo_block(
     uint8_t b_pad_pool,
     uint8_t l_pad_pool,
     uint8_t r_pad_pool,
-    small::Buffer<float> const &I,
-    small::Buffer<float> const &F_conv,
-    small::Buffer<float>       &O_intermediate,
-    small::Buffer<float>       &O)
+    small::FloatBuffer const &I,
+    small::FloatBuffer const &F_conv,
+    small::FloatBuffer       &O_intermediate,
+    small::FloatBuffer       &O)
 {
     small::Conv2D(kernel_size, stride,
                   t_pad, b_pad, l_pad, r_pad,
@@ -95,10 +107,10 @@ inline void conv_block(
     uint8_t b_pad,
     uint8_t l_pad,
     uint8_t r_pad,
-    small::Buffer<float> const &I,
-    small::Buffer<float> const &F_conv,
-    small::Buffer<float>       &O_intermediate,
-    small::Buffer<float>       &O)
+    small::FloatBuffer const &I,
+    small::FloatBuffer const &F_conv,
+    small::FloatBuffer       &O_intermediate,
+    small::FloatBuffer       &O)
 {
     small::Conv2D(kernel_size, stride,
                   t_pad, b_pad, l_pad, r_pad,
@@ -175,7 +187,7 @@ int main(int argc, char **argv)
     //int stride = 1;
     // Create and Initialize Input tensors
     uint32_t input_dimensions = C_i * N * M;
-    small::Buffer<float> input_dc(input_dimensions);
+    small::FloatBuffer input_dc(input_dimensions);
     //float *input_dc = alloc(input_dimensions);
     init(input_dc, input_dimensions);
     // std::cout<<a<<std::endl;
@@ -339,7 +351,7 @@ int main(int argc, char **argv)
     //_____________________setup______________________________________________
 
     //  Copy layer weights to temporaries
-    std::vector<small::Buffer<float> *> filter_buf_ptrs;
+    std::vector<small::FloatBuffer *> filter_buf_ptrs;
 
     for (int l = 0; l < conv_layer_num; l++)
     {
@@ -347,8 +359,8 @@ int main(int argc, char **argv)
         // weights = layers[l]->weight; // conv_1x1->weight;
         uint32_t filter_dimensions = REDUCTION_HW(l) * REDUCTION_HW(l) *
             REDUCTION_C(l) * GROUP_C(l) * GROUPS(l);
-        small::Buffer<float> *filter_buf_ptr =
-            new small::Buffer<float>(filter_dimensions);
+        small::FloatBuffer *filter_buf_ptr =
+            new small::FloatBuffer(filter_dimensions);
         //filter_ptr = alloc(filter_dimensions);
         init(*filter_buf_ptr, filter_dimensions);
         filter_buf_ptrs.push_back(filter_buf_ptr);
@@ -359,8 +371,8 @@ int main(int argc, char **argv)
 
     // allocate space for intermediate outputs (use the max sizes calculated previously)
     printf("Size of intermediate buffers: %d %d\n", max_numel_inter_0, max_numel_inter_1);
-    small::Buffer<float> inter_0_dc(max_numel_inter_0);
-    small::Buffer<float> inter_1_dc(max_numel_inter_1);
+    small::FloatBuffer inter_0_dc(max_numel_inter_0);
+    small::FloatBuffer inter_1_dc(max_numel_inter_1);
     //float *inter_0_dc = alloc(max_numel_inter_0);
     //float *inter_1_dc = alloc(max_numel_inter_1);
 

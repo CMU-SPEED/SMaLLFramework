@@ -1,3 +1,4 @@
+//****************************************************************************
 // SMaLL, Software for Machine Learning Libraries
 // Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
 // SPDX-License-Identifier: BSD-3-Clause
@@ -7,6 +8,7 @@
 // Contributors.txt for a full list of contributors. Created, in part, with
 // funding and support from the U.S. Government (see Acknowledgments.txt file).
 // DM23-0126
+//****************************************************************************
 
 //scalar versions of all the microkernels for platform portability
 
@@ -14,8 +16,9 @@
 
 //accumi
 #define SIMD_EPILOGUE 1
-typedef dtype c_tile_out_t;
-typedef atype c_tile_t;
+
+typedef small::QUInt8Buffer::value_type c_tile_out_t;  // was dtype
+typedef small::QUInt8Buffer::accum_type c_tile_t;      // was atype
 
 //Architecture specific tiling params
 
@@ -40,12 +43,12 @@ typedef atype c_tile_t;
     }                                         \
   }
 
-#define ZERO_END_C(_W_ob, C_ob,z)            \
+#define ZERO_END_C(_W_ob, C_ob,z)          \
   for (uint32_t kk = 0; kk < _W_ob; kk++)  \
   {                                        \
     for (uint32_t jj = 0; jj < C_ob; jj++) \
     {                                      \
-      c_tile[kk * C_ob + jj] = z;        \
+      c_tile[kk * C_ob + jj] = z;          \
     }                                      \
   }
 
@@ -61,8 +64,8 @@ typedef atype c_tile_t;
   }
 
 //  dtype c_tile[W_ob * C_ob];
-#define LOAD_END_C(O, _W_ob, C_ob)           \
-  for (uint32_t kk = 0; kk < _W_ob; kk++)        \
+#define LOAD_END_C(O, _W_ob, C_ob)                \
+  for (uint32_t kk = 0; kk < _W_ob; kk++)         \
   {                                               \
     for (uint32_t jj = 0; jj < C_ob; jj++)        \
     {                                             \
@@ -104,8 +107,8 @@ typedef atype c_tile_t;
     }                                             \
   }
 
-#define STORE_END_C(O, _W_ob, C_ob)       \
-  for (uint32_t kk = 0; kk < _W_ob; kk++)        \
+#define STORE_END_C(O, _W_ob, C_ob)               \
+  for (uint32_t kk = 0; kk < _W_ob; kk++)         \
   {                                               \
     for (uint32_t jj = 0; jj < C_ob; jj++)        \
     {                                             \
@@ -113,12 +116,12 @@ typedef atype c_tile_t;
     }                                             \
   }
 
-#define STORE_Q_TILE_C(O, W_ob, C_ob)               \
+#define STORE_Q_TILE_C(O, W_ob, C_ob)             \
   for (uint32_t kk = 0; kk < W_ob; kk++)          \
   {                                               \
     for (uint32_t jj = 0; jj < C_ob; jj++)        \
     {                                             \
-      O[kk * C_ob + jj] = static_cast<OperandT>(c_tile[kk * C_ob + jj]); \
+      O[kk * C_ob + jj] = static_cast<ScalarT>(c_tile[kk * C_ob + jj]); \
     }                                             \
   }
 
@@ -127,7 +130,7 @@ typedef atype c_tile_t;
   {                                                                      \
     for (uint32_t jj = 0; jj < C_ob; jj++)                               \
     {                                                                    \
-      O[kk * C_ob + jj] = static_cast<OperandT>(c_tile[kk * C_ob + jj]); \
+      O[kk * C_ob + jj] = static_cast<ScalarT>(c_tile[kk * C_ob + jj]);  \
     }                                                                    \
   }
 
@@ -164,7 +167,7 @@ out = (a >> b) + (one & ((mod>threshold)?~0:0));
         auto val = c_tile[kk * C_ob + jj];                                                      \
         /*Multiply by q_mul and left shift*/                                                    \
         int64_t left_shift_val = static_cast<int64_t>(val * (1 << left_shift));                 \
-        VQRDMULH(left_shift_val, static_cast<int64_t>(q_mul), val);                                     \
+        VQRDMULH(left_shift_val, static_cast<int64_t>(q_mul), val);                             \
         RNDRSHIFT(val, right_shift, val);                                                       \
         c_tile[kk * C_ob + jj] = (val > min_val) ? ((val < max_val) ? val                       \
                                                                     : max_val)                  \
@@ -295,7 +298,7 @@ out = (a >> b) + (one & ((mod>threshold)?~0:0));
     c_pixel += C_ob;                                                              \
   }
 
-#define MAX_Q_TILE_C(step, a, W_ob, C_ob, a_offset, b_offset)                                           \
+#define MAX_Q_TILE_C(step, a, W_ob, C_ob, a_offset)                                           \
   c_tile_t *c_pixel = c_tile;                                                                           \
   dtype const *a_pixel = a;                                                                             \
   for (uint32_t kk = 0; kk < W_ob; kk++)                                                                \
@@ -312,7 +315,7 @@ out = (a >> b) + (one & ((mod>threshold)?~0:0));
     c_pixel += C_ob;                                                                                    \
   }
 
-#define MAX_Q_END_C(step, a, b, c_cur, W_last, C_ob, a_offset, b_offset)                                    \
+#define MAX_Q_END_C(step, a, c_cur, W_last, C_ob, a_offset)                                    \
   c_tile_t *c_pixel = c_cur;                                                                                \
   dtype const *a_pixel = a;                                                                                 \
   for (uint32_t kk = 0; kk < W_last; kk++)                                                                  \

@@ -23,6 +23,7 @@
 // Platform specific includes.
 // Use -I compile option to point to correct platform
 #include <params.h>
+#include <Buffer.hpp>
 #include <intrinsics.h>
 
 // ================== Public API ====================
@@ -34,7 +35,7 @@
 // #include <small/abstract_layer.hpp>
 
 /// @todo push this if into the lower header files
-#if QUANTIZED == 1
+#if defined(QUANTIZED)
 #include <small/q_abstract_layer.hpp>
 #include <small/q_interface_abstract.hpp> // template defs of interface.hpp
 #else

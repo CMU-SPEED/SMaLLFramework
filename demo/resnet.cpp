@@ -77,12 +77,12 @@ inline void resnet_block(
     uint8_t b_pad_1,
     uint8_t l_pad_1,
     uint8_t r_pad_1,
-    small::Buffer<float> const &I,              //float *I,
-    small::Buffer<float> const &F_conv0,        //float *F_conv0,
-    small::Buffer<float> const &F_conv1,        //float *F_conv1,
-    small::Buffer<float> const &F_conv_1x1,     //float *F_conv_1x1,
-    small::Buffer<float>       &O_intermediate, //float *O_intermediate,
-    small::Buffer<float>       &O)              //float *O)
+    small::FloatBuffer const &I,              //float *I,
+    small::FloatBuffer const &F_conv0,        //float *F_conv0,
+    small::FloatBuffer const &F_conv1,        //float *F_conv1,
+    small::FloatBuffer const &F_conv_1x1,     //float *F_conv_1x1,
+    small::FloatBuffer       &O_intermediate, //float *O_intermediate,
+    small::FloatBuffer       &O)              //float *O)
 {
     // printf("before: %d, %.2f %.2f %.2f %.2f\n", 0, I[0], I[1], I[2], I[3]);
 
@@ -133,11 +133,11 @@ inline void resnet_block(
     uint8_t b_pad_1,
     uint8_t l_pad_1,
     uint8_t r_pad_1,
-    small::Buffer<float> const &I,              //float *I,
-    small::Buffer<float> const &F_conv0,        //float *F_conv0,
-    small::Buffer<float> const &F_conv1,        //float *F_conv1,
-    small::Buffer<float>       &O_intermediate, //float *O_intermediate,
-    small::Buffer<float>       &O)              //float *O)
+    small::FloatBuffer const &I,              //float *I,
+    small::FloatBuffer const &F_conv0,        //float *F_conv0,
+    small::FloatBuffer const &F_conv1,        //float *F_conv1,
+    small::FloatBuffer       &O_intermediate, //float *O_intermediate,
+    small::FloatBuffer       &O)              //float *O)
 {
     // printf("before: %d, %.2f %.2f %.2f %.2f\n", 0, I[0], I[1], I[2], I[3]);
 
@@ -193,15 +193,15 @@ inline void resnet_block(
 //****************************************************************************
 /// @todo Switch to Buffer<dtype>
 //dtype *
-small::Buffer<float> &
+small::FloatBuffer &
 model_inference(uint32_t layer_num_total,
                 uint16_t layer_params[30][10],      ///@todo use vector<array<uint16_t, 10>>?
                 uint32_t intermediate_dims[30][2],  ///@todo use vector<array<uint32_t, 2>>?
-                std::vector<small::Buffer<float> *> const &filter_buf_ptrs, //dtype *filter_ptrs[30],
-                small::Buffer<float> const &input_dc,   //dtype *input_dc,
-                small::Buffer<float>       &inter_0_dc, //dtype *inter_0_dc,
-                small::Buffer<float>       &inter_1_dc, //dtype *inter_1_dc,
-                small::Buffer<float>       &inter_2_dc) //dtype *inter_2_dc)
+                std::vector<small::FloatBuffer *> const &filter_buf_ptrs, //dtype *filter_ptrs[30],
+                small::FloatBuffer const &input_dc,   //dtype *input_dc,
+                small::FloatBuffer       &inter_0_dc, //dtype *inter_0_dc,
+                small::FloatBuffer       &inter_1_dc, //dtype *inter_1_dc,
+                small::FloatBuffer       &inter_2_dc) //dtype *inter_2_dc)
 {
     auto layer_num = 0;
     small::Conv2D(REDUCTION_HW(layer_num), STRIDE(layer_num),
@@ -283,7 +283,7 @@ int main()
     int num_classes = 16;
 
     uint32_t input_dimensions = C_i * N * M;
-    small::Buffer<float> input_dc(input_dimensions);
+    small::FloatBuffer input_dc(input_dimensions);
     //dtype *input_dc = alloc<dtype>(input_dimensions);
     init(input_dc, input_dimensions);
 
@@ -421,7 +421,7 @@ int main()
     //dtype *filter_ptrs[30];
     /// @todo use a vector of smart pointers if possible
     /// @todo replace float with dtype
-    std::vector<small::Buffer<float> *> filter_buf_ptrs;
+    std::vector<small::FloatBuffer *> filter_buf_ptrs;
 
     // torch::Tensor weights;
     for (uint32_t l = 0; l < num_filters-1; l++)
@@ -432,8 +432,8 @@ int main()
             REDUCTION_HW(l) * REDUCTION_HW(l) * REDUCTION_C(l) * GROUP_C(l) * GROUPS(l);
 
         // TODO: replace float with dtype
-        small::Buffer<float> *filter_buf_ptr =
-            new small::Buffer<float>(filter_dimensions);
+        small::FloatBuffer *filter_buf_ptr =
+            new small::FloatBuffer(filter_dimensions);
         //float *filter_ptr = alloc(filter_dimensions);
         init(*filter_buf_ptr, filter_dimensions);
         filter_buf_ptrs.push_back(filter_buf_ptr);
@@ -441,8 +441,8 @@ int main()
 
     uint32_t filter_dimensions =
         GROUP_C(layer_num_total - 1) * REDUCTION_C(layer_num_total - 1);
-    small::Buffer<float> *filter_fc_dc_ptr =
-        new small::Buffer<float>(filter_dimensions);
+    small::FloatBuffer *filter_fc_dc_ptr =
+        new small::FloatBuffer(filter_dimensions);
     init(*filter_fc_dc_ptr, filter_dimensions);
     filter_buf_ptrs.push_back(filter_fc_dc_ptr);
     /// @todo assert(filter_buf_ptrs.size() == num_filters)
@@ -450,16 +450,16 @@ int main()
     // copy input
     // allocate space for intermediate outputs (use the max sizes calculated previously)
     /// @todo float->dtype
-    small::Buffer<float> inter_0_dc(max_numel_inter_0);
-    small::Buffer<float> inter_1_dc(max_numel_inter_1);
-    small::Buffer<float> inter_2_dc(max_numel_inter_0);
+    small::FloatBuffer inter_0_dc(max_numel_inter_0);
+    small::FloatBuffer inter_1_dc(max_numel_inter_1);
+    small::FloatBuffer inter_2_dc(max_numel_inter_0);
     //dtype *inter_0_dc = alloc(max_numel_inter_0);
     //dtype *inter_2_dc = alloc(max_numel_inter_0);
     //dtype *inter_1_dc = alloc(max_numel_inter_1);
     //dtype *output_dc;
 
     // NOTE: output_dc refers to inter_0_dc on return
-    //small::Buffer<float> &output_dc =
+    //small::FloatBuffer &output_dc =
         model_inference(layer_num_total, layer_params, intermediate_dims,
                         filter_buf_ptrs,
                         input_dc,
@@ -474,7 +474,7 @@ int main()
     {
         // t0 = rdtsc();
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
-        //small::Buffer<float> &output_dc =
+        //small::FloatBuffer &output_dc =
             model_inference(layer_num_total, layer_params, intermediate_dims,
                             filter_buf_ptrs,
                             input_dc,
