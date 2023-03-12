@@ -102,6 +102,12 @@ private:
     std::vector<value_type, small::detail::buffer_allocator<value_type>> m_buffer;
 };
 
+//**********************************************************************
+inline FloatBuffer *alloc_buffer(size_t num_elts)
+{
+    return new FloatBuffer(num_elts);
+}
+
 } // small
 
 typedef small::FloatBuffer::value_type dtype;

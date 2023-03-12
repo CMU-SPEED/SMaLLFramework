@@ -19,15 +19,7 @@
 #include <climits>
 
 #include <vector>
-#include <string>
-#include <fstream>
 #include <algorithm> // std::min_element
-#include <iterator>
-#include <array>
-#include <iostream>
-// #include <functional>
-#include <numeric>
-
 
 #include <small.h>
 #include "utils.h"
@@ -228,7 +220,7 @@ void inference()
             REDUCTION_HW(l) * REDUCTION_HW(l) * REDUCTION_C(l) *
             GROUP_C(l) * GROUPS(l);
         small::FloatBuffer *filter_buf_ptr =
-            new small::FloatBuffer(filter_dimensions);
+            small::alloc_buffer(filter_dimensions);
         init(*filter_buf_ptr, filter_dimensions);
         filter_buf_ptrs.push_back(filter_buf_ptr);
     }
@@ -272,7 +264,10 @@ void inference()
 
     print_cycles(sum_small);
     print_stats(small_timing, "SMaLL");
-    printf("%d\n", atoi(std::getenv("OMP_NUM_THREADS")));
+
+#if PARALLEL==1
+    printf("OMP_NUM_THREADS: %d\n", atoi(std::getenv("OMP_NUM_THREADS")));
+#endif
 
     //free(input_dc);
     for (size_t l = 0; l < filter_buf_ptrs.size(); l++)

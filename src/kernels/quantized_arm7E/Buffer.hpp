@@ -38,12 +38,21 @@ namespace detail
     /// @todo This is allocation-only memory management.  It cannot manage
     ///       out of order calls to a free method
     /// @todo return void instead?
-    template <class ScalarT>
-    ScalarT *alloc(size_t numel)
+    void *alloc(size_t num_bytes, size_t alignment = 1)
     {
-        /// @todo deal with alignment issues
-        size_t bytes_to_alloc = numel * sizeof(ScalarT);
-        size_t used_bytes = buf_offset + bytes_to_alloc;
+        /// deal with alignment issues
+        if (alignment == 0) alignment = 1;
+        size_t alignment_error =
+            reinterpret_cast<size_t>(current_free_ptr) % alignment;
+
+        if (alignment_error > 0)
+        {
+            size_t waste = alignment - alignment_error;
+            buf_offset += waste;
+            current_free_ptr += waste;
+        }
+
+        size_t used_bytes = buf_offset + num_bytes;
 
         if (MAX_BUFF_SIZE < used_bytes)
         {
@@ -53,16 +62,13 @@ namespace detail
 
             throw std::bad_alloc();
         }
-        else
-        {
-            ScalarT *ret_ptr =
-                reinterpret_cast<ScalarT*>(memory_buffer + buf_offset);
-            buf_offset = used_bytes;
-            current_free_ptr = memory_buffer + used_bytes;
-            return ret_ptr;
-        }
-    }
 
+        void *ret_ptr =
+            reinterpret_cast<void*>(memory_buffer + buf_offset);
+        buf_offset = used_bytes;
+        current_free_ptr = memory_buffer + used_bytes;
+        return ret_ptr;
+    }
 
     //**********************************************************************
     /// @need better buffer management?
@@ -99,9 +105,11 @@ public:
         max_val(0),     // std::numeric_limits<value_type>::lowest()
         b(8),
         m_num_elts(num_elts),
-        m_buffer(detail::alloc<value_type>(num_elts))
+        m_buffer(reinterpret_cast<value_type*>(
+                     detail::alloc(num_elts*sizeof(value_type), 1)))
     {
-        // todo should the buffer be cleared?
+        /// @todo should the buffer be cleared?
+        /// @todo call quantized_init() here and make private
     }
 
     ~QUInt8Buffer() {  /** @todo need to free buffer */ }
@@ -133,6 +141,7 @@ public:
     }
 
     /// @todo Should this be part of construction?
+    /// @todo Note this function did not depend on numel.  REMOVED
     void quantized_init()
     {
         float max = 1.0;
@@ -161,7 +170,8 @@ public:
         }
         int32_t quantized_multiplier = static_cast<int32_t>(q_fixed);
 
-        int zero = rint((double)(max * min_q - min * max_q) / ((double)(max - min)));
+        int zero = rint((double)(max * min_q - min * max_q) /
+                        ((double)(max - min)));
         scale = scale;
         zero = zero;
         lshift = shift > 0 ? shift : 0;
@@ -171,6 +181,11 @@ public:
         max_val = 0;
     }
 
+private:
+    size_t      m_num_elts;
+    value_type *m_buffer;
+
+public:
     float    scale;
     int32_t  offset;     // AccumT?
     int32_t  multiplier; // AccumT?
@@ -180,11 +195,18 @@ public:
     int      min_val;    // AccumT?
     int      max_val;    // AccumT?
     uint8_t  b;
-
-private:
-    size_t      m_num_elts;
-    value_type *m_buffer;
 };
+
+//**********************************************************************
+// "dynamic" allocation of Buffer from static buffer (placement new)
+inline QUInt8Buffer *alloc_buffer(size_t num_elts)
+{
+    void *location = detail::alloc(sizeof(QUInt8Buffer), 8);
+    QUInt8Buffer *buffer = new (location) QUInt8Buffer(num_elts);
+    fprintf(stderr, "Allocated QUInt8Buffer(%ld) at address %p\n",
+            num_elts, buffer);
+    return buffer;
+}
 
 }  // small
 

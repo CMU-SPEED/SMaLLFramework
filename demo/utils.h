@@ -54,29 +54,6 @@ static __inline__ unsigned long long rdtsc(void)
 }
 #endif
 
-/// @todo unnecessary?
-#define ACCUM_time(a, b) \
-    {                    \
-        a += b;          \
-    }
-
-/// @todo unnecessary? Fix duplication with ACCUM_time
-#define REDUCE(a, b) \
-    {                \
-        a += b;      \
-    }
-
-/// @todo change to use std::min<T> directly
-#define MIN(a, b)            \
-    {                        \
-        a = (b < a) ? b : a; \
-    }
-
-#define AVG(accum, trials, avg)       \
-    {                                 \
-        avg = (1.0 * accum) / trials; \
-    }
-
 //****************************************************************************
 //logging
 //****************************************************************************

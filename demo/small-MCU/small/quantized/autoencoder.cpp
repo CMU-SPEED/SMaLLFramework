@@ -22,7 +22,6 @@
 #define QUANTIZED 1
 #endif
 
-/
 #include <small.h>
 
 /// @todo Which of these defines are needed?
@@ -141,7 +140,7 @@ void inference()
     int C_i = 128;
     uint32_t N = 1;
     uint32_t M = 1;
-    int num_classes = 16;
+    uint32_t num_classes = 16;
 
     // Create input tensor
     uint32_t input_dimensions = C_i * N * M;
@@ -207,42 +206,61 @@ void inference()
     //qdtype q_filter_ptrs[30];
 
     // Direct Convolution Setup
-    for (int l = 0; l < layer_num_total; l++) {
-        dtype *filter_ptr;
+    for (uint32_t l = 0; l < layer_num_total; l++)
+    {
+        //dtype *filter_ptr;
         uint32_t filter_dimensions =
             REDUCTION_HW(l) * REDUCTION_HW(l) * REDUCTION_C(l) *
             GROUP_C(l) * GROUPS(l);
-        filter_ptr = (dtype *) alloc<dtype>(filter_dimensions);
-        init(filter_ptr, filter_dimensions);
-        quantized_init(&(q_filter_ptrs[l]), filter_dimensions);
-        q_filter_ptrs[l].tensor = filter_ptr;
+        small::QUInt8Buffer *filter_buf_ptr =
+            small::alloc_buffer(filter_dimensions);
+        init(*filter_buf_ptr, filter_dimensions);
+        filter_buf_ptr->quantized_init();
+        filter_buf_ptrs[l] = filter_buf_ptr;
     }
 
-    dtype *inter_0_dc = (dtype *)(dtype *) alloc<dtype>(max_numel_inter_0*4);
-    dtype *inter_1_dc = (dtype *)(dtype *) alloc<dtype>(max_numel_inter_1*4);
-    qdtype *output;
+    // allocating class on stack and data on 'heap'
+    QUInt8Buffer inter_0_dc(max_numel_inter0*4); // potential alignment issues
+    QUInt8Buffer inter_1_dc(max_numel_inter1*4);
+    //dtype *inter_0_dc = (dtype *)(dtype *) alloc<dtype>(max_numel_inter_0*4);
+    //dtype *inter_1_dc = (dtype *)(dtype *) alloc<dtype>(max_numel_inter_1*4);
+    //qdtype *output;
 
-    qdtype q_inter_0;
-    quantized_init(&q_inter_0, max_numel_inter_0);
-    q_inter_0.tensor = inter_0_dc;
+    inter_0_dc.quantized_init();
+    //qdtype q_inter_0;
+    //quantized_init(&q_inter_0, max_numel_inter_0);
+    //q_inter_0.tensor = inter_0_dc;
 
-    qdtype q_inter_1;
-    quantized_init(&q_inter_1, max_numel_inter_1);
-    q_inter_1.tensor = inter_1_dc;
-    output = model_inference(layer_num_total, layer_params, &(q_filter_ptrs[0]), &q_input, &q_inter_0, &q_inter_1);
+    inter_1_dc.quantized_init();
+    //qdtype q_inter_1;
+    //quantized_init(&q_inter_1, max_numel_inter_1);
+    //q_inter_1.tensor = inter_1_dc;
+
+    auto &output =
+        model_inference(layer_num_total, layer_params,
+                        &(filter_buf_ptrs[0]),
+                        input_dc,
+                        inter_0_dc,
+                        inter_1_dc);
 
 #ifdef NANO33BLE
     mbed::Timer t;
     t.start();
-    for (int r = 0; r < RUNS; r++) {
-        output = model_inference(layer_num_total, layer_params, &(q_filter_ptrs[0]), &q_input, &q_inter_0, &q_inter_1);
+    for (int r = 0; r < RUNS; r++)
+    {
+        //auto &output =
+            model_inference(layer_num_total, layer_params,
+                            &(filter_buf_ptrs[0]),
+                            input_dc,
+                            inter_0_dc,
+                            inter_1_dc);
     }
     t.stop();
     Serial.println(t.elapsed_time().count());
 #else
-    for (int i = 0; i < num_classes; i++)
+    for (uint32_t ix = 0; ix < num_classes; ix++)
     {
-        printf("%d ", output->tensor[i]);
+        printf("Output class %d result: %d\n", ix, output[ix]);
     }
     printf("\n");
 
