@@ -12,14 +12,11 @@
 
 #include <math.h>
 #include <assert.h>
-#include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <climits>
-
 #include <vector>
-#include <algorithm> // std::min_element
 
 #include <small.h>
 #include "utils.h"
@@ -32,24 +29,7 @@
 #define PARALLEL 0
 #endif
 
-#define PREFETCH 1
-
-#define H_TILE 0
-#define POOLING 1
-
-
-#define LIMIT 1e-2
-
-#define CONV 0
-#define PARTIAL_CONV 1 // under development
-#define DW_CONV 2      // under development
-#define GROUP_CONV 3   // under development
-#define POOL 4
-#define RELU 5
-
-#ifndef LAYER
-#define LAYER DW_CONV
-#endif
+//****************************************************************************
 
 #define REDUCTION_C(layer_num) layer_params[layer_num][0]
 #define GROUP_C(layer_num) layer_params[layer_num][1]
@@ -94,7 +74,7 @@ small::FloatBuffer &model_inference(
     small::FloatBuffer       &inter_0_dc, //dtype *inter_0_dc,
     small::FloatBuffer       &inter_1_dc) //dtype *inter_1_dc)
 {
-    int layer_num = 0;
+    auto layer_num = 0;
     small::Conv2D(1, 1,
                   0, 0, 0, 0,
                   GROUP_C(layer_num), REDUCTION_C(layer_num),
@@ -107,7 +87,6 @@ small::FloatBuffer &model_inference(
                           1, 1,
                           inter_0_dc, inter_0_dc);
 
-    //dtype *out_inter_dc = inter_1_dc;
     for (uint32_t cur_layer = 1; cur_layer < layer_num_total; cur_layer++)
     {
         small::Conv2D(1, 1,
@@ -116,17 +95,15 @@ small::FloatBuffer &model_inference(
                       1, 1,
                       inter_0_dc,
                       *filter_buf_ptrs[layer_num],
-                      inter_1_dc); //out_inter_dc);
+                      inter_1_dc);
 
         small::ReLUActivation(GROUP_C(layer_num), // was hardcoded to 128 before
                               1, 1,
-                              inter_1_dc, // out_inter_dc,
+                              inter_1_dc,
                               inter_1_dc);
+
         layer_num++;
         inter_0_dc.swap(inter_1_dc);
-        //inter_1_dc = inter_0_dc;
-        //inter_0_dc = out_inter_dc;
-        //out_inter_dc = inter_1_dc;
     }
     return inter_0_dc;
 }
@@ -135,19 +112,16 @@ small::FloatBuffer &model_inference(
 //****************************************************************************
 void inference()
 {
-    int C_i = 128;
+    uint32_t C_i = 128;
     uint32_t N = 1;
     uint32_t M = 1;
-    int num_classes = 16;
+    uint32_t num_classes = 16;
 
     // Create input tensor
     uint32_t input_dimensions = C_i * N * M;
     small::FloatBuffer input_dc(input_dimensions);
-    //dtype *input_dc = alloc<dtype>(input_dimensions);
     small::init(input_dc, input_dimensions);
 
-    // ================================================
-    // calculate total number of weight elements
     // ================================================
 
     uint16_t layer_params[30][10] = {1};
@@ -193,6 +167,7 @@ void inference()
     STRIDE(layer_num) = 1;
     SET_PADDING(layer_num, 0, 0, 0, 0)
     layer_num++;
+
     intermediate_dims[layer_num][0] = O_WIDTH(layer_num);
     intermediate_dims[layer_num][1] = O_HEIGHT(layer_num);
 
@@ -210,12 +185,10 @@ void inference()
 #endif
 
     std::vector<small::FloatBuffer *> filter_buf_ptrs;
-    //dtype * filter_ptrs[30];
 
     // Direct Convolution Setup
     for (uint32_t l = 0; l < layer_num_total; l++)
     {
-        // dtype *filter_ptr;
         uint32_t filter_dimensions =
             REDUCTION_HW(l) * REDUCTION_HW(l) * REDUCTION_C(l) *
             GROUP_C(l) * GROUPS(l);
@@ -227,12 +200,9 @@ void inference()
 
     small::FloatBuffer inter_0_dc(max_numel_inter_0);
     small::FloatBuffer inter_1_dc(max_numel_inter_1);
-    //dtype *inter_0_dc = alloc<dtype>(max_numel_inter_0);
-    //dtype *inter_1_dc = alloc<dtype>(max_numel_inter_1);
-    //dtype *output_dc;
 
     // always returns a reference to inter_0_dc
-    //small::FloatBuffer &output_dc =
+    //auto &output_dc =
         model_inference(layer_num_total, layer_params,
                         filter_buf_ptrs,
                         input_dc,
@@ -250,7 +220,7 @@ void inference()
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
 
         // always returns a reference to inter_0_dc
-        //small::FloatBuffer &output_dc =
+        //auto &output_dc =
             model_inference(layer_num_total, layer_params,
                             filter_buf_ptrs,
                             input_dc,
@@ -269,14 +239,10 @@ void inference()
     printf("OMP_NUM_THREADS: %d\n", atoi(std::getenv("OMP_NUM_THREADS")));
 #endif
 
-    //free(input_dc);
     for (size_t l = 0; l < filter_buf_ptrs.size(); l++)
     {
         delete filter_buf_ptrs[l];
     }
-
-    //free(inter_1_dc);
-    //free(inter_0_dc);
 }
 
 //****************************************************************************

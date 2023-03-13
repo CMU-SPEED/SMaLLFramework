@@ -16,11 +16,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-// This should be set by the build system for now.
-#ifndef QUANTIZED
-#define QUANTIZED 1
-#endif
-
 #include <small.h>
 
 /// @todo Which of these defines are needed?
@@ -30,24 +25,6 @@
 #ifndef PARALLEL
 #define PARALLEL 0
 #endif
-
-//#define PREFETCH 1
-
-//#define H_TILE 0
-//#define POOLING 1
-
-//#define LIMIT 1e-2
-
-//#define CONV 0
-//#define PARTIAL_CONV 1 // under development
-//#define DW_CONV 2      // under development
-//#define GROUP_CONV 3   // under development
-//#define POOL 4
-//#define RELU 5
-
-//#ifndef LAYER
-//#define LAYER DW_CONV
-//#endif
 
 //****************************************************************************
 
@@ -73,6 +50,7 @@
     {                                           \
         O_HEIGHT(layer_num), O_WIDTH(layer_num) \
     }
+
 #define INPUT_NUMEL(layer_num) \
     (O_HEIGHT(layer_num) * O_WIDTH(layer_num) * GROUP_C(layer_num - 1) * GROUPS(layer_num - 1))
 
@@ -114,14 +92,11 @@ inline void resnet_block(
                           o_h, o_w,
                           O_intermediate, O_intermediate);
 
-    if (true) //(scale_channels)
-    {
-        small::Conv2D(1, stride,
-                      0, 0, 0, 0,
-                      output_channels, input_channels,
-                      in_dims[0], in_dims[1],
-                      I, F_conv_1x1, O);
-    }
+    small::Conv2D(1, stride,
+                  0, 0, 0, 0,
+                  output_channels, input_channels,
+                  in_dims[0], in_dims[1],
+                  I, F_conv_1x1, O);
 
     small::PartialConv2D(kernel_size, 1,
                          t_pad_1, b_pad_1, l_pad_1, r_pad_1,
@@ -189,8 +164,8 @@ model_inference(uint32_t layer_num_total,
                 small::QUInt8Buffer       &inter_2_dc)
 {
     auto layer_num = 0;
-    small::Conv2D(REDUCTION_HW(layer_num), STRIDE(layer_num),
-                  PADDING(layer_num),
+    small::Conv2D(REDUCTION_HW(layer_num),
+                  STRIDE(layer_num), PADDING(layer_num),
                   GROUP_C(layer_num), REDUCTION_C(layer_num),
                   I_HEIGHT(layer_num), I_WIDTH(layer_num),
                   input_dc,
@@ -220,10 +195,9 @@ model_inference(uint32_t layer_num_total,
     auto num_filters = layer_num_total - 1;
     for (int ds_layer = 1; ds_layer < resnet_blocks; ds_layer++)
     {
-        //qdtype *O_intermediate = inter_2_dc;
         resnet_block(intermediate_dims[layer_num], REDUCTION_C(layer_num), // Input dimensions
                      REDUCTION_HW(layer_num),
-                     STRIDE(layer_num), // Params for the first convolution
+                     STRIDE(layer_num),
                      GROUP_C(layer_num),
                      PADDING(layer_num),
                      PADDING(layer_num + 1),
@@ -232,13 +206,11 @@ model_inference(uint32_t layer_num_total,
                      *filter_buf_ptrs[layer_num + 1],
                      *filter_buf_ptrs[layer_num + 2],
                      inter_1_dc,
-                     inter_2_dc); //O_intermediate);
-        layer_num += 3;
+                     inter_2_dc);
 
+        layer_num += 3;
         // Since channels were scaled, switch the pointers between inter_2 and inter_0
         inter_0_dc.swap(inter_2_dc);
-        //inter_2_dc = inter_0_dc;
-        //inter_0_dc = O_intermediate;
     }
 
     small::Maxpool2D(REDUCTION_HW(layer_num), STRIDE(layer_num),
@@ -262,19 +234,16 @@ model_inference(uint32_t layer_num_total,
 //****************************************************************************
 void inference()
 {
-    int C_i = 3;
+    uint32_t C_i = 3;
     uint32_t N = 32;
     uint32_t M = 32;
-    int num_classes = 16;
+    uint32_t num_classes = 16;
 
+    // Create input tensor
     uint32_t input_dimensions = C_i * N * M;
     small::QUInt8Buffer input_dc(input_dimensions);
-    //dtype *input_dc = (dtype *) alloc<dtype>(input_dimensions);
     init(input_dc, input_dimensions);
-    input_dc.quantized_init();
-    //qdtype q_input;
-    //quantized_init(&q_input, input_dimensions);
-    //q_input.tensor = input_dc;
+    input_dc.quantized_init(); /// @todo move to buffer constructor?
 
     // ================================================
 
@@ -291,18 +260,18 @@ void inference()
     intermediate_dims[layer_num][1] = N;
 
     // conv
-    REDUCTION_C(layer_num) = C_i; // input channels
-    GROUP_C(layer_num) = 16;      // output channels
+    REDUCTION_C(layer_num) = C_i;
+    GROUP_C(layer_num) = 16;
     GROUPS(layer_num) = 1;
-    REDUCTION_HW(layer_num) = 3; // kernel size
-    STRIDE(layer_num) = 1;       // stride
+    REDUCTION_HW(layer_num) = 3;
+    STRIDE(layer_num) = 1;
     small::calc_padding(I_HEIGHT(layer_num), REDUCTION_HW(layer_num),
                         STRIDE(layer_num), t_pad, b_pad);
     small::calc_padding(I_WIDTH(layer_num),  REDUCTION_HW(layer_num),
                         STRIDE(layer_num), l_pad, r_pad);
     SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad);
-    layer_num++; // 1
 
+    layer_num++; // 1
     intermediate_dims[layer_num][0] = O_WIDTH(layer_num);
     intermediate_dims[layer_num][1] = O_HEIGHT(layer_num);
     auto inter_dim = INPUT_NUMEL(layer_num);
@@ -329,6 +298,7 @@ void inference()
         small::calc_padding(I_WIDTH(layer_num),  REDUCTION_HW(layer_num),
                             STRIDE(layer_num), l_pad, r_pad);
         SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad);
+
         layer_num++; // 2,4,7
         intermediate_dims[layer_num][0] = O_WIDTH(layer_num);
         intermediate_dims[layer_num][1] = O_HEIGHT(layer_num);
@@ -347,6 +317,7 @@ void inference()
         small::calc_padding(I_WIDTH(layer_num),  REDUCTION_HW(layer_num),
                             STRIDE(layer_num), l_pad, r_pad);
         SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad);
+
         layer_num++; // 3,5,8
         inter_dim = INPUT_NUMEL(layer_num);
         max_numel_inter_0 =
@@ -370,6 +341,7 @@ void inference()
         intermediate_dims[layer_num][0] = O_WIDTH(layer_num);
         intermediate_dims[layer_num][1] = O_HEIGHT(layer_num);
     }
+
     // pooling dims
     REDUCTION_C(layer_num) = 1;
     GROUP_C(layer_num) = 1;
@@ -391,15 +363,13 @@ void inference()
     layer_num++;
 
     // fc dims
-    uint32_t layer_num_total = layer_num;
-    auto num_filters = layer_num_total - 1;
+    size_t layer_num_total = layer_num;
+    size_t num_filters = layer_num_total - 1;
 
     //  Copy layer weights to temporaries
-
-    //qdtype q_filter_ptrs[30];
     small::QUInt8Buffer *filter_buf_ptrs[30];
 
-    for (uint32_t l = 0; l < num_filters - 1; l++)
+    for (size_t l = 0; l < num_filters - 1; l++)
     {
         uint32_t filter_dimensions =
             REDUCTION_HW(l) * REDUCTION_HW(l) * REDUCTION_C(l) *
@@ -408,49 +378,27 @@ void inference()
         small::QUInt8Buffer *filter_buf_ptr =
             small::alloc_buffer(filter_dimensions);
         init(*filter_buf_ptr, filter_dimensions);
-        filter_buf_ptr->quantized_init();
+        filter_buf_ptr->quantized_init(); /// @todo Move to buffer constructor?
         filter_buf_ptrs[l] = filter_buf_ptr;
-
-        //dtype *filter_ptr = (dtype *) alloc<dtype>(filter_dimensions);
-        //quantized_init(&q_filter_ptrs[l], filter_dimensions);
-        //q_filter_ptrs[l].tensor = filter_ptr;
     }
 
     uint32_t filter_dimensions =
         GROUP_C(layer_num_total - 1) * REDUCTION_C(layer_num_total - 1);
     small::QUInt8Buffer *filter_fc_dc_ptr =
         small::alloc_buffer(filter_dimensions);
-    //dtype *filter_fc_dc = (dtype *) alloc<dtype>(filter_dimensions);
     init(*filter_fc_dc_ptr, filter_dimensions);
-    filter_fc_dc_ptr->quantized_init();
-    //quantized_init(&q_filter_ptrs[num_filters - 1], filter_dimensions);
+    filter_fc_dc_ptr->quantized_init(); /// @todo Move to buffer constructor?
     filter_buf_ptrs[num_filters - 1] = filter_fc_dc_ptr;
-    //q_filter_ptrs[num_filters - 1].tensor = filter_fc_dc;
 
     // allocate space for intermediate outputs
     // (use the max sizes calculated previously)
     small::QUInt8Buffer inter_0_dc(max_numel_inter_0 + C_ob*16*16*3);
     small::QUInt8Buffer inter_1_dc(max_numel_inter_1 + C_ob*16*16*3);
     small::QUInt8Buffer inter_2_dc((max_numel_inter_0 / 2) + C_ob*16*16*3);
-    //dtype *inter_0_dc = (dtype *) alloc<dtype>(max_numel_inter_0 + C_ob*16*16*3);
-    //dtype *inter_1_dc = (dtype *) alloc<dtype>(max_numel_inter_1 + C_ob*16*16*3);
-    //dtype *inter_2_dc = (dtype *) alloc<dtype>((max_numel_inter_0 / 2) + C_ob*16*16*3);
-    //qdtype *output; //= (dtype *) alloc<dtype>(num_classes);
 
-    inter_0_dc.quantized_init();
-    //qdtype q_inter_0;
-    //quantized_init(&q_inter_0, max_numel_inter_0);
-    //q_inter_0.tensor = inter_0_dc;
-
-    inter_1_dc.quantized_init();
-    //qdtype q_inter_1;
-    //quantized_init(&q_inter_1, max_numel_inter_1);
-    //q_inter_1.tensor = inter_1_dc;
-
-    inter_2_dc.quantized_init();
-    //qdtype q_inter_2;
-    //quantized_init(&q_inter_2, (max_numel_inter_0 / 2));
-    //q_inter_2.tensor = inter_2_dc;
+    inter_0_dc.quantized_init(); /// @todo Move to buffer constructor?
+    inter_1_dc.quantized_init(); /// @todo Move to buffer constructor?
+    inter_2_dc.quantized_init(); /// @todo Move to buffer constructor?
 
     // NOTE: output refers to inter_0_dc on return
     auto &output =
@@ -466,20 +414,20 @@ void inference()
     t.start();
     for (int r = 0; r < RUNS; r++)
     {
-        auto &output =
+        //auto &output =
             model_inference(layer_num_total, layer_params, intermediate_dims,
                             filter_buf_ptrs,
-                            &input_dc,
-                            &inter_0_dc,
-                            &inter_1_dc,
-                            &inter_2_dc);
+                            input_dc,
+                            inter_0_dc,
+                            inter_1_dc,
+                            inter_2_dc);
     }
     t.stop();
     Serial.println(t.elapsed_time().count());
 #else
-    for (int ix = 0; ix < num_classes; ix++)
+    for (size_t ix = 0; ix < num_classes; ix++)
     {
-        printf("Output class %d result: %d\n", ix, output[ix]);
+        printf("Output class %ld result: %d\n", ix, output[ix]);
     }
 #endif
 
@@ -489,7 +437,7 @@ void inference()
 //****************************************************************************
 /// @todo For non-arduino platforms.  ... move to driver.cpp?
 //****************************************************************************
-// #ifndef FOO_NANO33BLE
+// #ifndef NANO33BLE
 // int main()
 // {
 //     inference();

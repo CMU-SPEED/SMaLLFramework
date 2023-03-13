@@ -15,12 +15,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <climits>
-
-// This should be set by the build system for now.
-#ifndef QUANTIZED
-#define QUANTIZED 1
-#endif
 
 #include <small.h>
 
@@ -31,25 +25,6 @@
 #ifndef PARALLEL
 #define PARALLEL 0
 #endif
-
-//#define PREFETCH 1
-
-//#define H_TILE 0
-//#define POOLING 1
-
-
-//#define LIMIT 1e-2
-
-//#define CONV 0
-//#define PARTIAL_CONV 1 // under development
-//#define DW_CONV 2      // under development
-//#define GROUP_CONV 3   // under development
-//#define POOL 4
-//#define RELU 5
-
-//#ifndef LAYER
-//#define LAYER DW_CONV
-//#endif
 
 //****************************************************************************
 
@@ -87,31 +62,27 @@
     (O_HEIGHT(layer_num) * O_WIDTH(layer_num) * GROUP_C(layer_num - 1) * GROUPS(layer_num - 1))
 
 //****************************************************************************
-// Prior: returned qdtype *
 small::QUInt8Buffer &model_inference(
     uint32_t layer_num_total,
     uint16_t layer_params[30][10],
-    //qdtype *filter_ptrs,
-    //std::vector<small::QUInt8Buffer*> const &filter_buf_ptrs,
-    small::QUInt8Buffer     **filter_buf_ptrs, /// @todo make const
+    small::QUInt8Buffer     **filter_buf_ptrs,
     small::QUInt8Buffer const &input_dc,
     small::QUInt8Buffer       &inter_0_dc,
     small::QUInt8Buffer       &inter_1_dc)
 {
-    int layer_num = 0;
+    auto layer_num = 0;
     small::Conv2D(1, 1,
                   0, 0, 0, 0,
                   GROUP_C(layer_num), REDUCTION_C(layer_num),
                   1, 1,
                   input_dc,
-                  *(filter_buf_ptrs[layer_num]),
+                  *filter_buf_ptrs[layer_num],
                   inter_0_dc);
 
     small::ReLUActivation(GROUP_C(layer_num),
                           1, 1,
                           inter_0_dc, inter_0_dc);
 
-    //qdtype * out_inter_dc = inter_1_dc;
     for (uint32_t cur_layer = 1; cur_layer < layer_num_total; cur_layer++)
     {
         small::Conv2D(1, 1,
@@ -119,18 +90,16 @@ small::QUInt8Buffer &model_inference(
                       GROUP_C(layer_num), REDUCTION_C(layer_num),
                       1, 1,
                       inter_0_dc,
-                      *(filter_buf_ptrs[layer_num]),
-                      inter_1_dc); //out_inter_dc);
+                      *filter_buf_ptrs[layer_num],
+                      inter_1_dc);
 
         small::ReLUActivation(GROUP_C(layer_num),
                               1, 1,
-                              inter_1_dc, // out_inter_dc,
+                              inter_1_dc,
                               inter_1_dc);
+
         layer_num++;
         inter_0_dc.swap(inter_1_dc);
-        //inter_1_dc = inter_0_dc;
-        //inter_0_dc = out_inter_dc;
-        //out_inter_dc = inter_1_dc;
     }
     return inter_0_dc;
 }
@@ -139,7 +108,7 @@ small::QUInt8Buffer &model_inference(
 //****************************************************************************
 void inference()
 {
-    int C_i = 128;
+    uint32_t C_i = 128;
     uint32_t N = 1;
     uint32_t M = 1;
     uint32_t num_classes = 16;
@@ -147,15 +116,9 @@ void inference()
     // Create input tensor
     uint32_t input_dimensions = C_i * N * M;
     small::QUInt8Buffer input_dc(input_dimensions);
-    //dtype *input_dc = (dtype *) alloc<dtype>(input_dimensions);  // dtype = uint8_t?
     small::init(input_dc, input_dimensions);
-    input_dc.quantized_init();
-    //qdtype q_input;
-    //small::quantized_init(&q_input, input_dimensions);
-    //q_input.tensor = input_dc;
+    input_dc.quantized_init(); /// @todo Move to buffer constructor?
 
-    // ================================================
-    // calculate total number of weight elements
     // ================================================
 
     uint16_t layer_params[30][10] = {1};
@@ -201,43 +164,33 @@ void inference()
     STRIDE(layer_num) = 1;
     SET_PADDING(layer_num, 0, 0, 0, 0)
     layer_num++;
+
     intermediate_dims[layer_num][0] = O_WIDTH(layer_num);
     intermediate_dims[layer_num][1] = O_HEIGHT(layer_num);
 
     small::QUInt8Buffer *filter_buf_ptrs[30];
-    //qdtype q_filter_ptrs[30];
 
     // Direct Convolution Setup
     for (uint32_t l = 0; l < layer_num_total; l++)
     {
-        // dtype *filter_ptr;
         uint32_t filter_dimensions =
             REDUCTION_HW(l) * REDUCTION_HW(l) * REDUCTION_C(l) *
             GROUP_C(l) * GROUPS(l);
         small::QUInt8Buffer *filter_buf_ptr =
             small::alloc_buffer(filter_dimensions);
         init(*filter_buf_ptr, filter_dimensions);
-        filter_buf_ptr->quantized_init();
+        filter_buf_ptr->quantized_init(); /// @todo Move to buffer constructor?
         filter_buf_ptrs[l] = filter_buf_ptr;
     }
 
     // allocating class on stack and data on 'heap'
-    small::QUInt8Buffer inter_0_dc(max_numel_inter_0*4); // potential alignment issues
+    small::QUInt8Buffer inter_0_dc(max_numel_inter_0*4); /// @todo potential alignment issues
     small::QUInt8Buffer inter_1_dc(max_numel_inter_1*4);
-    //dtype *inter_0_dc = (dtype *)(dtype *) alloc<dtype>(max_numel_inter_0*4);
-    //dtype *inter_1_dc = (dtype *)(dtype *) alloc<dtype>(max_numel_inter_1*4);
-    //qdtype *output;
 
-    inter_0_dc.quantized_init();
-    //qdtype q_inter_0;
-    //quantized_init(&q_inter_0, max_numel_inter_0);
-    //q_inter_0.tensor = inter_0_dc;
+    inter_0_dc.quantized_init(); /// @todo Move to buffer constructor?
+    inter_1_dc.quantized_init(); /// @todo Move to buffer constructor?
 
-    inter_1_dc.quantized_init();
-    //qdtype q_inter_1;
-    //quantized_init(&q_inter_1, max_numel_inter_1);
-    //q_inter_1.tensor = inter_1_dc;
-
+    // always returns a reference to inter_0_dc
     auto &output =
         model_inference(layer_num_total, layer_params,
                         filter_buf_ptrs,
@@ -260,11 +213,12 @@ void inference()
     t.stop();
     Serial.println(t.elapsed_time().count());
 #else
-    for (uint32_t ix = 0; ix < num_classes; ix++)
+    for (size_t ix = 0; ix < num_classes; ix++)
     {
-        printf("Output class %d result: %d\n", ix, output[ix]);
+        printf("Output class %ld result: %d\n", ix, output[ix]);
     }
 #endif
+
     small::detail::free_all();
 }
 

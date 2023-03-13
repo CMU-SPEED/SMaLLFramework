@@ -15,11 +15,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <climits>
 
-
-#include "include/small.h"
-// #include "include/utils.h"
+#include <small.h>
 
 /// @todo Which of these defines are needed?
 #ifndef RUNS
@@ -29,51 +26,7 @@
 #define PARALLEL 0
 #endif
 
-#define PREFETCH 1
-
-#define H_TILE 0
-#define POOLING 1
-
-
-#define LIMIT 1e-2
-
-#define CONV 0
-#define PARTIAL_CONV 1 // under development
-#define DW_CONV 2      // under development
-#define GROUP_CONV 3   // under development
-#define POOL 4
-#define RELU 5
-
-#ifndef LAYER
-#define LAYER DW_CONV
-#endif
-
 //****************************************************************************
-// The output of the block is stored in I
-// The weights must have been copied into F_1x1 and F_dw beforehand
-inline void dscnn_block(
-    uint32_t in_dims[2], uint32_t input_channels, // Input dimensions
-    uint32_t kernel_size,
-    uint32_t stride,          // DWise Covolution parameters
-    uint32_t output_channels, // 1x1 Convolution parameters
-    uint8_t t_pad,
-    uint8_t b_pad,
-    uint8_t l_pad,
-    uint8_t r_pad,
-    qdtype *I,
-    qdtype *F_dw,
-    qdtype *F_1x1,
-    qdtype *O_intermediate,
-    qdtype *O)
-{
-
-    DepthwiseConv2D<dtype, qdtype >(2, kernel_size, stride, t_pad, b_pad, l_pad, r_pad, input_channels, in_dims[0], in_dims[1], I, F_dw, O_intermediate);
-    uint32_t o_h = output_dim(in_dims[0] + t_pad + b_pad, stride, kernel_size);
-    uint32_t o_w = output_dim(in_dims[1] + l_pad + r_pad, stride, kernel_size);
-    ReLUActivation<dtype, qdtype>(1, input_channels, o_h, o_w, O_intermediate, O_intermediate);
-    Conv2D<dtype, qdtype>(0, 1, 1, 0, 0, 0, 0, output_channels, input_channels, o_h, o_w, O_intermediate, F_1x1, O);
-    ReLUActivation<dtype, qdtype>(1, output_channels, o_h, o_w, O, O);
-}
 
 #define REDUCTION_C(layer_num) layer_params[layer_num][0]
 #define GROUP_C(layer_num) layer_params[layer_num][1]
@@ -108,14 +61,71 @@ inline void dscnn_block(
 #define INPUT_NUMEL(layer_num) \
     (O_HEIGHT(layer_num) * O_WIDTH(layer_num) * GROUP_C(layer_num - 1) * GROUPS(layer_num - 1))
 
-qdtype *model_inference(uint32_t layer_num_total, uint16_t layer_params[30][10], uint32_t intermediate_dims[30][2], qdtype *filter_ptrs, qdtype *input_dc, qdtype *inter_0_dc, qdtype *inter_1_dc)
+//****************************************************************************
+// The output of the block is stored in O
+//
+inline void dscnn_block(
+    uint32_t in_dims[2], uint32_t input_channels, // Input dimensions
+    uint32_t kernel_size,
+    uint32_t stride,
+    uint32_t output_channels,
+    uint8_t t_pad,
+    uint8_t b_pad,
+    uint8_t l_pad,
+    uint8_t r_pad,
+    small::QUInt8Buffer const &I,
+    small::QUInt8Buffer const &F_dw,
+    small::QUInt8Buffer const &F_1x1,
+    small::QUInt8Buffer       &O_intermediate,
+    small::QUInt8Buffer       &O)
 {
-    int layer_num = 0;
+    small::DepthwiseConv2D(kernel_size, stride,
+                           t_pad, b_pad, l_pad, r_pad,
+                           input_channels,
+                           in_dims[0], in_dims[1],
+                           I, F_dw, O_intermediate);
 
+    uint32_t o_h = small::output_dim(in_dims[0] + t_pad + b_pad,
+                                     stride, kernel_size);
+    uint32_t o_w = small::output_dim(in_dims[1] + l_pad + r_pad,
+                                     stride, kernel_size);
+
+    small::ReLUActivation(input_channels,
+                          o_h, o_w,
+                          O_intermediate, O_intermediate);
+    small::Conv2D(1, 1,
+                  0, 0, 0, 0,
+                  output_channels, input_channels,
+                  o_h, o_w,
+                  O_intermediate, F_1x1, O);
+    small::ReLUActivation(output_channels, o_h, o_w, O, O);
+}
+
+//****************************************************************************
+small::QUInt8Buffer &
+model_inference(uint32_t layer_num_total,
+                uint16_t layer_params[30][10],
+                uint32_t intermediate_dims[30][2],
+                small::QUInt8Buffer      **filter_buf_ptrs,
+                small::QUInt8Buffer const &input_dc,
+                small::QUInt8Buffer       &inter_0_dc,
+                small::QUInt8Buffer       &inter_1_dc)
+{
+    auto layer_num = 0;
     int num_filters = layer_num_total - 1;
-    Conv2D_rect<dtype, qdtype>(0, REDUCTION_H(layer_num), REDUCTION_W(layer_num), STRIDE(layer_num), PADDING(layer_num), GROUP_C(layer_num), REDUCTION_C(layer_num), I_HEIGHT(layer_num), I_WIDTH(layer_num), input_dc, &filter_ptrs[layer_num], inter_0_dc);
+    small::Conv2D_rect(REDUCTION_H(layer_num), REDUCTION_W(layer_num),
+                       STRIDE(layer_num), PADDING(layer_num),
+                       GROUP_C(layer_num), REDUCTION_C(layer_num),
+                       I_HEIGHT(layer_num), I_WIDTH(layer_num),
+                       input_dc,
+                       *filter_buf_ptrs[layer_num],
+                       inter_0_dc);
+
     layer_num++;
-    ReLUActivation<dtype, qdtype>(1, GROUP_C(0), I_HEIGHT(layer_num), I_WIDTH(layer_num), inter_0_dc, inter_0_dc);
+    small::ReLUActivation(GROUP_C(0),
+                          I_HEIGHT(layer_num), I_WIDTH(layer_num),
+                          inter_0_dc,
+                          inter_0_dc);
 
     auto ds_blocks = 4;
     for (int ds_layer = 0; ds_layer < ds_blocks; ds_layer++)
@@ -123,43 +133,53 @@ qdtype *model_inference(uint32_t layer_num_total, uint16_t layer_params[30][10],
         dscnn_block(
             intermediate_dims[layer_num], GROUPS(layer_num), // Input dimensions
             REDUCTION_HW(layer_num),
-            STRIDE(layer_num),      // DWise Covolution parameters
-            GROUP_C(layer_num + 1), // 1x1 Convolution parameters
+            STRIDE(layer_num),
+            GROUP_C(layer_num + 1),
             PADDING(layer_num),
             inter_0_dc,
-            &filter_ptrs[layer_num],
-            &filter_ptrs[layer_num + 1],
+            *filter_buf_ptrs[layer_num],
+            *filter_buf_ptrs[layer_num + 1],
             inter_1_dc,
             inter_0_dc);
         layer_num += 2;
     }
+
     layer_num = layer_num_total - 2;
-    MaxPool2D_rect<dtype, qdtype>(0, REDUCTION_H(layer_num), REDUCTION_W(layer_num), STRIDE(layer_num), PADDING(layer_num), GROUPS(layer_num), I_HEIGHT(layer_num), I_WIDTH(layer_num), inter_0_dc, inter_1_dc);
+    small::MaxPool2D_rect(REDUCTION_H(layer_num), REDUCTION_W(layer_num),
+                          STRIDE(layer_num), PADDING(layer_num),
+                          GROUPS(layer_num),
+                          I_HEIGHT(layer_num), I_WIDTH(layer_num),
+                          inter_0_dc,
+                          inter_1_dc);
+
     layer_num++;
-    Conv2D<dtype, qdtype>(0, 1, 1, 0, 0, 0, 0, GROUP_C(layer_num), REDUCTION_C(layer_num), 1, 1, inter_1_dc, &filter_ptrs[num_filters - 1], inter_0_dc);
+    small::Conv2D(1, 1,
+                  0, 0, 0, 0,
+                  GROUP_C(layer_num), REDUCTION_C(layer_num),
+                  1, 1,
+                  inter_1_dc,
+                  *filter_buf_ptrs[num_filters - 1],
+                  inter_0_dc);
 
     return inter_0_dc;
 }
-
 
 //****************************************************************************
 //****************************************************************************
 void inference()
 {
-    int C_i = 3;
-
+    uint32_t C_i = 3;
     uint32_t N = 49;
     uint32_t M = 10;
+    uint32_t num_classes = 16;  // must be a multiple of 16
 
-    int num_classes = 16;
-
-    //Create input tensor
-    uint32_t input_dimensions = C_i*N*M;
-    dtype *input_dc = (dtype *) alloc<dtype>(input_dimensions);
+    // Create input tensor
+    uint32_t input_dimensions = C_i * N * M;
+    small::QUInt8Buffer input_dc(input_dimensions);
     init(input_dc, input_dimensions);
-    qdtype q_input;
-    quantized_init(&q_input, input_dimensions);
-    q_input.tensor = input_dc;
+    input_dc.quantized_init(); /// @todo Move to buffer constructor?
+
+    // ================================================
 
     uint16_t layer_params[30][10] = {1};
     uint32_t intermediate_dims[30][2];
@@ -174,29 +194,33 @@ void inference()
     intermediate_dims[layer_num][1] = N;
 
     // conv
-    REDUCTION_C(layer_num) = C_i; // input channels
-    GROUP_C(layer_num) = 64;      // output channels
+    REDUCTION_C(layer_num) = C_i;
+    GROUP_C(layer_num) = 64;
     GROUPS(layer_num) = 1;
-    REDUCTION_H(layer_num) = 3; // kernel size
-    REDUCTION_W(layer_num) = 1; //
-    STRIDE(layer_num) = 2;      // stride
-    CALC_PADDING(I_HEIGHT(layer_num), REDUCTION_H(layer_num), STRIDE(layer_num), t_pad, b_pad);
-    CALC_PADDING(I_WIDTH(layer_num), REDUCTION_W(layer_num), STRIDE(layer_num), l_pad, r_pad);
-    SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad)
+    REDUCTION_H(layer_num) = 3;
+    REDUCTION_W(layer_num) = 1;
+    STRIDE(layer_num) = 2;
+    small::calc_padding(I_HEIGHT(layer_num), REDUCTION_H(layer_num),
+                        STRIDE(layer_num), t_pad, b_pad);
+    small::calc_padding(I_WIDTH(layer_num),  REDUCTION_W(layer_num),
+                        STRIDE(layer_num), l_pad, r_pad);
+    SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad);
+    /// @todo non-quantized overrides padding to 1, 1, 1, 1 here
     layer_num++; // 1
 
     intermediate_dims[layer_num][0] = 5;
     intermediate_dims[layer_num][1] = 25;
 
     auto inter_dim = INPUT_NUMEL(layer_num);
-    max_numel_inter_0 = (inter_dim > max_numel_inter_0)? inter_dim : max_numel_inter_0;
+    max_numel_inter_0 =
+        (inter_dim > max_numel_inter_0) ? inter_dim : max_numel_inter_0;
     auto ds_blocks = 4;
 
-    int layer_strides[] = {1, 1, 1, 1};
+    const int layer_strides[] = {1, 1, 1, 1};
     // dwise 1
     for (int ds_layer = 0; ds_layer < ds_blocks; ds_layer++)
     {
-        auto channel_multiplier = layer_strides[ds_layer];
+        int channel_multiplier = layer_strides[ds_layer];
 
         REDUCTION_C(layer_num) = 1; // input channels
         GROUP_C(layer_num) = 1;
@@ -204,15 +228,19 @@ void inference()
         REDUCTION_HW(layer_num) = 3;                 // kernel size
         REDUCTION_W(layer_num) = 3;
         STRIDE(layer_num) = layer_strides[ds_layer]; // stride
-        CALC_PADDING(I_HEIGHT(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), t_pad, b_pad);
-        CALC_PADDING(I_WIDTH(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), l_pad, r_pad);
+        small::calc_padding(I_HEIGHT(layer_num), REDUCTION_HW(layer_num),
+                            STRIDE(layer_num), t_pad, b_pad);
+        small::calc_padding(I_WIDTH(layer_num),  REDUCTION_HW(layer_num),
+                            STRIDE(layer_num), l_pad, r_pad);
         SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad)
+
         layer_num++; // 2
         intermediate_dims[layer_num][0] = O_WIDTH(layer_num);
         intermediate_dims[layer_num][1] = O_HEIGHT(layer_num);
 
         inter_dim = INPUT_NUMEL(layer_num);
-        max_numel_inter_1 = (inter_dim > max_numel_inter_1) ? inter_dim : max_numel_inter_1;
+        max_numel_inter_1 =
+            (inter_dim > max_numel_inter_1) ? inter_dim : max_numel_inter_1;
         REDUCTION_C(layer_num) = GROUPS(layer_num - 1);
         GROUP_C(layer_num) = (GROUPS(layer_num - 1)) * channel_multiplier;
         GROUPS(layer_num) = 1;
@@ -220,9 +248,11 @@ void inference()
         REDUCTION_W(layer_num) = 1;
         STRIDE(layer_num) = 1;
         SET_PADDING(layer_num, 0, 0, 0, 0)
+
         layer_num++; // 3
         inter_dim = INPUT_NUMEL(layer_num);
-        max_numel_inter_0 = (inter_dim > max_numel_inter_0) ? inter_dim : max_numel_inter_0;
+        max_numel_inter_0 =
+            (inter_dim > max_numel_inter_0) ? inter_dim : max_numel_inter_0;
         intermediate_dims[layer_num][0] = O_WIDTH(layer_num);
         intermediate_dims[layer_num][1] = O_HEIGHT(layer_num);
     }
@@ -243,57 +273,82 @@ void inference()
     GROUPS(layer_num) = 1;
     REDUCTION_HW(layer_num) = 1;
     STRIDE(layer_num) = 1;
-    SET_PADDING(layer_num, 0, 0, 0, 0)
+    SET_PADDING(layer_num, 0, 0, 0, 0);
     layer_num++;
 
-    auto layer_num_total = layer_num;
-    auto num_filters = layer_num_total - 1;
+    size_t layer_num_total = layer_num;
+    size_t num_filters = layer_num_total - 1;
 
     //  Copy layer weights to temporaries
-    qdtype q_filter_ptrs[30];
-    for (int l = 0; l < num_filters-1; l++) {
-        dtype *filter_ptr;
-        uint32_t filter_dimensions = REDUCTION_H(l) * REDUCTION_W(l) * REDUCTION_C(l) * GROUP_C(l) * GROUPS(l);
-        filter_ptr = (dtype *) alloc<dtype>(filter_dimensions);
-        init(filter_ptr, filter_dimensions);
-        quantized_init(&q_filter_ptrs[l], filter_dimensions);
-        q_filter_ptrs[l].tensor = filter_ptr;
+    small::QUInt8Buffer *filter_buf_ptrs[30];
+
+    for (size_t l = 0; l < num_filters - 1; l++)
+    {
+        uint32_t filter_dimensions =
+            REDUCTION_H(l) * REDUCTION_W(l) * REDUCTION_C(l) *
+            GROUP_C(l) * GROUPS(l);
+
+        small::QUInt8Buffer *filter_buf_ptr =
+            small::alloc_buffer(filter_dimensions);
+        init(*filter_buf_ptr, filter_dimensions);
+        filter_buf_ptr->quantized_init(); /// @todo Move to buffer constructor?
+        filter_buf_ptrs[l] = filter_buf_ptr;
     }
 
-    uint32_t filter_dimensions = REDUCTION_C(layer_num_total-1) * GROUP_C(layer_num_total -1);
-    dtype *filter_fc_dc = (dtype *) alloc<dtype>(filter_dimensions);
-    init(filter_fc_dc, filter_dimensions);
-    quantized_init(&q_filter_ptrs[num_filters - 1], filter_dimensions);
-    q_filter_ptrs[num_filters - 1].tensor = filter_fc_dc;
+    uint32_t filter_dimensions =
+        REDUCTION_C(layer_num_total - 1) * GROUP_C(layer_num_total - 1);
+    small::QUInt8Buffer *filter_fc_dc_ptr =
+        small::alloc_buffer(filter_dimensions);
+    init(*filter_fc_dc_ptr, filter_dimensions);
+    filter_fc_dc_ptr->quantized_init(); /// @todo Move to buffer constructor?
+    filter_buf_ptrs[num_filters - 1] = filter_fc_dc_ptr;
 
-    dtype *inter_0_dc = (dtype *) alloc<dtype>(max_numel_inter_0*4);
-    dtype *inter_1_dc = (dtype *) alloc<dtype>(max_numel_inter_1*4);
-    qdtype *output;
+    // allocate space for intermediate outputs
+    // (use the max sizes calculated previously)
+    small::QUInt8Buffer inter_0_dc(max_numel_inter_0*4);
+    small::QUInt8Buffer inter_1_dc(max_numel_inter_1*4);
 
-    qdtype q_inter_0;
-    quantized_init(&q_inter_0, max_numel_inter_0);
-    q_inter_0.tensor = inter_0_dc;
+    inter_0_dc.quantized_init(); /// @todo Move to buffer constructor?
+    inter_1_dc.quantized_init(); /// @todo Move to buffer constructor?
 
-    qdtype q_inter_1;
-    quantized_init(&q_inter_1, max_numel_inter_1);
-    q_inter_1.tensor = inter_1_dc;
-    output = model_inference(layer_num_total, layer_params, intermediate_dims, &(q_filter_ptrs[0]), &q_input, &q_inter_0, &q_inter_1);
+    auto &output =
+        model_inference(layer_num_total, layer_params, intermediate_dims,
+                        filter_buf_ptrs,
+                        input_dc,
+                        inter_0_dc,
+                        inter_1_dc);
 
-    #ifdef NANO33BLE
+#ifdef NANO33BLE
     mbed::Timer t;
     t.start();
-    for (int r = 0; r < RUNS; r++) {
-        output = model_inference(layer_num_total, layer_params, intermediate_dims, &(q_filter_ptrs[0]), &q_input, &q_inter_0, &q_inter_1);
+    for (int r = 0; r < RUNS; r++)
+    {
+        //auto &output =
+            model_inference(layer_num_total, layer_params, intermediate_dims,
+                            filter_buf_ptrs,
+                            input_dc,
+                            inter_0_dc,
+                            inter_1_dc);
     }
     t.stop();
     Serial.println(t.elapsed_time().count());
 #else
-    for (int i = 0; i < num_classes; i++)
+    for (size_t ix = 0; ix < num_classes; ix++)
     {
-        printf("%d ", output->tensor[i]);
+        printf("Output class %ld result: %d\n", ix, output[ix]);
     }
-    printf("\n");
-
 #endif
-    free_all();
+
+    small::detail::free_all();
 }
+
+//****************************************************************************
+/// @todo For non-arduino platforms.  ... move to driver.cpp?
+//****************************************************************************
+// #ifndef NANO33BLE
+// int main()
+// {
+//     inference();
+//     return 0;
+// }
+// #endif
