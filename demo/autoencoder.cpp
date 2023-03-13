@@ -282,8 +282,10 @@ void inference()
 //****************************************************************************
 // For non-arduino platforms.  ... move to driver.cpp?
 //****************************************************************************
+#ifndef NANO33BLE
 int main()
 {
     inference();
     return 0;
 }
+#endif

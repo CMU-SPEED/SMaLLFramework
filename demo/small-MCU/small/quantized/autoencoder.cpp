@@ -32,24 +32,26 @@
 #define PARALLEL 0
 #endif
 
-#define PREFETCH 1
+//#define PREFETCH 1
 
-#define H_TILE 0
-#define POOLING 1
+//#define H_TILE 0
+//#define POOLING 1
 
 
-#define LIMIT 1e-2
+//#define LIMIT 1e-2
 
-#define CONV 0
-#define PARTIAL_CONV 1 // under development
-#define DW_CONV 2      // under development
-#define GROUP_CONV 3   // under development
-#define POOL 4
-#define RELU 5
+//#define CONV 0
+//#define PARTIAL_CONV 1 // under development
+//#define DW_CONV 2      // under development
+//#define GROUP_CONV 3   // under development
+//#define POOL 4
+//#define RELU 5
 
-#ifndef LAYER
-#define LAYER DW_CONV
-#endif
+//#ifndef LAYER
+//#define LAYER DW_CONV
+//#endif
+
+//****************************************************************************
 
 #define REDUCTION_C(layer_num) layer_params[layer_num][0]
 #define GROUP_C(layer_num) layer_params[layer_num][1]
@@ -91,7 +93,7 @@ small::QUInt8Buffer &model_inference(
     uint16_t layer_params[30][10],
     //qdtype *filter_ptrs,
     //std::vector<small::QUInt8Buffer*> const &filter_buf_ptrs,
-    small::QUInt8Buffer      **filter_buf_ptrs, /// @todo make const
+    small::QUInt8Buffer     **filter_buf_ptrs, /// @todo make const
     small::QUInt8Buffer const &input_dc,
     small::QUInt8Buffer       &inter_0_dc,
     small::QUInt8Buffer       &inter_1_dc)
@@ -208,7 +210,7 @@ void inference()
     // Direct Convolution Setup
     for (uint32_t l = 0; l < layer_num_total; l++)
     {
-        //dtype *filter_ptr;
+        // dtype *filter_ptr;
         uint32_t filter_dimensions =
             REDUCTION_HW(l) * REDUCTION_HW(l) * REDUCTION_C(l) *
             GROUP_C(l) * GROUPS(l);
@@ -262,8 +264,17 @@ void inference()
     {
         printf("Output class %d result: %d\n", ix, output[ix]);
     }
-    printf("\n");
-
 #endif
     small::detail::free_all();
 }
+
+//****************************************************************************
+/// @todo For non-arduino platforms.  ... move to driver.cpp?
+//****************************************************************************
+// #ifndef NANO33BLE
+// int main()
+// {
+//     inference();
+//     return 0;
+// }
+// #endif

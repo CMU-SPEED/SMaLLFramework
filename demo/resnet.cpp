@@ -16,16 +16,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <climits>
-// #include <vector>
-// #include <string>
-// #include <fstream>
-// #include <algorithm> // std::min_element
-// #include <iterator>
-// #include <array>
-// #include <iostream>
-// // #include <functional>
-// #include <numeric>
 
 
 #include <small.h>
@@ -41,25 +31,51 @@
 
 #define PREFETCH 1
 
-#define H_TILE 0
-#define POOLING 1
+//#define H_TILE 0
+//#define POOLING 1
 
+//#define LIMIT 1e-2
 
-#define LIMIT 1e-2
+//#define CONV 0
+//#define PARTIAL_CONV 1 // under development
+//#define DW_CONV 2      // under development
+//#define GROUP_CONV 3   // under development
+//#define POOL 4
+//#define RELU 5
 
-#define CONV 0
-#define PARTIAL_CONV 1 // under development
-#define DW_CONV 2      // under development
-#define GROUP_CONV 3   // under development
-#define POOL 4
-#define RELU 5
-
-#ifndef LAYER
-#define LAYER DW_CONV
-#endif
+//#ifndef LAYER
+//#define LAYER DW_CONV
+//#endif
 
 /// @todo lift float out and replace with dtype or ScalarT
 /// @todo the merged code used dtype instead of float
+
+//****************************************************************************
+
+#define REDUCTION_C(layer_num) layer_params[layer_num][0]
+#define GROUP_C(layer_num) layer_params[layer_num][1]
+#define GROUPS(layer_num) layer_params[layer_num][2]
+#define REDUCTION_HW(layer_num) layer_params[layer_num][3]
+#define STRIDE(layer_num) layer_params[layer_num][4]
+#define TYPE(layer_num) layer_params[layer_num][9]
+
+#define SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad) layer_params[layer_num][5] = t_pad, layer_params[layer_num][6] = b_pad, layer_params[layer_num][7] = l_pad, layer_params[layer_num][8] = r_pad;
+#define PADDING(layer_num) layer_params[layer_num][5], layer_params[layer_num][6], layer_params[layer_num][7], layer_params[layer_num][8]
+
+#define PADDING_TORCH(layer_num) layer_params[layer_num][7], layer_params[layer_num][8], layer_params[layer_num][5], layer_params[layer_num][6]
+
+#define I_WIDTH(layer_num) intermediate_dims[layer_num][0]
+#define I_HEIGHT(layer_num) intermediate_dims[layer_num][1]
+
+#define O_HEIGHT(layer_num) (((I_HEIGHT(layer_num - 1) + layer_params[layer_num - 1][5] + layer_params[layer_num - 1][6]) - REDUCTION_HW(layer_num - 1)) / STRIDE(layer_num - 1) + 1)
+#define O_WIDTH(layer_num) (((I_WIDTH(layer_num - 1) + layer_params[layer_num - 1][7] + layer_params[layer_num - 1][8]) - REDUCTION_HW(layer_num - 1)) / STRIDE(layer_num - 1) + 1)
+
+#define OUTPUT_DIMS(layer_num)                  \
+    {                                           \
+        O_HEIGHT(layer_num), O_WIDTH(layer_num) \
+    }
+#define INPUT_NUMEL(layer_num) \
+    (O_HEIGHT(layer_num) * O_WIDTH(layer_num) * GROUP_C(layer_num - 1) * GROUPS(layer_num - 1))
 
 //****************************************************************************
 // The output of the block is stored in O
@@ -106,7 +122,8 @@ inline void resnet_block(
         small::Conv2D(1, stride,
                       0, 0, 0, 0,
                       output_channels, input_channels,
-                      in_dims[0], in_dims[1], I, F_conv_1x1, O);
+                      in_dims[0], in_dims[1],
+                      I, F_conv_1x1, O);
     }
 
     small::PartialConv2D(kernel_size, 1,
@@ -156,6 +173,7 @@ inline void resnet_block(
                           o_h, o_w,
                           O_intermediate, O_intermediate);
 
+    /// @todo Should this really be Partial Conv2D if no 1x1?
     small::PartialConv2D(kernel_size, 1,
                          t_pad_1, b_pad_1, l_pad_1, r_pad_1,
                          output_channels, output_channels,
@@ -164,39 +182,11 @@ inline void resnet_block(
     small::ReLUActivation(output_channels, o_h, o_w, O, O);
 }
 
-#define REDUCTION_C(layer_num) layer_params[layer_num][0]
-#define GROUP_C(layer_num) layer_params[layer_num][1]
-#define GROUPS(layer_num) layer_params[layer_num][2]
-#define REDUCTION_HW(layer_num) layer_params[layer_num][3]
-#define STRIDE(layer_num) layer_params[layer_num][4]
-#define TYPE(layer_num) layer_params[layer_num][9]
-
-#define SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad) layer_params[layer_num][5] = t_pad, layer_params[layer_num][6] = b_pad, layer_params[layer_num][7] = l_pad, layer_params[layer_num][8] = r_pad;
-#define PADDING(layer_num) layer_params[layer_num][5], layer_params[layer_num][6], layer_params[layer_num][7], layer_params[layer_num][8]
-
-#define PADDING_TORCH(layer_num) layer_params[layer_num][7], layer_params[layer_num][8], layer_params[layer_num][5], layer_params[layer_num][6]
-
-#define I_WIDTH(layer_num) intermediate_dims[layer_num][0]
-#define I_HEIGHT(layer_num) intermediate_dims[layer_num][1]
-
-#define O_HEIGHT(layer_num) (((I_HEIGHT(layer_num - 1) + layer_params[layer_num - 1][5] + layer_params[layer_num - 1][6]) - REDUCTION_HW(layer_num - 1)) / STRIDE(layer_num - 1) + 1)
-#define O_WIDTH(layer_num) (((I_WIDTH(layer_num - 1) + layer_params[layer_num - 1][7] + layer_params[layer_num - 1][8]) - REDUCTION_HW(layer_num - 1)) / STRIDE(layer_num - 1) + 1)
-
-#define OUTPUT_DIMS(layer_num)                  \
-    {                                           \
-        O_HEIGHT(layer_num), O_WIDTH(layer_num) \
-    }
-#define INPUT_NUMEL(layer_num) \
-    (O_HEIGHT(layer_num) * O_WIDTH(layer_num) * GROUP_C(layer_num - 1) * GROUPS(layer_num - 1))
-
-
 //****************************************************************************
-/// @todo Switch to Buffer<dtype>
-//dtype *
 small::FloatBuffer &
 model_inference(uint32_t layer_num_total,
-                uint16_t layer_params[30][10],      ///@todo use vector<array<uint16_t, 10>>?
-                uint32_t intermediate_dims[30][2],  ///@todo use vector<array<uint32_t, 2>>?
+                uint16_t layer_params[30][10],
+                uint32_t intermediate_dims[30][2],
                 std::vector<small::FloatBuffer *> const &filter_buf_ptrs, //dtype *filter_ptrs[30],
                 small::FloatBuffer const &input_dc,   //dtype *input_dc,
                 small::FloatBuffer       &inter_0_dc, //dtype *inter_0_dc,
@@ -220,7 +210,7 @@ model_inference(uint32_t layer_num_total,
 
     resnet_block(intermediate_dims[layer_num], REDUCTION_C(layer_num), // Input dimensions
                  REDUCTION_HW(layer_num),
-                 STRIDE(layer_num),         // Params for the first convolution
+                 STRIDE(layer_num),
                  GROUP_C(layer_num),
                  PADDING(layer_num),
                  PADDING(layer_num + 1),
@@ -271,11 +261,13 @@ model_inference(uint32_t layer_num_total,
                   inter_1_dc,
                   *filter_buf_ptrs[num_filters - 1],  /// @todo was *filter_buf_ptrs[layer_num_total - 1]
                   inter_0_dc);
+
     return inter_0_dc;
 }
 
 //****************************************************************************
-int main()
+//****************************************************************************
+void inference()
 {
     int C_i = 3;
     uint32_t N = 32;
@@ -287,37 +279,39 @@ int main()
     //dtype *input_dc = alloc<dtype>(input_dimensions);
     init(input_dc, input_dimensions);
 
-    // calculate total number of weight elements
-    //uint32_t total_num_weights = 0;
-    // int layer_num = 0;
+    // ================================================
+
     uint16_t layer_params[30][10] = {1};
     uint32_t intermediate_dims[30][2];
 
     uint8_t t_pad, b_pad, r_pad, l_pad;
 
     // Set up model parameters
+    int layer_num = 0;
     uint32_t max_numel_inter_0 = 0, max_numel_inter_1 = 0;
 
-    intermediate_dims[0][0] = M;
-    intermediate_dims[0][1] = N;
+    intermediate_dims[layer_num][0] = M;
+    intermediate_dims[layer_num][1] = N;
 
     // conv
-    REDUCTION_C(0) = C_i; // input channels
-    GROUP_C(0) = 16;      // output channels
-    GROUPS(0) = 1;
-    REDUCTION_HW(0) = 3; // kernel size
-    STRIDE(0) = 1;       // stride
-    small::calc_padding(I_HEIGHT(0), REDUCTION_HW(0), STRIDE(0), t_pad, b_pad);
-    small::calc_padding(I_WIDTH(0),  REDUCTION_HW(0), STRIDE(0), l_pad, r_pad);
-    SET_PADDING(0, t_pad, b_pad, l_pad, r_pad);
+    REDUCTION_C(layer_num) = C_i; // input channels
+    GROUP_C(layer_num) = 16;      // output channels
+    GROUPS(layer_num) = 1;
+    REDUCTION_HW(layer_num) = 3; // kernel size
+    STRIDE(layer_num) = 1;       // stride
+    small::calc_padding(I_HEIGHT(layer_num), REDUCTION_HW(layer_num),
+                        STRIDE(layer_num), t_pad, b_pad);
+    small::calc_padding(I_WIDTH(layer_num),  REDUCTION_HW(layer_num),
+                        STRIDE(layer_num), l_pad, r_pad);
+    SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad);
+    layer_num++; // 1
 
-    intermediate_dims[1][0] = O_WIDTH(1);
-    intermediate_dims[1][1] = O_HEIGHT(1);
-    auto inter_dim = INPUT_NUMEL(1);
+    intermediate_dims[layer_num][0] = O_WIDTH(layer_num);
+    intermediate_dims[layer_num][1] = O_HEIGHT(layer_num);
+    auto inter_dim = INPUT_NUMEL(layer_num);
     max_numel_inter_0 =
         (inter_dim > max_numel_inter_0) ? inter_dim : max_numel_inter_0;
 
-    int layer_num = 1;
     // common set up for model architecture
     auto resnet_blocks = 3;
     int layer_strides[] = {1, 2, 2};
@@ -343,7 +337,8 @@ int main()
         intermediate_dims[layer_num][1] = O_HEIGHT(layer_num);
 
         inter_dim = INPUT_NUMEL(layer_num);
-        max_numel_inter_1 = (inter_dim > max_numel_inter_1) ? inter_dim : max_numel_inter_1;
+        max_numel_inter_1 =
+            (inter_dim > max_numel_inter_1) ? inter_dim : max_numel_inter_1;
 
         REDUCTION_C(layer_num) = GROUP_C(layer_num - 1);
         GROUP_C(layer_num) = GROUP_C(layer_num - 1);
@@ -357,10 +352,11 @@ int main()
         SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad);
         layer_num++; // 3,5,8
         inter_dim = INPUT_NUMEL(layer_num);
-        max_numel_inter_0 = (inter_dim > max_numel_inter_0) ? inter_dim : max_numel_inter_0;
+        max_numel_inter_0 =
+            (inter_dim > max_numel_inter_0) ? inter_dim : max_numel_inter_0;
+
         if (channel_multiplier != 1)
         {
-
             intermediate_dims[layer_num][0] = O_WIDTH(layer_num - 2);
             intermediate_dims[layer_num][1] = O_HEIGHT(layer_num - 2);
             REDUCTION_C(layer_num) = in_channels; // input channels
@@ -371,7 +367,8 @@ int main()
             SET_PADDING(layer_num, 0, 0, 0, 0);
             layer_num++; // 6,9
             inter_dim = INPUT_NUMEL(layer_num);
-            max_numel_inter_0 = (inter_dim > max_numel_inter_0) ? inter_dim : max_numel_inter_0;
+            max_numel_inter_0 =
+                (inter_dim > max_numel_inter_0) ? inter_dim : max_numel_inter_0;
         }
         intermediate_dims[layer_num][0] = O_WIDTH(layer_num);
         intermediate_dims[layer_num][1] = O_HEIGHT(layer_num);
@@ -423,18 +420,14 @@ int main()
     /// @todo replace float with dtype
     std::vector<small::FloatBuffer *> filter_buf_ptrs;
 
-    // torch::Tensor weights;
-    for (uint32_t l = 0; l < num_filters-1; l++)
+    for (uint32_t l = 0; l < num_filters - 1; l++)
     {
-        //float *filter_ptr;
-        // weights = layers[l]->weight; // conv_1x1->weight;
         uint32_t filter_dimensions =
-            REDUCTION_HW(l) * REDUCTION_HW(l) * REDUCTION_C(l) * GROUP_C(l) * GROUPS(l);
+            REDUCTION_HW(l) * REDUCTION_HW(l) * REDUCTION_C(l) *
+            GROUP_C(l) * GROUPS(l);
 
-        // TODO: replace float with dtype
         small::FloatBuffer *filter_buf_ptr =
-            new small::FloatBuffer(filter_dimensions);
-        //float *filter_ptr = alloc(filter_dimensions);
+            small::alloc_buffer(filter_dimensions);
         init(*filter_buf_ptr, filter_dimensions);
         filter_buf_ptrs.push_back(filter_buf_ptr);
     }
@@ -442,13 +435,13 @@ int main()
     uint32_t filter_dimensions =
         GROUP_C(layer_num_total - 1) * REDUCTION_C(layer_num_total - 1);
     small::FloatBuffer *filter_fc_dc_ptr =
-        new small::FloatBuffer(filter_dimensions);
+        small::alloc_buffer(filter_dimensions);
     init(*filter_fc_dc_ptr, filter_dimensions);
     filter_buf_ptrs.push_back(filter_fc_dc_ptr);
     /// @todo assert(filter_buf_ptrs.size() == num_filters)
 
-    // copy input
-    // allocate space for intermediate outputs (use the max sizes calculated previously)
+    // allocate space for intermediate outputs
+    // (use the max sizes calculated previously)
     /// @todo float->dtype
     small::FloatBuffer inter_0_dc(max_numel_inter_0);
     small::FloatBuffer inter_1_dc(max_numel_inter_1);
@@ -459,7 +452,7 @@ int main()
     //dtype *output_dc;
 
     // NOTE: output_dc refers to inter_0_dc on return
-    //small::FloatBuffer &output_dc =
+    //auto &output_dc =
         model_inference(layer_num_total, layer_params, intermediate_dims,
                         filter_buf_ptrs,
                         input_dc,
@@ -474,7 +467,7 @@ int main()
     {
         // t0 = rdtsc();
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
-        //small::FloatBuffer &output_dc =
+        //auto &output_dc =
             model_inference(layer_num_total, layer_params, intermediate_dims,
                             filter_buf_ptrs,
                             input_dc,
@@ -499,3 +492,14 @@ int main()
         delete filter_buf_ptrs[l];
     }
 }
+
+//****************************************************************************
+// For non-arduino platforms.  ... move to driver.cpp?
+//****************************************************************************
+#ifndef NANO33BLE
+int main()
+{
+    inference();
+    return 0;
+}
+#endif
