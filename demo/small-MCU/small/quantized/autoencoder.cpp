@@ -91,7 +91,7 @@ small::QUInt8Buffer &model_inference(
     uint16_t layer_params[30][10],
     //qdtype *filter_ptrs,
     //std::vector<small::QUInt8Buffer*> const &filter_buf_ptrs,
-    small::QUInt8Buffer const *filter_buf_ptrs,
+    small::QUInt8Buffer      **filter_buf_ptrs, /// @todo make const
     small::QUInt8Buffer const &input_dc,
     small::QUInt8Buffer       &inter_0_dc,
     small::QUInt8Buffer       &inter_1_dc)
@@ -102,7 +102,7 @@ small::QUInt8Buffer &model_inference(
                   GROUP_C(layer_num), REDUCTION_C(layer_num),
                   1, 1,
                   input_dc,
-                  *filter_buf_ptrs[layer_num],
+                  *(filter_buf_ptrs[layer_num]),
                   inter_0_dc);
 
     small::ReLUActivation(GROUP_C(layer_num),
@@ -117,7 +117,7 @@ small::QUInt8Buffer &model_inference(
                       GROUP_C(layer_num), REDUCTION_C(layer_num),
                       1, 1,
                       inter_0_dc,
-                      *filter_buf_ptrs[layer_num],
+                      *(filter_buf_ptrs[layer_num]),
                       inter_1_dc); //out_inter_dc);
 
         small::ReLUActivation(GROUP_C(layer_num),
@@ -202,7 +202,7 @@ void inference()
     intermediate_dims[layer_num][0] = O_WIDTH(layer_num);
     intermediate_dims[layer_num][1] = O_HEIGHT(layer_num);
 
-    QUInt8Buffer *filter_buf_ptrs[30];
+    small::QUInt8Buffer *filter_buf_ptrs[30];
     //qdtype q_filter_ptrs[30];
 
     // Direct Convolution Setup
@@ -220,8 +220,8 @@ void inference()
     }
 
     // allocating class on stack and data on 'heap'
-    QUInt8Buffer inter_0_dc(max_numel_inter0*4); // potential alignment issues
-    QUInt8Buffer inter_1_dc(max_numel_inter1*4);
+    small::QUInt8Buffer inter_0_dc(max_numel_inter_0*4); // potential alignment issues
+    small::QUInt8Buffer inter_1_dc(max_numel_inter_1*4);
     //dtype *inter_0_dc = (dtype *)(dtype *) alloc<dtype>(max_numel_inter_0*4);
     //dtype *inter_1_dc = (dtype *)(dtype *) alloc<dtype>(max_numel_inter_1*4);
     //qdtype *output;
@@ -238,7 +238,7 @@ void inference()
 
     auto &output =
         model_inference(layer_num_total, layer_params,
-                        &(filter_buf_ptrs[0]),
+                        filter_buf_ptrs,
                         input_dc,
                         inter_0_dc,
                         inter_1_dc);
@@ -250,7 +250,7 @@ void inference()
     {
         //auto &output =
             model_inference(layer_num_total, layer_params,
-                            &(filter_buf_ptrs[0]),
+                            filter_buf_ptrs,
                             input_dc,
                             inter_0_dc,
                             inter_1_dc);
@@ -265,5 +265,5 @@ void inference()
     printf("\n");
 
 #endif
-    small::free_all();
+    small::detail::free_all();
 }

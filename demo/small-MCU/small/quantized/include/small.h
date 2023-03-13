@@ -18,24 +18,26 @@
 
 #define PARALLEL 0
 
-// ================== Public API ====================
-// #include <small/interface.hpp>           // template declarations only
-
 // ============ Implementation details ==============
 // Platform specific includes.
 // Use -I compile option to point to correct platform
 
-#include "kernels/quantized_reference/params.h"
-#include "kernels/quantized_reference/intrinsics.h"
-#include "kernels/quantized_reference/utils.h"
+#include <kernels/params.h>      //"kernels/quantized_reference/params.h"
+#include <kernels/Buffer.hpp>    //"kernels/quantized_reference/intrinsics.h"
+#include <kernels/intrinsics.h>  //"kernels/quantized_reference/utils.h"
 /// This must come after platform-specific includes.
 // #include <small/abstract_layer.hpp>
 
-#if QUANTIZED == 1
-#include "small/q_abstract_layer.hpp"
-#include "small/q_interface_abstract.hpp"
+// ================== Public API ====================
+#include <small/utils.hpp>
+#include <small/buffers.hpp>
+#include <small/interface.hpp>           // template declarations only
+
+#if defined(QUANTIZED)
+#include <small/q_abstract_layer.hpp>
+#include <small/q_interface_abstract.hpp>
 #else
-#include "small/abstract_layer.hpp"
-#include "small/interface_abstract.hpp"
+#include <small/abstract_layer.hpp>
+#include <small/interface_abstract.hpp>
 #endif
 //USE THESE  IF Quantized

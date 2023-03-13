@@ -16,6 +16,11 @@
 
 // accumi
 #define SIMD_EPILOGUE 1
+
+/// @todo both pairs of typedefs should not be needed.
+typedef small::QUInt8Buffer::value_type dtype;
+typedef small::QUInt8Buffer::accum_type atype;
+
 typedef dtype c_tile_out_t;
 typedef atype c_tile_t;
 
@@ -115,7 +120,7 @@ typedef atype c_tile_t;
   {                                                                      \
     for (uint32_t jj = 0; jj < C_ob; jj++)                               \
     {                                                                    \
-      O[kk * C_ob + jj] = static_cast<OperandT>(c_tile[kk * C_ob + jj]); \
+      O[kk * C_ob + jj] = static_cast<ScalarT>(c_tile[kk * C_ob + jj]);  \
     }                                                                    \
   }
 
@@ -124,7 +129,7 @@ typedef atype c_tile_t;
   {                                                                      \
     for (uint32_t jj = 0; jj < C_ob; jj++)                               \
     {                                                                    \
-      O[kk * C_ob + jj] = static_cast<OperandT>(c_tile[kk * C_ob + jj]); \
+      O[kk * C_ob + jj] = static_cast<ScalarT>(c_tile[kk * C_ob + jj]);  \
     }                                                                    \
   }
 

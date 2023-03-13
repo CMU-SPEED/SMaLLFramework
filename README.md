@@ -62,8 +62,8 @@ Run with
 
 
 For quantized uint8 inference 
-- Q_REF
-- Q_ARM7E. (For the Arduino Nano 33 BLE)
+- Q-REF
+- Q-ARM7E. (For the Arduino Nano 33 BLE)
 
 Run the same build instructions as above
 ```
@@ -75,7 +75,7 @@ $ cmake .. -DCMAKE_UARCH=Q_REF
 Navigate to demo/small-MCU and run the setup script to make a standalone, arduino friendly build of SMaLL in the build directory. This use the Q_ARM7E platform
 ``` bash
 SMaLLFramework/ $ cd ./demo/small-MCU/
-SMaLLFramework/demo/small-MCU $ ./setup_env.sh ../../build/demo ~/path-to-/SMaLLFramework/
+SMaLLFramework/demo/small-MCU $ ./setup_env.sh ../../build/demo ~/path-to-/SMaLLFramework/ <kernels subdir quantized_reference or quantized_arm7E>
 SMaLLFramework/demo/small-MCU $ cd ../../build/demo/small/
 ```
 If you want to build c++ executables for each model

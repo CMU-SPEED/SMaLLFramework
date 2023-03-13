@@ -46,7 +46,7 @@ void Conv2D(int kernel_size, int stride,  /// @todo dim_t?
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf, filter_buf, output_buf);
+                &input_buf, &filter_buf, &output_buf);
         }
         else if (stride == 2)
         {
@@ -58,7 +58,7 @@ void Conv2D(int kernel_size, int stride,  /// @todo dim_t?
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf, filter_buf, output_buf);
+                &input_buf, &filter_buf, &output_buf);
         }
         else
         {
@@ -78,7 +78,7 @@ void Conv2D(int kernel_size, int stride,  /// @todo dim_t?
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf, filter_buf, output_buf);
+                &input_buf, &filter_buf, &output_buf);
         }
         else if (stride == 2)
         {
@@ -90,7 +90,7 @@ void Conv2D(int kernel_size, int stride,  /// @todo dim_t?
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf, filter_buf, output_buf);
+                &input_buf, &filter_buf, &output_buf);
         }
         else
         {
@@ -125,7 +125,7 @@ void PartialConv2D(int kernel_size, int stride,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf, filter_buf, output_buf);
+                &input_buf, &filter_buf, &output_buf);
         }
         else if (stride == 2)
         {
@@ -138,7 +138,7 @@ void PartialConv2D(int kernel_size, int stride,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf, filter_buf, output_buf);
+                &input_buf, &filter_buf, &output_buf);
         }
         else
         {
@@ -157,7 +157,7 @@ void PartialConv2D(int kernel_size, int stride,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf, filter_buf, output_buf);
+                &input_buf, &filter_buf, &output_buf);
         }
         else if (stride == 2)
         {
@@ -170,7 +170,7 @@ void PartialConv2D(int kernel_size, int stride,
                 input_height, input_width,
                 kernel_size, kernel_size,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf, filter_buf, output_buf);
+                &input_buf, &filter_buf, &output_buf);
         }
         else
         {
@@ -198,7 +198,7 @@ void Maxpool2D(int kernel_size, int stride,
             input_height, input_width,
             kernel_size, kernel_size,
             t_pad, l_pad, r_pad, b_pad,
-            input_buf, output_buf);
+            &input_buf, (BufferT*)nullptr, &output_buf);
     }
     else if (stride == 2)
     {
@@ -211,7 +211,7 @@ void Maxpool2D(int kernel_size, int stride,
             input_height, input_width,
             kernel_size, kernel_size,
             t_pad, l_pad, r_pad, b_pad,
-            input_buf, output_buf);
+            &input_buf, (BufferT*)nullptr, &output_buf);
     }
     else
     {
@@ -241,7 +241,7 @@ void DepthwiseConv2D(int kernel_size, int stride,
             input_height, input_width,
             kernel_size, kernel_size,
             t_pad, l_pad, r_pad, b_pad,
-            input_buf, filter_buf, output_buf);
+            &input_buf, &filter_buf, &output_buf);
     }
     else if (stride == 2)
     {
@@ -254,7 +254,7 @@ void DepthwiseConv2D(int kernel_size, int stride,
             input_height, input_width,
             kernel_size, kernel_size,
             t_pad, l_pad, r_pad, b_pad,
-            input_buf, filter_buf, output_buf);
+            &input_buf, &filter_buf, &output_buf);
     }
     else
     {
@@ -269,8 +269,7 @@ template <class BufferT>
 void ReLUActivation(int input_channels,
                     int input_height, int input_width,
                     BufferT const &input_buf,
-                    BufferT       &output_buf,
-                    int zero = 0)
+                    BufferT       &output_buf) //, int zero = 0)
 {
     detail::abstract_layer<BufferT,
                            C_ob, 1, 1, W_ob, 1, 1, 'a', 0, 1>(
@@ -280,7 +279,7 @@ void ReLUActivation(int input_channels,
         input_height, input_width,
         1, 1,
         0, 0, 0, 0,
-        input_buf, output_buf, zero);
+        &input_buf, (BufferT*)nullptr, &output_buf); //, zero);
 }
 
 //****************************************************************************
@@ -298,7 +297,7 @@ void Dense(int output_elements, int input_elements,
         1, input_elements,
         1, 1,
         0, 0, 0, 0,
-        input_buf, filter_buf, output_buf);
+        &input_buf, &filter_buf, &output_buf);
 }
 
 //****************************************************************************
@@ -324,7 +323,7 @@ void Conv2D_rect(int kernel_size_h, int kernel_size_w, int stride,
                 input_height, input_width,
                 kernel_size_h, kernel_size_w,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf, filter_buf, output_buf);
+                &input_buf, &filter_buf, &output_buf);
         }
         else if (stride == 2)
         {
@@ -336,7 +335,7 @@ void Conv2D_rect(int kernel_size_h, int kernel_size_w, int stride,
                 input_height, input_width,
                 kernel_size_h, kernel_size_w,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf, filter_buf, output_buf);
+                &input_buf, &filter_buf, &output_buf);
         }
         else
         {
@@ -356,7 +355,7 @@ void Conv2D_rect(int kernel_size_h, int kernel_size_w, int stride,
                 input_height, input_width,
                 kernel_size_h, kernel_size_w,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf, filter_buf, output_buf);
+                &input_buf, &filter_buf, &output_buf);
         }
         else if (stride == 2)
         {
@@ -369,7 +368,7 @@ void Conv2D_rect(int kernel_size_h, int kernel_size_w, int stride,
                 input_height, input_width,
                 kernel_size_h, kernel_size_w,
                 t_pad, l_pad, r_pad, b_pad,
-                input_buf, filter_buf, output_buf);
+                &input_buf, &filter_buf, &output_buf);
         }
         else
         {
@@ -398,7 +397,7 @@ void MaxPool2D_rect(int kernel_size_h, int kernel_size_w, int stride,
             input_height, input_width,
             kernel_size_h, kernel_size_w,
             t_pad, l_pad, r_pad, b_pad,
-            input_buf, output_buf);
+            &input_buf, (BufferT*)nullptr, &output_buf);
     }
     else if (stride == 2)
     {
@@ -410,7 +409,7 @@ void MaxPool2D_rect(int kernel_size_h, int kernel_size_w, int stride,
             input_height, input_width,
             kernel_size_h, kernel_size_w,
             t_pad, l_pad, r_pad, b_pad,
-            input_buf, output_buf);
+            &input_buf, (BufferT*)nullptr, &output_buf);
     }
     else
     {
