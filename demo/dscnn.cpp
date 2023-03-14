@@ -208,8 +208,8 @@ void inference()
                         STRIDE(layer_num), l_pad, r_pad);
     SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad);
     SET_PADDING(layer_num, 1, 1, 1, 1); /// @todo overrides previous statement?
-    layer_num++; // 1
 
+    layer_num++; // 1
     intermediate_dims[layer_num][0] = 5;
     intermediate_dims[layer_num][1] = 25;
 
@@ -227,14 +227,14 @@ void inference()
         REDUCTION_C(layer_num) = 1; // input channels
         GROUP_C(layer_num) = 1;
         GROUPS(layer_num) = GROUP_C(layer_num - 1);  // output channels
-        REDUCTION_HW(layer_num) = 3;                 // kernel size
+        REDUCTION_HW(layer_num) = 3;                 // kernel size, REDUCTION_H???
         REDUCTION_W(layer_num) = 3;
         STRIDE(layer_num) = layer_strides[ds_layer]; // stride
         small::calc_padding(I_HEIGHT(layer_num), REDUCTION_HW(layer_num),
                             STRIDE(layer_num), t_pad, b_pad);
         small::calc_padding(I_WIDTH(layer_num),  REDUCTION_HW(layer_num),
                             STRIDE(layer_num), l_pad, r_pad);
-        SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad)
+        SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad);
 
         layer_num++; // 2
         intermediate_dims[layer_num][0] = O_WIDTH(layer_num);
@@ -246,10 +246,10 @@ void inference()
         REDUCTION_C(layer_num) = GROUPS(layer_num - 1);
         GROUP_C(layer_num) = (GROUPS(layer_num - 1)) * channel_multiplier;
         GROUPS(layer_num) = 1;
-        REDUCTION_HW(layer_num) = 1;
+        REDUCTION_HW(layer_num) = 1;  /// @todo should this be REDUCTION_H?
         REDUCTION_W(layer_num) = 1;
         STRIDE(layer_num) = 1;
-        SET_PADDING(layer_num, 0, 0, 0, 0)
+        SET_PADDING(layer_num, 0, 0, 0, 0);
 
         layer_num++; // 3
         inter_dim = INPUT_NUMEL(layer_num);
@@ -265,9 +265,9 @@ void inference()
     REDUCTION_H(layer_num) = I_HEIGHT(layer_num);
     REDUCTION_W(layer_num) = I_WIDTH(layer_num);
     STRIDE(layer_num) = 1;
-    SET_PADDING(layer_num, 0, 0, 0, 0)
-    layer_num++;
+    SET_PADDING(layer_num, 0, 0, 0, 0);
 
+    layer_num++;
     intermediate_dims[layer_num][0] = 1;
     intermediate_dims[layer_num][1] = 1;
     REDUCTION_C(layer_num) = GROUPS(layer_num - 1);
@@ -281,9 +281,8 @@ void inference()
     size_t layer_num_total = layer_num;
     size_t num_filters = layer_num_total - 1;
 
-#if SUMMARY ==1
+#if SUMMARY == 1
     printf("Layer num total: %d", layer_num_total);
-    // Direct Convolution Setup
     for (auto i = 0; i < layer_num_total; i++)
     {
         printf("layer %d: ", i);
@@ -341,14 +340,16 @@ void inference()
     std::vector<unsigned long long> small_timing;
     for (int r = 0; r < RUNS; r++)
     {
-        //t0 = rdtsc();
+        // t0 = rdtsc();
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
 
-        //small::FloatBuffer &output_dc =
+        //auto &output_dc =
             model_inference(layer_num_total, layer_params, intermediate_dims,
                             filter_buf_ptrs,
                             input_dc, inter_0_dc, inter_1_dc);
 
+        // t1 = rdtsc();
+        // MIN(sum_small, (t1 - t0));
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
         auto diff = time_difference(time1, time2);
         sum_small = std::min<unsigned long long>(sum_small, diff);
@@ -358,11 +359,11 @@ void inference()
     print_cycles(sum_small);
     print_stats(small_timing, "SMaLL");
 
+    printf("deallocing %ld filters\n", filter_buf_ptrs.size());
     for (size_t l = 0; l < filter_buf_ptrs.size(); l++)
     {
         delete filter_buf_ptrs[l];
     }
-    printf("deallocing %ld filters\n", filter_buf_ptrs.size());
 }
 
 //****************************************************************************
