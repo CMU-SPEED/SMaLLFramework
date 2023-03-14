@@ -20,18 +20,16 @@
 
 // ============ Implementation details ==============
 // Platform specific includes.
-// Use -I compile option to point to correct platform
+// The setup script must copy the selected platform headers to the correct location
 
-#include <kernels/params.h>      //"kernels/quantized_reference/params.h"
-#include <kernels/Buffer.hpp>    //"kernels/quantized_reference/intrinsics.h"
-#include <kernels/intrinsics.h>  //"kernels/quantized_reference/utils.h"
-/// This must come after platform-specific includes.
-// #include <small/abstract_layer.hpp>
+#include <small/platforms/params.h>    //"kernels/quantized_reference/params.h"
+#include <small/platforms/Buffer.hpp>  //"kernels/quantized_reference/intrinsics.h"
+#include <small/platforms/intrinsics.h>//"kernels/quantized_reference/utils.h"
 
 // ================== Public API ====================
 #include <small/utils.hpp>
 #include <small/buffers.hpp>
-#include <small/interface.hpp>           // template declarations only
+#include <small/interface.hpp>
 
 #if defined(QUANTIZED)
 #include <small/q_abstract_layer.hpp>

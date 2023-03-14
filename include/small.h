@@ -28,11 +28,8 @@
 
 // ================== Public API ====================
 #include <small/utils.hpp>
-#include <small/buffers.hpp>      // Buffer, Tensor classes, utils
-#include <small/interface.hpp>    // template declarations only
-
-/// This must come after platform-specific includes.
-// #include <small/abstract_layer.hpp>
+#include <small/buffers.hpp>
+#include <small/interface.hpp>
 
 /// @todo push this if into the lower header files
 #if defined(QUANTIZED)
