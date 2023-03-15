@@ -31,11 +31,4 @@
 #include <small/buffers.hpp>
 #include <small/interface.hpp>
 
-#if defined(QUANTIZED)
-#include <small/q_abstract_layer.hpp>
-#include <small/q_interface_abstract.hpp>
-#else
-#include <small/abstract_layer.hpp>
 #include <small/interface_abstract.hpp>
-#endif
-//USE THESE  IF Quantized

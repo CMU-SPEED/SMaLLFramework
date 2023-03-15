@@ -16,7 +16,11 @@
 #include <stdint.h>
 #include <stdexcept>
 
+#if defined(QUANTIZED)
+#include <small/q_abstract_layer.hpp>
+#else
 #include <small/abstract_layer.hpp>
+#endif
 
 namespace small
 {
@@ -264,11 +268,12 @@ void DepthwiseConv2D(int kernel_size, int stride,
 }
 
 //****************************************************************************
+/// @todo In q_interface_abstract, why was this the only layer with 'zero' param?
 template <class BufferT>
 void ReLUActivation(int input_channels,
                     int input_height, int input_width,
                     BufferT const &input_buf,
-                    BufferT       &output_buf)
+                    BufferT       &output_buf) //, int zero = 0)
 {
     detail::abstract_layer<BufferT,
                            C_ob, 1, 1, W_ob, 1, 1, 'a', 0, 1>(
@@ -278,7 +283,7 @@ void ReLUActivation(int input_channels,
         input_height, input_width,
         1, 1,
         0, 0, 0, 0,
-        &input_buf, (BufferT*)nullptr, &output_buf);
+        &input_buf, (BufferT*)nullptr, &output_buf); //, zero);
 }
 
 //****************************************************************************

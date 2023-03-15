@@ -97,6 +97,9 @@ public:
         }
     }
 
+    // type traits?
+    inline accum_type zero() const { return (accum_type)0; }
+
 private:
     // consider raw buffer instead, std::array does not support allocator
     std::vector<value_type, small::detail::buffer_allocator<value_type>> m_buffer;

@@ -294,7 +294,8 @@ void inline kernel(
             {
                 ScalarT const *b_cur = b + ii * _UNROLL * C_ob;
                 ScalarT const *a_cur = a + ii * _UNROLL;
-                ABSTRACT_Q_OP(op_type, op_class, a_cur, b_cur, I_offset, F_offset); /// @todo pass _C_ob
+                ABSTRACT_Q_OP(op_type, op_class, a_cur, b_cur,
+                            I_offset, F_offset); /// @todo pass _C_ob
             }
         }
     }
@@ -880,21 +881,21 @@ void abstract_layer(
 
     //Pointers to buffers inside Buffer class
     ScalarT const *I_buf = I->data();  //__restrict__ ?
-    AccumT      I_offset = I->zero;
+    AccumT         I_offset = I->zero();
 
     ScalarT const *F_buf = nullptr;
     AccumT         F_offset(0);
     if constexpr(op_type == 'c')  // if (F != nullptr)
     {
-        F_buf = F->data();
-        F_offset = F->zero;
+        F_buf    = F->data();
+        F_offset = F->zero();
     }
 
     ScalarT       *O_buf = O->data();  //__restrict__ ?
     AccumT        lshift = O->lshift;
     AccumT        rshift = O->rshift;
     AccumT         q_mul = O->multiplier;
-    AccumT        offset = O->zero;
+    AccumT        offset = O->zero();
 
 #if DEBUG == 1
     if (op_type == 'c')
@@ -1041,6 +1042,8 @@ void abstract_layer(
                     O_group + k * (O_hxO_w * _G_b * _K_b);
 
                 AccumT *O_channel_block_accumulator = (AccumT *)O_channel_block_output;
+
+                //************************************************************
                 // Loop over input channel reduction
                 for (index_t i = 0; i < (F_c / _F_cb) - 1; i++)
                 {
@@ -1199,6 +1202,9 @@ void abstract_layer(
                         F_offset);
                 }
 
+                //************************************************************
+                // Loop over the last of the input channel reduction
+                // The last iterations produce ScalarT's instead of AccumT's.
                 for (index_t i = (F_c / _F_cb) - 1; i < (F_c / _F_cb); i++)
                 {
                     bool first = rewrite_output && (i == 0);

@@ -100,7 +100,7 @@ public:
         multiplier(1616928864),
         lshift(0),
         rshift(3),
-        zero(0),
+        m_zero(0),
         min_val(255),   // std::numeric_limits<value_type>::max()
         max_val(0),     // std::numeric_limits<value_type>::lowest()
         b(8),
@@ -110,6 +110,49 @@ public:
     {
         /// @todo should the buffer be cleared?
         /// @todo call quantized_init() here and make private
+    }
+
+    /// @todo Should this be part of construction?
+    /// @todo Note this function did not depend on numel.  REMOVED
+    void quantized_init()
+    {
+        float max = 1.0;
+        float min = -1.0;
+        b = (sizeof(value_type) * 8);
+        uint64_t max_q = (1 << b) - 1;
+        int min_q = 0;
+        double dscale = (max - min) / ((double)(max_q - min_q)) + 1e-17;
+        int shift;
+        const double q = frexp(dscale, &shift);
+        auto q_fixed = static_cast<int64_t>(std::round(q * (1LL << 31)));
+        if (q_fixed == (1LL << 31))
+        {
+            q_fixed /= 2;
+            ++shift;
+        }
+        if (shift < -31)
+        {
+            shift = 0;
+            q_fixed = 0;
+        }
+        if (shift > 30)
+        {
+            shift = 30;
+            q_fixed = (1LL << 31) - 1;
+        }
+
+        multiplier = static_cast<int32_t>(q_fixed);  // quantized_multiplier
+
+        m_zero = rint((double)(max * min_q - min * max_q) /
+                      ((double)(max - min)));
+
+        scale = dscale;  /// @todo Was narrowing conversion intended?
+        lshift = shift > 0 ? shift : 0;
+        rshift = shift > 0 ? 0 : -shift;
+        min_val = 255;
+        max_val = 0;
+
+        // offset not set
     }
 
     ~QUInt8Buffer() {  /** @todo need to free buffer */ }
@@ -127,11 +170,11 @@ public:
         if (this != &other)
         {
             std::swap(scale,      other.scale);
-            std::swap(offset,     other.offset);
+            std::swap(offset,     other.offset);  // not set by quantized_init
             std::swap(multiplier, other.multiplier);
             std::swap(lshift,     other.lshift);
             std::swap(rshift,     other.rshift);
-            std::swap(zero,       other.zero);
+            std::swap(m_zero,     other.m_zero);
             std::swap(min_val,    other.min_val);
             std::swap(max_val,    other.max_val);
             std::swap(b,          other.b);
@@ -140,46 +183,8 @@ public:
         }
     }
 
-    /// @todo Should this be part of construction?
-    /// @todo Note this function did not depend on numel.  REMOVED
-    void quantized_init()
-    {
-        float max = 1.0;
-        float min = -1.0;
-        b = (sizeof(value_type) * 8);
-        uint64_t max_q = (1 << b) - 1;
-        int min_q = 0;
-        double scale = (max - min) / ((max_q - min_q) * 1.0) + 1e-17;
-        int shift;
-        const double q = frexp(scale, &shift);
-        auto q_fixed = static_cast<int64_t>(std::round(q * (1LL << 31)));
-        if (q_fixed == (1LL << 31))
-        {
-            q_fixed /= 2;
-            ++shift;
-        }
-        if (shift < -31)
-        {
-            shift = 0;
-            q_fixed = 0;
-        }
-        if (shift > 30)
-        {
-            shift = 30;
-            q_fixed = (1LL << 31) - 1;
-        }
-        int32_t quantized_multiplier = static_cast<int32_t>(q_fixed);
-
-        int zero = rint((double)(max * min_q - min * max_q) /
-                        ((double)(max - min)));
-        scale = scale;
-        zero = zero;
-        lshift = shift > 0 ? shift : 0;
-        rshift = shift > 0 ? 0 : -shift;
-        multiplier = quantized_multiplier;
-        min_val = 255;
-        max_val = 0;
-    }
+    // type traits?
+    inline accum_type zero() const { return m_zero; }
 
 private:
     size_t      m_num_elts;
@@ -191,7 +196,7 @@ public:
     int32_t  multiplier; // AccumT?
     int      lshift;     // AccumT?
     int      rshift;     // AccumT?
-    int      zero;       // AccumT?
+    accum_type m_zero;       // AccumT?
     int      min_val;    // AccumT?
     int      max_val;    // AccumT?
     uint8_t  b;
