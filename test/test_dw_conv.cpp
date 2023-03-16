@@ -63,8 +63,8 @@ bool run_dw_config(LayerParams const &params)
     // Pack filter data
     small::FloatBuffer packed_filter_dc(filter_dc.size());
     small::pack_buffer(filter_dc,
-                       small::FILTER_CONV,
-                       params.C_i, params.C_o, params.k, params.k,
+                       small::FILTER_DW, //FILTER_CONV,
+                       params.C_i, 1 /* params.C_o */, params.k, params.k,
                        C_ib, C_ob,
                        packed_filter_dc);
 

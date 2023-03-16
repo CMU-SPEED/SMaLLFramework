@@ -1,7 +1,3 @@
-//-----------------------------------------------------------------------------
-// test/test_acutest.cpp:  test cases for xxx
-//-----------------------------------------------------------------------------
-
 //****************************************************************************
 // SMaLL, Software for Machine Learning Libraries
 // Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
@@ -13,8 +9,6 @@
 // funding and support from the U.S. Government (see Acknowledgments.txt file).
 // DM23-0126
 //****************************************************************************
-
-//-----------------------------------------------------------------------------
 
 //#include <LAGraph.h>
 typedef float dtype;
