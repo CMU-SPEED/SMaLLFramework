@@ -136,17 +136,18 @@ template <typename ScalarT,
           dim_t _stride,
           dim_t _UNROLL,
           char   op_type,
-          int8_t op_class>
+          int8_t op_class,
+          bool   quantize = false>
 void inline kernel_left(
     bool first,
     dim_t F_h,
     dim_t F_w,
     dim_t input_col_stride,
-    dim_t r_pad_el,
-    dim_t r_pad,
+    dim_t r_pad_el,         /// @todo Should this be called l_pad_el?
+    dim_t r_pad,            /// @todo Should this be called l_pad?
     ScalarT const *I,
     ScalarT const *F,
-    ScalarT       *O,
+    AccumT        *O,  // ScalarT -> AccumT
     dim_t H_lb = 0,
     dim_t H_ub = 0,
     int k_zero = 0,
@@ -161,7 +162,7 @@ void inline kernel_left(
     DEF_END_C(_O_wb, _C_ob);
 
     // left padding elements
-    ScalarT       *O_ptr = O;
+    AccumT        *O_ptr = O;  // ScalarT -> AccumT
     ScalarT const *I_ptr = I;
 
     int W_i_valid = r_pad;
@@ -213,7 +214,8 @@ template <typename ScalarT,
           dim_t _stride,
           dim_t _UNROLL,
           char   op_type,
-          int8_t op_class>
+          int8_t op_class,
+          bool   quantize = false>
 void inline kernel(
     bool first,
     dim_t F_h,
@@ -221,7 +223,7 @@ void inline kernel(
     dim_t input_col_stride,
     ScalarT const *I,
     ScalarT const *F,
-    ScalarT       *O,
+    AccumT        *O,  // ScalarT -> AccumT
     dim_t H_lb = 0,
     dim_t H_ub = 0,
     dim_t W_lb = 0,
@@ -288,7 +290,8 @@ template <typename ScalarT,
           dim_t _stride,
           dim_t _UNROLL,
           char   op_type,
-          int8_t op_class>
+          int8_t op_class,
+          bool   quantize = false>
 void inline kernel_pad(
     bool first,
     dim_t F_h,
@@ -296,7 +299,7 @@ void inline kernel_pad(
     dim_t input_col_stride,
     ScalarT const *I,
     ScalarT const *F,
-    ScalarT       *O,
+    AccumT        *O,  // ScalarT -> AccumT
     dim_t H_lb = 0,
     dim_t H_ub = 0,
     dim_t W_lb = 0,
@@ -364,7 +367,8 @@ template <typename ScalarT,
           dim_t _stride,
           dim_t _UNROLL,
           char   op_type,
-          int8_t op_class>
+          int8_t op_class,
+          bool   quantize = false>
 void inline kernel_right(
     bool first,
     dim_t F_h,
@@ -375,7 +379,7 @@ void inline kernel_right(
     dim_t r_pad,
     ScalarT const *I,
     ScalarT const *F,
-    ScalarT       *O,
+    AccumT        *O,  // ScalarT -> AccumT
     dim_t H_lb = 0,
     dim_t H_ub = 0,
     int k_zero = 0,
@@ -422,8 +426,8 @@ void inline kernel_right(
         STORE_END_C(O, O_w_left, _C_ob);
     }
 
-    //right padding elements
-    ScalarT       *O_ptr = O + O_w_left * _C_ob;
+    // right padding elements
+    AccumT        *O_ptr = O + O_w_left * _C_ob;  // ScalarT --> AccumT
     ScalarT const *I_ptr = I + O_w_left * step;
     int W_i_valid = F_w - 1;
 
@@ -479,7 +483,8 @@ template <typename ScalarT,
           dim_t _stride,
           dim_t _UNROLL,
           char   op_type,
-          int8_t op_class>
+          int8_t op_class,
+          bool   quantize = false>
 void inline kernel_bottom(
     bool first,
     dim_t F_h,
@@ -497,13 +502,13 @@ void inline kernel_bottom(
     dim_t r_pad,
     ScalarT const *I,
     ScalarT const *F,
-    ScalarT       *O,
+    AccumT        *O,  // ScalarT -> AccumT
     int k_zero = 0,
     AccumT I_offset = 0,
     AccumT F_offset = 0)
 {
     ScalarT const *I_ptr = I;
-    ScalarT       *O_ptr = O;
+    AccumT        *O_ptr = O;  // ScalarT -> AccumT
 
     int H_i_valid = F_h - 1;
 
@@ -512,7 +517,7 @@ void inline kernel_bottom(
         // Prologue with left padding
         kernel_left<ScalarT, AccumT,
                     _G_b, _K_b, _F_cb, _O_wb, _stride,
-                    _UNROLL, op_type, op_class>(
+                    _UNROLL, op_type, op_class, quantize>(
             first,
             F_h,
             F_w,
@@ -529,17 +534,17 @@ void inline kernel_bottom(
             F_offset);
 
         ScalarT const *I_row_full = I + W_full_index * (_F_cb * _G_b);
-        ScalarT       *O_row_full = O + l_pad_el * (_G_b * _K_b);
+        AccumT        *O_row_full = O + l_pad_el * (_G_b * _K_b);  // ScalarT -> AccumT
         // Steady State with microkernel
         for (index_t l = 0; l < O_w_full; l += _O_wb)
         {
             ScalarT const *I_col = I_row_full + (l * _stride) * (_F_cb * _G_b);
             ScalarT const *F_col = F + 0;
-            ScalarT       *O_col = O_row_full + l * (_G_b * _K_b);
+            AccumT        *O_col = O_row_full + l * (_G_b * _K_b);  // ScalarT -> AccumT
 
             kernel_pad<ScalarT, AccumT,
                        _G_b, _K_b, _F_cb, _O_wb, _stride,
-                       _UNROLL, op_type, op_class>(
+                       _UNROLL, op_type, op_class, quantize>(
                 first,
                 F_h,
                 F_w,
@@ -549,6 +554,8 @@ void inline kernel_bottom(
                 O_col,
                 0,
                 H_i_valid,
+                0,             /// @todo This was added, W_lb. Is it right?
+                0,             /// @todo This was added, W_ub. Is it right?
                 k_zero,
                 I_offset,
                 F_offset);
@@ -558,10 +565,11 @@ void inline kernel_bottom(
         ScalarT const *I_col_left =
             I_row_full + (O_w_full * _stride) * (_F_cb * _G_b);
         ScalarT const *F_col_left = F + 0;
-        ScalarT       *O_col_left = O_row_full + O_w_full * (_G_b * _K_b);
+        AccumT        *O_col_left = O_row_full + O_w_full * (_G_b * _K_b);  // ScalarT -> AccumT
+
         kernel_right<ScalarT, AccumT,
                      _G_b, _K_b, _F_cb, _O_wb, _stride,
-                     _UNROLL, op_type, op_class>(
+                     _UNROLL, op_type, op_class, quantize>(
             first,
             F_h,
             F_w,
@@ -572,13 +580,14 @@ void inline kernel_bottom(
             I_col_left,
             F_col_left,
             O_col_left,
-            0,
-            H_i_valid,
+            0,            /// @todo confirm this, H_lb
+            H_i_valid,    /// @todo confirm this, H_ub
             k_zero,
             I_offset,
             F_offset);
 
         O_ptr += O_w_w_pad * _K_b * _G_b;
+
         H_i_valid -= _stride;
         I_ptr += _stride * _F_cb * _G_b;
     }
@@ -594,7 +603,8 @@ template <typename ScalarT,
           dim_t _stride,
           dim_t _UNROLL,
           char   op_type,
-          int8_t op_class>
+          int8_t op_class,
+          bool   quantize = false>
 void inline kernel_top(
     bool first,
     dim_t F_h,
@@ -612,13 +622,13 @@ void inline kernel_top(
     dim_t r_pad,
     ScalarT const *I,
     ScalarT const *F,
-    ScalarT       *O,
+    AccumT        *O,  // ScalarT --> AccumT
     int k_zero = 0,
     AccumT I_offset = 0,
     AccumT F_offset = 0)
 {
     ScalarT const *I_ptr = I;
-    ScalarT       *O_ptr = O;
+    AccumT        *O_ptr = O;  // ScalarT --> AccumT
 
     int H_i_valid = t_pad;
 
@@ -627,7 +637,7 @@ void inline kernel_top(
         // Prologue with left padding
         kernel_left<ScalarT, AccumT,
                     _G_b, _K_b, _F_cb, _O_wb, _stride,
-                    _UNROLL, op_type, op_class>(
+                    _UNROLL, op_type, op_class, quantize>(
             first,
             F_h,
             F_w,
@@ -644,18 +654,19 @@ void inline kernel_top(
             F_offset);
 
         ScalarT const *I_row_full = I + W_full_index * (_F_cb * _G_b);
-        ScalarT       *O_row_full = O + l_pad_el * (_G_b * _K_b);
+        AccumT        *O_row_full = O + l_pad_el * (_G_b * _K_b);  // ScalarT --> AccumT
+
         // Steady State with microkernel
         for (index_t l = 0; l < O_w_full; l += _O_wb)
         {
             ScalarT const *I_col =
                 I_row_full + (l * _stride) * (_F_cb * _G_b);
             ScalarT const *F_col = F + 0;
-            ScalarT       *O_col = O_row_full + l * (_G_b * _K_b);
+            AccumT        *O_col = O_row_full + l * (_G_b * _K_b);  // ScalarT --> AccumT
 
             kernel_pad<ScalarT, AccumT,
                        _G_b, _K_b, _F_cb, _O_wb, _stride,
-                       _UNROLL, op_type, op_class>(
+                       _UNROLL, op_type, op_class, quantize>(
                 first,
                 F_h,
                 F_w,
@@ -663,10 +674,11 @@ void inline kernel_top(
                 I_col,
                 F_col,
                 O_col,
-                H_i_valid,
-                F_h,
-                0,
-                0,
+                H_i_valid,  // H_lb
+                F_h,        // H_ub
+                0,          /// @todo Confirm this, W_lb. Is it right?
+                0,          /// @todo Confirm this, W_ub. Is it right? q_abstract_layer has F_w
+                k_zero,     /// @todo Confirm this. Is it right?
                 I_offset,
                 F_offset);
         }
@@ -675,11 +687,12 @@ void inline kernel_top(
         ScalarT const *I_col_left =
             I_row_full + (O_w_full * _stride) * (_F_cb * _G_b);
         ScalarT const *F_col_left = F + 0;
-        ScalarT       *O_col_left =
-            O_row_full + O_w_full * (_G_b * _K_b);
+        AccumT        *O_col_left =
+            O_row_full + O_w_full * (_G_b * _K_b);  // ScalarT --> AccumT
+
         kernel_right<ScalarT, AccumT,
                      _G_b, _K_b, _F_cb, _O_wb, _stride,
-                     _UNROLL, op_type, op_class>(
+                     _UNROLL, op_type, op_class, quantize>(
             first,
             F_h,
             F_w,
@@ -690,8 +703,8 @@ void inline kernel_top(
             I_col_left,
             F_col_left,
             O_col_left,
-            H_i_valid,
-            F_h,
+            H_i_valid,   /// @todo Confirm this, H_lb.
+            F_h,         /// @todo Confirm this, H_ub.
             k_zero,
             I_offset,
             F_offset);
@@ -701,202 +714,6 @@ void inline kernel_top(
         // I_ptr += _stride * _F_cb * _G_b;
     }
 }
-
-//****************************************************************************
-//****************************************************************************
-
-//****************************************************************************
-template <typename ScalarT,
-          typename AccumT,
-          dim_t _G_b,
-          dim_t _K_b,
-          dim_t _F_cb,
-          dim_t _O_wb,
-          dim_t _stride,
-          dim_t _UNROLL,
-          char   op_type,  // 'c' (conv,dense), 'p' (pool), or 'a' (activation)
-          int8_t op_class> //  2  (conv),  1  (dense,pool), or '0' (activation)
-void abstract_layer_input_reduction(
-    bool first,
-
-    dim_t G,   // Output Channel Grouping
-    dim_t K,   // Output Channels per group
-    dim_t F_c, // Channel Reduction Dimension
-    dim_t I_h, // Input Height
-    dim_t I_w, // Input Width
-
-    dim_t F_h, // Filter height
-    dim_t F_w, // Filter width
-
-    dim_t pad_top,    // Padding values
-    dim_t pad_left,
-    dim_t pad_right,
-    dim_t pad_bottom,
-
-    dim_t t_pad_el,
-    dim_t l_pad_el,
-    dim_t r_pad_el,
-    dim_t b_pad_el,
-
-    ScalarT const *__restrict__ I_channel_block_input,    // Data
-    ScalarT const *__restrict__ F_channel_block_input,
-    ScalarT       *__restrict__ O_channel_block_input,
-
-    int T_height,
-    int height_tid,
-
-    dim_t H_full_index,
-    dim_t W_full_index,
-    dim_t O_h,
-    dim_t O_w_w_pad,
-    dim_t O_w_full,
-    dim_t O_w_left,
-
-    int zero = 0,
-    AccumT I_offset = 0,
-    AccumT F_offset = 0)
-{
-    // calculate output dimensions based on input params.
-    constexpr dim_t _C_ib = _F_cb * _G_b;
-
-    // Loops over spatial dimensions of output
-
-    // Prologue with top padding
-    ScalarT const *I_row_top = I_channel_block_input;
-    ScalarT const *F_row_top = F_channel_block_input + 0;
-    ScalarT       *O_row_top = O_channel_block_input;
-
-    kernel_top<ScalarT, AccumT,
-               _G_b, _K_b, _F_cb, _O_wb, _stride,
-               _UNROLL, op_type, op_class>(
-                   first,
-                   F_h,
-                   F_w,
-                   I_w * _C_ib,
-                   t_pad_el,
-                   pad_top,
-                   W_full_index,
-                   l_pad_el,
-                   pad_left,
-                   O_w_w_pad,
-                   O_w_full,
-                   O_w_left,
-                   r_pad_el,
-                   pad_right,
-                   I_row_top,
-                   F_row_top,
-                   O_row_top,
-                   zero);
-
-    ScalarT const *I_row_full =
-        I_row_top + H_full_index * I_w * (_F_cb * _G_b);
-    ScalarT       *O_row_full =
-        O_row_top + t_pad_el * O_w_w_pad * (_G_b * _K_b);
-
-    // Steady State over rows
-    for (index_t j = height_tid; j < O_h; j += T_height)
-    {
-        ScalarT const *I_row =
-            I_row_full + (j * _stride) * (I_w * _F_cb * _G_b);
-        ScalarT const *F_row = F_channel_block_input + 0;
-        ScalarT       *O_row =
-            O_row_full + j * (O_w_w_pad * _G_b * _K_b);
-        // Prologue with left padding
-        kernel_left<ScalarT, AccumT,
-                    _G_b, _K_b, _F_cb, _O_wb, _stride,
-                    _UNROLL, op_type, op_class>(
-                        first,
-                        F_h,
-                        F_w,
-                        I_w * _C_ib,
-                        l_pad_el,
-                        pad_left,
-                        I_row,
-                        F_row,
-                        O_row,
-                        0,
-                        0,
-                        zero);
-
-        ScalarT const *I_col_full =
-            I_row + W_full_index * (_F_cb * _G_b);
-        ScalarT       *O_col_full = O_row + l_pad_el * (_G_b * _K_b);
-        // Steady State with microkernel
-        for (index_t l = 0; l < O_w_full; l += _O_wb)
-        {
-            ScalarT const *I_col =
-                I_col_full + (l * _stride) * (_F_cb * _G_b);
-            ScalarT const *F_col = F_row + 0;
-            ScalarT       *O_col = O_col_full + l * (_G_b * _K_b);
-
-            kernel<ScalarT, AccumT,
-                   _G_b, _K_b, _F_cb, _O_wb, _stride,
-                   _UNROLL, op_type, op_class>(
-                       first,
-                       F_h,
-                       F_w,
-                       I_w * _C_ib,
-                       I_col,
-                       F_col,
-                       O_col,
-                       0,
-                       0,
-                       0,
-                       0,
-                       zero);
-        }
-
-        // Epilogue for microkernel + right padding elements
-        ScalarT const *I_col_left =
-            I_col_full + (O_w_full * _stride) * (_F_cb * _G_b);
-        ScalarT const *F_col_left = F_row + 0;
-        ScalarT       *O_col_left = O_col_full + O_w_full * (_G_b * _K_b);
-        kernel_right<ScalarT, AccumT,
-                     _G_b, _K_b, _F_cb, _O_wb, _stride,
-                     _UNROLL, op_type, op_class>(
-                         first,
-                         F_h,
-                         F_w,
-                         I_w * _C_ib,
-                         O_w_left,
-                         r_pad_el,
-                         pad_right,
-                         I_col_left,
-                         F_col_left,
-                         O_col_left,
-                         0,
-                         0,
-                         zero);
-    }
-    // Epilogue with bottom padding
-    ScalarT const *I_row_bot =
-        I_row_full + (O_h * _stride) * (I_w * _F_cb * _G_b);
-    ScalarT const *F_row_bot = F_channel_block_input + 0;
-    ScalarT       *O_row_bot = O_row_full + O_h * (O_w_w_pad * _G_b * _K_b);
-
-    kernel_bottom<ScalarT, AccumT,
-                  _G_b, _K_b, _F_cb, _O_wb, _stride,
-                  _UNROLL, op_type, op_class>(
-                      first,
-                      F_h,
-                      F_w,
-                      I_w * _C_ib,
-                      b_pad_el,
-                      pad_bottom,
-                      W_full_index,
-                      l_pad_el,
-                      pad_left,
-                      O_w_w_pad,
-                      O_w_full,
-                      O_w_left,
-                      r_pad_el,
-                      pad_right,
-                      I_row_bot,
-                      F_row_bot,
-                      O_row_bot,
-                      zero);
-}
-
 
 //****************************************************************************
 //****************************************************************************
@@ -931,7 +748,7 @@ void abstract_layer(
     BufferT const *__restrict__ F,
     BufferT       *__restrict__ O,
 
-    int zero = 0)
+    int k_zero = 0)
 {
     using ScalarT = typename BufferT::value_type;
     using AccumT  = typename BufferT::accum_type;
@@ -966,7 +783,7 @@ void abstract_layer(
 #endif
 
     // calculate output dimensions based on input params.
-    //constexpr dim_t _C_ib = _F_cb * _G_b;
+    constexpr dim_t _C_ib = _F_cb * _G_b;
 
     /*
      * Data layout (slowest to fastest changing dimensions):
@@ -1107,30 +924,177 @@ void abstract_layer(
                     ScalarT       *O_channel_block_input =
                         O_channel_block_output + 0;
 
-                    abstract_layer_input_reduction<
-                        ScalarT, AccumT,
-                        _G_b, _K_b, _F_cb, _O_wb, _stride,
-                        _UNROLL, op_type, op_class>(
-                            first,
-                            G, K, F_c,
-                            I_h, I_w,
-                            F_h, F_w,
-                            pad_top, pad_left, pad_right, pad_bottom,
-                            t_pad_el, l_pad_el, r_pad_el, b_pad_el,
-                            I_channel_block_input,
-                            F_channel_block_input,
-                            O_channel_block_input,
-                            T_height,
-                            height_tid,
-                            H_full_index,
-                            W_full_index,
-                            O_h,
-                            O_w_w_pad,
-                            O_w_full,
-                            O_w_left,
-                            zero,
-                            I_offset,
-                            F_offset);
+                    // Loops over spatial dimensions of output
+
+                    // Prologue with top padding
+                    ScalarT const *I_row_top = I_channel_block_input;
+                    ScalarT const *F_row_top = F_channel_block_input + 0;
+                    AccumT        *O_row_top = O_channel_block_input;  // ScalarT --> AccumT
+
+                    kernel_top<ScalarT, AccumT,
+                               _G_b, _K_b, _F_cb, _O_wb, _stride,
+                               _UNROLL, op_type, op_class>(
+                                   first,
+                                   F_h,
+                                   F_w,
+                                   I_w * _C_ib,
+                                   t_pad_el,
+                                   pad_top,
+                                   W_full_index,
+                                   l_pad_el,
+                                   pad_left,
+                                   O_w_w_pad,
+                                   O_w_full,
+                                   O_w_left,
+                                   r_pad_el,
+                                   pad_right,
+                                   I_row_top,
+                                   F_row_top,
+                                   O_row_top,
+                                   k_zero,
+                                   I_offset,
+                                   F_offset);
+
+                    ScalarT const *I_row_full =
+                        I_row_top + H_full_index * I_w * (_F_cb * _G_b);
+                    AccumT        *O_row_full =
+                        O_row_top + t_pad_el * O_w_w_pad * (_G_b * _K_b); // ScalarT --> AccumT
+
+                    // Steady State over rows
+                    for (index_t j = height_tid; j < O_h; j += T_height)
+                    {
+                        ScalarT const *I_row =
+                            I_row_full + (j * _stride) * (I_w * _F_cb * _G_b);
+                        ScalarT const *F_row = F_channel_block_input + 0;
+                        AccumT        *O_row =
+                            O_row_full + j * (O_w_w_pad * _G_b * _K_b); // ScalarT --> AccumT
+                        // Prologue with left padding
+                        kernel_left<ScalarT, AccumT,
+                                    _G_b, _K_b, _F_cb, _O_wb, _stride,
+                                    _UNROLL, op_type, op_class>(
+                                        first,
+                                        F_h,
+                                        F_w,
+                                        I_w * _C_ib,
+                                        l_pad_el,
+                                        pad_left,
+                                        I_row,
+                                        F_row,
+                                        O_row,
+                                        0,
+                                        0,
+                                        k_zero,
+                                        I_offset,
+                                        F_offset);
+
+                        ScalarT const *I_col_full =
+                            I_row + W_full_index * (_F_cb * _G_b);
+                        AccumT        *O_col_full = O_row + l_pad_el * (_G_b * _K_b); // ScalarT --> AccumT
+                        // Steady State with microkernel
+                        for (index_t l = 0; l < O_w_full; l += _O_wb)
+                        {
+                            ScalarT const *I_col =
+                                I_col_full + (l * _stride) * (_F_cb * _G_b);
+                            ScalarT const *F_col = F_row + 0;
+                            AccumT        *O_col = O_col_full + l * (_G_b * _K_b); // ScalarT --> AccumT
+
+                            kernel<ScalarT, AccumT,
+                                   _G_b, _K_b, _F_cb, _O_wb, _stride,
+                                   _UNROLL, op_type, op_class>(
+                                       first,
+                                       F_h,
+                                       F_w,
+                                       I_w * _C_ib,
+                                       I_col,
+                                       F_col,
+                                       O_col,
+                                       0,
+                                       0,
+                                       0,
+                                       0,
+                                       k_zero,
+                                       I_offset,
+                                       F_offset);
+                        }
+
+                        // Epilogue for microkernel + right padding elements
+                        ScalarT const *I_col_left =
+                            I_col_full + (O_w_full * _stride) * (_F_cb * _G_b);
+                        ScalarT const *F_col_left = F_row + 0;
+                        AccumT        *O_col_left = O_col_full + O_w_full * (_G_b * _K_b); // ScalarT --> AccumT
+                        kernel_right<ScalarT, AccumT,
+                                     _G_b, _K_b, _F_cb, _O_wb, _stride,
+                                     _UNROLL, op_type, op_class>(
+                                         first,
+                                         F_h,
+                                         F_w,
+                                         I_w * _C_ib,
+                                         O_w_left,
+                                         r_pad_el,
+                                         pad_right,
+                                         I_col_left,
+                                         F_col_left,
+                                         O_col_left,
+                                         0,
+                                         0,
+                                         k_zero,
+                                         I_offset,
+                                         F_offset);
+                    }
+                    // Epilogue with bottom padding
+                    ScalarT const *I_row_bot =
+                        I_row_full + (O_h * _stride) * (I_w * _F_cb * _G_b);
+                    ScalarT const *F_row_bot = F_channel_block_input + 0;
+                    AccumT        *O_row_bot = O_row_full + O_h * (O_w_w_pad * _G_b * _K_b); // ScalarT --> AccumT
+
+                    kernel_bottom<ScalarT, AccumT,
+                                  _G_b, _K_b, _F_cb, _O_wb, _stride,
+                                  _UNROLL, op_type, op_class>(
+                                      first,
+                                      F_h,
+                                      F_w,
+                                      I_w * _C_ib,
+                                      b_pad_el,
+                                      pad_bottom,
+                                      W_full_index,
+                                      l_pad_el,
+                                      pad_left,
+                                      O_w_w_pad,
+                                      O_w_full,
+                                      O_w_left,
+                                      r_pad_el,
+                                      pad_right,
+                                      I_row_bot,
+                                      F_row_bot,
+                                      O_row_bot,
+                                      k_zero,
+                                      I_offset,
+                                      F_offset);
+
+                    // abstract_layer_input_reduction<
+                    //     ScalarT, AccumT,
+                    //     _G_b, _K_b, _F_cb, _O_wb, _stride,
+                    //     _UNROLL, op_type, op_class>(
+                    //         first,
+                    //         G, K, F_c,
+                    //         I_h, I_w,
+                    //         F_h, F_w,
+                    //         pad_top, pad_left, pad_right, pad_bottom,
+                    //         t_pad_el, l_pad_el, r_pad_el, b_pad_el,
+                    //         I_channel_block_input,
+                    //         F_channel_block_input,
+                    //         O_channel_block_input,
+                    //         T_height,
+                    //         height_tid,
+                    //         H_full_index,
+                    //         W_full_index,
+                    //         O_h,
+                    //         O_w_w_pad,
+                    //         O_w_full,
+                    //         O_w_left,
+                    //         k_zero,
+                    //         I_offset,
+                    //         F_offset);
                 }
 
                 //************************************************************
@@ -1144,38 +1108,395 @@ void abstract_layer(
                         I_channel_block_output + i * (I_h * I_w * _F_cb * _G_b);
                     ScalarT const *F_channel_block_input =
                         F_channel_block_output + i * (F_h * F_w * _F_cb * _G_b * _K_b);
-                    ScalarT       *O_channel_block_input =
+                    AccumT        *O_channel_block_input = // ScalarT --> AccumT
                         O_channel_block_output + 0;
 
-                    abstract_layer_input_reduction<
-                        ScalarT, AccumT,
-                        _G_b, _K_b, _F_cb, _O_wb, _stride,
-                        _UNROLL, op_type, op_class>(
-                            first,
-                            G, K, F_c,
-                            I_h, I_w,
-                            F_h, F_w,
-                            pad_top, pad_left, pad_right, pad_bottom,
-                            t_pad_el, l_pad_el, r_pad_el, b_pad_el,
-                            I_channel_block_input,
-                            F_channel_block_input,
-                            O_channel_block_input,
-                            T_height,
-                            height_tid,
-                            H_full_index,
-                            W_full_index,
-                            O_h,
-                            O_w_w_pad,
-                            O_w_full,
-                            O_w_left,
-                            zero,
-                            I_offset,
-                            F_offset);
+                    // Loops over spatial dimensions of output
+
+                    // Prologue with top padding
+                    ScalarT const *I_row_top = I_channel_block_input;
+                    ScalarT const *F_row_top = F_channel_block_input + 0;
+                    AccumT        *O_row_top = O_channel_block_input; // ScalarT --> AccumT
+
+                    kernel_top<ScalarT, AccumT,
+                               _G_b, _K_b, _F_cb, _O_wb, _stride,
+                               _UNROLL, op_type, op_class>(
+                                   first,
+                                   F_h,
+                                   F_w,
+                                   I_w * _C_ib,
+                                   t_pad_el,
+                                   pad_top,
+                                   W_full_index,
+                                   l_pad_el,
+                                   pad_left,
+                                   O_w_w_pad,
+                                   O_w_full,
+                                   O_w_left,
+                                   r_pad_el,
+                                   pad_right,
+                                   I_row_top,
+                                   F_row_top,
+                                   O_row_top,
+                                   k_zero,
+                                   I_offset,
+                                   F_offset);
+
+                    ScalarT const *I_row_full =
+                        I_row_top + H_full_index * I_w * (_F_cb * _G_b);
+                    AccumT        *O_row_full =
+                        O_row_top + t_pad_el * O_w_w_pad * (_G_b * _K_b); // ScalarT --> AccumT
+
+                    // Steady State over rows
+                    for (index_t j = height_tid; j < O_h; j += T_height)
+                    {
+                        ScalarT const *I_row =
+                            I_row_full + (j * _stride) * (I_w * _F_cb * _G_b);
+                        ScalarT const *F_row = F_channel_block_input + 0;
+                        AccumT        *O_row =
+                            O_row_full + j * (O_w_w_pad * _G_b * _K_b); // ScalarT --> AccumT
+
+                        // Prologue with left padding
+                        kernel_left<ScalarT, AccumT,
+                                    _G_b, _K_b, _F_cb, _O_wb, _stride,
+                                    _UNROLL, op_type, op_class>(
+                                        first,
+                                        F_h,
+                                        F_w,
+                                        I_w * _C_ib,
+                                        l_pad_el,
+                                        pad_left,
+                                        I_row,
+                                        F_row,
+                                        O_row,
+                                        0,
+                                        0,
+                                        k_zero,
+                                        I_offset,
+                                        F_offset);
+
+                        ScalarT const *I_col_full =
+                            I_row + W_full_index * (_F_cb * _G_b);
+                        AccumT        *O_col_full = O_row + l_pad_el * (_G_b * _K_b); // ScalarT --> AccumT
+
+                        // Steady State with microkernel
+                        for (index_t l = 0; l < O_w_full; l += _O_wb)
+                        {
+                            ScalarT const *I_col =
+                                I_col_full + (l * _stride) * (_F_cb * _G_b);
+                            ScalarT const *F_col = F_row + 0;
+                            AccumT        *O_col = O_col_full + l * (_G_b * _K_b); // ScalarT --> AccumT
+
+                            kernel<ScalarT, AccumT,
+                                   _G_b, _K_b, _F_cb, _O_wb, _stride,
+                                   _UNROLL, op_type, op_class>(
+                                       first,
+                                       F_h,
+                                       F_w,
+                                       I_w * _C_ib,
+                                       I_col,
+                                       F_col,
+                                       O_col,
+                                       0,
+                                       0,
+                                       0,
+                                       0,
+                                       k_zero,
+                                       I_offset,
+                                       F_offset);
+                        }
+
+                        // Epilogue for microkernel + right padding elements
+                        ScalarT const *I_col_left =
+                            I_col_full + (O_w_full * _stride) * (_F_cb * _G_b);
+                        ScalarT const *F_col_left = F_row + 0;
+                        AccumT        *O_col_left = O_col_full + O_w_full * (_G_b * _K_b);  // ScalarT --> AccumT
+
+                        kernel_right<ScalarT, AccumT,
+                                     _G_b, _K_b, _F_cb, _O_wb, _stride,
+                                     _UNROLL, op_type, op_class>(
+                                         first,
+                                         F_h,
+                                         F_w,
+                                         I_w * _C_ib,
+                                         O_w_left,
+                                         r_pad_el,
+                                         pad_right,
+                                         I_col_left,
+                                         F_col_left,
+                                         O_col_left,
+                                         0,
+                                         0,
+                                         k_zero,
+                                         I_offset,
+                                         F_offset);
+                    }
+                    // Epilogue with bottom padding
+                    ScalarT const *I_row_bot =
+                        I_row_full + (O_h * _stride) * (I_w * _F_cb * _G_b);
+                    ScalarT const *F_row_bot = F_channel_block_input + 0;
+                    AccumT        *O_row_bot = O_row_full + O_h * (O_w_w_pad * _G_b * _K_b); // ScalarT --> AccumT
+
+                    kernel_bottom<ScalarT, AccumT,
+                                  _G_b, _K_b, _F_cb, _O_wb, _stride,
+                                  _UNROLL, op_type, op_class>(
+                                      first,
+                                      F_h,
+                                      F_w,
+                                      I_w * _C_ib,
+                                      b_pad_el,
+                                      pad_bottom,
+                                      W_full_index,
+                                      l_pad_el,
+                                      pad_left,
+                                      O_w_w_pad,
+                                      O_w_full,
+                                      O_w_left,
+                                      r_pad_el,
+                                      pad_right,
+                                      I_row_bot,
+                                      F_row_bot,
+                                      O_row_bot,
+                                      k_zero,
+                                      I_offset,
+                                      F_offset);
+
+                    // abstract_layer_input_reduction<
+                    //     ScalarT, AccumT,
+                    //     _G_b, _K_b, _F_cb, _O_wb, _stride,
+                    //     _UNROLL, op_type, op_class, true>( // <-- add true
+                    //         first,
+                    //         G, K, F_c,
+                    //         I_h, I_w,
+                    //         F_h, F_w,
+                    //         pad_top, pad_left, pad_right, pad_bottom,
+                    //         t_pad_el, l_pad_el, r_pad_el, b_pad_el,
+                    //         I_channel_block_input,
+                    //         F_channel_block_input,
+                    //         O_channel_block_input,
+                    //         T_height,
+                    //         height_tid,
+                    //         H_full_index,
+                    //         W_full_index,
+                    //         O_h,
+                    //         O_w_w_pad,
+                    //         O_w_full,
+                    //         O_w_left,
+                    //         k_zero,
+                    //         I_offset,
+                    //         F_offset);
                 }
             }
         }
     }
 }
+
+//****************************************************************************
+//****************************************************************************
+// WIP: code extracted from inner loops of abstract_layer() above
+//****************************************************************************
+template <typename ScalarT,
+          typename AccumT,
+          dim_t _G_b,
+          dim_t _K_b,
+          dim_t _F_cb,
+          dim_t _O_wb,
+          dim_t _stride,
+          dim_t _UNROLL,
+          char   op_type,  // 'c' (conv,dense), 'p' (pool), or 'a' (activation)
+          int8_t op_class, //  2  (conv),  1  (dense,pool), or '0' (activation)
+          bool   quantize = false>
+void abstract_layer_input_reduction(
+    bool first,
+
+    dim_t G,   // Output Channel Grouping
+    dim_t K,   // Output Channels per group
+    dim_t F_c, // Channel Reduction Dimension
+    dim_t I_h, // Input Height
+    dim_t I_w, // Input Width
+
+    dim_t F_h, // Filter height
+    dim_t F_w, // Filter width
+
+    dim_t pad_top,    // Padding values
+    dim_t pad_left,
+    dim_t pad_right,
+    dim_t pad_bottom,
+
+    dim_t t_pad_el,
+    dim_t l_pad_el,
+    dim_t r_pad_el,
+    dim_t b_pad_el,
+
+    ScalarT const *__restrict__ I_channel_block_input,    // Data
+    ScalarT const *__restrict__ F_channel_block_input,
+    ScalarT       *__restrict__ O_channel_block_input,
+
+    int T_height,
+    int height_tid,
+
+    dim_t H_full_index,
+    dim_t W_full_index,
+    dim_t O_h,
+    dim_t O_w_w_pad,
+    dim_t O_w_full,
+    dim_t O_w_left,
+
+    int k_zero = 0,
+    AccumT I_offset = 0,
+    AccumT F_offset = 0)
+{
+    // calculate output dimensions based on input params.
+    constexpr dim_t _C_ib = _F_cb * _G_b;
+
+    // Loops over spatial dimensions of output
+
+    // Prologue with top padding
+    ScalarT const *I_row_top = I_channel_block_input;
+    ScalarT const *F_row_top = F_channel_block_input + 0;
+    ScalarT       *O_row_top = O_channel_block_input;
+
+    kernel_top<ScalarT, AccumT,
+               _G_b, _K_b, _F_cb, _O_wb, _stride,
+               _UNROLL, op_type, op_class>(
+                   first,
+                   F_h,
+                   F_w,
+                   I_w * _C_ib,
+                   t_pad_el,
+                   pad_top,
+                   W_full_index,
+                   l_pad_el,
+                   pad_left,
+                   O_w_w_pad,
+                   O_w_full,
+                   O_w_left,
+                   r_pad_el,
+                   pad_right,
+                   I_row_top,
+                   F_row_top,
+                   O_row_top,
+                   k_zero,
+                   I_offset,
+                   F_offset);
+
+    ScalarT const *I_row_full =
+        I_row_top + H_full_index * I_w * (_F_cb * _G_b);
+    ScalarT       *O_row_full =
+        O_row_top + t_pad_el * O_w_w_pad * (_G_b * _K_b);
+
+    // Steady State over rows
+    for (index_t j = height_tid; j < O_h; j += T_height)
+    {
+        ScalarT const *I_row =
+            I_row_full + (j * _stride) * (I_w * _F_cb * _G_b);
+        ScalarT const *F_row = F_channel_block_input + 0;
+        ScalarT       *O_row =
+            O_row_full + j * (O_w_w_pad * _G_b * _K_b);
+        // Prologue with left padding
+        kernel_left<ScalarT, AccumT,
+                    _G_b, _K_b, _F_cb, _O_wb, _stride,
+                    _UNROLL, op_type, op_class>(
+                        first,
+                        F_h,
+                        F_w,
+                        I_w * _C_ib,
+                        l_pad_el,
+                        pad_left,
+                        I_row,
+                        F_row,
+                        O_row,
+                        0,
+                        0,
+                        k_zero,
+                        I_offset,
+                        F_offset);
+
+        ScalarT const *I_col_full =
+            I_row + W_full_index * (_F_cb * _G_b);
+        ScalarT       *O_col_full = O_row + l_pad_el * (_G_b * _K_b);
+        // Steady State with microkernel
+        for (index_t l = 0; l < O_w_full; l += _O_wb)
+        {
+            ScalarT const *I_col =
+                I_col_full + (l * _stride) * (_F_cb * _G_b);
+            ScalarT const *F_col = F_row + 0;
+            ScalarT       *O_col = O_col_full + l * (_G_b * _K_b);
+
+            kernel<ScalarT, AccumT,
+                   _G_b, _K_b, _F_cb, _O_wb, _stride,
+                   _UNROLL, op_type, op_class>(
+                       first,
+                       F_h,
+                       F_w,
+                       I_w * _C_ib,
+                       I_col,
+                       F_col,
+                       O_col,
+                       0,
+                       0,
+                       0,
+                       0,
+                       k_zero,
+                       I_offset,
+                       F_offset);
+        }
+
+        // Epilogue for microkernel + right padding elements
+        ScalarT const *I_col_left =
+            I_col_full + (O_w_full * _stride) * (_F_cb * _G_b);
+        ScalarT const *F_col_left = F_row + 0;
+        ScalarT       *O_col_left = O_col_full + O_w_full * (_G_b * _K_b);
+        kernel_right<ScalarT, AccumT,
+                     _G_b, _K_b, _F_cb, _O_wb, _stride,
+                     _UNROLL, op_type, op_class>(
+                         first,
+                         F_h,
+                         F_w,
+                         I_w * _C_ib,
+                         O_w_left,
+                         r_pad_el,
+                         pad_right,
+                         I_col_left,
+                         F_col_left,
+                         O_col_left,
+                         0,
+                         0,
+                         k_zero,
+                         I_offset,
+                         F_offset);
+    }
+    // Epilogue with bottom padding
+    ScalarT const *I_row_bot =
+        I_row_full + (O_h * _stride) * (I_w * _F_cb * _G_b);
+    ScalarT const *F_row_bot = F_channel_block_input + 0;
+    ScalarT       *O_row_bot = O_row_full + O_h * (O_w_w_pad * _G_b * _K_b);
+
+    kernel_bottom<ScalarT, AccumT,
+                  _G_b, _K_b, _F_cb, _O_wb, _stride,
+                  _UNROLL, op_type, op_class>(
+                      first,
+                      F_h,
+                      F_w,
+                      I_w * _C_ib,
+                      b_pad_el,
+                      pad_bottom,
+                      W_full_index,
+                      l_pad_el,
+                      pad_left,
+                      O_w_w_pad,
+                      O_w_full,
+                      O_w_left,
+                      r_pad_el,
+                      pad_right,
+                      I_row_bot,
+                      F_row_bot,
+                      O_row_bot,
+                      k_zero,
+                      I_offset,
+                      F_offset);
+}
+
 
 } // ns detail
 } // ns small

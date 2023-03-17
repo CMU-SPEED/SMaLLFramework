@@ -152,7 +152,7 @@ public:
         min_val = 255;
         max_val = 0;
 
-        // offset not set
+        /// @todo offset not set
     }
 
     ~QUInt8Buffer() {  /** @todo need to free buffer */ }

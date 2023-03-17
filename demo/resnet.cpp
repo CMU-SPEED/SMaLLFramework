@@ -23,7 +23,7 @@
 
 /// @todo Which of these defines are needed?
 #ifndef RUNS
-#define RUNS 1000
+#define RUNS 10
 #endif
 #ifndef PARALLEL
 #define PARALLEL 0
@@ -60,6 +60,7 @@
 //****************************************************************************
 // The output of the block is stored in O
 //
+template <class BufferT>
 inline void resnet_block(
     uint32_t in_dims[2], uint32_t input_channels, // Input dimensions
     uint32_t kernel_size,
@@ -73,12 +74,12 @@ inline void resnet_block(
     uint8_t b_pad_1,
     uint8_t l_pad_1,
     uint8_t r_pad_1,
-    small::FloatBuffer const &I,
-    small::FloatBuffer const &F_conv0,
-    small::FloatBuffer const &F_conv1,
-    small::FloatBuffer const &F_conv_1x1,
-    small::FloatBuffer       &O_intermediate,
-    small::FloatBuffer       &O)
+    BufferT const &I,
+    BufferT const &F_conv0,
+    BufferT const &F_conv1,
+    BufferT const &F_conv_1x1,
+    BufferT       &O_intermediate,
+    BufferT       &O)
 {
     // printf("before: %d, %.2f %.2f %.2f %.2f\n", 0, I[0], I[1], I[2], I[3]);
 
@@ -114,6 +115,7 @@ inline void resnet_block(
 //****************************************************************************
 // The output of the block is stored in O
 //
+template <class BufferT>
 inline void resnet_block(
     uint32_t in_dims[2], uint32_t input_channels, // Input dimensions
     uint32_t kernel_size,
@@ -127,11 +129,11 @@ inline void resnet_block(
     uint8_t b_pad_1,
     uint8_t l_pad_1,
     uint8_t r_pad_1,
-    small::FloatBuffer const &I,
-    small::FloatBuffer const &F_conv0,
-    small::FloatBuffer const &F_conv1,
-    small::FloatBuffer       &O_intermediate,
-    small::FloatBuffer       &O)
+    BufferT const &I,
+    BufferT const &F_conv0,
+    BufferT const &F_conv1,
+    BufferT       &O_intermediate,
+    BufferT       &O)
 {
     // printf("before: %d, %.2f %.2f %.2f %.2f\n", 0, I[0], I[1], I[2], I[3]);
 
@@ -160,15 +162,16 @@ inline void resnet_block(
 }
 
 //****************************************************************************
-small::FloatBuffer &
+template <class BufferT>
+BufferT &
 model_inference(uint32_t layer_num_total,
                 uint16_t layer_params[30][10],
                 uint32_t intermediate_dims[30][2],
-                std::vector<small::FloatBuffer *> const &filter_buf_ptrs,
-                small::FloatBuffer const &input_dc,
-                small::FloatBuffer       &inter_0_dc,
-                small::FloatBuffer       &inter_1_dc,
-                small::FloatBuffer       &inter_2_dc)
+                std::vector<BufferT *> const &filter_buf_ptrs,
+                BufferT const &input_dc,
+                BufferT       &inter_0_dc,
+                BufferT       &inter_1_dc,
+                BufferT       &inter_2_dc)
 {
     auto layer_num = 0;
     small::Conv2D(REDUCTION_HW(layer_num),
@@ -239,6 +242,7 @@ model_inference(uint32_t layer_num_total,
 
 //****************************************************************************
 //****************************************************************************
+template <class BufferT>
 void inference()
 {
     uint32_t C_i = 3;
@@ -248,7 +252,7 @@ void inference()
 
     // Create input tensor
     uint32_t input_dimensions = C_i * N * M;
-    small::FloatBuffer input_dc(input_dimensions);
+    BufferT input_dc(input_dimensions);
     init(input_dc, input_dimensions);
 
     // ================================================
@@ -388,7 +392,7 @@ void inference()
     #endif
 
     /// @todo use a vector of smart pointers if possible
-    std::vector<small::FloatBuffer *> filter_buf_ptrs;
+    std::vector<BufferT *> filter_buf_ptrs;
 
     for (size_t l = 0; l < num_filters - 1; l++)
     {
@@ -396,25 +400,50 @@ void inference()
             REDUCTION_HW(l) * REDUCTION_HW(l) * REDUCTION_C(l) *
             GROUP_C(l) * GROUPS(l);
 
-        small::FloatBuffer *filter_buf_ptr =
+        BufferT *filter_buf_ptr =
             small::alloc_buffer(filter_dimensions);
         init(*filter_buf_ptr, filter_dimensions);
         filter_buf_ptrs.push_back(filter_buf_ptr);
+        std::cerr << l << ": &Buffer = " << (void*)filter_buf_ptr
+                  << ", data() = " << (void*)filter_buf_ptr->data()
+                  << ", size() = " << filter_buf_ptr->size() << std::endl;
     }
 
     uint32_t filter_dimensions =
         GROUP_C(layer_num_total - 1) * REDUCTION_C(layer_num_total - 1);
-    small::FloatBuffer *filter_fc_dc_ptr =
+    BufferT *filter_fc_dc_ptr =
         small::alloc_buffer(filter_dimensions);
     init(*filter_fc_dc_ptr, filter_dimensions);
     filter_buf_ptrs.push_back(filter_fc_dc_ptr);
     /// @todo assert(filter_buf_ptrs.size() == num_filters)
+    std::cerr << 0 << ": &Buffer = " << (void*)filter_fc_dc_ptr
+              << ", data() = " << (void*)filter_fc_dc_ptr->data()
+              << ", size() = " << filter_fc_dc_ptr->size() << std::endl;
 
     // allocate space for intermediate outputs
     // (use the max sizes calculated previously)
-    small::FloatBuffer inter_0_dc(max_numel_inter_0);
-    small::FloatBuffer inter_1_dc(max_numel_inter_1);
-    small::FloatBuffer inter_2_dc(max_numel_inter_0);
+#if defined(QUANTIZED)
+    std::cerr << max_numel_inter_0 << "," << max_numel_inter_1 << std::endl;
+    std::cerr << max_numel_inter_0+ C_ob*16*16*3
+              << "," << max_numel_inter_1 + C_ob*16*16*3
+              << "," << (max_numel_inter_0 / 2) + C_ob*16*16*3 << std::endl;
+    BufferT inter_0_dc(max_numel_inter_0 + C_ob*16*16*3);
+    BufferT inter_1_dc(max_numel_inter_1 + C_ob*16*16*3);
+    BufferT inter_2_dc((max_numel_inter_0 / 2) + C_ob*16*16*3);
+    std::cerr << "inter_0 &Buffer = " << (void*)&inter_0_dc
+              << ", data() = " << (void*)inter_0_dc.data()
+              << ", size() = " << inter_0_dc.size() << std::endl;
+    std::cerr << "inter_1 &Buffer = " << (void*)&inter_1_dc
+              << ", data() = " << (void*)inter_1_dc.data()
+              << ", size() = " << inter_1_dc.size() << std::endl;
+    std::cerr << "inter_2 &Buffer = " << (void*)&inter_2_dc
+              << ", data() = " << (void*)inter_2_dc.data()
+              << ", size() = " << inter_2_dc.size() << std::endl;
+#else
+    BufferT inter_0_dc(max_numel_inter_0);
+    BufferT inter_1_dc(max_numel_inter_1);
+    BufferT inter_2_dc(max_numel_inter_0);
+#endif
 
     // NOTE: output_dc refers to inter_0_dc on return
     //auto &output_dc =
@@ -462,7 +491,11 @@ void inference()
 #ifndef NANO33BLE
 int main()
 {
-    inference();
+#if defined(QUANTIZED)
+    inference<small::QUInt8Buffer>();
+#else
+    inference<small::FloatBuffer>();
+#endif
     return 0;
 }
 #endif

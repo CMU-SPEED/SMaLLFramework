@@ -14,66 +14,56 @@
 
 #include <stdexcept>
 #include <stdint.h>
+#include <stdlib.h> // for posix_memalign
+#include <vector>
+#include <iostream>
 
 namespace small
 {
 namespace detail
 {
-// Adapted from small_MCU/small/quantized/include/utils.h
+// Adapted from reference
 
 //****************************************************************************
 //Allocation
 //****************************************************************************
+template <typename T, size_t alignment=64UL>
+struct buffer_allocator : std::allocator<T>
+{
+    typedef typename std::allocator<T>::pointer pointer;
+    typedef typename std::allocator<T>::size_type size_type;
 
-//  #define MAX_BUFF_SIZE 50000000
-//  #define MAX_BUFF_SIZE 10000000
-//  #define MAX_BUFF_SIZE 200000
-    #define MAX_BUFF_SIZE 208200
+    template<typename U>
+    struct rebind {
+        typedef buffer_allocator<U> other;
+    };
 
-    uint8_t  memory_buffer[MAX_BUFF_SIZE];
-    uint8_t *current_free_ptr = memory_buffer;
-    size_t   buf_offset = 0;
+    buffer_allocator() {}
 
-    //************************************************************************
-    /// @todo This is allocation-only memory management.  It cannot manage
-    ///       out of order calls to a free method
-    /// @todo return void instead?
-    template <class ScalarT>
-    ScalarT *alloc(size_t numel)
-    {
-        /// @todo deal with alignment issues
-        size_t bytes_to_alloc = numel * sizeof(ScalarT);
-        size_t used_bytes = buf_offset + bytes_to_alloc;
+    template<typename U>
+    buffer_allocator(buffer_allocator<U> const& u)
+        :std::allocator<T>(u) {}
 
-        if (MAX_BUFF_SIZE < used_bytes)
+    pointer allocate(size_type num_elements,
+                     std::allocator<void>::const_pointer = 0) {
+        pointer buffer;
+        if (0 != posix_memalign((void**)&buffer,
+                                alignment,
+                                num_elements*sizeof(T)))
         {
-            // Serial.println("out of space\n");
-            // Serial.println(used_bytes);
-            // Serial.println();
-
             throw std::bad_alloc();
         }
-        else
-        {
-            ScalarT *ret_ptr =
-                reinterpret_cast<ScalarT*>(memory_buffer + buf_offset);
-            buf_offset = used_bytes;
-            current_free_ptr = memory_buffer + used_bytes;
-            return ret_ptr;
-        }
+
+        std::cerr << "buffer_allocator::allocate: " << (void*)buffer << std::endl;
+        return buffer;
     }
 
-
-    //**********************************************************************
-    /// @need better buffer management?
-    uint32_t free_all()
-    {
-        auto freed_space = buf_offset;
-        current_free_ptr = memory_buffer;
-        buf_offset = 0;
-
-        return freed_space;
+    void deallocate(pointer p, size_type) {
+        std::cerr << "buffer_allocator::deallocator: " << (void*)p << std::endl;
+        std::free(p);
     }
+
+};
 
 } // detail
 
@@ -94,17 +84,24 @@ public:
         multiplier(1616928864),
         lshift(0),
         rshift(3),
-        zero(0),
+        m_zero(0),
         min_val(255),   // std::numeric_limits<value_type>::max()
         max_val(0),     // std::numeric_limits<value_type>::lowest()
         b(8),
-        m_num_elts(num_elts),
-        m_buffer(detail::alloc<value_type>(num_elts))
+        m_buffer(num_elts)
     {
         // todo should the buffer be cleared?
+        std::cerr << "QUInt8Buffer::ctor " << (void*)this
+                  << ", data_ptr = " << (void*)m_buffer.data()
+                  << ", size = " << m_buffer.size() << std::endl;
     }
 
-    ~QUInt8Buffer() {  /** @todo need to free buffer */ }
+    ~QUInt8Buffer()
+    {
+        std::cerr << "QUInt8Buffer::dtor " << (void*)this
+                  << ", data_ptr = " << (void*)m_buffer.data()
+                  << ", size = " << m_buffer.size() << std::endl;
+    }
 
     size_t size() const { return m_buffer.size(); }
 
@@ -123,16 +120,16 @@ public:
             std::swap(multiplier, other.multiplier);
             std::swap(lshift,     other.lshift);
             std::swap(rshift,     other.rshift);
-            std::swap(zero,       other.zero);
+            std::swap(m_zero,     other.m_zero);
             std::swap(min_val,    other.min_val);
             std::swap(max_val,    other.max_val);
             std::swap(b,          other.b);
-            std::swap(m_num_elts, other.m_num_elts);
             std::swap(m_buffer,   other.m_buffer);
         }
     }
 
     /// @todo Should this be part of construction?
+    /// @todo Note this function did not depend on numel.  REMOVED
     void quantized_init()
     {
         float max = 1.0;
@@ -140,9 +137,9 @@ public:
         b = (sizeof(value_type) * 8);
         uint64_t max_q = (1 << b) - 1;
         int min_q = 0;
-        double scale = (max - min) / ((max_q - min_q) * 1.0) + 1e-17;
+        double dscale = (max - min) / ((max_q - min_q) * 1.0) + 1e-17;
         int shift;
-        const double q = frexp(scale, &shift);
+        const double q = frexp(dscale, &shift);
         auto q_fixed = static_cast<int64_t>(std::round(q * (1LL << 31)));
         if (q_fixed == (1LL << 31))
         {
@@ -159,34 +156,43 @@ public:
             shift = 30;
             q_fixed = (1LL << 31) - 1;
         }
-        int32_t quantized_multiplier = static_cast<int32_t>(q_fixed);
+        multiplier = static_cast<int32_t>(q_fixed);
 
-        int zero = rint((double)(max * min_q - min * max_q) / ((double)(max - min)));
-        scale = scale;
-        zero = zero;
+        m_zero = rint((double)(max * min_q - min * max_q) /
+                      ((double)(max - min)));
+        scale = dscale;
         lshift = shift > 0 ? shift : 0;
         rshift = shift > 0 ? 0 : -shift;
-        multiplier = quantized_multiplier;
         min_val = 255;
         max_val = 0;
+
+        /// @todo offset not set
     }
 
+    // type traits?
+    inline accum_type zero() const { return m_zero; }
+
+public:
     float    scale;
-    int32_t  offset;
-    int32_t  multiplier;
-    int      lshift;
-    int      rshift;
-    int      zero;
-    int      min_val;
-    int      max_val;
+    int32_t  offset;     // AccumT?
+    int32_t  multiplier; // AccumT?
+    int      lshift;     // AccumT?
+    int      rshift;     // AccumT?
+    accum_type m_zero;       // AccumT?
+    int      min_val;    // AccumT?
+    int      max_val;    // AccumT?
     uint8_t  b;
 
 private:
-    size_t      m_num_elts;
-    value_type *m_buffer;
+    // consider raw buffer instead, std::array does not support allocator
+    std::vector<value_type, small::detail::buffer_allocator<value_type>> m_buffer;
 };
 
-} // small
+//**********************************************************************
+/// @todo return smart pointer?
+inline QUInt8Buffer *alloc_buffer(size_t num_elts)
+{
+    return new QUInt8Buffer(num_elts);
+}
 
-/// @todo Remove this
-typedef small::QUInt8Buffer::value_type dtype;
+} // small

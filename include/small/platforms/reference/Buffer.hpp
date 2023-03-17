@@ -106,6 +106,7 @@ private:
 };
 
 //**********************************************************************
+/// @todo return smart pointer?
 inline FloatBuffer *alloc_buffer(size_t num_elts)
 {
     return new FloatBuffer(num_elts);

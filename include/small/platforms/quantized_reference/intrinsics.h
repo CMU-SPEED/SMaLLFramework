@@ -10,15 +10,19 @@
 // DM23-0126
 //****************************************************************************
 
-//scalar versions of all the microkernels for platform portability
-
 #pragma once
 
-//accumi
+// scalar versions of all the microkernels for platform portability
+
+// accumi
 #define SIMD_EPILOGUE 1
 
-typedef small::QUInt8Buffer::value_type c_tile_out_t;  // was dtype
-typedef small::QUInt8Buffer::accum_type c_tile_t;      // was atype
+/// @todo both pairs of typedefs should not be needed.
+typedef small::QUInt8Buffer::value_type dtype;
+typedef small::QUInt8Buffer::accum_type atype;
+
+typedef dtype c_tile_out_t;
+typedef atype c_tile_t;
 
 //Architecture specific tiling params
 
@@ -27,23 +31,22 @@ typedef small::QUInt8Buffer::accum_type c_tile_t;      // was atype
 
 // Initializations
 
-#define DEF_TILE_C(W_ob, C_ob)\
+#define DEF_TILE_C(W_ob, C_ob) \
   c_tile_t c_tile[W_ob * C_ob];
-
 
 #define DEF_END_C(W_ob, C_ob) \
   c_tile_t c_tile[W_ob * C_ob];
 
-#define ZERO_TILE_C(W_ob, C_ob, z)            \
-  for (uint32_t kk = 0; kk < W_ob; kk++)      \
-  {                                           \
-    for (uint32_t jj = 0; jj < C_ob; jj++)    \
-    {                                         \
-      c_tile[kk * C_ob + jj] = z;             \
-    }                                         \
+#define ZERO_TILE_C(W_ob, C_ob, z)         \
+  for (uint32_t kk = 0; kk < W_ob; kk++)   \
+  {                                        \
+    for (uint32_t jj = 0; jj < C_ob; jj++) \
+    {                                      \
+      c_tile[kk * C_ob + jj] = z;          \
+    }                                      \
   }
 
-#define ZERO_END_C(_W_ob, C_ob,z)          \
+#define ZERO_END_C(_W_ob, C_ob, z)         \
   for (uint32_t kk = 0; kk < _W_ob; kk++)  \
   {                                        \
     for (uint32_t jj = 0; jj < C_ob; jj++) \
@@ -64,26 +67,25 @@ typedef small::QUInt8Buffer::accum_type c_tile_t;      // was atype
   }
 
 //  dtype c_tile[W_ob * C_ob];
-#define LOAD_END_C(O, _W_ob, C_ob)                \
-  for (uint32_t kk = 0; kk < _W_ob; kk++)         \
-  {                                               \
-    for (uint32_t jj = 0; jj < C_ob; jj++)        \
-    {                                             \
-      c_tile[kk * C_ob + jj] = static_cast<c_tile_t> (O[kk * C_ob + jj]); \
-    }                                             \
+#define LOAD_END_C(O, _W_ob, C_ob)                                       \
+  for (uint32_t kk = 0; kk < _W_ob; kk++)                                \
+  {                                                                      \
+    for (uint32_t jj = 0; jj < C_ob; jj++)                               \
+    {                                                                    \
+      c_tile[kk * C_ob + jj] = static_cast<c_tile_t>(O[kk * C_ob + jj]); \
+    }                                                                    \
   }
 
-
-//Pooling Loads
+// Pooling Loads
 
 // strided loads
-#define LOAD_TILE_C_strided(O, step, _W_ob, _C_ob) \
-  for (uint32_t kk = 0; kk < _W_ob; kk++)          \
-  {                                                \
-    for (uint32_t jj = 0; jj < _C_ob; jj++)        \
-    {                                              \
+#define LOAD_TILE_C_strided(O, step, _W_ob, _C_ob)                        \
+  for (uint32_t kk = 0; kk < _W_ob; kk++)                                 \
+  {                                                                       \
+    for (uint32_t jj = 0; jj < _C_ob; jj++)                               \
+    {                                                                     \
       c_tile[kk * _C_ob + jj] = static_cast<c_tile_t>(O[kk * step + jj]); \
-    }                                              \
+    }                                                                     \
   }
 
 //  dtype c_tile[W_ob * C_ob];
@@ -116,13 +118,13 @@ typedef small::QUInt8Buffer::accum_type c_tile_t;      // was atype
     }                                             \
   }
 
-#define STORE_Q_TILE_C(O, W_ob, C_ob)             \
-  for (uint32_t kk = 0; kk < W_ob; kk++)          \
-  {                                               \
-    for (uint32_t jj = 0; jj < C_ob; jj++)        \
-    {                                             \
-      O[kk * C_ob + jj] = static_cast<ScalarT>(c_tile[kk * C_ob + jj]); \
-    }                                             \
+#define STORE_Q_TILE_C(O, W_ob, C_ob)                                    \
+  for (uint32_t kk = 0; kk < W_ob; kk++)                                 \
+  {                                                                      \
+    for (uint32_t jj = 0; jj < C_ob; jj++)                               \
+    {                                                                    \
+      O[kk * C_ob + jj] = static_cast<ScalarT>(c_tile[kk * C_ob + jj]);  \
+    }                                                                    \
   }
 
 #define STORE_Q_END_C(O, _W_ob, C_ob)                                    \
@@ -140,23 +142,23 @@ typedef small::QUInt8Buffer::accum_type c_tile_t;      // was atype
 // Add offset
 // Clip to range of output type
 
-#define INT32MAX 1<<31 - 1
-#define INT32MIN -1<<31
+#define INT32MAX 1 << 31 - 1
+#define INT32MIN -1 << 31
 
-#define VQRDMULH(a, b, out)                                    \
-  bool overflow = a == b && a == -2147483648;                  \
-  int64_t prod = a * b;                                        \
-  int32_t nudge = prod >= 0 ? (1 << 30) : (1 - (1 << 30));     \
-  int32_t ab_x2_high32 =                                       \
-      static_cast<int32_t>((prod + nudge) / (1ll << 31)); \
+#define VQRDMULH(a, b, out)                                \
+  bool overflow = a == b && a == -2147483648;              \
+  int64_t prod = a * b;                                    \
+  int32_t nudge = prod >= 0 ? (1 << 30) : (1 - (1 << 30)); \
+  int32_t ab_x2_high32 =                                   \
+      static_cast<int32_t>((prod + nudge) / (1ll << 31));  \
   out = overflow ? 2147483647 : ab_x2_high32;
 
-#define RNDRSHIFT(a, b, out) \
-int32_t mask = (1ll << b) - 1;\
-int32_t mod = (a & mask);\
-int32_t one = ~0;\
-int32_t threshold = (mask >>1) + (one & ((a<0)?~0:0))  ;\
-out = (a >> b) + (one & ((mod>threshold)?~0:0));
+#define RNDRSHIFT(a, b, out)                                    \
+  int32_t mask = (1ll << b) - 1;                                \
+  int32_t mod = (a & mask);                                     \
+  int32_t one = ~0;                                             \
+  int32_t threshold = (mask >> 1) + (one & ((a < 0) ? ~0 : 0)); \
+  out = (a >> b) + (one & ((mod > threshold) ? ~0 : 0));
 
 #define QUANTIZE_TILE_C(_W_ob, _C_ob, left_shift, right_shift, q_mul, offset, max_val, min_val) \
   {                                                                                             \
@@ -184,7 +186,7 @@ out = (a >> b) + (one & ((mod>threshold)?~0:0));
       {                                                                                        \
         auto val = c_tile[kk * C_ob + jj];                                                     \
         int64_t left_shift_val = static_cast<int64_t>(val * (1 << left_shift));                \
-        VQRDMULH(left_shift_val, static_cast<int64_t>(q_mul), val);                                    \
+        VQRDMULH(left_shift_val, static_cast<int64_t>(q_mul), val);                            \
         RNDRSHIFT(val, right_shift, val);                                                      \
         c_tile[kk * C_ob + jj] = (val > min_val) ? ((val < max_val) ? val                      \
                                                                     : max_val)                 \

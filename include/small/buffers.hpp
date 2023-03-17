@@ -444,17 +444,15 @@ void init_norm(BufferT &ptr, uint32_t numel, uint32_t C_o)
 
 //****************************************************************************
 // tolerance based on absolute difference
-template <class BufferT,
-          typename = std::enable_if<
-              std::is_same<float, typename BufferT::value_type>::value> >
+template <class BufferT>
 bool equals(uint32_t numel,
             BufferT const &buf1,
             BufferT const &buf2,
-            float tolerance = 1e-8)
+            float tolerance = 1.0e-8)
 {
-    float const *buf1_ptr = buf1.data();
-    float const *buf2_ptr = buf2.data();
-    printf("begin correctness check\n");
+    using ScalarT = typename BufferT::value_type;
+    ScalarT const *buf1_ptr = buf1.data();
+    ScalarT const *buf2_ptr = buf2.data();
 
     if ((buf1.size() < numel) ||
         (buf2.size() < numel))
@@ -465,20 +463,33 @@ bool equals(uint32_t numel,
     bool check = true;
     for (size_t i = 0; i < numel; i++)
     {
-        float diff = *(buf2_ptr) - *(buf1_ptr);
-        // printf("equals      : %ld, buf2/buf1 %.4f/%.4f, diff %.4f\n",
-        //        i, *(buf2_ptr), *(buf1_ptr), diff);
-
-        if (fabs(diff) > tolerance)
+        if constexpr (std::is_same<float, typename BufferT::value_type>::value)
         {
-            printf("equals ERROR: %ld, buf2/buf1 %.4f/%.4f, diff %.4f\n",
-                   i, *(buf2_ptr), *(buf1_ptr), diff);
-            check = false;
+            ScalarT diff = *(buf2_ptr) - *(buf1_ptr);
+            // printf("equals      : %ld, buf2/buf1 %.4f/%.4f, diff %.4f\n",
+            //        i, *(buf2_ptr), *(buf1_ptr), diff);
+
+            if (fabs(diff) > tolerance)
+            {
+                printf("equals ERROR: %ld, buf2/buf1 %.4f/%.4f, diff %.4f\n",
+                       i, *(buf2_ptr), *(buf1_ptr), diff);
+                check = false;
+            }
+        }
+        else if constexpr (std::is_same<uint8_t, typename BufferT::value_type>::value)
+        {
+            if (*(buf2_ptr) != *(buf1_ptr))
+            {
+                std::cout << "equals ERROR: i=" << i << ", buf1[i]=" << *(buf1_ptr)
+                          << ", buf2[i]=" << *(buf2_ptr) << std::endl;
+                //printf("equals ERROR: %ld, buf2/buf1 %.4f/%.4f, diff %.4f\n",
+                //       i, *(buf2_ptr), *(buf1_ptr), diff);
+                check = false;
+            }
         }
         buf1_ptr++;
         buf2_ptr++;
     }
-    printf("end of correctness check\n");
     return check;
 }
 

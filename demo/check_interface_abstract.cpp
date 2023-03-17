@@ -41,17 +41,7 @@ using Buffer = small::FloatBuffer;
 #include <small/buffers.hpp>
 #include "check_interface.h"
 
-/// This must come after platform-specific includes.
-// #include <small/abstract_layer.hpp>
-
-/// @todo push this if into the lower header files
-#if defined(QUANTIZED)
-#include <small/q_abstract_layer.hpp>
-#include <small/q_interface_abstract.hpp> // template defs of interface.hpp
-#else
-#include <small/abstract_layer.hpp>
 #include <small/interface_abstract.hpp>
-#endif
 
 /// @todo Currently only works with FloatBuffer from reference
 

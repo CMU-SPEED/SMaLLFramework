@@ -69,9 +69,15 @@ int main(int argc, char **argv)
 {
     if (argc < 5)
     {
-        printf("USAGE: torch_pool <Input Channels> <Input Height> <Input Width> <kernel heightand width> <stride> <padding 'v' or 'f'> <Output Channels> \n");
+        printf("USAGE: %s <Input Channels> <Input Height> <Input Width> <kernel heightand width> <stride> <padding 'v' or 'f'> <Output Channels> \n", argv[0]);
         return 0;
     }
+
+#if defined(QUANTIZED)
+    using Buffer = small::QUInt8Buffer;
+#else
+    using Buffer = small::FloatBuffer;
+#endif
 
     printf("layer %d \n", LAYER);
     int C_i = atoi(argv[1]);
@@ -116,15 +122,11 @@ int main(int argc, char **argv)
     uint32_t out_dimensions = in_dimensions;
 #endif
 
-    small::FloatBuffer input_dc(in_dimensions);
-    //dtype *input_dc = alloc<dtype>(in_dimensions);
-    small::FloatBuffer out_dc(out_dimensions);
-    //dtype *out_dc = alloc<dtype>(out_dimensions);
-    small::FloatBuffer out_check_dc(out_dimensions);
-    //dtype *out_check_dc = alloc<dtype>(out_dimensions);
+    Buffer input_dc(in_dimensions);
+    Buffer out_dc(out_dimensions);
+    Buffer out_check_dc(out_dimensions);
     std::vector<uint32_t> intermediate_block_dimensions;
 
-    unsigned long long sum = ULLONG_MAX;
     std::vector<uint64_t> unfused_timing;
 
     // Initialize Outputs to 0
@@ -132,90 +134,85 @@ int main(int argc, char **argv)
     // Copy Inputs to their flat buffers
     init(input_dc, in_dimensions);
 
-    printf("\n");
 #if LAYER == CONV || LAYER == PARTIAL_CONV
     uint32_t filter_dimensions = (C_i * C_o * kernel_size * kernel_size);
 #elif LAYER == DW_CONV
     uint32_t filter_dimensions = (C_i * kernel_size * kernel_size);
 #endif
+
 #if LAYER < POOL
-    small::FloatBuffer filter_dc(filter_dimensions);
-    //dtype *filter_dc = alloc<dtype>(filter_dimensions);
+    Buffer filter_dc(filter_dimensions);
     init(filter_dc, filter_dimensions);
 #endif
 
-    sum = ULLONG_MAX;
-    printf("checking\n");
+    printf("Computing with reference and platform kernels.\n");
 
 #if LAYER == RELU
     check_ReLUActivation(C_i,
                          input_height, input_width,
                          input_dc, out_check_dc);
+    small::ReLUActivation(C_i,
+                          input_height, input_width,
+                          input_dc, out_dc);
 #elif LAYER == POOL
     check_Maxpool2D(kernel_size, stride,
                     t_pad, b_pad, l_pad, r_pad,
                     C_i,
                     input_height, input_width,
                     input_dc, out_check_dc);
-#elif LAYER == DW_CONV
-    check_DepthwiseConv2D(kernel_size, stride,
-                          t_pad, b_pad, l_pad, r_pad,
-                          C_i,
-                          input_height, input_width,
-                          input_dc, filter_dc, out_check_dc);
-#elif LAYER == CONV
-    check_Conv2D(kernel_size, stride,
-                 t_pad, b_pad, l_pad, r_pad,
-                 C_o, C_i,
-                 input_height, input_width,
-                 input_dc, filter_dc, out_check_dc);
-#elif LAYER == PARTIAL_CONV
-    check_PartialConv2D(kernel_size, stride,
-                        t_pad, b_pad, l_pad, r_pad,
-                        C_o, C_i,
-                        input_height, input_width,
-                        input_dc, filter_dc, out_check_dc);
-
-// #elif LAYER == FC
-    // Dense(0, C_o, C_i, input_dc, filter_dc, out_check_dc);
-#endif
-
-    printf("computed with scalar kernels\n");
-
-#if LAYER == RELU
-    small::ReLUActivation(C_i,
-                          input_height, input_width,
-                          input_dc, out_dc);
-#elif LAYER == POOL
     small::Maxpool2D(kernel_size, stride,
                      t_pad, b_pad, l_pad, r_pad,
                      C_i,
                      input_height, input_width,
                      input_dc, out_dc);
 #elif LAYER == DW_CONV
+    check_DepthwiseConv2D(kernel_size, stride,
+                          t_pad, b_pad, l_pad, r_pad,
+                          C_i,
+                          input_height, input_width,
+                          input_dc, filter_dc, out_check_dc);
     small::DepthwiseConv2D(kernel_size, stride,
                            t_pad, b_pad, l_pad, r_pad,
                            C_i,
                            input_height, input_width,
                            input_dc, filter_dc, out_dc);
 #elif LAYER == CONV
+    check_Conv2D(kernel_size, stride,
+                 t_pad, b_pad, l_pad, r_pad,
+                 C_o, C_i,
+                 input_height, input_width,
+                 input_dc, filter_dc, out_check_dc);
     small::Conv2D(kernel_size, stride,
                   t_pad, b_pad, l_pad, r_pad,
                   C_o, C_i,
                   input_height, input_width,
                   input_dc, filter_dc, out_dc);
+
 #elif LAYER == PARTIAL_CONV
+    check_PartialConv2D(kernel_size, stride,
+                        t_pad, b_pad, l_pad, r_pad,
+                        C_o, C_i,
+                        input_height, input_width,
+                        input_dc, filter_dc, out_check_dc);
     small::PartialConv2D(kernel_size, stride,
                          t_pad, b_pad, l_pad, r_pad,
                          C_o, C_i,
                          input_height, input_width,
                          input_dc, filter_dc, out_dc);
+
 // #elif LAYER == FC
+    // check_Dense(C_o, C_i, input_dc, filter_dc, out_check_dc);
     // small::Dense(C_o, C_i, input_dc, filter_dc, out_dc);
 #endif
 
+    printf("Checking correctness.\n");
     assert(equals(out_dimensions, out_check_dc, out_dc, 1e-4));
-    diff = 0;
+    printf("end of correctness check\n");
+
+    printf("Computing with reference and platform kernels %d times.\n", RUNS);
+
+    unsigned long long sum = ULLONG_MAX;
+    int diff = 0;
     for (int run = 0; run < RUNS; run++)
     {
         // t0 = rdtsc();
@@ -256,8 +253,6 @@ int main(int argc, char **argv)
 
         diff = time_difference(time1, time2);
         sum = std::min<unsigned long long>(sum, diff);
-        //MIN(sum, diff);
-
     }
 
     print_cycles(sum);
@@ -301,8 +296,6 @@ int main(int argc, char **argv)
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
         diff = time_difference(time1, time2);
         sum = std::min<unsigned long long>(sum, diff);
-        //MIN(sum, diff);
-
     }
 
     print_cycles(sum);
@@ -310,11 +303,11 @@ int main(int argc, char **argv)
 
     fflush(0);
 
-    printf("%.4f ", (sum_reference*1.0)/(sum*1.0));
+    printf("reference time / platform time = %.4f ", (sum_reference*1.0)/(sum*1.0));
 
     auto output_els = out_dimensions;
-    dtype compute_ops = 0.0;
-    dtype throughput = 0.0;
+    double compute_ops = 0.0;
+    double throughput = 0.0;
 
 #if LAYER == RELU
     compute_ops = output_els*(1.0);
@@ -341,11 +334,4 @@ int main(int argc, char **argv)
     //dtype scaled_peak_cycles = peak_cycles;
     const int num_th = atoi(std::getenv("OMP_NUM_THREADS"));
     printf(" %.0f %.2f \n", throughput*num_th, (compute_ops) / (1.0 * sum));
-
-    //free(input_dc);
-#if LAYER < POOL
-    //free(filter_dc);
-#endif
-    //free(out_check_dc);
-    //free(out_dc);
 }
