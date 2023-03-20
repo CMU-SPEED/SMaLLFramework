@@ -64,17 +64,18 @@ void print_build_info_check()
     printf("W_ob =  %d \n C_ob = %d \n SIMD = %d \n", W_ob, C_ob, SIMD);
 }
 
-void print_stats(std::vector<unsigned long long> v, const char *benchmark)
+template <class T>
+void print_stats(std::vector<T> v, const char *benchmark)
 {
     if (v.size() != 0)
     {
-        unsigned long long sum = std::accumulate(v.begin(), v.end(), 0.0);
-        unsigned long long mean = sum / v.size();
-        unsigned long long min_elem = *min_element(v.begin(), v.end());
-        unsigned long long max_elem = *max_element(v.begin(), v.end());
-        printf("Average for %s: %llu, \t ", benchmark, mean);
-        printf("Min for %s    : %llu, \t", benchmark, min_elem);
-        printf("Max for %s    : %llu \n", benchmark, max_elem);
+        T sum = std::accumulate(v.begin(), v.end(), 0);
+        double mean = sum / (double)v.size();
+        T min_elem = *min_element(v.begin(), v.end());
+        T max_elem = *max_element(v.begin(), v.end());
+        std::cout << benchmark << "Average = " << mean
+                  << ", Min = " << min_elem
+                  << ", Max = " << max_elem << std::endl;
     }
 }
 

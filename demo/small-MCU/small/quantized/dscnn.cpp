@@ -206,8 +206,8 @@ void inference()
                         STRIDE(layer_num), l_pad, r_pad);
     SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad);
     /// @todo non-quantized overrides padding to 1, 1, 1, 1 here
-    layer_num++; // 1
 
+    layer_num++; // 1
     intermediate_dims[layer_num][0] = 5;
     intermediate_dims[layer_num][1] = 25;
 
@@ -263,9 +263,9 @@ void inference()
     REDUCTION_H(layer_num) = I_HEIGHT(layer_num);
     REDUCTION_W(layer_num) = I_WIDTH(layer_num);
     STRIDE(layer_num) = 1;
-    SET_PADDING(layer_num, 0, 0, 0, 0)
-    layer_num++;
+    SET_PADDING(layer_num, 0, 0, 0, 0);
 
+    layer_num++;
     intermediate_dims[layer_num][0] = 1;
     intermediate_dims[layer_num][1] = 1;
     REDUCTION_C(layer_num) = GROUPS(layer_num - 1);

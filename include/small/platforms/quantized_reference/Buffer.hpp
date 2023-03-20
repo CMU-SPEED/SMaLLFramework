@@ -90,6 +90,9 @@ public:
         b(8),
         m_buffer(num_elts)
     {
+        /// @todo Revisit for other platforms
+        quantized_init();
+
         // todo should the buffer be cleared?
         std::cerr << "QUInt8Buffer::ctor " << (void*)this
                   << ", data_ptr = " << (void*)m_buffer.data()

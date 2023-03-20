@@ -19,11 +19,12 @@
 #include <vector>
 
 #include <small.h>
+#include "Timer.hpp"
 #include "utils.h"
 
 /// @todo Which of these defines are needed?
 #ifndef RUNS
-#define RUNS 1000
+#define RUNS 10
 #endif
 #ifndef PARALLEL
 #define PARALLEL 0
@@ -67,6 +68,7 @@
 //****************************************************************************
 // The output of the block is stored in O
 //
+template <class BufferT>
 inline void dscnn_block(
     uint32_t in_dims[2], uint32_t input_channels, // Input dimensions
     uint32_t kernel_size,
@@ -76,11 +78,11 @@ inline void dscnn_block(
     uint8_t b_pad,
     uint8_t l_pad,
     uint8_t r_pad,
-    small::FloatBuffer const &I,
-    small::FloatBuffer const &F_dw,
-    small::FloatBuffer const &F_1x1,
-    small::FloatBuffer       &O_intermediate,
-    small::FloatBuffer       &O)
+    BufferT const &I,
+    BufferT const &F_dw,
+    BufferT const &F_1x1,
+    BufferT       &O_intermediate,
+    BufferT       &O)
 {
     small::DepthwiseConv2D(kernel_size, stride,
                            t_pad, b_pad, l_pad, r_pad,
@@ -105,14 +107,15 @@ inline void dscnn_block(
 }
 
 //****************************************************************************
-small::FloatBuffer &
+template <class BufferT>
+BufferT &
 model_inference(uint32_t layer_num_total,
                 uint16_t layer_params[30][10],
                 uint32_t intermediate_dims[30][2],
-                std::vector<small::FloatBuffer *> const &filter_buf_ptrs,
-                small::FloatBuffer const &input_dc,
-                small::FloatBuffer       &inter_0_dc,
-                small::FloatBuffer       &inter_1_dc)
+                std::vector<BufferT *> const &filter_buf_ptrs,
+                BufferT const &input_dc,
+                BufferT       &inter_0_dc,
+                BufferT       &inter_1_dc)
 {
     auto layer_num = 0;
     int num_filters = layer_num_total - 1;
@@ -169,6 +172,7 @@ model_inference(uint32_t layer_num_total,
 
 //****************************************************************************
 //****************************************************************************
+template <class BufferT>
 void inference()
 {
     uint32_t C_i = 3;
@@ -178,7 +182,7 @@ void inference()
 
     //Create input tensor
     uint32_t input_dimensions = C_i * N * M;
-    small::FloatBuffer input_dc(input_dimensions);
+    BufferT input_dc(input_dimensions);
     init(input_dc, input_dimensions);
 
     // ================================================
@@ -298,7 +302,7 @@ void inference()
 #endif
 
     //  Copy layer weights to temporaries
-    std::vector<small::FloatBuffer *> filter_buf_ptrs;
+    std::vector<BufferT *> filter_buf_ptrs;
 
     for (size_t l = 0; l < num_filters - 1; l++)  // was layer_num_total
     {
@@ -306,8 +310,8 @@ void inference()
             REDUCTION_H(l) * REDUCTION_W(l) * REDUCTION_C(l) *
             GROUP_C(l) * GROUPS(l);
 
-        small::FloatBuffer *filter_buf_ptr =
-            new small::FloatBuffer(filter_dimensions);
+        BufferT *filter_buf_ptr =
+            new BufferT(filter_dimensions);
         init(*filter_buf_ptr, filter_dimensions);
         filter_buf_ptrs.push_back(filter_buf_ptr);
     }
@@ -315,18 +319,23 @@ void inference()
     //uint32_t filter_dimensions = GROUP_C(layer_num_total) * num_classes;
     uint32_t filter_dimensions =
         REDUCTION_C(layer_num_total - 1) * GROUP_C(layer_num_total - 1);
-    small::FloatBuffer *filter_fc_dc_ptr =
-        new small::FloatBuffer(filter_dimensions);
-    //init(*filter_fc_dc_ptr, filter_dimensions);   /// @todo init call removed in merge.
+    BufferT *filter_fc_dc_ptr =
+        new BufferT(filter_dimensions);
+    init(*filter_fc_dc_ptr, filter_dimensions);
     filter_buf_ptrs.push_back(filter_fc_dc_ptr);
 
     // allocate space for intermediate outputs
     // (use the max sizes calculated previously)
-    small::FloatBuffer inter_0_dc(max_numel_inter_0);
-    small::FloatBuffer inter_1_dc(max_numel_inter_1);
-    /// @todo HOW TO DEAL WITH THE FOLLOWING??
-    //dtype *inter_0_dc = alloc<dtype>(max_numel_inter_0 + max_numel_inter_1);
-    //dtype *inter_1_dc = inter_0_dc + max_numel_inter_0;
+#if defined(QUANTIZED)
+    small::QUInt8Buffer inter_0_dc(max_numel_inter_0*4);
+    small::QUInt8Buffer inter_1_dc(max_numel_inter_1*4);
+
+    inter_0_dc.quantized_init(); /// @todo Move to buffer constructor?
+    inter_1_dc.quantized_init(); /// @todo Move to buffer constructor?
+#else
+    BufferT inter_0_dc(max_numel_inter_0);
+    BufferT inter_1_dc(max_numel_inter_1);
+#endif
 
     //auto &output_dc =
         model_inference(layer_num_total, layer_params, intermediate_dims,
@@ -335,24 +344,22 @@ void inference()
                         inter_0_dc,
                         inter_1_dc);
 
-    unsigned long long sum_small; //, t0, t1;
-    sum_small = ULLONG_MAX;
-    std::vector<unsigned long long> small_timing;
+    Timer my_timer;
+    double sum_small = std::numeric_limits<double>::max();
+    std::vector<double> small_timing;
+
     for (int r = 0; r < RUNS; r++)
     {
-        // t0 = rdtsc();
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
+        my_timer.start();
 
         //auto &output_dc =
             model_inference(layer_num_total, layer_params, intermediate_dims,
                             filter_buf_ptrs,
                             input_dc, inter_0_dc, inter_1_dc);
 
-        // t1 = rdtsc();
-        // MIN(sum_small, (t1 - t0));
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
-        auto diff = time_difference(time1, time2);
-        sum_small = std::min<unsigned long long>(sum_small, diff);
+        my_timer.stop();
+        auto diff = my_timer.elapsed();
+        sum_small = std::min<double>(sum_small, diff);
         small_timing.push_back(diff);
     }
 
@@ -364,6 +371,10 @@ void inference()
     {
         delete filter_buf_ptrs[l];
     }
+
+#if defined(NANO33BLE)
+    small::detail::free_all();
+#endif
 }
 
 //****************************************************************************
@@ -372,7 +383,12 @@ void inference()
 #ifndef NANO33BLE
 int main()
 {
-    inference();
+#if defined(QUANTIZED)
+    inference<small::QUInt8Buffer>();
+#else
+    inference<small::FloatBuffer>();
+#endif
+
     return 0;
 }
 #endif

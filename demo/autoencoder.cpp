@@ -23,7 +23,7 @@
 
 /// @todo Which of these defines are needed?
 #ifndef RUNS
-#define RUNS 1000
+#define RUNS 10
 #endif
 #ifndef PARALLEL
 #define PARALLEL 0
@@ -65,14 +65,14 @@
     (O_HEIGHT(layer_num) * O_WIDTH(layer_num) * GROUP_C(layer_num - 1) * GROUPS(layer_num - 1))
 
 //****************************************************************************
-// Prior: returned dtype*
-small::FloatBuffer &model_inference(
+template <class BufferT>
+BufferT &model_inference(
     uint32_t layer_num_total,
     uint16_t layer_params[30][10],
-    std::vector<small::FloatBuffer*> const &filter_buf_ptrs, //dtype *filter_ptrs[30],
-    small::FloatBuffer const &input_dc,   //dtype *input_dc,
-    small::FloatBuffer       &inter_0_dc, //dtype *inter_0_dc,
-    small::FloatBuffer       &inter_1_dc) //dtype *inter_1_dc)
+    std::vector<BufferT *> const &filter_buf_ptrs,
+    BufferT  const &input_dc,
+    BufferT        &inter_0_dc,
+    BufferT        &inter_1_dc)
 {
     auto layer_num = 0;
     small::Conv2D(1, 1,
@@ -110,6 +110,7 @@ small::FloatBuffer &model_inference(
 
 //****************************************************************************
 //****************************************************************************
+template <class BufferT>
 void inference()
 {
     uint32_t C_i = 128;
@@ -119,7 +120,7 @@ void inference()
 
     // Create input tensor
     uint32_t input_dimensions = C_i * N * M;
-    small::FloatBuffer input_dc(input_dimensions);
+    BufferT  input_dc(input_dimensions);
     small::init(input_dc, input_dimensions);
 
     // ================================================
@@ -184,7 +185,7 @@ void inference()
     }
 #endif
 
-    std::vector<small::FloatBuffer *> filter_buf_ptrs;
+    std::vector<BufferT *> filter_buf_ptrs;
 
     // Direct Convolution Setup
     for (uint32_t l = 0; l < layer_num_total; l++)
@@ -192,14 +193,22 @@ void inference()
         uint32_t filter_dimensions =
             REDUCTION_HW(l) * REDUCTION_HW(l) * REDUCTION_C(l) *
             GROUP_C(l) * GROUPS(l);
-        small::FloatBuffer *filter_buf_ptr =
+        BufferT *filter_buf_ptr =
             small::alloc_buffer(filter_dimensions);
         init(*filter_buf_ptr, filter_dimensions);
         filter_buf_ptrs.push_back(filter_buf_ptr);
     }
 
+#if defined QUANTIZED
+    std::cerr << "Intermediate buffer sizes: "
+              << max_numel_inter_0 << ", " << max_numel_inter_1
+              << std::endl;
+    small::QUInt8Buffer inter_0_dc(max_numel_inter_0*4); /// @todo potential alignment issues
+    small::QUInt8Buffer inter_1_dc(max_numel_inter_1*4);
+#else
     small::FloatBuffer inter_0_dc(max_numel_inter_0);
     small::FloatBuffer inter_1_dc(max_numel_inter_1);
+#endif
 
     // always returns a reference to inter_0_dc
     //auto &output_dc =
@@ -211,13 +220,23 @@ void inference()
 
     printf("\n");
 
-    unsigned long long sum_small; //, t0, t1;
-    sum_small = ULLONG_MAX;
+    unsigned long long sum_small = ULLONG_MAX;
     std::vector<unsigned long long> small_timing;
+#if defined(NANO33BLE)
+    mbed::Timer t;
+    t.start();
+#else
+    /// @todo timing variables in utils.h;
+#endif
+
     for (int r = 0; r < RUNS; r++)
     {
+#if defined(NANO33BLE)
+        t.start();
+#else
         // t0 = rdtsc();
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
+#endif
 
         // always returns a reference to inter_0_dc
         //auto &output_dc =
@@ -226,8 +245,14 @@ void inference()
                             input_dc,
                             inter_0_dc,
                             inter_1_dc);
+
+#if defined(NANO33BLE)
+        t.stop();
+        auto diff = t.elapsed_time().count();
+#else
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
         auto diff = time_difference(time1, time2);
+#endif
         sum_small = std::min<unsigned long long>(sum_small, diff);
         small_timing.push_back(diff);
     }
@@ -243,6 +268,10 @@ void inference()
     {
         delete filter_buf_ptrs[l];
     }
+
+#if defined(NANO33BLE)
+    small::detail::free_all();
+#endif
 }
 
 //****************************************************************************
@@ -251,7 +280,12 @@ void inference()
 #ifndef NANO33BLE
 int main()
 {
-    inference();
+#if defined(QUANTIZED)
+    inference<small::QUInt8Buffer>();
+#else
+    inference<small::FloatBuffer>();
+#endif
+
     return 0;
 }
 #endif
