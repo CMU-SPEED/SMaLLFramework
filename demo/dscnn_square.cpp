@@ -19,11 +19,12 @@
 #include <vector>
 
 #include <small.h>
+#include "Timer.hpp"
 #include "utils.h"
 
 /// @todo Which of these defines are needed?
 #ifndef RUNS
-#define RUNS 1000
+#define RUNS 10
 #endif
 #ifndef PARALLEL
 #define PARALLEL 0
@@ -67,6 +68,7 @@
 //****************************************************************************
 // The output of the block is stored in O
 //
+template <class BufferT>
 inline void dscnn_block(
     std::array<uint32_t, 2> const &in_dims, uint32_t input_channels, // Input dimensions
     uint32_t kernel_size,
@@ -76,11 +78,11 @@ inline void dscnn_block(
     uint8_t b_pad,
     uint8_t l_pad,
     uint8_t r_pad,
-    small::FloatBuffer const &I,
-    small::FloatBuffer const &F_dw,
-    small::FloatBuffer const &F_1x1,
-    small::FloatBuffer       &O_intermediate,
-    small::FloatBuffer       &O)
+    BufferT const &I,
+    BufferT const &F_dw,
+    BufferT const &F_1x1,
+    BufferT       &O_intermediate,
+    BufferT       &O)
 {
     small::DepthwiseConv2D(kernel_size, stride,
                            t_pad, b_pad, l_pad, r_pad,
@@ -105,16 +107,18 @@ inline void dscnn_block(
 }
 
 //****************************************************************************
-small::FloatBuffer &
+template <class BufferT>
+BufferT &
 model_inference(uint32_t layer_num_total,
                 uint16_t layer_params[30][10],
                 std::vector<std::array<uint32_t, 2>> const &intermediate_dims,
-                std::vector<small::FloatBuffer *> const &filter_buf_ptrs,
-                small::FloatBuffer const &input_dc,
-                small::FloatBuffer       &inter_0_dc,
-                small::FloatBuffer       &inter_1_dc)
+                std::vector<BufferT *> const &filter_buf_ptrs,
+                BufferT const &input_dc,
+                BufferT       &inter_0_dc,
+                BufferT       &inter_1_dc)
 {
     auto layer_num = 0;
+    int num_filters = layer_num_total - 1;
     small::Conv2D_rect(REDUCTION_H(layer_num), REDUCTION_W(layer_num),
                        STRIDE(layer_num), PADDING(layer_num),
                        GROUP_C(layer_num), REDUCTION_C(layer_num),
@@ -150,6 +154,7 @@ model_inference(uint32_t layer_num_total,
         layer_num += 2;
     }
 
+    /// @todo WARNING quantized version has "layer_num = layer_num_total - 2;"
     // printf("calling pool %d %d \n", layer_num, layers.size());
     small::MaxPool2D_rect(REDUCTION_H(layer_num), REDUCTION_W(layer_num),
                           STRIDE(layer_num), PADDING(layer_num),
@@ -158,19 +163,24 @@ model_inference(uint32_t layer_num_total,
                           inter_0_dc,
                           inter_1_dc);
 
-    uint32_t num_classes = 16;  /// @todo get from layer params
+    layer_num++;
+    std::cout << "LAST CONV2D:" << GROUP_C(layer_num)
+              << ", " << REDUCTION_C(layer_num)
+              << ", " << (num_filters - 1) << std::endl;
     small::Conv2D(1, 1,
                   0, 0, 0, 0,
-                  num_classes, GROUP_C(layer_num_total - 1),
+                  GROUP_C(layer_num), REDUCTION_C(layer_num),
                   1, 1,
                   inter_1_dc,
-                  *filter_buf_ptrs[layer_num - 1], // layer_num??
+                  *filter_buf_ptrs[num_filters - 1],
                   inter_0_dc);
+
     return inter_0_dc;
 }
 
 //****************************************************************************
 //****************************************************************************
+template <class BufferT>
 void inference()
 {
     uint32_t C_i = 3;
@@ -180,7 +190,7 @@ void inference()
 
     //Create input tensor
     uint32_t input_dimensions = C_i * N * M;
-    small::FloatBuffer input_dc(input_dimensions);
+    BufferT input_dc(input_dimensions);
     init(input_dc, input_dimensions);
 
     // ================================================
@@ -219,10 +229,10 @@ void inference()
 
     auto inter_dim = INPUT_NUMEL(layer_num);
     max_numel_inter_0 =
-        (inter_dim > max_numel_inter_0)? inter_dim : max_numel_inter_0;
+        (inter_dim > max_numel_inter_0) ? inter_dim : max_numel_inter_0;
+
     // common set up for model architecture
     auto ds_blocks = 4;
-
     const int layer_strides[] = {1, 1, 1, 1};
     // dwise 1
     for (int ds_layer = 0; ds_layer < ds_blocks; ds_layer++)
@@ -232,7 +242,8 @@ void inference()
         REDUCTION_C(layer_num) = 1; // input channels
         GROUP_C(layer_num) = 1;
         GROUPS(layer_num) = GROUP_C(layer_num - 1);  // output channels
-        REDUCTION_HW(layer_num) = 3;                 // kernel size
+        REDUCTION_H(layer_num) = 3;                  // kernel size
+        REDUCTION_W(layer_num) = 3;
         STRIDE(layer_num) = layer_strides[ds_layer]; // stride
         small::calc_padding(I_HEIGHT(layer_num), REDUCTION_HW(layer_num),
                             STRIDE(layer_num), t_pad, b_pad);
@@ -252,7 +263,8 @@ void inference()
         REDUCTION_C(layer_num) = GROUPS(layer_num - 1);
         GROUP_C(layer_num) = (GROUPS(layer_num - 1)) * channel_multiplier;
         GROUPS(layer_num) = 1;
-        REDUCTION_HW(layer_num) = 1;
+        REDUCTION_H(layer_num) = 1;
+        REDUCTION_W(layer_num) = 1;
         STRIDE(layer_num) = 1;
         SET_PADDING(layer_num, 0, 0, 0, 0);
 
@@ -261,11 +273,12 @@ void inference()
         max_numel_inter_0 =
             (inter_dim > max_numel_inter_0) ? inter_dim : max_numel_inter_0;
         intermediate_dims.push_back(std::array<uint, 2>(OUTPUT_DIMS(layer_num)));
+
         // std::cout << intermediate_dims[layer_num - 1][0] << " "
         //           << intermediate_dims[layer_num - 1][1] << std::endl;
-        std::cout << "1x1 " << layer_num << "  " << I_HEIGHT(layer_num) << " "
-                  << I_WIDTH(layer_num) << " " << GROUP_C(layer_num - 1)
-                  << std::endl;
+        // std::cout << "1x1 " << layer_num << "  " << I_HEIGHT(layer_num) << " "
+        //           << I_WIDTH(layer_num) << " " << GROUP_C(layer_num - 1)
+        //           << std::endl;
     }
     // pooling dims
     //printf("%d pool layer num %d %d\n",
@@ -278,45 +291,67 @@ void inference()
     STRIDE(layer_num) = 1;
     SET_PADDING(layer_num, 0, 0, 0, 0);
 
-    layer_num++;
+    /// @todo WAS MISSING A LAYER (compare to dscnn.cpp)
 
-    /// @todo MISSING A LAYER (compare to dscnn.cpp)
+    layer_num++;
+    intermediate_dims[layer_num][0] = 1;
+    intermediate_dims[layer_num][1] = 1;
+    REDUCTION_C(layer_num) = GROUPS(layer_num - 1);
+    GROUP_C(layer_num) = num_classes;
+    GROUPS(layer_num) = 1;
+    REDUCTION_HW(layer_num) = 1;
+    STRIDE(layer_num) = 1;
+    SET_PADDING(layer_num, 0, 0, 0, 0);
+    layer_num++;
 
     // fc dims
     printf("size of intermediate buffers from configuration: %d %d\n",
            max_numel_inter_0, max_numel_inter_1);
 
-    auto layer_num_total = layer_num - 1;
+    size_t layer_num_total = layer_num;
+    size_t num_filters = layer_num_total - 1;
+
 
     //printf("Layer num total: %d", layer_num_total);
 
     //  Copy layer weights to temporaries
-    std::vector<small::FloatBuffer *> filter_buf_ptrs;
+    std::vector<BufferT *> filter_buf_ptrs;
 
-    for (int l = 0; l < layer_num_total; l++)
+    std::cout << "EQUAL?? " << layer_num_total << " ?= " << (num_filters - 1) << std::endl;
+    std::cout << "num filters = " << num_filters-1 << std::endl;
+    for (size_t l = 0; l < num_filters - 1; l++)
     {
         uint32_t filter_dimensions =
             REDUCTION_H(l) * REDUCTION_W(l) * REDUCTION_C(l) *
             GROUP_C(l) * GROUPS(l);
+        std::cout << l << ": filter dimensions = " << filter_dimensions << std::endl;
 
-        small::FloatBuffer *filter_buf_ptr =
-            new small::FloatBuffer(filter_dimensions);
+        BufferT *filter_buf_ptr =
+            new BufferT(filter_dimensions);
         init(*filter_buf_ptr, filter_dimensions);
         filter_buf_ptrs.push_back(filter_buf_ptr);
     }
 
-    uint32_t filter_dimensions = GROUP_C(layer_num_total) * num_classes;
-    //printf("Fc filter dims %d x %d\n", GROUP_C(layer_num_total-1) , num_classes);
-    small::FloatBuffer *filter_fc_dc_ptr =
-        new small::FloatBuffer(filter_dimensions);
+    //uint32_t filter_dimensions = GROUP_C(layer_num_total) * num_classes;
+    uint32_t filter_dimensions =
+        REDUCTION_C(layer_num_total - 1) * GROUP_C(layer_num_total - 1);
+    BufferT *filter_fc_dc_ptr =
+        new BufferT(filter_dimensions);
     init(*filter_fc_dc_ptr, filter_dimensions);
     filter_buf_ptrs.push_back(filter_fc_dc_ptr);
 
     // allocate space for intermediate outputs
     // (use the max sizes calculated previously)
+#if defined(QUANTIZED)
+    small::QUInt8Buffer inter_0_dc(max_numel_inter_0*4);
+    small::QUInt8Buffer inter_1_dc(max_numel_inter_1*4);
+
+    inter_0_dc.quantized_init(); /// @todo Move to buffer constructor?
+    inter_1_dc.quantized_init(); /// @todo Move to buffer constructor?
+#else
     small::FloatBuffer inter_0_dc(max_numel_inter_0);
     small::FloatBuffer inter_1_dc(max_numel_inter_1);
-    //small::FloatBuffer output_dc(num_classes);
+#endif
 
     //auto &output_dc =
         model_inference(layer_num_total, layer_params, intermediate_dims,
@@ -325,24 +360,22 @@ void inference()
                         inter_0_dc,
                         inter_1_dc);
 
-    unsigned long long sum_small; //, t0, t1;
-    sum_small = ULLONG_MAX;
-    std::vector<unsigned long long> small_timing;
+    Timer my_timer;
+    double sum_small = std::numeric_limits<double>::max();
+    std::vector<double> small_timing;
+
     for (int r = 0; r < RUNS; r++)
     {
-        // t0 = rdtsc();
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
+        my_timer.start();
 
         //auto &output_dc =
             model_inference(layer_num_total, layer_params, intermediate_dims,
                             filter_buf_ptrs,
                             input_dc, inter_0_dc, inter_1_dc);
 
-        // t1 = rdtsc();
-        // MIN(sum_small, (t1 - t0));
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
-        auto diff = time_difference(time1, time2);
-        sum_small = std::min<unsigned long long>(sum_small, diff);
+        my_timer.stop();
+        auto diff = my_timer.elapsed();
+        sum_small = std::min<double>(sum_small, diff);
         small_timing.push_back(diff);
     }
 
@@ -354,6 +387,10 @@ void inference()
     {
         delete filter_buf_ptrs[l];
     }
+
+#if defined(NANO33BLE)
+    small::detail::free_all();
+#endif
 }
 
 //****************************************************************************
@@ -362,7 +399,12 @@ void inference()
 #ifndef NANO33BLE
 int main()
 {
-    inference();
+#if defined(QUANTIZED)
+    inference<small::QUInt8Buffer>();
+#else
+    inference<small::FloatBuffer>();
+#endif
+
     return 0;
 }
 #endif

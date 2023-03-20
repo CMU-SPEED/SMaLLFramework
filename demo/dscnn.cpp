@@ -151,6 +151,7 @@ model_inference(uint32_t layer_num_total,
     }
 
     /// @todo WARNING quantized version has "layer_num = layer_num_total - 2;"
+    // printf("calling pool %d %d \n", layer_num, layers.size());
     small::MaxPool2D_rect(REDUCTION_H(layer_num), REDUCTION_W(layer_num),
                           STRIDE(layer_num), PADDING(layer_num),
                           GROUPS(layer_num),
@@ -159,6 +160,9 @@ model_inference(uint32_t layer_num_total,
                           inter_1_dc);
 
     layer_num++;
+    std::cout << "LAST CONV2D:" << GROUP_C(layer_num)
+              << ", " << REDUCTION_C(layer_num)
+              << ", " << (num_filters - 1) << std::endl;
     small::Conv2D(1, 1,
                   0, 0, 0, 0,
                   GROUP_C(layer_num), REDUCTION_C(layer_num),
@@ -206,6 +210,7 @@ void inference()
     REDUCTION_H(layer_num) = 3;
     REDUCTION_W(layer_num) = 1;
     STRIDE(layer_num) = 2;
+    //printf("%d %d %d %d\n", N, M, I_HEIGHT(layer_num), I_WIDTH(layer_num));
     small::calc_padding(I_HEIGHT(layer_num), REDUCTION_H(layer_num),
                         STRIDE(layer_num), t_pad, b_pad);
     small::calc_padding(I_WIDTH(layer_num),  REDUCTION_W(layer_num),
@@ -220,8 +225,9 @@ void inference()
     auto inter_dim = INPUT_NUMEL(layer_num);
     max_numel_inter_0 =
         (inter_dim > max_numel_inter_0) ? inter_dim : max_numel_inter_0;
-    auto ds_blocks = 4;
 
+    // common set up for model architecture
+    auto ds_blocks = 4;
     const int layer_strides[] = {1, 1, 1, 1};
     // dwise 1
     for (int ds_layer = 0; ds_layer < ds_blocks; ds_layer++)
@@ -231,12 +237,12 @@ void inference()
         REDUCTION_C(layer_num) = 1; // input channels
         GROUP_C(layer_num) = 1;
         GROUPS(layer_num) = GROUP_C(layer_num - 1);  // output channels
-        REDUCTION_HW(layer_num) = 3;                 // kernel size, REDUCTION_H???
+        REDUCTION_H(layer_num) = 3;                  // kernel size
         REDUCTION_W(layer_num) = 3;
         STRIDE(layer_num) = layer_strides[ds_layer]; // stride
         small::calc_padding(I_HEIGHT(layer_num), REDUCTION_HW(layer_num),
                             STRIDE(layer_num), t_pad, b_pad);
-        small::calc_padding(I_WIDTH(layer_num),  REDUCTION_HW(layer_num),
+        small::calc_padding(I_WIDTH(layer_num), REDUCTION_HW(layer_num),
                             STRIDE(layer_num), l_pad, r_pad);
         SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad);
 
@@ -250,7 +256,7 @@ void inference()
         REDUCTION_C(layer_num) = GROUPS(layer_num - 1);
         GROUP_C(layer_num) = (GROUPS(layer_num - 1)) * channel_multiplier;
         GROUPS(layer_num) = 1;
-        REDUCTION_HW(layer_num) = 1;  /// @todo should this be REDUCTION_H?
+        REDUCTION_H(layer_num) = 1;
         REDUCTION_W(layer_num) = 1;
         STRIDE(layer_num) = 1;
         SET_PADDING(layer_num, 0, 0, 0, 0);
@@ -304,11 +310,14 @@ void inference()
     //  Copy layer weights to temporaries
     std::vector<BufferT *> filter_buf_ptrs;
 
+    std::cout << "EQUAL?? " << layer_num_total << " ?= " << (num_filters - 1) << std::endl;
+    std::cout << "num filters = " << num_filters-1 << std::endl;
     for (size_t l = 0; l < num_filters - 1; l++)  // was layer_num_total
     {
         uint32_t filter_dimensions =
             REDUCTION_H(l) * REDUCTION_W(l) * REDUCTION_C(l) *
             GROUP_C(l) * GROUPS(l);
+        std::cout << l << ": filter dimensions = " << filter_dimensions << std::endl;
 
         BufferT *filter_buf_ptr =
             new BufferT(filter_dimensions);
@@ -333,8 +342,8 @@ void inference()
     inter_0_dc.quantized_init(); /// @todo Move to buffer constructor?
     inter_1_dc.quantized_init(); /// @todo Move to buffer constructor?
 #else
-    BufferT inter_0_dc(max_numel_inter_0);
-    BufferT inter_1_dc(max_numel_inter_1);
+    small::FloatBuffer inter_0_dc(max_numel_inter_0);
+    small::FloatBuffer inter_1_dc(max_numel_inter_1);
 #endif
 
     //auto &output_dc =

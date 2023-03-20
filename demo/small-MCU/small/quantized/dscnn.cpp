@@ -214,8 +214,9 @@ void inference()
     auto inter_dim = INPUT_NUMEL(layer_num);
     max_numel_inter_0 =
         (inter_dim > max_numel_inter_0) ? inter_dim : max_numel_inter_0;
-    auto ds_blocks = 4;
 
+    // common set up for model architecture
+    auto ds_blocks = 4;
     const int layer_strides[] = {1, 1, 1, 1};
     // dwise 1
     for (int ds_layer = 0; ds_layer < ds_blocks; ds_layer++)
@@ -230,9 +231,9 @@ void inference()
         STRIDE(layer_num) = layer_strides[ds_layer]; // stride
         small::calc_padding(I_HEIGHT(layer_num), REDUCTION_HW(layer_num),
                             STRIDE(layer_num), t_pad, b_pad);
-        small::calc_padding(I_WIDTH(layer_num),  REDUCTION_HW(layer_num),
+        small::calc_padding(I_WIDTH(layer_num), REDUCTION_HW(layer_num),
                             STRIDE(layer_num), l_pad, r_pad);
-        SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad)
+        SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad);
 
         layer_num++; // 2
         intermediate_dims[layer_num][0] = O_WIDTH(layer_num);
@@ -247,7 +248,7 @@ void inference()
         REDUCTION_HW(layer_num) = 1;
         REDUCTION_W(layer_num) = 1;
         STRIDE(layer_num) = 1;
-        SET_PADDING(layer_num, 0, 0, 0, 0)
+        SET_PADDING(layer_num, 0, 0, 0, 0);
 
         layer_num++; // 3
         inter_dim = INPUT_NUMEL(layer_num);
