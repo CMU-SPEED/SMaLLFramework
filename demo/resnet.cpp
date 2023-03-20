@@ -94,7 +94,7 @@ inline void resnet_block(
     uint32_t o_w = small::output_dim(in_dims[1] + l_pad_0 + r_pad_0,
                                      stride, kernel_size);
 
-    small::ReLUActivation(input_channels,
+    small::ReLUActivation(input_channels,   /// @todo should this be output_channels?
                           o_h, o_w,
                           O_intermediate, O_intermediate);
 
@@ -148,7 +148,7 @@ inline void resnet_block(
     uint32_t o_w = small::output_dim(in_dims[1] + l_pad_0 + r_pad_0,
                                      stride, kernel_size);
 
-    small::ReLUActivation(input_channels,
+    small::ReLUActivation(input_channels,  /// @todo should this be output_channels?
                           o_h, o_w,
                           O_intermediate, O_intermediate);
 
@@ -358,9 +358,9 @@ void inference()
     GROUPS(layer_num) = GROUP_C(layer_num - 1);
     REDUCTION_HW(layer_num) = I_HEIGHT(layer_num);
     STRIDE(layer_num) = 1;
-    SET_PADDING(layer_num, 0, 0, 0, 0)
-    layer_num++;
+    SET_PADDING(layer_num, 0, 0, 0, 0);
 
+    layer_num++;
     intermediate_dims[layer_num][0] = O_WIDTH(layer_num);
     intermediate_dims[layer_num][1] = O_HEIGHT(layer_num);
 

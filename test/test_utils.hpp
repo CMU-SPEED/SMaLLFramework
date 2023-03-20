@@ -83,6 +83,7 @@ std::string get_pathname(
     return fname;
 }
 
+#if 0
 //****************************************************************************
 /// @pre in_buf points to allocation at least as big as
 ///             sizeof(float)*num_elts
@@ -107,6 +108,7 @@ int read_float_inputs(std::string const &input_data_fname,
     ifs.read(reinterpret_cast<char*>(in_buf), num_elts*sizeof(RealT));
     return 0;
 }
+#endif
 
 //****************************************************************************
 /// Read a binary file in the following format:
@@ -118,17 +120,16 @@ int read_float_inputs(std::string const &input_data_fname,
 ///
 /// @retval The number of elements stored in in_buf (0 if no allocation occured)
 ///
-small::FloatBuffer read_float_inputs(std::string const &input_data_fname)
+template <class BufferT>
+BufferT read_inputs(std::string const &input_data_fname)
 {
-    using RealT = float;
-
     uint32_t in_n, num_elts;
     std::ifstream ifs(input_data_fname, std::ios::binary);
     if (!ifs)
     {
         std::cerr << "ERROR: failed to open file: " << input_data_fname
                   << std::endl;
-        throw std::invalid_argument("read_float_inputs ERROR: failed to open file.");
+        throw std::invalid_argument("read_inputs ERROR: failed to open file.");
     }
 
     // TODO: check if there are endian issues for cross platform
@@ -139,15 +140,17 @@ small::FloatBuffer read_float_inputs(std::string const &input_data_fname)
     {
         std::cerr << "ERROR: invalid number of elements in "
                   << input_data_fname << std::endl;
-        throw std::invalid_argument("read_float_inputs ERROR: invalid num elements.");
+        throw std::invalid_argument("read_inputs ERROR: invalid num elements.");
     }
 
-    small::FloatBuffer in_buf(num_elts);
-    ifs.read(reinterpret_cast<char*>(in_buf.data()), num_elts*sizeof(RealT));
+    BufferT in_buf(num_elts);
+    ifs.read(reinterpret_cast<char*>(in_buf.data()),
+             num_elts*sizeof(typename BufferT::value_type));
 
     return in_buf;
 }
 
+#if 0
 //****************************************************************************
 /// Read a binary file in the following format:
 ///   - first 4 bytes is num_elements as uint32_t in network order
@@ -200,6 +203,7 @@ uint32_t read_float_inputs(std::string const &input_data_fname, float **in_buf)
 
     return num_elts;
 }
+#endif
 
 //****************************************************************************
 // from https://www.tensorflow.org/api_docs/python/tf/keras/layers/MaxPool2D

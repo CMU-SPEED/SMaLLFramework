@@ -291,7 +291,7 @@ void inference()
     STRIDE(layer_num) = 1;
     SET_PADDING(layer_num, 0, 0, 0, 0);
 
-    /// @todo WAS MISSING A LAYER (compare to dscnn.cpp)
+    /// @todo THE FOLLOWING LAYER WAS MISSING (taken from dscnn.cpp)
 
     layer_num++;
     intermediate_dims[layer_num][0] = 1;

@@ -29,6 +29,7 @@
 std::string const data_dir("../test/regression_data");
 
 //****************************************************************************
+template <class BufferT>
 bool run_conv2d_config(LayerParams const &params)
 {
     /// @todo add smart pointer to buffers
@@ -39,11 +40,11 @@ bool run_conv2d_config(LayerParams const &params)
                      params.C_i*params.H*params.W);
     std::cout << "\nConv2D: input file = " << in_fname << std::endl;
 
-    small::FloatBuffer input_dc = read_float_inputs(in_fname);
+    BufferT input_dc = read_inputs<BufferT>(in_fname);
     TEST_ASSERT(input_dc.size() == params.C_i*params.H*params.W);
 
     // Pack input data
-    small::FloatBuffer packed_input_dc(input_dc.size());
+    BufferT packed_input_dc(input_dc.size());
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
@@ -57,11 +58,11 @@ bool run_conv2d_config(LayerParams const &params)
                      params.C_i*params.k*params.k*params.C_o);
     std::cout << "Conv2D: filter file= " << filter_fname << std::endl;
 
-    small::FloatBuffer filter_dc = read_float_inputs(filter_fname);
+    BufferT filter_dc = read_inputs<BufferT>(filter_fname);
     TEST_ASSERT(filter_dc.size() == params.C_i*params.k*params.k*params.C_o);
 
     // Pack filter data
-    small::FloatBuffer packed_filter_dc(filter_dc.size());
+    BufferT packed_filter_dc(filter_dc.size());
     small::pack_buffer(filter_dc,
                        small::FILTER_CONV,
                        params.C_i, params.C_o, params.k, params.k,
@@ -78,11 +79,11 @@ bool run_conv2d_config(LayerParams const &params)
                      params.C_o*Ho*Wo);
     std::cout << "Conv2D: output file= " << out_fname << std::endl;
 
-    small::FloatBuffer output_dc_answers = read_float_inputs(out_fname);
+    BufferT output_dc_answers = read_inputs<BufferT>(out_fname);
     TEST_ASSERT(output_dc_answers.size() == params.C_o*Ho*Wo);
 
     // Pack output answer data
-    small::FloatBuffer packed_output_dc_answers(output_dc_answers.size());
+    BufferT packed_output_dc_answers(output_dc_answers.size());
     small::pack_buffer(output_dc_answers,
                        small::OUTPUT,
                        1U, params.C_o, Ho, Wo,
@@ -90,7 +91,11 @@ bool run_conv2d_config(LayerParams const &params)
                        packed_output_dc_answers);
 
     // Allocate output buffer
-    small::FloatBuffer packed_output_dc(output_dc_answers.size());
+#if defined(QUANTIZED)
+    BufferT packed_output_dc(output_dc_answers.size()*4);  /// @todo HACK hardcoded.
+#else
+    BufferT packed_output_dc(output_dc_answers.size());
+#endif
 
     uint8_t t_pad=0, b_pad=0, l_pad=0, r_pad=0;
     if (params.p == 'f')
@@ -107,10 +112,14 @@ bool run_conv2d_config(LayerParams const &params)
 
     // Check answer
     bool passing = true;
-    for (size_t ix = 0; ix < packed_output_dc.size(); ++ix)
+    for (size_t ix = 0; ix < packed_output_dc_answers.size(); ++ix)
     {
+#if defined(QUANTIZED)
+        if (packed_output_dc[ix] != packed_output_dc_answers[ix])
+#else
         if ((packed_output_dc[ix] != packed_output_dc_answers[ix]) &&
             !almost_equal(packed_output_dc[ix], packed_output_dc_answers[ix]))
+#endif
         {
             passing = false;
 
@@ -163,7 +172,11 @@ void test_conv2d_regression_data(void)
     };
     for (LayerParams const &p: params)
     {
-        TEST_CHECK(true == run_conv2d_config(p));
+#if defined(QUANTIZED)
+        TEST_CHECK(true == run_conv2d_config<small::QUInt8Buffer>(p));
+#else
+        TEST_CHECK(true == run_conv2d_config<small::FloatBuffer>(p));
+#endif
     }
 }
 
