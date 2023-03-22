@@ -96,7 +96,7 @@ inline void yolo_block(
     small::ReLUActivation(output_channels,   /// @todo should this be input_channels?
                           o_h, o_w,
                           O_intermediate, O_intermediate);
-    small::Maxpool2D(kernel_size_pool, stride_pool,
+    small::MaxPool2D(kernel_size_pool, stride_pool,
                      t_pad_pool, b_pad_pool, l_pad_pool, r_pad_pool,
                      output_channels,
                      o_h, o_w,

@@ -155,12 +155,12 @@ int main(int argc, char **argv)
                           input_height, input_width,
                           input_dc, out_dc);
 #elif LAYER == POOL
-    check_Maxpool2D(kernel_size, stride,
+    check_MaxPool2D(kernel_size, stride,
                     t_pad, b_pad, l_pad, r_pad,
                     C_i,
                     input_height, input_width,
                     input_dc, out_check_dc);
-    small::Maxpool2D(kernel_size, stride,
+    small::MaxPool2D(kernel_size, stride,
                      t_pad, b_pad, l_pad, r_pad,
                      C_i,
                      input_height, input_width,
@@ -215,6 +215,7 @@ int main(int argc, char **argv)
     int diff = 0;
     for (int run = 0; run < RUNS; run++)
     {
+        /// @todo Use cross-platform timer
         // t0 = rdtsc();
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
 
@@ -223,7 +224,7 @@ int main(int argc, char **argv)
                              input_height, input_width,
                              input_dc, out_check_dc);
 #elif LAYER == POOL
-        check_Maxpool2D(kernel_size, stride,
+        check_MaxPool2D(kernel_size, stride,
                         t_pad, b_pad, l_pad, r_pad,
                         C_i,
                         input_height, input_width,
@@ -268,7 +269,7 @@ int main(int argc, char **argv)
                               input_height, input_width,
                               input_dc, out_dc);
 #elif LAYER == POOL
-        small::Maxpool2D(kernel_size, stride,
+        small::MaxPool2D(kernel_size, stride,
                          t_pad, b_pad, l_pad, r_pad,
                          C_i,
                          input_height, input_width,

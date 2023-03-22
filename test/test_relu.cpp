@@ -39,7 +39,7 @@ BufferT create_relu_data(size_t num_elements)
     for (size_t ix = 0; ix < num_elements; ++ix)
     {
 #if defined(QUANTIZED)
-        input_dc[ix] = (typename BufferT::value_type)64*distribution(generator);
+        input_dc[ix] = (typename BufferT::value_type)(64*distribution(generator));
 #else
         input_dc[ix] = distribution(generator);
 #endif
@@ -77,8 +77,8 @@ void test_relu_single_element(void)
         TEST_CHECK((input_dc[ix] >= 0) ?
                    (output_dc[ix] == input_dc[ix]) :
                    (output_dc[ix] == 0));
-        //std::cout << ix << ": ReLU(" << input_dc[ix] << ")-->" << output_dc[ix]
-        //          << std::endl;
+        //std::cout << ix << ": ReLU(" << (int)input_dc[ix] << ")-->"
+        //          << (int)output_dc[ix] << std::endl;
     }
 }
 
@@ -227,14 +227,14 @@ template <class BufferT>
 bool run_relu_layer_config(LayerParams const &params)
 {
     /// @todo add smart pointer to buffers
+    small::ReLULayer<BufferT> relu(params.C_i, params.H, params.W);
+
     // Read input data
     std::string in_fname =
         get_pathname("../test/regression_data", "in", "relu",
                      params,
                      params.C_i*params.H*params.W);
     std::cout << "\nReLU: input file = " << in_fname << std::endl;
-
-    small::ReLU<BufferT> relu(params.H, params.W, params.C_i);
 
     // Allocate the input buffer
     BufferT input_dc = read_inputs<BufferT>(in_fname);
@@ -302,10 +302,10 @@ void test_relu_regression_data(void)
 {
     std::vector<LayerParams> params =
     {
-        {16,  1,  1, 1, 1, 'v', 0},  //Ci,Hi,Wi,k,s,p,Co
-        {16,  1,  6, 1, 1, 'v', 0},
-        {96,  1,  6, 1, 1, 'v', 0},
-        {96, 30, 30, 1, 1, 'v', 0}
+        {16,  1,  1, 1, 1, small::PADDING_V, 0},  //Ci,Hi,Wi,k,s,p,Co
+        {16,  1,  6, 1, 1, small::PADDING_V, 0},
+        {96,  1,  6, 1, 1, small::PADDING_V, 0},
+        {96, 30, 30, 1, 1, small::PADDING_V, 0}
     };
 
     for (LayerParams const &p : params)
@@ -323,10 +323,10 @@ void test_relu_layer_regression_data(void)
 {
     std::vector<LayerParams> params =
     {
-        {16,  1,  1, 1, 1, 'v', 0},  //Ci,Hi,Wi,k,s,p,Co
-        {16,  1,  6, 1, 1, 'v', 0},
-        {96,  1,  6, 1, 1, 'v', 0},
-        {96, 30, 30, 1, 1, 'v', 0}
+        {16,  1,  1, 1, 1, small::PADDING_V, 0},  //Ci,Hi,Wi,k,s,p,Co
+        {16,  1,  6, 1, 1, small::PADDING_V, 0},
+        {96,  1,  6, 1, 1, small::PADDING_V, 0},
+        {96, 30, 30, 1, 1, small::PADDING_V, 0}
     };
 
     for (LayerParams const &p : params)

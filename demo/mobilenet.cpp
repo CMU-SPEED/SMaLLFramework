@@ -150,7 +150,7 @@ model_inference(uint32_t layer_num_total,
         // printf("done with layer %d/%d", layer_num, layer_num_total);
     }
     // printf("calling pool %d %d \n", layer_num, layer_num_total);
-    small::Maxpool2D(REDUCTION_HW(layer_num),
+    small::MaxPool2D(REDUCTION_HW(layer_num),
                      STRIDE(layer_num), PADDING(layer_num),
                      GROUPS(layer_num),
                      I_HEIGHT(layer_num), I_WIDTH(layer_num),

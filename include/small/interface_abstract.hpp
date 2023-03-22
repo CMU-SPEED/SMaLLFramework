@@ -185,7 +185,7 @@ void PartialConv2D(int kernel_size, int stride,
 
 //****************************************************************************
 template <class BufferT>
-void Maxpool2D(int kernel_size, int stride,
+void MaxPool2D(int kernel_size, int stride,
                uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                int input_channels,
                int input_height, int input_width,

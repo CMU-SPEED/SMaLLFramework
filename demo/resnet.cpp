@@ -223,7 +223,7 @@ model_inference(uint32_t layer_num_total,
         inter_0_dc.swap(inter_2_dc);
     }
 
-    small::Maxpool2D(REDUCTION_HW(layer_num), STRIDE(layer_num),
+    small::MaxPool2D(REDUCTION_HW(layer_num), STRIDE(layer_num),
                      PADDING(layer_num),
                      GROUPS(layer_num),
                      I_HEIGHT(layer_num), I_WIDTH(layer_num),

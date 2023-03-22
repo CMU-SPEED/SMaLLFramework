@@ -32,7 +32,7 @@ struct LayerParams
     uint32_t W; // image_width;
     uint32_t k; // kernel_size;
     uint16_t s; // stride;
-    char     p; // padding; 'v' or 'f'
+    small::PaddingEnum p; // PADDING_V or _F
     size_t   C_o;
 };
 
@@ -64,11 +64,6 @@ std::string get_pathname(
     LayerParams const &params,
     size_t             num_elements)
 {
-    if ((params.p != 'v') && (params.p != 'f'))
-    {
-        throw std::invalid_argument("ERROR: bad padding value.");
-    }
-
     std::string fname =
         directory + "/" + buffer_name + "__" + layer_name +
         "_Ci" + std::to_string(params.C_i) +
@@ -76,7 +71,7 @@ std::string get_pathname(
         "_W" + std::to_string(params.W) +
         "_k" + std::to_string(params.k) +
         "_s" + std::to_string(params.s) +
-        ((params.p == 'v') ? "_v" : "_f") +
+        ((params.p == small::PADDING_V) ? "_v" : "_f") +
         ((params.C_o > 0) ? ("_Co" + std::to_string(params.C_o)) : "") +
         "_" +  std::to_string(num_elements) + ".bin";
 
@@ -204,53 +199,3 @@ uint32_t read_float_inputs(std::string const &input_data_fname, float **in_buf)
     return num_elts;
 }
 #endif
-
-//****************************************************************************
-// from https://www.tensorflow.org/api_docs/python/tf/keras/layers/MaxPool2D
-size_t compute_output_dim_old(size_t input_dim,
-                              size_t kernel_dim,
-                              size_t stride,
-                              char   padding)
-{
-    if ((padding == 'v') && (input_dim >= kernel_dim))
-    {
-        return std::floor((input_dim - kernel_dim)/((float)stride)) + 1;
-    }
-    else if (padding == 'f')
-    {
-        return std::floor((input_dim - 1)/((float)stride)) + 1;
-    }
-    else
-    {
-        throw std::invalid_argument(std::string("Bad combination"));
-    }
-
-    return 0;
-}
-
-//****************************************************************************
-size_t compute_output_dim(size_t input_dim,
-                          size_t kernel_dim,
-                          size_t stride,
-                          char   padding)
-{
-    if ((padding == 'v') && (input_dim >= kernel_dim))
-    {
-        return std::floor((input_dim - kernel_dim)/((float)stride)) + 1;
-    }
-    else if (padding == 'f')
-    {
-        uint8_t fpad, bpad;
-        small::calc_padding(input_dim, kernel_dim, stride, fpad, bpad);
-        size_t padded_input_dim = input_dim + fpad + bpad;
-        size_t output_dim = 1 + (padded_input_dim - kernel_dim)/stride;
-        std::cerr << "f output dim: " << output_dim << std::endl;
-        return std::max(output_dim, 0UL);
-    }
-    else
-    {
-        throw std::invalid_argument("Bad combination");
-    }
-
-    return 0;
-}
