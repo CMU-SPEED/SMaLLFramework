@@ -1,7 +1,3 @@
-//-----------------------------------------------------------------------------
-// test/test_relu.cpp:  test cases for xxx
-//-----------------------------------------------------------------------------
-
 //****************************************************************************
 // SMaLL, Software for Machine Learning Libraries
 // Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
@@ -23,7 +19,7 @@
 #include <random>
 
 #include <small.h>
-#include <small/MaxPool2D.hpp>
+#include <small/MaxPool2DLayer.hpp>
 
 #include "test_utils.hpp"
 
