@@ -97,27 +97,27 @@ public:
     {
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start_time);
         //clock_gettime(CLOCK_REALTIME, &start_time);
-        return start_time.tv_nsec;
+        return start_time;  //.tv_nsec;
     }
     TimeType stop()
     {
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &stop_time);
         //clock_gettime(CLOCK_REALTIME, &stop_time);
-        return stop_time.tv_nsec;
+        return stop_time;  //.tv_nsec;
     }
 
     double elapsed() const
     {
         timespec temp;
-        if (end.tv_nsec < start.tv_nsec)
+        if (stop_time.tv_nsec < start_time.tv_nsec)
         {
-            temp.tv_sec = end.tv_sec - start.tv_sec - 1;
-            temp.tv_nsec = 1000000000 + end.tv_nsec - start.tv_nsec;
+            temp.tv_sec = stop_time.tv_sec - start_time.tv_sec - 1;
+            temp.tv_nsec = 1000000000 + stop_time.tv_nsec - start_time.tv_nsec;
         }
         else
         {
-            temp.tv_sec = end.tv_sec - start.tv_sec;
-            temp.tv_nsec = end.tv_nsec - start.tv_nsec;
+            temp.tv_sec = stop_time.tv_sec - start_time.tv_sec;
+            temp.tv_nsec = stop_time.tv_nsec - start_time.tv_nsec;
         }
 
         // milliseconds
