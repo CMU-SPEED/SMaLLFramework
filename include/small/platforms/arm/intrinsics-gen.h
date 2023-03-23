@@ -1450,4 +1450,5 @@ c_5_1 = vfmaq_f32(c_5_1, av, b_1);\
 av = vld1q_f32(a + 5 * step + 2 * SIMD);\
 c_5_2 = vfmaq_f32(c_5_2, av, b_2);\
 av = vld1q_f32(a + 5 * step + 3 * SIMD);\
-c_5_3 = vfmaq_f32(c_5_3, av, b_3);\
+c_5_3 = vfmaq_f32(c_5_3, av, b_3);
+
