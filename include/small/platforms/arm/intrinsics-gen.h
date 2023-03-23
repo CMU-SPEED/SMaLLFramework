@@ -14,7 +14,7 @@
 #endif
 
 #define DEF_TILE_C(W_ob, C_ob)\
-float c_tile[W_ob * C_ob];\
+/*float c_tile[W_ob * C_ob];*/\
 float32x4_t c_0_0;\
 float32x4_t c_0_1;\
 float32x4_t c_0_2;\
@@ -166,8 +166,8 @@ vst1q_f32(O + 5 * C_ob + 3 * SIMD, c_5_3);\
 
 #define CONV_TILE_C(step, a, b, W_ob, C_ob)\
 if (_UNROLL == 1) {\
-float *aa = a;\
-float *bb = b;\
+/*float const *aa = a;*/\
+float const *bb = b;\
 float32x4_t a_0;\
 float32x4_t a_1;\
 float32x4_t a_2;\
@@ -213,8 +213,8 @@ __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_5_1) : "w"(b_1), "w"(a_5
 __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_5_2) : "w"(b_2), "w"(a_5));\
 __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_5_3) : "w"(b_3), "w"(a_5));\
 } else {\
-float *aa = a;\
-float *bb = b;\
+/*float const *aa = a;*/\
+float const *bb = b;\
 float32x4_t a_0;\
 float32x4_t a_1;\
 float32x4_t a_2;\
