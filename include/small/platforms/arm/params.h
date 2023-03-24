@@ -12,9 +12,6 @@
 
 #pragma once
 
-#include <stdlib.h> // for posix_memalign
-#include <vector>
-
 #include <arm_neon.h>
 typedef float dtype;
 

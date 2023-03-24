@@ -293,7 +293,7 @@ float32x4_t bv[C_ob / SIMD];					     \
   }
 
 #if SIMD_EPILOGUE == 1
-#define MAX_END_C(step, a, b, c_cur, W_last, C_ob)                            \
+#define MAX_END_C(step, a, c_cur, W_last, C_ob)                               \
   for (uint32_t kk = 0; kk < W_last; kk++)                                    \
   {                                                                           \
     for (uint32_t jj = 0; jj < C_ob; jj++)                                    \
@@ -304,14 +304,14 @@ float32x4_t bv[C_ob / SIMD];					     \
     }                                                                         \
   }
 #else
-#define MAX_END_C(step, a, b, c_cur, W_last, C_ob)                          \
+#define MAX_END_C(step, a, c_cur, W_last, C_ob)                             \
   for (uint32_t kk = 0; kk < W_last; kk++)                                  \
   {                                                                         \
     for (uint32_t jj = 0; jj < C_ob / SIMD; jj++)                           \
     {                                                                       \
       float32x4_t av = vld1q_f32(a + kk * step + jj * SIMD);                \
-      c_cur[(kk) * (C_ob / SIMD) + jj] =                   \
-          vmaxq_f32(av, c_cur[(kk) * (C_ob / SIMD) + jj]); \
+      c_cur[(kk) * (C_ob / SIMD) + jj] =                                    \
+          vmaxq_f32(av, c_cur[(kk) * (C_ob / SIMD) + jj]);                  \
     }                                                                       \
   }
 #endif
