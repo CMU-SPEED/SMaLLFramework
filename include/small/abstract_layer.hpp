@@ -748,7 +748,7 @@ void abstract_layer(
     BufferT const *__restrict__ F,
     BufferT       *__restrict__ O,
 
-    AccumT k_zero = (AccumT)0)
+    typename BufferT::accum_type k_zero = 0)
 {
     using ScalarT = typename BufferT::value_type;
     using AccumT  = typename BufferT::accum_type;
