@@ -20,6 +20,7 @@
 
 #include <small.h>
 #include "utils.h"
+#include "Timer.hpp"
 
 /// @todo Which of these defines are needed?
 #ifndef RUNS
@@ -28,6 +29,97 @@
 #ifndef PARALLEL
 #define PARALLEL 0
 #endif
+
+//****************************************************************************
+/*
+Conv2D(k:1, s:1,pad:[0,0,0,0],ochans:128,ichans:128,img:1x1,I,F,O)
+ReLUActivation(chans:128,img:1x1,I,O)
+Conv2D(k:1, s:1,pad:[0,0,0,0],ochans:128,ichans:128,img:1x1,I,F,O)
+ReLUActivation(chans:128,img:1x1,I,O)
+Conv2D(k:1, s:1,pad:[0,0,0,0],ochans:128,ichans:128,img:1x1,I,F,O)
+ReLUActivation(chans:128,img:1x1,I,O)
+Conv2D(k:1, s:1,pad:[0,0,0,0],ochans:128,ichans:128,img:1x1,I,F,O)
+ReLUActivation(chans:128,img:1x1,I,O)
+Conv2D(k:1, s:1,pad:[0,0,0,0],ochans:128,ichans:128,img:1x1,I,F,O)
+ReLUActivation(chans:128,img:1x1,I,O)
+Conv2D(k:1, s:1,pad:[0,0,0,0],ochans:128,ichans:128,img:1x1,I,F,O)
+ReLUActivation(chans:128,img:1x1,I,O)
+Conv2D(k:1, s:1,pad:[0,0,0,0],ochans:128,ichans:128,img:1x1,I,F,O)
+ReLUActivation(chans:128,img:1x1,I,O)
+Conv2D(k:1, s:1,pad:[0,0,0,0],ochans:128,ichans:128,img:1x1,I,F,O)
+ReLUActivation(chans:128,img:1x1,I,O)
+Conv2D(k:1, s:1,pad:[0,0,0,0],ochans:128,ichans:128,img:1x1,I,F,O)
+ReLUActivation(chans:128,img:1x1,I,O)
+*/
+#include<small/Layer.hpp>
+#include<small/Conv2DLayer.hpp>
+#include<small/ReLULayer.hpp>
+
+template <class BufferT>
+std::vector<small::Layer<BufferT>*> create_model(
+    std::vector<BufferT*> const &filters)
+{
+    uint32_t kernel_size = 1;
+    uint32_t stride = 1;
+    small::PaddingEnum padding_type = small::PADDING_V;
+    uint32_t input_height = 1, input_width = 1;
+
+    std::cout << "DEBUG: num filters provided = " << filters.size() << std::endl;
+
+    std::vector<small::Layer<BufferT>*> layers;
+    for (auto ix = 0U; ix < filters.size(); ++ix)
+    {
+        std::cout << ix << ": filter size = " << filters[ix]->size() << std::endl;
+        uint32_t num_input_channels = 128;
+        uint32_t num_output_channels = 128;
+        if (ix + 1 == filters.size()) num_output_channels = 16;
+
+        BufferT tmp(filters[ix]->size());
+        small::unpack_buffer(*filters[ix], small::FILTER_CONV,
+                             num_output_channels, num_input_channels,
+                             kernel_size, kernel_size,
+                             C_ib, C_ob, tmp);
+
+        layers.push_back(new small::Conv2DLayer<BufferT>(kernel_size, kernel_size,
+                                                         stride, padding_type,
+                                                         num_input_channels,
+                                                         num_output_channels,
+                                                         input_height, input_width,
+                                                         tmp)
+            );
+        layers.push_back(new small::ReLULayer<BufferT>(num_output_channels,
+                                                       input_height, input_width)
+            );
+    }
+
+    return layers;
+}
+
+//****************************************************************************
+template <class BufferT>
+BufferT &model_inference(
+    std::vector<small::Layer<BufferT>*> const &layers,
+    BufferT                             const &input_dc,
+    BufferT                                   &inter_0_dc,
+    BufferT                                   &inter_1_dc)
+{
+    std::cout << "new layer 0\n";
+    layers[0]->compute_output(input_dc, inter_0_dc);   // Conv2D
+    layers[1]->compute_output(inter_0_dc, inter_0_dc); // ReLU
+
+    size_t layer_num = 2;
+    while (layer_num < layers.size() - 1)
+    {
+        std::cout << "new layer " << layer_num << std::endl;
+        layers[layer_num]->compute_output(inter_0_dc, inter_1_dc);
+        layers[layer_num + 1]->compute_output(inter_1_dc, inter_1_dc);
+        layer_num += 2;
+
+        inter_0_dc.swap(inter_1_dc);
+    }
+
+    return inter_0_dc;
+}
 
 //****************************************************************************
 
@@ -89,6 +181,7 @@ BufferT &model_inference(
 
     for (uint32_t cur_layer = 1; cur_layer < layer_num_total; cur_layer++)
     {
+        layer_num++;
         small::Conv2D(1, 1,
                       0, 0, 0, 0,
                       GROUP_C(layer_num), REDUCTION_C(layer_num),
@@ -102,7 +195,6 @@ BufferT &model_inference(
                               inter_1_dc,
                               inter_1_dc);
 
-        layer_num++;
         inter_0_dc.swap(inter_1_dc);
     }
     return inter_0_dc;
@@ -130,19 +222,20 @@ void inference()
 
     // Set up model parameters
     auto layer_num_total = 9U;
-    uint32_t layer_num = 0;
     uint32_t max_numel_inter_0 = 128, max_numel_inter_1 = 128;
 
+    uint32_t layer_num = 0;
     intermediate_dims[layer_num][0] = 1;
     intermediate_dims[layer_num][1] = 1;
 
     // conv
     REDUCTION_C(layer_num) = C_i; // input channels
-    GROUP_C(layer_num) = 128;      // output channels
+    GROUP_C(layer_num) = 128;     // output channels
     GROUPS(layer_num) = 1;
-    REDUCTION_HW(layer_num) = 1; // kernel size
-    STRIDE(layer_num) = 1;      // stride
-    SET_PADDING(layer_num, 0, 0, 0, 0)
+    REDUCTION_HW(layer_num) = 1;  // kernel size
+    STRIDE(layer_num) = 1;        // stride
+    SET_PADDING(layer_num, 0, 0, 0, 0);
+
     layer_num++;
     intermediate_dims[layer_num][0] = 1;
     intermediate_dims[layer_num][1] = 1;
@@ -151,29 +244,31 @@ void inference()
     for (uint32_t cur_layer = 1; cur_layer+1 < layer_num_total; cur_layer++)
     {
         REDUCTION_C(layer_num) = GROUP_C(layer_num - 1); // input channels
-        GROUP_C(layer_num) = GROUP_C(layer_num - 1);
-        GROUPS(layer_num) = 1;  // output channels
+        GROUP_C(layer_num) = GROUP_C(layer_num - 1);     // output channels
+        GROUPS(layer_num) = 1;
         REDUCTION_HW(layer_num) = 1;                 // kernel size
         STRIDE(layer_num) = 1; // stride
-        SET_PADDING(layer_num, 0, 0, 0, 0)
-        layer_num++; // 2
+        SET_PADDING(layer_num, 0, 0, 0, 0);
 
+        layer_num++; // 2
         intermediate_dims[layer_num][0] = 1;
         intermediate_dims[layer_num][1] = 1;
     }
+
     REDUCTION_C(layer_num) = GROUP_C(layer_num-1);
     GROUP_C(layer_num) = num_classes;
     GROUPS(layer_num) = 1;
     REDUCTION_HW(layer_num) =   1;
     STRIDE(layer_num) = 1;
-    SET_PADDING(layer_num, 0, 0, 0, 0)
-    layer_num++;
+    SET_PADDING(layer_num, 0, 0, 0, 0);
 
+    layer_num++;
     intermediate_dims[layer_num][0] = O_WIDTH(layer_num);
     intermediate_dims[layer_num][1] = O_HEIGHT(layer_num);
 
 #if SUMMARY == 1
     printf("Layer num total: %d\n", layer_num_total);
+    printf("Layer: Red_C(in_chan), Grp_C(out_chan), Grps, Red_HW(k), Stride(s)\n");
     for (uint32_t i = 0; i < layer_num_total; i++)
     {
         printf("%d: ", i);
@@ -181,6 +276,7 @@ void inference()
         {
             printf("%d, ", layer_params[i][j]);
         }
+        printf("inter_dims %d,%d", intermediate_dims[i][0], intermediate_dims[i][1]);
         printf("\b\b\n");
     }
 #endif
@@ -211,7 +307,7 @@ void inference()
 #endif
 
     // always returns a reference to inter_0_dc
-    //auto &output_dc =
+    auto &output_dc =
         model_inference(layer_num_total, layer_params,
                         filter_buf_ptrs,
                         input_dc,
@@ -220,24 +316,32 @@ void inference()
 
     printf("\n");
 
-    unsigned long long sum_small = ULLONG_MAX;
-    std::vector<unsigned long long> small_timing;
-#if defined(NANO33BLE)
-    mbed::Timer t;
-    t.start();
-#else
-    /// @todo timing variables in utils.h;
-#endif
+    //======================================================
+    auto layers(create_model<small::FloatBuffer>(filter_buf_ptrs));
+    small::FloatBuffer inter_0a_dc(max_numel_inter_0);
+    small::FloatBuffer inter_1a_dc(max_numel_inter_1);
+    auto &output_a_dc =
+        model_inference(layers, input_dc, inter_0a_dc, inter_1a_dc);
+
+    // Compare the results
+    size_t num_outputs = layers.back()->output_buffer_size();
+    std::cout << "\n==================== LAYERS =====================\n";
+    std::cout << "Layer: Num output elements: " << num_outputs << std::endl;
+    for (size_t ix = 0; ix < num_outputs; ++ix)
+    {
+        std::cout << "Current, new " << ix << ": "
+                  << output_dc[ix] << ", " << output_a_dc[ix]
+                  << std::endl;
+    }
+    //======================================================
+
+    Timer t;
+    double min_small(std::numeric_limits<double>::max());
+    std::vector<double> small_timing;
 
     for (int r = 0; r < RUNS; r++)
     {
-#if defined(NANO33BLE)
         t.start();
-#else
-        // t0 = rdtsc();
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
-#endif
-
         // always returns a reference to inter_0_dc
         //auto &output_dc =
             model_inference(layer_num_total, layer_params,
@@ -246,18 +350,15 @@ void inference()
                             inter_0_dc,
                             inter_1_dc);
 
-#if defined(NANO33BLE)
         t.stop();
-        auto diff = t.elapsed_time().count();
-#else
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
-        auto diff = time_difference(time1, time2);
-#endif
-        sum_small = std::min<unsigned long long>(sum_small, diff);
+        auto diff = t.elapsed();
+        std::cout << "Elapsed:  " << diff << std::endl;
+        min_small = std::min<double>(min_small, diff);
+
         small_timing.push_back(diff);
     }
 
-    print_cycles(sum_small);
+    std::cout << "Min: " << min_small << std::endl;
     print_stats(small_timing, "SMaLL");
 
 #if PARALLEL==1

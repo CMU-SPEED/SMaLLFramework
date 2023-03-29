@@ -85,6 +85,7 @@ small::QUInt8Buffer &model_inference(
 
     for (uint32_t cur_layer = 1; cur_layer < layer_num_total; cur_layer++)
     {
+        layer_num++;
         small::Conv2D(1, 1,
                       0, 0, 0, 0,
                       GROUP_C(layer_num), REDUCTION_C(layer_num),
@@ -98,7 +99,6 @@ small::QUInt8Buffer &model_inference(
                               inter_1_dc,
                               inter_1_dc);
 
-        layer_num++;
         inter_0_dc.swap(inter_1_dc);
     }
     return inter_0_dc;
@@ -126,19 +126,20 @@ void inference()
 
     // Set up model parameters
     auto layer_num_total = 9U;
-    uint32_t layer_num = 0;
     uint32_t max_numel_inter_0 = 128, max_numel_inter_1 = 128;
 
+    uint32_t layer_num = 0;
     intermediate_dims[layer_num][0] = 1;
     intermediate_dims[layer_num][1] = 1;
 
     // conv
     REDUCTION_C(layer_num) = C_i; // input channels
-    GROUP_C(layer_num) = 128;      // output channels
+    GROUP_C(layer_num) = 128;     // output channels
     GROUPS(layer_num) = 1;
-    REDUCTION_HW(layer_num) = 1; // kernel size
-    STRIDE(layer_num) = 1;      // stride
-    SET_PADDING(layer_num, 0, 0, 0, 0)
+    REDUCTION_HW(layer_num) = 1;  // kernel size
+    STRIDE(layer_num) = 1;        // stride
+    SET_PADDING(layer_num, 0, 0, 0, 0);
+
     layer_num++;
     intermediate_dims[layer_num][0] = 1;
     intermediate_dims[layer_num][1] = 1;
@@ -147,24 +148,25 @@ void inference()
     for (uint32_t cur_layer = 1; cur_layer+1 < layer_num_total; cur_layer++)
     {
         REDUCTION_C(layer_num) = GROUP_C(layer_num - 1); // input channels
-        GROUP_C(layer_num) = GROUP_C(layer_num - 1);
-        GROUPS(layer_num) = 1;  // output channels
+        GROUP_C(layer_num) = GROUP_C(layer_num - 1);     // output channels
+        GROUPS(layer_num) = 1;
         REDUCTION_HW(layer_num) = 1;                 // kernel size
         STRIDE(layer_num) = 1; // stride
-        SET_PADDING(layer_num, 0, 0, 0, 0)
-        layer_num++; // 2
+        SET_PADDING(layer_num, 0, 0, 0, 0);
 
+        layer_num++; // 2
         intermediate_dims[layer_num][0] = 1;
         intermediate_dims[layer_num][1] = 1;
     }
+
     REDUCTION_C(layer_num) = GROUP_C(layer_num-1);
     GROUP_C(layer_num) = num_classes;
     GROUPS(layer_num) = 1;
     REDUCTION_HW(layer_num) =   1;
     STRIDE(layer_num) = 1;
-    SET_PADDING(layer_num, 0, 0, 0, 0)
-    layer_num++;
+    SET_PADDING(layer_num, 0, 0, 0, 0);
 
+    layer_num++;
     intermediate_dims[layer_num][0] = O_WIDTH(layer_num);
     intermediate_dims[layer_num][1] = O_HEIGHT(layer_num);
 

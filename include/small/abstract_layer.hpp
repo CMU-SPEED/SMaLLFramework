@@ -150,7 +150,7 @@ void inline kernel_left(
     AccumT        *O,  // ScalarT -> AccumT
     dim_t H_lb = 0,
     dim_t H_ub = 0,
-    int k_zero = 0,
+    AccumT k_zero = (AccumT)0,
     AccumT I_offset = 0,
     AccumT F_offset = 0)
 {
@@ -228,7 +228,7 @@ void inline kernel(
     dim_t H_ub = 0,
     dim_t W_lb = 0,
     dim_t W_ub = 0,
-    int k_zero = 0,
+    AccumT k_zero = (AccumT)0,
     AccumT I_offset = 0,
     AccumT F_offset = 0)
 {
@@ -304,7 +304,7 @@ void inline kernel_pad(
     dim_t H_ub = 0,
     dim_t W_lb = 0,
     dim_t W_ub = 0,
-    int k_zero = 0,
+    AccumT k_zero = (AccumT)0,
     AccumT I_offset = 0,
     AccumT F_offset = 0)
 {
@@ -382,7 +382,7 @@ void inline kernel_right(
     AccumT        *O,  // ScalarT -> AccumT
     dim_t H_lb = 0,
     dim_t H_ub = 0,
-    int k_zero = 0,
+    AccumT k_zero = (AccumT)0,
     AccumT I_offset = 0,
     AccumT F_offset = 0)
 {
@@ -503,7 +503,7 @@ void inline kernel_bottom(
     ScalarT const *I,
     ScalarT const *F,
     AccumT        *O,  // ScalarT -> AccumT
-    int k_zero = 0,
+    AccumT k_zero = (AccumT)0,
     AccumT I_offset = 0,
     AccumT F_offset = 0)
 {
@@ -623,7 +623,7 @@ void inline kernel_top(
     ScalarT const *I,
     ScalarT const *F,
     AccumT        *O,  // ScalarT --> AccumT
-    int k_zero = 0,
+    AccumT k_zero = (AccumT)0,
     AccumT I_offset = 0,
     AccumT F_offset = 0)
 {
@@ -748,7 +748,7 @@ void abstract_layer(
     BufferT const *__restrict__ F,
     BufferT       *__restrict__ O,
 
-    int k_zero = 0)
+    AccumT k_zero = (AccumT)0)
 {
     using ScalarT = typename BufferT::value_type;
     using AccumT  = typename BufferT::accum_type;
@@ -1342,7 +1342,7 @@ void abstract_layer_input_reduction(
     dim_t O_w_full,
     dim_t O_w_left,
 
-    int k_zero = 0,
+    AccumT k_zero = (AccumT)0,
     AccumT I_offset = 0,
     AccumT F_offset = 0)
 {

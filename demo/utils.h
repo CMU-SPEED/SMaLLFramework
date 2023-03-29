@@ -73,7 +73,8 @@ void print_stats(std::vector<T> v, const char *benchmark)
         double mean = sum / (double)v.size();
         T min_elem = *min_element(v.begin(), v.end());
         T max_elem = *max_element(v.begin(), v.end());
-        std::cout << benchmark << ": Average = " << mean
+        std::cout << benchmark << ": #runs = " << v.size()
+                  << ", Average = " << mean
                   << ", Min = " << min_elem
                   << ", Max = " << max_elem << std::endl;
     }

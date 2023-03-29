@@ -101,12 +101,12 @@ public:
         lshift(0),
         rshift(3),
         m_zero(0),
-        min_val(255),   // std::numeric_limits<value_type>::max()
-        max_val(0),     // std::numeric_limits<value_type>::lowest()
+        min_val(0),   // std::numeric_limits<value_type>::lowest()
+        max_val(255),     // std::numeric_limits<value_type>::max()
         b(8),
         m_num_elts(num_elts),
         m_buffer(reinterpret_cast<value_type*>(
-                     detail::alloc(num_elts*sizeof(value_type), 1)))
+                     detail::alloc(num_elts*sizeof(value_type), 4)))
     {
         /// @todo should the buffer be cleared?
         /// @todo call quantized_init() here and make private
@@ -149,8 +149,8 @@ public:
         scale = dscale;  /// @todo Was narrowing conversion intended?
         lshift = shift > 0 ? shift : 0;
         rshift = shift > 0 ? 0 : -shift;
-        min_val = 255;
-        max_val = 0;
+        min_val = 0;
+        max_val = 255;
 
         /// @todo offset not set
     }

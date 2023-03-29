@@ -206,7 +206,7 @@ uint32_t convert_dc2tensor(ScalarT               const *dc_array,
         _C_ib = 1;
     }
 
-    if (type = FILTER_CONV)
+    if (type == FILTER_CONV)
     {
         if (dim_1 < _C_ob)
             _C_ib = 3;    /// @todo why is this a 3?
