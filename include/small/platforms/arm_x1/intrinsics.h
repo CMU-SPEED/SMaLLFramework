@@ -258,25 +258,6 @@ for (uint32_t kk = 0; kk < _W_ob; kk++)					\
                                                                                                                   \
     }                                                               \
   }
-
-//#define CONV_END_C(step, a, b, c_cur, _W_ob, C_ob)		     \
-float32x4_t bv[C_ob / SIMD];					     \
-  for (uint32_t ii_unroll = 0; ii_unroll < _UNROLL; ii_unroll++)     \
-  {                                                                  \
-    for (uint32_t jj = 0; jj < C_ob / SIMD; jj++)                    \
-    {                                                                \
-      bv[jj] = vld1q_f32(b + (ii_unroll * C_ob) + jj * SIMD);        \
-    }                                                                \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)                          \
-    {                                                                \
-      float32x4_t av = vld1q_dup_f32(a + ((kk * step) + ii_unroll)); \
-      for (uint32_t jj = 0; jj < C_ob / SIMD; jj++)                  \
-      {                                                              \
-        c_cur[(kk * (C_ob / SIMD)) + jj] =                           \
-            vfmaq_f32(c_cur[(kk * (C_ob / SIMD)) + jj], av, bv[jj]); \
-      }                                                              \
-    }                                                                \
-  }
 #endif
 // === End Convolution ========================================================
 
