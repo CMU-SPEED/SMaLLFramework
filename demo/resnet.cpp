@@ -20,14 +20,74 @@
 
 #include <small.h>
 #include "utils.h"
+#include "Timer.hpp"
 
 /// @todo Which of these defines are needed?
 #ifndef RUNS
-#define RUNS 10
+#define RUNS 1
 #endif
 #ifndef PARALLEL
 #define PARALLEL 0
 #endif
+
+//****************************************************************************
+/* This is the runtime recording:
+
+   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:16,ichans:3,img:32x32,I,F,O)
+   ReLUActivation(chans:16,img:32x32,I,O)
+
+   ** First Stack **
+   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:16,ichans:16,img:32x32,I,F,O)
+   ReLUActivation(chans:16,img:32x32,I,O)
+   PartialConv2D(k:3,s:1,pad:[1,1,1,1],ochans:16,ichans:16,img:32x32,I,F,O)
+   ReLUActivation(chans:16,img:32x32,I,O)
+
+   ** Second Stack **
+   Conv2D(k:3,s:2,pad:[0,1,0,1],ochans:32,ichans:16,img:32x32,I,F,O)
+   ReLUActivation(chans:16,img:16x16,I,O)
+
+?  Conv2D(k:1,s:2,pad:[0,0,0,0],ochans:32,ichans:16,img:32x32,I,F,O)
+
+   PartialConv2D(k:3,s:1,pad:[1,1,1,1],ochans:32,ichans:32,img:16x16,I,F,O)
+   ReLUActivation(chans:32,img:16x16,I,O)
+
+   ** Third Stack **
+   Conv2D(k:3,s:2,pad:[0,1,0,1],ochans:64,ichans:32,img:16x16,I,F,O)
+   ReLUActivation(chans:32,img:8x8,I,O)
+
+?  Conv2D(k:1,s:2,pad:[0,0,0,0],ochans:64,ichans:32,img:16x16,I,F,O)
+
+   PartialConv2D(k:3,s:1,pad:[1,1,1,1],ochans:64,ichans:64,img:8x8,I,F,O)
+   ReLUActivation(chans:64,img:8x8,I,O)
+
+   ** Final Classification Layer ** (Keras Model: AveragePooling2D + Dense)
+   MaxPool2D(k:8,s:1,pad:[0,0,0,0],chans:64,img:8x8,I,O)
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:16,ichans:64,img:1x1,I,F,O)
+
+ */
+
+#include<small/Layer.hpp>
+#include<small/DepthwiseConv2DLayer.hpp>
+#include<small/Conv2DLayer.hpp>
+#include<small/MaxPool2DLayer.hpp>
+#include<small/ReLULayer.hpp>
+
+template <class BufferT>
+std::vector<small::Layer<BufferT>*> create_model(
+    std::vector<BufferT*> const &filters)
+{
+    std::vector<small::Layer<BufferT>*> layers;
+}
+
+//****************************************************************************
+template <class BufferT>
+BufferT &model_inference(
+    std::vector<small::Layer<BufferT>*> const &layers,
+    BufferT                             const &input_dc,
+    BufferT                                   &inter_0_dc,
+    BufferT                                   &inter_1_dc)
+{
+}
 
 //****************************************************************************
 
@@ -445,8 +505,8 @@ void inference()
     BufferT inter_2_dc(max_numel_inter_0);
 #endif
 
-    // NOTE: output_dc refers to inter_0_dc on return
-    //auto &output_dc =
+    std::cerr << "Warm up run (ORIG)" << std::endl;
+    auto &output_dc =
         model_inference(layer_num_total, layer_params, intermediate_dims,
                         filter_buf_ptrs,
                         input_dc,
@@ -454,12 +514,49 @@ void inference()
                         inter_1_dc,
                         inter_2_dc);
 
-    unsigned long long sum_small = ULLONG_MAX;
-    std::vector<unsigned long long> small_timing;
+    printf("\n");
+
+    //======================================================
+#if 0
+    auto layers(create_model<BufferT>(filter_buf_ptrs));
+
+#if defined(QUANTIZED)
+    BufferT inter_0a_dc(max_numel_inter_0 + C_ob*16*16*3);
+    BufferT inter_1a_dc(max_numel_inter_1 + C_ob*16*16*3);
+    BufferT inter_2a_dc((max_numel_inter_0 / 2) + C_ob*16*16*3);
+#else
+    BufferT inter_0a_dc(max_numel_inter_0);
+    BufferT inter_1a_dc(max_numel_inter_1);
+    BufferT inter_2a_dc(max_numel_inter_0);
+#endif
+
+    std::cerr << "Warm up run (LAYERS)" << std::endl;
+    auto &output_a_dc =
+        model_inference(layers, input_dc, inter_0a_dc, inter_1a_dc, inter_2a_dc);
+
+    // Compare the results
+    size_t num_outputs = layers.back()->output_buffer_size();
+    std::cout << "\nCHECK RESULTS: Num output elements: " << num_outputs << std::endl;
+    for (size_t ix = 0; ix < num_outputs; ++ix)
+    {
+        std::cout << "Current, new " << ix << ": "
+                  << output_dc[ix] << ", " << output_a_dc[ix]
+                  << std::endl;
+    }
+
+    // clean up model (move to model class destructor when built
+    for (auto layer : layers) delete layer;
+#endif
+    //======================================================
+
+    Timer my_timer;
+    double sum_small = std::numeric_limits<double>::max();
+    std::vector<double> small_timing;
+
     for (int r = 0; r < RUNS; r++)
     {
-        // t0 = rdtsc();
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
+        my_timer.start();
+
         //auto &output_dc =
             model_inference(layer_num_total, layer_params, intermediate_dims,
                             filter_buf_ptrs,
@@ -468,21 +565,24 @@ void inference()
                             inter_1_dc,
                             inter_2_dc);
 
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
-
-        auto diff = time_difference(time1, time2);
-        sum_small = std::min<unsigned long long>(sum_small, diff);
+        my_timer.stop();
+        auto diff = my_timer.elapsed();
+        sum_small = std::min<double>(sum_small, diff);
         small_timing.push_back(diff);
     }
 
     print_cycles(sum_small);
     print_stats(small_timing, "SMaLL");
-    printf("%d\n", atoi(std::getenv("OMP_NUM_THREADS")));
 
+    printf("deallocing %ld filters\n", filter_buf_ptrs.size());
     for (size_t l = 0; l < filter_buf_ptrs.size(); l++)
     {
         delete filter_buf_ptrs[l];
     }
+
+#if defined(NANO33BLE)
+    small::detail::free_all();
+#endif
 }
 
 //****************************************************************************
