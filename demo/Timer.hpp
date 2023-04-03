@@ -27,6 +27,8 @@
 
 #pragma once
 
+/// @todo put in small namespace?
+
 //****************************************************************************
 #if defined(NANO33BLE)
 //****************************************************************************
@@ -120,8 +122,8 @@ public:
             temp.tv_nsec = stop_time.tv_nsec - start_time.tv_nsec;
         }
 
-        // milliseconds
-        return (double)temp.tv_sec*1000.0 + (double)temp.tv_nsec / 1000000.0;
+        // microseconds
+        return (double)temp.tv_sec*1000000.0 + (double)temp.tv_nsec / 1000.0;
     }
 
 private:
@@ -135,7 +137,7 @@ private:
 
 //****************************************************************************
 template <class ClockT = std::chrono::steady_clock,
-          class UnitsT = std::chrono::milliseconds>
+          class UnitsT = std::chrono::microseconds> //milliseconds>
 class Timer
 {
 public:
@@ -149,6 +151,9 @@ public:
     // milliseconds
     double elapsed() const
     {
+        //std::cout << "start, stop: " << start_time.count()
+        //          << ", " << stop_time.count()
+        //          << std::endl;
         return std::chrono::duration_cast<UnitsT>(
             stop_time - start_time).count();
     }

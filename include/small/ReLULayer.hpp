@@ -35,7 +35,12 @@ public:
           m_input_width(input_width),
           m_buffer_size(num_channels*input_height*input_width)
     {
+        // std::cerr << "ReLU(chans:" << num_channels
+        //           << ",img:" << output_size
+        //           << ")" << std::endl;
     }
+
+    virtual ~ReLULayer() {}
 
     virtual size_t  input_buffer_size() const { return m_buffer_size; }
     virtual size_t output_buffer_size() const { return m_buffer_size; }

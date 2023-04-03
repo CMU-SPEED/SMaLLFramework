@@ -64,12 +64,9 @@ std::vector<small::Layer<BufferT>*> create_model(
     small::PaddingEnum padding_type = small::PADDING_V;
     uint32_t input_height = 1, input_width = 1;
 
-    std::cout << "DEBUG: num filters provided = " << filters.size() << std::endl;
-
     std::vector<small::Layer<BufferT>*> layers;
     for (auto ix = 0U; ix < filters.size(); ++ix)
     {
-        std::cout << ix << ": filter size = " << filters[ix]->size() << std::endl;
         uint32_t num_input_channels = 128;
         uint32_t num_output_channels = 128;
         if (ix + 1 == filters.size()) num_output_channels = 16;
@@ -103,14 +100,12 @@ BufferT &model_inference(
     BufferT                                   &inter_0_dc,
     BufferT                                   &inter_1_dc)
 {
-    std::cout << "new layer 0\n";
     layers[0]->compute_output(input_dc, inter_0_dc);   // Conv2D
     layers[1]->compute_output(inter_0_dc, inter_0_dc); // ReLU
 
     size_t layer_num = 2;
     while (layer_num < layers.size() - 1)
     {
-        std::cout << "new layer " << layer_num << std::endl;
         layers[layer_num]->compute_output(inter_0_dc, inter_1_dc);
         layers[layer_num + 1]->compute_output(inter_1_dc, inter_1_dc);
         layer_num += 2;
@@ -306,7 +301,7 @@ void inference()
     small::FloatBuffer inter_1_dc(max_numel_inter_1);
 #endif
 
-    // always returns a reference to inter_0_dc
+    std::cerr << "Warm up run (ORIG)" << std::endl;
     auto &output_dc =
         model_inference(layer_num_total, layer_params,
                         filter_buf_ptrs,
@@ -317,22 +312,33 @@ void inference()
     printf("\n");
 
     //======================================================
-    auto layers(create_model<small::FloatBuffer>(filter_buf_ptrs));
+
+    auto layers(create_model<BufferT>(filter_buf_ptrs));
+
+#if defined(QUANTIZED)
+    small::QUInt8Buffer inter_0a_dc(max_numel_inter_0*4);
+    small::QUInt8Buffer inter_1a_dc(max_numel_inter_1*4);
+#else
     small::FloatBuffer inter_0a_dc(max_numel_inter_0);
     small::FloatBuffer inter_1a_dc(max_numel_inter_1);
+#endif
+
+    std::cerr << "Warm up run (LAYERS)" << std::endl;
     auto &output_a_dc =
         model_inference(layers, input_dc, inter_0a_dc, inter_1a_dc);
 
     // Compare the results
     size_t num_outputs = layers.back()->output_buffer_size();
-    std::cout << "\n==================== LAYERS =====================\n";
-    std::cout << "Layer: Num output elements: " << num_outputs << std::endl;
+    std::cout << "\nCHECK RESULTS: Num output elements: " << num_outputs << std::endl;
     for (size_t ix = 0; ix < num_outputs; ++ix)
     {
         std::cout << "Current, new " << ix << ": "
                   << output_dc[ix] << ", " << output_a_dc[ix]
                   << std::endl;
     }
+
+    // clean up model (move to model class destructor when built
+    for (auto layer : layers) delete layer;
     //======================================================
 
     Timer t;
@@ -361,10 +367,7 @@ void inference()
     std::cout << "Min: " << min_small << std::endl;
     print_stats(small_timing, "SMaLL");
 
-#if PARALLEL==1
-    printf("OMP_NUM_THREADS: %d\n", atoi(std::getenv("OMP_NUM_THREADS")));
-#endif
-
+    printf("deallocing %ld filters\n", filter_buf_ptrs.size());
     for (size_t l = 0; l < filter_buf_ptrs.size(); l++)
     {
         delete filter_buf_ptrs[l];

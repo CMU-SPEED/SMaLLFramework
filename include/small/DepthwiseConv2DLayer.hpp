@@ -51,6 +51,13 @@ public:
           m_output_buffer_size(0),
           m_packed_filters(num_channels*kernel_size*kernel_size)
     {
+        // std::cerr << "DW(k:" << kernel_size
+        //           << ",s:" << block_strides[block_num]
+        //           << ",'f'"
+        //           << ",chans:" << num_channels
+        //           << ",img:" << input_size
+        //           << "), filter=" << tmp.size() << std::endl;
+
         if (filters.size() < num_channels*kernel_size*kernel_size)
         {
             throw std::invalid_argument(
@@ -69,7 +76,8 @@ public:
                                           stride, padding_type,
                                           m_l_pad, m_r_pad,
                                           m_output_width);
-
+        // std::cerr << "DW padding: " << (int)m_t_pad << "," << (int)m_b_pad
+        //           << "," << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
         m_output_buffer_size = num_channels*m_output_height*m_output_width;
 
         // Pack the filter buffers for SMaLL use
@@ -79,6 +87,8 @@ public:
                            C_ib, C_ob,
                            m_packed_filters);
     }
+
+    virtual ~DepthwiseConv2DLayer() {}
 
     virtual size_t  input_buffer_size() const { return  m_input_buffer_size; }
     virtual size_t output_buffer_size() const { return m_output_buffer_size; }

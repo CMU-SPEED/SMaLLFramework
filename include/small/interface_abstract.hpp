@@ -42,7 +42,7 @@ void Conv2D(int kernel_size, int stride,  /// @todo dim_t?
             BufferT       &output_buf)
 {
 #if defined(RECORD_CALLS)
-    std::cout << "Conv2D(k:" << kernel_size << ", s:" << stride
+    std::cout << "Conv2D(k:" << kernel_size << ",s:" << stride
               << ",pad:[" << (int)t_pad << "," << (int)b_pad
               << "," << (int)l_pad << "," << (int)r_pad
               << "],ochans:" << output_channels
@@ -131,7 +131,7 @@ void PartialConv2D(int kernel_size, int stride,
                    BufferT       &output_buf)
 {
 #if defined(RECORD_CALLS)
-    std::cout << "PartialConv2D(k:" << kernel_size << ", s:" << stride
+    std::cout << "PartialConv2D(k:" << kernel_size << ",s:" << stride
               << ",pad:[" << (int)t_pad << "," << (int)b_pad
               << "," << (int)l_pad << "," << (int)r_pad
               << "],ochans:" << output_channels
@@ -218,7 +218,7 @@ void MaxPool2D(int kernel_size, int stride,
                BufferT       &output_buf)
 {
 #if defined(RECORD_CALLS)
-    std::cout << "MaxPool2D(k:" << kernel_size << ", s:" << stride
+    std::cout << "MaxPool2D(k:" << kernel_size << ",s:" << stride
               << ",pad:[" << (int)t_pad << "," << (int)b_pad
               << "," << (int)l_pad << "," << (int)r_pad
               << "],chans:" << input_channels
@@ -269,7 +269,7 @@ void DepthwiseConv2D(int kernel_size, int stride,
                      BufferT       &output_buf)
 {
 #if defined(RECORD_CALLS)
-    std::cout << "DepthwiseConv2D(k:" << kernel_size << ", s:" << stride
+    std::cout << "DepthwiseConv2D(k:" << kernel_size << ",s:" << stride
               << ",pad:[" << (int)t_pad << "," << (int)b_pad
               << "," << (int)l_pad << "," << (int)r_pad
               << "],chans:" << input_channels
@@ -366,7 +366,7 @@ void Conv2D_rect(int kernel_size_h, int kernel_size_w, int stride,
 {
 #if defined(RECORD_CALLS)
     std::cout << "Conv2D_rect(k:" << kernel_size_h << "x" << kernel_size_w
-              << ", s:" << stride
+              << ",s:" << stride
               << ",pad:[" << (int)t_pad << "," << (int)b_pad
               << "," << (int)l_pad << "," << (int)r_pad
               << "],ochans:" << output_channels
@@ -454,7 +454,7 @@ void MaxPool2D_rect(int kernel_size_h, int kernel_size_w, int stride,
 {
 #if defined(RECORD_CALLS)
     std::cout << "MaxPool2D_rect(k:" << kernel_size_h << "x" << kernel_size_w
-              << ", s:" << stride
+              << ",s:" << stride
               << ",pad:[" << (int)t_pad << "," << (int)b_pad
               << "," << (int)l_pad << "," << (int)r_pad
               << "],chans:" << input_channels

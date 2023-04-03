@@ -44,6 +44,13 @@ public:
           m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0),
           m_output_buffer_size(0)
     {
+        // std::cerr << "*MaxPool2D(k:" << kernel_size
+        //           << ",s:" << stride
+        //           << ",'v'"
+        //           << ",chans:" << num_channels
+        //           << ",img:" << input_size
+        //           << std::endl;
+
         /// @todo is there a clean way to make these const members, or
         ///       will image size get moved to compute_output() and all of
         ///       this moves to compute_output()?
@@ -58,6 +65,8 @@ public:
 
         m_output_buffer_size = num_channels*m_output_height*m_output_width;
     }
+
+    virtual ~MaxPool2DLayer() {}
 
     virtual size_t  input_buffer_size() const { return  m_input_buffer_size; }
     virtual size_t output_buffer_size() const { return m_output_buffer_size; }

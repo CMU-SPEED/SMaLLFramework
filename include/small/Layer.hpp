@@ -25,6 +25,8 @@ public:
 
     Layer() {};
 
+    virtual ~Layer() {}
+
     virtual size_t  input_buffer_size() const = 0;
     virtual size_t output_buffer_size() const = 0;
 

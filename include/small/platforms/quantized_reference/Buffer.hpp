@@ -78,6 +78,7 @@ public:
     typedef uint8_t value_type;
     typedef int32_t accum_type;
 
+    /// @todo add min_val and max_val parameters defaulted to the limits below
     QUInt8Buffer(size_t num_elts) :
         scale(0.752941),
         offset(0),
@@ -166,7 +167,7 @@ public:
         scale = dscale;
         lshift = shift > 0 ? shift : 0;
         rshift = shift > 0 ? 0 : -shift;
-        min_val = 0
+        min_val = 0;
         max_val = 255;
 
         /// @todo offset not set

@@ -20,6 +20,7 @@
 
 #include <small.h>
 #include "utils.h"
+#include "Timer.hpp"
 
 /// @todo Which of these defines are needed?
 #ifndef RUNS
@@ -28,6 +29,232 @@
 #ifndef PARALLEL
 #define PARALLEL 0
 #endif
+
+//****************************************************************************
+/* This is the runtime recording:
+
+   Conv2D(k:3,s:2,pad:[0,1,0,1],ochans:32,ichans:3,img:96x96,I,F,O)
+   ReLUActivation(chans:32,img:48x48,I,O)
+0
+   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:32,img:48x48,I,F,O)     s1
+   ReLUActivation(chans:32,img:48x48,I,O)
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:64,ichans:32,img:48x48,I,F,O)   2x
+   ReLUActivation(chans:64,img:48x48,I,O)
+1
+   DepthwiseConv2D(k:3,s:2,pad:[0,1,0,1],chans:64,img:48x48,I,F,O)     s2
+   ReLUActivation(chans:64,img:24x24,I,O)
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:128,ichans:64,img:24x24,I,F,O)  2x
+   ReLUActivation(chans:128,img:24x24,I,O)
+2
+   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:128,img:24x24,I,F,O)    s1
+   ReLUActivation(chans:128,img:24x24,I,O)
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:128,ichans:128,img:24x24,I,F,O) 1x
+   ReLUActivation(chans:128,img:24x24,I,O)
+3
+   DepthwiseConv2D(k:3,s:2,pad:[0,1,0,1],chans:128,img:24x24,I,F,O)    s2
+   ReLUActivation(chans:128,img:12x12,I,O)
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:256,ichans:128,img:12x12,I,F,O) 2x
+   ReLUActivation(chans:256,img:12x12,I,O)
+4
+   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:256,img:12x12,I,F,O)    s1
+   ReLUActivation(chans:256,img:12x12,I,O)
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:256,ichans:256,img:12x12,I,F,O) 1x
+   ReLUActivation(chans:256,img:12x12,I,O)
+5
+   DepthwiseConv2D(k:3,s:2,pad:[0,1,0,1],chans:256,img:12x12,I,F,O)    s2
+   ReLUActivation(chans:256,img:6x6,I,O)
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:512,ichans:256,img:6x6,I,F,O)   2x
+   ReLUActivation(chans:512,img:6x6,I,O)
+6
+   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:512,img:6x6,I,F,O)      s1
+   ReLUActivation(chans:512,img:6x6,I,O)
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:512,ichans:512,img:6x6,I,F,O)   1x
+   ReLUActivation(chans:512,img:6x6,I,O)
+7
+   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:512,img:6x6,I,F,O)      s1
+   ReLUActivation(chans:512,img:6x6,I,O)
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:512,ichans:512,img:6x6,I,F,O)   1x
+   ReLUActivation(chans:512,img:6x6,I,O)
+8
+   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:512,img:6x6,I,F,O)      s1
+   ReLUActivation(chans:512,img:6x6,I,O)
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:512,ichans:512,img:6x6,I,F,O)   1x
+   ReLUActivation(chans:512,img:6x6,I,O)
+9
+   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:512,img:6x6,I,F,O)      s1
+   ReLUActivation(chans:512,img:6x6,I,O)
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:512,ichans:512,img:6x6,I,F,O)   1x
+   ReLUActivation(chans:512,img:6x6,I,O)
+10
+   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:512,img:6x6,I,F,O)      s1
+   ReLUActivation(chans:512,img:6x6,I,O)
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:512,ichans:512,img:6x6,I,F,O)   1x
+   ReLUActivation(chans:512,img:6x6,I,O)
+11
+   DepthwiseConv2D(k:3,s:2,pad:[0,1,0,1],chans:512,img:6x6,I,F,O)      s2
+   ReLUActivation(chans:512,img:3x3,I,O)
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:1024,ichans:512,img:3x3,I,F,O)  2x
+   ReLUActivation(chans:1024,img:3x3,I,O)
+12
+   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:1024,img:3x3,I,F,O)     s1
+   ReLUActivation(chans:1024,img:3x3,I,O)
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:1024,ichans:1024,img:3x3,I,F,O) 1x
+   ReLUActivation(chans:1024,img:3x3,I,O)
+FINAL
+   MaxPool2D(k:3,s:1,pad:[0,0,0,0],chans:1024,img:3x3,I,O)
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:16,ichans:1024,img:1x1,I,F,O)
+*/
+
+
+#include<small/Layer.hpp>
+#include<small/DepthwiseConv2DLayer.hpp>
+#include<small/Conv2DLayer.hpp>
+#include<small/MaxPool2DLayer.hpp>
+#include<small/ReLULayer.hpp>
+
+template <class BufferT>
+std::vector<small::Layer<BufferT>*> create_model(
+    std::vector<BufferT*> const &filters)
+{
+    // settings for first layer
+    uint32_t kernel_size = 3;
+    uint32_t stride = 2;
+    uint32_t input_size = 96;
+    uint32_t input_channels = 3, output_channels = 32;
+
+    size_t filter_num = 0;
+    BufferT tmp(filters[filter_num]->size());
+    small::unpack_buffer(*filters[filter_num], small::FILTER_CONV,
+                         output_channels, input_channels,
+                         kernel_size, kernel_size,
+                         C_ib, C_ob, tmp);
+
+    std::vector<small::Layer<BufferT>*> layers;
+    layers.push_back(
+        new small::Conv2DLayer<BufferT>(kernel_size, kernel_size,
+                                        stride, small::PADDING_F,
+                                        input_channels, output_channels,
+                                        input_size, input_size,
+                                        tmp));
+
+    uint32_t output_size = small::compute_output_dim(input_size,
+                                                     kernel_size,
+                                                     stride,
+                                                     small::PADDING_F);
+
+    layers.push_back(
+        new small::ReLULayer<BufferT>(output_channels,
+                                      output_size, output_size));
+
+    uint32_t num_channels;
+    size_t   const num_blocks{13};
+    uint32_t const block_strides[]   = {1,2,1,2,1,2,1,1,1,1,1,2,1};
+    uint32_t const channel_multiplier[] = {2,2,1,2,1,2,1,1,1,1,1,2,1};
+    for (auto block_num = 0U; block_num < num_blocks; ++block_num)
+    {
+        ++filter_num;
+        num_channels = output_channels;
+        input_size = output_size;
+        kernel_size = 3;
+        BufferT tmp(filters[filter_num]->size());
+        small::unpack_buffer(*filters[filter_num], small::FILTER_DW,
+                             num_channels, 1,
+                             kernel_size, kernel_size,
+                             C_ib, C_ob, tmp);
+
+        layers.push_back(
+            new small::DepthwiseConv2DLayer<BufferT>(
+                kernel_size, block_strides[block_num],
+                small::PADDING_F, num_channels,
+                input_size, input_size, tmp));
+
+        output_size = small::compute_output_dim(input_size,
+                                                kernel_size,
+                                                block_strides[block_num],
+                                                small::PADDING_F);
+        layers.push_back(
+            new small::ReLULayer<BufferT>(
+                num_channels, output_size, output_size));
+
+        // =======================================================
+
+        ++filter_num;
+        kernel_size = 1;
+        stride = 1;
+        input_channels = num_channels;
+        output_channels = num_channels*channel_multiplier[block_num];
+
+        BufferT tmp2(filters[filter_num]->size());
+        small::unpack_buffer(*filters[filter_num], small::FILTER_CONV,
+                             output_channels, input_channels,
+                             kernel_size, kernel_size,
+                             C_ib, C_ob, tmp2);
+
+        layers.push_back(
+            new small::Conv2DLayer<BufferT>(kernel_size, kernel_size,
+                                            stride, small::PADDING_V,
+                                            input_channels, output_channels,
+                                            output_size, output_size, tmp2));
+
+        num_channels = num_channels*channel_multiplier[block_num];
+
+        layers.push_back(
+            new small::ReLULayer<BufferT>(output_channels,
+                                          output_size, output_size));
+
+    }
+
+    kernel_size = 3;
+    stride = 1;
+    input_size = output_size;
+    layers.push_back(
+        new small::MaxPool2DLayer<BufferT>(kernel_size, kernel_size, stride,
+                                           small::PADDING_V, num_channels,
+                                           input_size, input_size));
+
+    ++filter_num;
+    kernel_size = 1;
+    output_channels = 16;
+    BufferT tmp2(filters[filter_num]->size());
+    small::unpack_buffer(*filters[filter_num], small::FILTER_CONV,
+                         output_channels, num_channels,
+                         kernel_size, kernel_size,
+                         C_ib, C_ob, tmp2);
+
+    input_size = 1;
+    layers.push_back(
+        new small::Conv2DLayer<BufferT>(kernel_size, kernel_size, stride,
+                                        small::PADDING_V,
+                                        num_channels, output_channels,
+                                        input_size, input_size, tmp2));
+
+    return layers;
+}
+
+//****************************************************************************
+template <class BufferT>
+BufferT &model_inference(
+    std::vector<small::Layer<BufferT>*> const &layers,
+    BufferT                             const &input_dc,
+    BufferT                                   &inter_0_dc,
+    BufferT                                   &inter_1_dc)
+{
+    size_t layer_num = 0;
+    layers[layer_num++]->compute_output(input_dc, inter_0_dc);   // Conv2D
+    layers[layer_num++]->compute_output(inter_0_dc, inter_0_dc); // ReLU
+
+    for (auto ix = 0U; ix < 13; ++ix)
+    {
+        layers[layer_num++]->compute_output(inter_0_dc, inter_1_dc); // DWConv
+        layers[layer_num++]->compute_output(inter_1_dc, inter_1_dc); // ReLU
+        layers[layer_num++]->compute_output(inter_1_dc, inter_0_dc); // Conv2D
+        layers[layer_num++]->compute_output(inter_0_dc, inter_0_dc); // ReLU
+    }
+
+    layers[layer_num++]->compute_output(inter_0_dc, inter_1_dc); // MaxPool2D
+    layers[layer_num++]->compute_output(inter_1_dc, inter_0_dc); // Conv2D
+    return inter_0_dc;
+}
 
 //****************************************************************************
 
@@ -83,12 +310,12 @@ inline void dscnn_block(
     small::DepthwiseConv2D(kernel_size, stride,
                            t_pad, b_pad, l_pad, r_pad,
                            input_channels,
-                           in_dims[0], in_dims[1],
+                           in_dims[1], in_dims[0],
                            I, F_dw, O_intermediate);
 
-    uint32_t o_h = small::output_dim(in_dims[0] + t_pad + b_pad,
+    uint32_t o_w = small::output_dim(in_dims[0] + l_pad + r_pad,
                                      stride, kernel_size);
-    uint32_t o_w = small::output_dim(in_dims[1] + l_pad + r_pad,
+    uint32_t o_h = small::output_dim(in_dims[1] + t_pad + b_pad,
                                      stride, kernel_size);
 
     small::ReLUActivation(input_channels,
@@ -128,10 +355,6 @@ model_inference(uint32_t layer_num_total,
                           inter_0_dc,
                           inter_0_dc);
 
-    //std::cout << "H: " << I_HEIGHT(layer_num)
-    //          << " W: " << I_WIDTH(layer_num)
-    //          << " C:" << GROUP_C(0) << std::endl;
-
     auto ds_blocks = 13;
     for (int ds_layer = 0; ds_layer < ds_blocks; ds_layer++)
     {
@@ -147,8 +370,8 @@ model_inference(uint32_t layer_num_total,
             inter_1_dc,
             inter_0_dc);
         layer_num += 2;
-        // printf("done with layer %d/%d", layer_num, layer_num_total);
     }
+
     // printf("calling pool %d %d \n", layer_num, layer_num_total);
     small::MaxPool2D(REDUCTION_HW(layer_num),
                      STRIDE(layer_num), PADDING(layer_num),
@@ -214,9 +437,6 @@ void inference()
     small::calc_padding(I_WIDTH(layer_num),  REDUCTION_HW(layer_num),
                         STRIDE(layer_num), l_pad, r_pad);
     SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad);
-    std::cout << "conv " << layer_num << "  "
-              << I_HEIGHT(layer_num) << " " << I_WIDTH(layer_num) << " "
-              << GROUP_C(layer_num) << std::endl;
 
     layer_num++; // 1
     intermediate_dims.push_back(std::array<uint, 2>(OUTPUT_DIMS(layer_num)));
@@ -251,9 +471,6 @@ void inference()
 
         layer_num++; // 2
         intermediate_dims.push_back(std::array<uint, 2>(OUTPUT_DIMS(layer_num)));
-        std::cout << "dw " << layer_num << "  "
-                  << I_HEIGHT(layer_num) << " " << I_WIDTH(layer_num) << " "
-                  << GROUP_C(layer_num - 2) << std::endl;
 
         inter_dim = INPUT_NUMEL(layer_num);
         max_numel_inter_1 =
@@ -270,14 +487,8 @@ void inference()
         max_numel_inter_0 =
             (inter_dim > max_numel_inter_0) ? inter_dim : max_numel_inter_0;
         intermediate_dims.push_back(std::array<uint, 2>(OUTPUT_DIMS(layer_num)));
-        std::cout << intermediate_dims[layer_num - 1][0] << " "
-                  << intermediate_dims[layer_num - 1][1] << std::endl;
-        std::cout << "1x1 " << layer_num << "  "
-                  << I_HEIGHT(layer_num) << " " << I_WIDTH(layer_num) << " "
-                  << GROUP_C(layer_num - 1) << std::endl;
     }
     // pooling dims
-    // printf("%d pool layer num\n", layer_num);
     REDUCTION_C(layer_num) = 1;
     GROUP_C(layer_num) = 1;
     GROUPS(layer_num) = GROUP_C(layer_num - 1);
@@ -286,9 +497,6 @@ void inference()
     SET_PADDING(layer_num, 0, 0, 0, 0);
 
     layer_num++;
-    // fc dims
-    std::cout << "size of intermediate buffers from configuration: "
-              << max_numel_inter_0 << " " << max_numel_inter_1 << std::endl;
 
     auto layer_num_total = layer_num - 1;  /// @todo is this (-1) right?
 
@@ -323,7 +531,7 @@ void inference()
         filter_buf_ptrs.push_back(filter_buf_ptr);
     }
 
-    printf("Fc filter dims %d x %d\n", GROUP_C(layer_num_total-1) , num_classes);
+    //printf("Fc filter dims %d x %d\n", GROUP_C(layer_num_total-1) , num_classes);
     uint32_t filter_dimensions = GROUP_C(layer_num_total-1) * num_classes;
     //uint32_t filter_dimensions =
     //    REDUCTION_C(layer_num_total - 1) * GROUP_C(layer_num_total - 1);
@@ -342,33 +550,62 @@ void inference()
     BufferT inter_1_dc(max_numel_inter_1);
 #endif
 
-    std::cerr << "Warm up run" << std::endl;
-    //auto &output_dc =
+    std::cerr << "Warm up run (ORIG)" << std::endl;
+    auto &output_dc =
         model_inference(layer_num_total, layer_params, intermediate_dims,
                         filter_buf_ptrs,
                         input_dc,
                         inter_0_dc,
                         inter_1_dc);
 
-    unsigned long long sum_small; //, t0, t1;
-    sum_small = ULLONG_MAX;
-    std::vector<unsigned long long> small_timing;
+    printf("\n");
+
+    //======================================================
+
+    auto layers(create_model<BufferT>(filter_buf_ptrs));
+
+#if defined(QUANTIZED)
+    small::QUInt8Buffer inter_0a_dc(max_numel_inter_0*2);
+    small::QUInt8Buffer inter_1a_dc(max_numel_inter_1);
+#else
+    small::FloatBuffer inter_0a_dc(max_numel_inter_0);
+    small::FloatBuffer inter_1a_dc(max_numel_inter_1);
+#endif
+
+    std::cerr << "Warm up run (LAYERS)" << std::endl;
+    auto &output_a_dc =
+        model_inference(layers, input_dc, inter_0a_dc, inter_1a_dc);
+
+    // Compare the results
+    size_t num_outputs = layers.back()->output_buffer_size();
+    std::cout << "\nCHECK RESULTS: Num output elements: " << num_outputs << std::endl;
+    for (size_t ix = 0; ix < num_outputs; ++ix)
+    {
+        std::cout << "Current, new " << ix << ": "
+                  << output_dc[ix] << ", " << output_a_dc[ix]
+                  << std::endl;
+    }
+
+    // clean up model (move to model class destructor when built
+    for (auto layer : layers) delete layer;
+    //======================================================
+
+    Timer my_timer;
+    double sum_small = std::numeric_limits<double>::max();
+    std::vector<double> small_timing;
+
     for (int r = 0; r < RUNS; r++)
     {
-        std::cerr << "RUN #" << r << std::endl;
-        // t0 = rdtsc();
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
+        my_timer.start();
 
         //auto &output_dc =
             model_inference(layer_num_total, layer_params, intermediate_dims,
                             filter_buf_ptrs,
                             input_dc, inter_0_dc, inter_1_dc);
 
-        // t1 = rdtsc();
-        // MIN(sum_small, (t1 - t0));
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
-        auto diff = time_difference(time1, time2);
-        sum_small = std::min<unsigned long long>(sum_small, diff);
+        my_timer.stop();
+        auto diff = my_timer.elapsed();
+        sum_small = std::min<double>(sum_small, diff);
         small_timing.push_back(diff);
     }
 
@@ -380,6 +617,10 @@ void inference()
     {
         delete filter_buf_ptrs[l];
     }
+
+#if defined(NANO33BLE)
+    small::detail::free_all();
+#endif
 }
 
 //****************************************************************************
