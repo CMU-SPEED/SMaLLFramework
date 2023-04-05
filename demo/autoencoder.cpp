@@ -31,6 +31,60 @@
 #endif
 
 //****************************************************************************
+
+/* From https://github.com/mlcommons/tiny/blob/master/benchmark/training/anomaly_detection/keras_model.py#L26
+
+from tensorflow.keras.layers import Input, Dense, BatchNormalization, Activation
+def get_model(inputDim):
+    """
+    define the keras model
+    the model based on the simple dense auto encoder
+    (128*128*128*128*8*128*128*128*128)
+    """
+    inputLayer = Input(shape=(inputDim,)) // batches (unspecified) of 'inputDim' sized vectors
+
+    h = Dense(128)(inputLayer)            // input=inputDim, output=128 so weights = 128xinputDim?
+    h = BatchNormalization()(h)           // pointwise normalization using set mean, std values
+    h = Activation('relu')(h)
+
+    h = Dense(128)(h)
+    h = BatchNormalization()(h)
+    h = Activation('relu')(h)
+
+    h = Dense(128)(h)
+    h = BatchNormalization()(h)
+    h = Activation('relu')(h)
+
+    h = Dense(128)(h)
+    h = BatchNormalization()(h)
+    h = Activation('relu')(h)
+
+    h = Dense(8)(h)               <---------- 8
+    h = BatchNormalization()(h)
+    h = Activation('relu')(h)
+
+    h = Dense(128)(h)
+    h = BatchNormalization()(h)
+    h = Activation('relu')(h)
+
+    h = Dense(128)(h)
+    h = BatchNormalization()(h)
+    h = Activation('relu')(h)
+
+    h = Dense(128)(h)
+    h = BatchNormalization()(h)
+    h = Activation('relu')(h)
+
+    h = Dense(128)(h)
+    h = BatchNormalization()(h)
+    h = Activation('relu')(h)
+
+    h = Dense(inputDim)(h)
+
+    return Model(inputs=inputLayer, outputs=h)
+ */
+
+//****************************************************************************
 /*
 Conv2D(k:1, s:1,pad:[0,0,0,0],ochans:128,ichans:128,img:1x1,I,F,O)
 ReLUActivation(chans:128,img:1x1,I,O)
@@ -51,6 +105,7 @@ ReLUActivation(chans:128,img:1x1,I,O)
 Conv2D(k:1, s:1,pad:[0,0,0,0],ochans:128,ichans:128,img:1x1,I,F,O)
 ReLUActivation(chans:128,img:1x1,I,O)
 */
+
 #include<small/Layer.hpp>
 #include<small/Conv2DLayer.hpp>
 #include<small/ReLULayer.hpp>
