@@ -533,8 +533,6 @@ inline void resnet_block(
     BufferT       &O_intermediate,
     BufferT       &O)
 {
-    // printf("before: %d, %.2f %.2f %.2f %.2f\n", 0, I[0], I[1], I[2], I[3]);
-
     small::Conv2D(kernel_size, stride,
                   t_pad_0, b_pad_0, l_pad_0, r_pad_0,
                   output_channels, input_channels,
@@ -603,7 +601,7 @@ model_inference(uint32_t layer_num_total,
     auto num_filters = layer_num_total - 1;
     for (int ds_layer = 1; ds_layer < resnet_blocks; ds_layer++)
     {
-        resnet_block(intermediate_dims[layer_num], REDUCTION_C(layer_num), // Input dimensions
+        resnet_block(intermediate_dims[layer_num], REDUCTION_C(layer_num),
                      REDUCTION_HW(layer_num),
                      STRIDE(layer_num),
                      GROUP_C(layer_num),
@@ -825,8 +823,8 @@ void inference()
     std::cerr << max_numel_inter_0+ C_ob*16*16*3
               << "," << max_numel_inter_1 + C_ob*16*16*3
               << "," << (max_numel_inter_0 / 2) + C_ob*16*16*3 << std::endl;
-    BufferT inter_0_dc(max_numel_inter_0 + C_ob*16*16*3);
-    BufferT inter_1_dc(max_numel_inter_1 + C_ob*16*16*3);
+    BufferT inter_0_dc(max_numel_inter_0 + C_ob*16*16*32); // HACK
+    BufferT inter_1_dc(max_numel_inter_1 + C_ob*16*16*32); // HACK
     BufferT inter_2_dc((max_numel_inter_0 / 2) + C_ob*16*16*3);
     std::cerr << "inter_0 &Buffer = " << (void*)&inter_0_dc
               << ", data() = " << (void*)inter_0_dc.data()
@@ -858,8 +856,8 @@ void inference()
     auto layers(create_model<BufferT>(filter_buf_ptrs));
 
 #if defined(QUANTIZED)
-    BufferT inter_0a_dc(max_numel_inter_0 + C_ob*16*16*3);
-    BufferT inter_1a_dc(max_numel_inter_1 + C_ob*16*16*3);
+    BufferT inter_0a_dc(max_numel_inter_0 + C_ob*16*16*32);
+    BufferT inter_1a_dc(max_numel_inter_1 + C_ob*16*16*32);
     BufferT inter_2a_dc((max_numel_inter_0 / 2) + C_ob*16*16*3);
 #else
     BufferT inter_0a_dc(max_numel_inter_0);
@@ -877,7 +875,7 @@ void inference()
     for (size_t ix = 0; ix < num_outputs; ++ix)
     {
         std::cout << "Current, new " << ix << ": "
-                  << output_dc[ix] << ", " << output_a_dc[ix]
+                  << (float)output_dc[ix] << ", " << (float)output_a_dc[ix]
                   << std::endl;
     }
 

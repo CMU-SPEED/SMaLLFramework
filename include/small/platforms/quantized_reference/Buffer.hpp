@@ -54,12 +54,12 @@ struct buffer_allocator : std::allocator<T>
             throw std::bad_alloc();
         }
 
-        std::cerr << "buffer_allocator::allocate: " << (void*)buffer << std::endl;
+        //std::cerr << "buffer_allocator::allocate: " << (void*)buffer << std::endl;
         return buffer;
     }
 
     void deallocate(pointer p, size_type) {
-        std::cerr << "buffer_allocator::deallocator: " << (void*)p << std::endl;
+        //std::cerr << "buffer_allocator::deallocator: " << (void*)p << std::endl;
         std::free(p);
     }
 
@@ -86,7 +86,7 @@ public:
         lshift(0),
         rshift(3),
         m_zero(0),
-        min_val(0),   // std::numeric_limits<value_type>::lowest()
+        min_val(0),       // std::numeric_limits<value_type>::lowest()
         max_val(255),     // std::numeric_limits<value_type>::max()
         b(8),
         m_buffer(num_elts)
@@ -95,16 +95,16 @@ public:
         quantized_init();
 
         // todo should the buffer be cleared?
-        std::cerr << "QUInt8Buffer::ctor " << (void*)this
-                  << ", data_ptr = " << (void*)m_buffer.data()
-                  << ", size = " << m_buffer.size() << std::endl;
+        // std::cerr << "QUInt8Buffer::ctor " << (void*)this
+        //           << ", data_ptr = " << (void*)m_buffer.data()
+        //           << ", size = " << m_buffer.size() << std::endl;
     }
 
     ~QUInt8Buffer()
     {
-        std::cerr << "QUInt8Buffer::dtor " << (void*)this
-                  << ", data_ptr = " << (void*)m_buffer.data()
-                  << ", size = " << m_buffer.size() << std::endl;
+        // std::cerr << "QUInt8Buffer::dtor " << (void*)this
+        //           << ", data_ptr = " << (void*)m_buffer.data()
+        //           << ", size = " << m_buffer.size() << std::endl;
     }
 
     size_t size() const { return m_buffer.size(); }
