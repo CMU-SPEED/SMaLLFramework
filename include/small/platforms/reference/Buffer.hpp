@@ -15,6 +15,7 @@
 #include <stdexcept>
 #include <stdlib.h> // for posix_memalign
 #include <vector>
+#include <iostream>
 
 namespace small
 {
@@ -79,7 +80,19 @@ public:
     typedef float value_type;
     typedef float accum_type;
 
-    FloatBuffer(size_t num_elts) :  m_buffer(num_elts) {}
+    FloatBuffer(size_t num_elts) :  m_buffer(num_elts)
+    {
+        // std::cerr << "FloatBuffer::ctor " << (void*)this
+        //           << ", data_ptr = " << (void*)m_buffer.data()
+        //           << ", size = " << m_buffer.size() << std::endl;
+    }
+
+    ~FloatBuffer()
+    {
+        // std::cerr << "FloatBuffer::dtor " << (void*)this
+        //           << ", data_ptr = " << (void*)m_buffer.data()
+        //           << ", size = " << m_buffer.size() << std::endl;
+    }
 
     size_t size() const { return m_buffer.size(); }
 

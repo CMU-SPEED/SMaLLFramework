@@ -62,7 +62,8 @@ public:
                                           stride, padding_type,
                                           m_l_pad, m_r_pad,
                                           m_output_width);
-
+        // std::cerr << "MaxPool2D padding: " << (int)m_t_pad << "," << (int)m_b_pad
+        //          << "," << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
         m_output_buffer_size = num_channels*m_output_height*m_output_width;
     }
 
@@ -79,10 +80,25 @@ public:
         // assert(input_dc.size() >= m_input_buffer_size);
         // assert(output.size()   >= m_output_buffer_size);
 
+        if (input_dc.size() < m_input_buffer_size)
+        {
+            std::cerr << "MaxPool2DLayer ERROR: input buffer size = " << input_dc.size()
+                      << ", required size = " << m_input_buffer_size
+                      << ": " << m_input_height << "x" << m_input_width
+                      << "x" << m_num_channels << std::endl;
+            throw std::invalid_argument(
+                "MaxPool2DLayer::compute_output ERROR: "
+                "insufficient input buffer space.");
+        }
+
         if (output_dc.size() < m_output_buffer_size)
         {
+            std::cerr << "MaxPool2DLayer ERROR: output buffer size = " << output_dc.size()
+                      << ", required size = " << m_output_buffer_size
+                      << ": " << m_input_height << "x" << m_input_width
+                      << "x" << m_num_channels << std::endl;
             throw std::invalid_argument(
-                "Conv2DLayer::compute_output ERROR: "
+                "MaxPool2DLayer::compute_output ERROR: "
                 "insufficient output buffer space.");
         }
 
