@@ -225,7 +225,7 @@ BufferT &model_inference(
                   *filter_buf_ptrs[layer_num],
                   inter_0_dc);
 
-    small::ReLUActivation(GROUP_C(layer_num),  // was hardcoded to 128 before
+    small::ReLUActivation(GROUP_C(layer_num),
                           1, 1,
                           inter_0_dc, inter_0_dc);
 
@@ -240,7 +240,7 @@ BufferT &model_inference(
                       *filter_buf_ptrs[layer_num],
                       inter_1_dc);
 
-        small::ReLUActivation(GROUP_C(layer_num), // was hardcoded to 128 before
+        small::ReLUActivation(GROUP_C(layer_num),
                               1, 1,
                               inter_1_dc,
                               inter_1_dc);
@@ -346,9 +346,9 @@ void inference()
     }
 
 #if defined QUANTIZED
-    std::cerr << "Intermediate buffer sizes: "
-              << max_numel_inter_0 << ", " << max_numel_inter_1
-              << std::endl;
+    // std::cerr << "Intermediate buffer sizes: "
+    //           << max_numel_inter_0 << ", " << max_numel_inter_1
+    //           << std::endl;
     small::QUInt8Buffer inter_0_dc(max_numel_inter_0*4); /// @todo potential alignment issues
     small::QUInt8Buffer inter_1_dc(max_numel_inter_1*4);
 #else
@@ -425,7 +425,7 @@ void inference()
     printf("deallocing %ld filters\n", filter_buf_ptrs.size());
     for (size_t l = 0; l < filter_buf_ptrs.size(); l++)
     {
-        delete filter_buf_ptrs[l];
+        small::free_buffer(filter_buf_ptrs[l]);
     }
 
 #if defined(NANO33BLE)

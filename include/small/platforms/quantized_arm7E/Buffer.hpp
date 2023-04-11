@@ -94,6 +94,7 @@ public:
     typedef uint8_t value_type;
     typedef int32_t accum_type;
 
+    /// @todo add min_val and max_val parameters defaulted to the limits below
     QUInt8Buffer(size_t num_elts) :
         scale(0.752941),
         offset(0),
@@ -101,18 +102,63 @@ public:
         lshift(0),
         rshift(3),
         m_zero(0),
-        min_val(0),   // std::numeric_limits<value_type>::lowest()
+        min_val(0),       // std::numeric_limits<value_type>::lowest()
         max_val(255),     // std::numeric_limits<value_type>::max()
         b(8),
         m_num_elts(num_elts),
         m_buffer(reinterpret_cast<value_type*>(
                      detail::alloc(num_elts*sizeof(value_type), 4)))
     {
-        /// @todo should the buffer be cleared?
-        /// @todo call quantized_init() here and make private
+        /// @todo Merge with member initialization
+        quantized_init();
     }
 
-    /// @todo Should this be part of construction?
+    ~QUInt8Buffer()
+    {
+        /** @todo need to free buffer */
+    }
+
+    size_t size() const { return m_num_elts; }
+
+    value_type       *data()       { return m_buffer; }
+    value_type const *data() const { return m_buffer; }
+
+    value_type       &operator[](size_t index)       { return m_buffer[index]; }
+    value_type const &operator[](size_t index) const { return m_buffer[index]; }
+
+    void swap(QUInt8Buffer &other)
+    {
+        if (this != &other)
+        {
+            std::swap(scale,      other.scale);
+            std::swap(offset,     other.offset);  // not set by quantized_init
+            std::swap(multiplier, other.multiplier);
+            std::swap(lshift,     other.lshift);
+            std::swap(rshift,     other.rshift);
+            std::swap(m_zero,     other.m_zero);
+            std::swap(min_val,    other.min_val);
+            std::swap(max_val,    other.max_val);
+            std::swap(b,          other.b);
+            std::swap(m_num_elts, other.m_num_elts);
+            std::swap(m_buffer,   other.m_buffer);
+        }
+    }
+
+    // type traits?
+    inline accum_type zero() const { return m_zero; }
+
+public:
+    float    scale;
+    int32_t  offset;     // AccumT?
+    int32_t  multiplier; // AccumT?
+    int      lshift;     // AccumT?
+    int      rshift;     // AccumT?
+    accum_type m_zero;       // AccumT?
+    int      min_val;    // AccumT?
+    int      max_val;    // AccumT?
+    uint8_t  b;
+
+private:
     /// @todo Note this function did not depend on numel.  REMOVED
     void quantized_init()
     {
@@ -155,51 +201,8 @@ public:
         /// @todo offset not set
     }
 
-    ~QUInt8Buffer() {  /** @todo need to free buffer */ }
-
-    size_t size() const { return m_num_elts; }
-
-    value_type       *data()       { return m_buffer; }
-    value_type const *data() const { return m_buffer; }
-
-    value_type       &operator[](size_t index)       { return m_buffer[index]; }
-    value_type const &operator[](size_t index) const { return m_buffer[index]; }
-
-    void swap(QUInt8Buffer &other)
-    {
-        if (this != &other)
-        {
-            std::swap(scale,      other.scale);
-            std::swap(offset,     other.offset);  // not set by quantized_init
-            std::swap(multiplier, other.multiplier);
-            std::swap(lshift,     other.lshift);
-            std::swap(rshift,     other.rshift);
-            std::swap(m_zero,     other.m_zero);
-            std::swap(min_val,    other.min_val);
-            std::swap(max_val,    other.max_val);
-            std::swap(b,          other.b);
-            std::swap(m_num_elts, other.m_num_elts);
-            std::swap(m_buffer,   other.m_buffer);
-        }
-    }
-
-    // type traits?
-    inline accum_type zero() const { return m_zero; }
-
-private:
     size_t      m_num_elts;
     value_type *m_buffer;
-
-public:
-    float    scale;
-    int32_t  offset;     // AccumT?
-    int32_t  multiplier; // AccumT?
-    int      lshift;     // AccumT?
-    int      rshift;     // AccumT?
-    accum_type m_zero;       // AccumT?
-    int      min_val;    // AccumT?
-    int      max_val;    // AccumT?
-    uint8_t  b;
 };
 
 //**********************************************************************
@@ -213,7 +216,12 @@ inline QUInt8Buffer *alloc_buffer(size_t num_elts)
     return buffer;
 }
 
+inline void free_buffer(QUInt8Buffer *)
+{
+    // buffer mgmt does not exist on this platform
+}
+
 }  // small
 
 /// @todo Remove this
-typedef small::QUInt8Buffer::value_type dtype;
+//typedef small::QUInt8Buffer::value_type dtype;

@@ -615,7 +615,7 @@ void inference()
     printf("deallocing %ld filters\n", filter_buf_ptrs.size());
     for (size_t l = 0; l < filter_buf_ptrs.size(); l++)
     {
-        delete filter_buf_ptrs[l];
+        small::free_buffer(filter_buf_ptrs[l]);
     }
 
 #if defined(NANO33BLE)

@@ -65,7 +65,7 @@ struct buffer_allocator : std::allocator<T>
 
 };
 
-} // detail
+}  // detail
 
 
 //****************************************************************************
@@ -91,7 +91,7 @@ public:
         b(8),
         m_buffer(num_elts)
     {
-        /// @todo Revisit for other platforms
+        /// @todo Merge with member initialization
         quantized_init();
 
         // todo should the buffer be cleared?
@@ -120,7 +120,7 @@ public:
         if (this != &other)
         {
             std::swap(scale,      other.scale);
-            std::swap(offset,     other.offset);
+            std::swap(offset,     other.offset);  // not set by quantized_init
             std::swap(multiplier, other.multiplier);
             std::swap(lshift,     other.lshift);
             std::swap(rshift,     other.rshift);
@@ -132,7 +132,21 @@ public:
         }
     }
 
-    /// @todo Should this be part of construction?
+    // type traits?
+    inline accum_type zero() const { return m_zero; }
+
+public:
+    float    scale;
+    int32_t  offset;     // AccumT?
+    int32_t  multiplier; // AccumT?
+    int      lshift;     // AccumT?
+    int      rshift;     // AccumT?
+    accum_type m_zero;       // AccumT?
+    int      min_val;    // AccumT?
+    int      max_val;    // AccumT?
+    uint8_t  b;
+
+private:
     /// @todo Note this function did not depend on numel.  REMOVED
     void quantized_init()
     {
@@ -141,7 +155,7 @@ public:
         b = (sizeof(value_type) * 8);
         uint64_t max_q = (1 << b) - 1;
         int min_q = 0;
-        double dscale = (max - min) / ((max_q - min_q) * 1.0) + 1e-17;
+        double dscale = (max - min) / ((double)(max_q - min_q)) + 1e-17;
         int shift;
         const double q = frexp(dscale, &shift);
         auto q_fixed = static_cast<int64_t>(std::round(q * (1LL << 31)));
@@ -160,11 +174,13 @@ public:
             shift = 30;
             q_fixed = (1LL << 31) - 1;
         }
-        multiplier = static_cast<int32_t>(q_fixed);
+
+        multiplier = static_cast<int32_t>(q_fixed);  // quantized_multiplier
 
         m_zero = rint((double)(max * min_q - min * max_q) /
                       ((double)(max - min)));
-        scale = dscale;
+
+        scale = dscale;  /// @todo Was narrowing conversion intended?
         lshift = shift > 0 ? shift : 0;
         rshift = shift > 0 ? 0 : -shift;
         min_val = 0;
@@ -173,21 +189,6 @@ public:
         /// @todo offset not set
     }
 
-    // type traits?
-    inline accum_type zero() const { return m_zero; }
-
-public:
-    float    scale;
-    int32_t  offset;     // AccumT?
-    int32_t  multiplier; // AccumT?
-    int      lshift;     // AccumT?
-    int      rshift;     // AccumT?
-    accum_type m_zero;       // AccumT?
-    int      min_val;    // AccumT?
-    int      max_val;    // AccumT?
-    uint8_t  b;
-
-private:
     // consider raw buffer instead, std::array does not support allocator
     std::vector<value_type, small::detail::buffer_allocator<value_type>> m_buffer;
 };
@@ -199,4 +200,9 @@ inline QUInt8Buffer *alloc_buffer(size_t num_elts)
     return new QUInt8Buffer(num_elts);
 }
 
-} // small
+inline void free_buffer(QUInt8Buffer *buffer)
+{
+    delete buffer;
+}
+
+}  // small

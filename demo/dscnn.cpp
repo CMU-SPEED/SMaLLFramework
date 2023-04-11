@@ -345,7 +345,7 @@ void inference()
     uint32_t M = 10;  // width
     uint32_t num_classes = 16;  // must be a multiple of 16
 
-    //Create input tensor
+    // Create input tensor
     uint32_t input_dimensions = C_i * N * M;
     BufferT input_dc(input_dimensions);
     init(input_dc, input_dimensions);
@@ -564,7 +564,7 @@ void inference()
     printf("deallocing %ld filters\n", filter_buf_ptrs.size());
     for (size_t l = 0; l < filter_buf_ptrs.size(); l++)
     {
-        delete filter_buf_ptrs[l];
+        small::free_buffer(filter_buf_ptrs[l]);
     }
 
 #if defined(NANO33BLE)

@@ -117,7 +117,6 @@ void inference()
     uint32_t input_dimensions = C_i * N * M;
     small::QUInt8Buffer input_dc(input_dimensions);
     small::init(input_dc, input_dimensions);
-    input_dc.quantized_init(); /// @todo Move to buffer constructor?
 
     // ================================================
 
@@ -181,7 +180,6 @@ void inference()
         small::QUInt8Buffer *filter_buf_ptr =
             small::alloc_buffer(filter_dimensions);
         init(*filter_buf_ptr, filter_dimensions);
-        filter_buf_ptr->quantized_init(); /// @todo Move to buffer constructor?
         filter_buf_ptrs[l] = filter_buf_ptr;
     }
 
@@ -189,11 +187,8 @@ void inference()
     small::QUInt8Buffer inter_0_dc(max_numel_inter_0*4); /// @todo potential alignment issues
     small::QUInt8Buffer inter_1_dc(max_numel_inter_1*4);
 
-    inter_0_dc.quantized_init(); /// @todo Move to buffer constructor?
-    inter_1_dc.quantized_init(); /// @todo Move to buffer constructor?
-
     // always returns a reference to inter_0_dc
-    auto &output =
+    auto &output_dc =
         model_inference(layer_num_total, layer_params,
                         filter_buf_ptrs,
                         input_dc,
@@ -205,7 +200,7 @@ void inference()
     t.start();
     for (int r = 0; r < RUNS; r++)
     {
-        //auto &output =
+        //auto &output_dc =
             model_inference(layer_num_total, layer_params,
                             filter_buf_ptrs,
                             input_dc,
@@ -217,11 +212,20 @@ void inference()
 #else
     for (size_t ix = 0; ix < num_classes; ix++)
     {
-        printf("Output class %ld result: %d\n", ix, output[ix]);
+        printf("Output class %ld result: %d\n", ix, output_dc[ix]);
     }
 #endif
 
+    printf("deallocing %d filters\n", layer_num_total);
+
+    for (size_t l = 0; l < layer_num_total; l++)
+    {
+        small::free_buffer(filter_buf_ptrs[l]);
+    }
+
+#if defined(NANO33BLE)
     small::detail::free_all();
+#endif
 }
 
 //****************************************************************************

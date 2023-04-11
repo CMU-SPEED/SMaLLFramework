@@ -88,7 +88,7 @@ inline void resnet_block(
     uint32_t o_w = small::output_dim(in_dims[1] + l_pad_0 + r_pad_0,
                                      stride, kernel_size);
 
-    small::ReLUActivation(input_channels,
+    small::ReLUActivation(output_channels,
                           o_h, o_w,
                           O_intermediate, O_intermediate);
 
@@ -139,7 +139,7 @@ inline void resnet_block(
     uint32_t o_w = small::output_dim(in_dims[1] + l_pad_0 + r_pad_0,
                                      stride, kernel_size);
 
-    small::ReLUActivation(input_channels,
+    small::ReLUActivation(output_channels,
                           o_h, o_w,
                           O_intermediate, O_intermediate);
 
@@ -195,7 +195,7 @@ model_inference(uint32_t layer_num_total,
     auto num_filters = layer_num_total - 1;
     for (int ds_layer = 1; ds_layer < resnet_blocks; ds_layer++)
     {
-        resnet_block(intermediate_dims[layer_num], REDUCTION_C(layer_num), // Input dimensions
+        resnet_block(intermediate_dims[layer_num], REDUCTION_C(layer_num),
                      REDUCTION_HW(layer_num),
                      STRIDE(layer_num),
                      GROUP_C(layer_num),
@@ -213,7 +213,7 @@ model_inference(uint32_t layer_num_total,
         inter_0_dc.swap(inter_2_dc);
     }
 
-    small::Maxpool2D(REDUCTION_HW(layer_num), STRIDE(layer_num),
+    small::MaxPool2D(REDUCTION_HW(layer_num), STRIDE(layer_num),
                      PADDING(layer_num),
                      GROUPS(layer_num),
                      I_HEIGHT(layer_num), I_WIDTH(layer_num),
@@ -243,7 +243,6 @@ void inference()
     uint32_t input_dimensions = C_i * N * M;
     small::QUInt8Buffer input_dc(input_dimensions);
     init(input_dc, input_dimensions);
-    input_dc.quantized_init(); /// @todo move to buffer constructor?
 
     // ================================================
 
@@ -348,9 +347,9 @@ void inference()
     GROUPS(layer_num) = GROUP_C(layer_num - 1);
     REDUCTION_HW(layer_num) = I_HEIGHT(layer_num);
     STRIDE(layer_num) = 1;
-    SET_PADDING(layer_num, 0, 0, 0, 0)
-    layer_num++;
+    SET_PADDING(layer_num, 0, 0, 0, 0);
 
+    layer_num++;
     intermediate_dims[layer_num][0] = O_WIDTH(layer_num);
     intermediate_dims[layer_num][1] = O_HEIGHT(layer_num);
 
@@ -366,7 +365,6 @@ void inference()
     size_t layer_num_total = layer_num;
     size_t num_filters = layer_num_total - 1;
 
-    //  Copy layer weights to temporaries
     small::QUInt8Buffer *filter_buf_ptrs[30];
 
     for (size_t l = 0; l < num_filters - 1; l++)
@@ -378,7 +376,6 @@ void inference()
         small::QUInt8Buffer *filter_buf_ptr =
             small::alloc_buffer(filter_dimensions);
         init(*filter_buf_ptr, filter_dimensions);
-        filter_buf_ptr->quantized_init(); /// @todo Move to buffer constructor?
         filter_buf_ptrs[l] = filter_buf_ptr;
     }
 
@@ -387,21 +384,16 @@ void inference()
     small::QUInt8Buffer *filter_fc_dc_ptr =
         small::alloc_buffer(filter_dimensions);
     init(*filter_fc_dc_ptr, filter_dimensions);
-    filter_fc_dc_ptr->quantized_init(); /// @todo Move to buffer constructor?
     filter_buf_ptrs[num_filters - 1] = filter_fc_dc_ptr;
 
     // allocate space for intermediate outputs
     // (use the max sizes calculated previously)
-    small::QUInt8Buffer inter_0_dc(max_numel_inter_0 + C_ob*16*16*3);
-    small::QUInt8Buffer inter_1_dc(max_numel_inter_1 + C_ob*16*16*3);
+    small::QUInt8Buffer inter_0_dc(max_numel_inter_0 + C_ob*16*16*3);  // TODO: too small
+    small::QUInt8Buffer inter_1_dc(max_numel_inter_1 + C_ob*16*16*3);  // TODO: too small
     small::QUInt8Buffer inter_2_dc((max_numel_inter_0 / 2) + C_ob*16*16*3);
 
-    inter_0_dc.quantized_init(); /// @todo Move to buffer constructor?
-    inter_1_dc.quantized_init(); /// @todo Move to buffer constructor?
-    inter_2_dc.quantized_init(); /// @todo Move to buffer constructor?
-
-    // NOTE: output refers to inter_0_dc on return
-    auto &output =
+    // NOTE: output_dc refers to inter_0_dc on return
+    auto &output_dc =
         model_inference(layer_num_total, layer_params, intermediate_dims,
                         filter_buf_ptrs,
                         input_dc,
@@ -414,7 +406,7 @@ void inference()
     t.start();
     for (int r = 0; r < RUNS; r++)
     {
-        //auto &output =
+        //auto &output_dc =
             model_inference(layer_num_total, layer_params, intermediate_dims,
                             filter_buf_ptrs,
                             input_dc,
@@ -427,11 +419,20 @@ void inference()
 #else
     for (size_t ix = 0; ix < num_classes; ix++)
     {
-        printf("Output class %ld result: %d\n", ix, output[ix]);
+        printf("Output class %ld result: %d\n", ix, output_dc[ix]);
     }
 #endif
 
+    printf("deallocing %ld filters\n", num_filters);
+
+    for (size_t l = 0; l < num_filters; l++)
+    {
+        small::free_buffer(filter_buf_ptrs[l]);
+    }
+
+#if defined(NANO33BLE)
     small::detail::free_all();
+#endif
 }
 
 //****************************************************************************

@@ -82,12 +82,12 @@ inline void dscnn_block(
     small::DepthwiseConv2D(kernel_size, stride,
                            t_pad, b_pad, l_pad, r_pad,
                            input_channels,
-                           in_dims[0], in_dims[1],
+                           in_dims[1], in_dims[0],
                            I, F_dw, O_intermediate);
 
-    uint32_t o_h = small::output_dim(in_dims[0] + t_pad + b_pad,
+    uint32_t o_w = small::output_dim(in_dims[0] + l_pad + r_pad,
                                      stride, kernel_size);
-    uint32_t o_w = small::output_dim(in_dims[1] + l_pad + r_pad,
+    uint32_t o_h = small::output_dim(in_dims[1] + t_pad + b_pad,
                                      stride, kernel_size);
 
     small::ReLUActivation(input_channels,
@@ -113,13 +113,14 @@ model_inference(uint32_t layer_num_total,
 {
     auto layer_num = 0;
     int num_filters = layer_num_total - 1;
-    small::Conv2D_rect(REDUCTION_H(layer_num), REDUCTION_W(layer_num),
-                       STRIDE(layer_num), PADDING(layer_num),
-                       GROUP_C(layer_num), REDUCTION_C(layer_num),
-                       I_HEIGHT(layer_num), I_WIDTH(layer_num),
-                       input_dc,
-                       *filter_buf_ptrs[layer_num],
-                       inter_0_dc);
+    small::Conv2D_rect(
+        REDUCTION_H(layer_num), REDUCTION_W(layer_num),
+        STRIDE(layer_num), PADDING(layer_num),
+        GROUP_C(layer_num), REDUCTION_C(layer_num),
+        I_HEIGHT(layer_num), I_WIDTH(layer_num),
+        input_dc,
+        *filter_buf_ptrs[layer_num],
+        inter_0_dc);
 
     layer_num++;
     small::ReLUActivation(GROUP_C(0),
@@ -144,7 +145,7 @@ model_inference(uint32_t layer_num_total,
         layer_num += 2;
     }
 
-    layer_num = layer_num_total - 2;
+    //layer_num = layer_num_total - 2;
     small::MaxPool2D_rect(REDUCTION_H(layer_num), REDUCTION_W(layer_num),
                           STRIDE(layer_num), PADDING(layer_num),
                           GROUPS(layer_num),
@@ -169,15 +170,14 @@ model_inference(uint32_t layer_num_total,
 void inference()
 {
     uint32_t C_i = 3;
-    uint32_t N = 49;
-    uint32_t M = 10;
+    uint32_t N = 49;  // height
+    uint32_t M = 10;  // width
     uint32_t num_classes = 16;  // must be a multiple of 16
 
     // Create input tensor
     uint32_t input_dimensions = C_i * N * M;
     small::QUInt8Buffer input_dc(input_dimensions);
     init(input_dc, input_dimensions);
-    input_dc.quantized_init(); /// @todo Move to buffer constructor?
 
     // ================================================
 
@@ -190,8 +190,8 @@ void inference()
     int layer_num = 0;
     uint32_t max_numel_inter_0 = 0, max_numel_inter_1 = 0;
 
-    intermediate_dims[layer_num][0] = M;
-    intermediate_dims[layer_num][1] = N;
+    intermediate_dims[layer_num][0] = M;  // width
+    intermediate_dims[layer_num][1] = N;  // height
 
     // conv
     REDUCTION_C(layer_num) = C_i;
@@ -205,11 +205,10 @@ void inference()
     small::calc_padding(I_WIDTH(layer_num),  REDUCTION_W(layer_num),
                         STRIDE(layer_num), l_pad, r_pad);
     SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad);
-    /// @todo non-quantized overrides padding to 1, 1, 1, 1 here
 
     layer_num++; // 1
-    intermediate_dims[layer_num][0] = 5;
-    intermediate_dims[layer_num][1] = 25;
+    intermediate_dims[layer_num][0] = 5;   // width
+    intermediate_dims[layer_num][1] = 25;  // height
 
     auto inter_dim = INPUT_NUMEL(layer_num);
     max_numel_inter_0 =
@@ -226,7 +225,7 @@ void inference()
         REDUCTION_C(layer_num) = 1; // input channels
         GROUP_C(layer_num) = 1;
         GROUPS(layer_num) = GROUP_C(layer_num - 1);  // output channels
-        REDUCTION_HW(layer_num) = 3;                 // kernel size
+        REDUCTION_H(layer_num) = 3;                  // kernel size
         REDUCTION_W(layer_num) = 3;
         STRIDE(layer_num) = layer_strides[ds_layer]; // stride
         small::calc_padding(I_HEIGHT(layer_num), REDUCTION_HW(layer_num),
@@ -245,7 +244,7 @@ void inference()
         REDUCTION_C(layer_num) = GROUPS(layer_num - 1);
         GROUP_C(layer_num) = (GROUPS(layer_num - 1)) * channel_multiplier;
         GROUPS(layer_num) = 1;
-        REDUCTION_HW(layer_num) = 1;
+        REDUCTION_H(layer_num) = 1;
         REDUCTION_W(layer_num) = 1;
         STRIDE(layer_num) = 1;
         SET_PADDING(layer_num, 0, 0, 0, 0);
@@ -292,7 +291,6 @@ void inference()
         small::QUInt8Buffer *filter_buf_ptr =
             small::alloc_buffer(filter_dimensions);
         init(*filter_buf_ptr, filter_dimensions);
-        filter_buf_ptr->quantized_init(); /// @todo Move to buffer constructor?
         filter_buf_ptrs[l] = filter_buf_ptr;
     }
 
@@ -301,7 +299,6 @@ void inference()
     small::QUInt8Buffer *filter_fc_dc_ptr =
         small::alloc_buffer(filter_dimensions);
     init(*filter_fc_dc_ptr, filter_dimensions);
-    filter_fc_dc_ptr->quantized_init(); /// @todo Move to buffer constructor?
     filter_buf_ptrs[num_filters - 1] = filter_fc_dc_ptr;
 
     // allocate space for intermediate outputs
@@ -309,10 +306,7 @@ void inference()
     small::QUInt8Buffer inter_0_dc(max_numel_inter_0*4);
     small::QUInt8Buffer inter_1_dc(max_numel_inter_1*4);
 
-    inter_0_dc.quantized_init(); /// @todo Move to buffer constructor?
-    inter_1_dc.quantized_init(); /// @todo Move to buffer constructor?
-
-    auto &output =
+    auto &output_dc =
         model_inference(layer_num_total, layer_params, intermediate_dims,
                         filter_buf_ptrs,
                         input_dc,
@@ -324,7 +318,7 @@ void inference()
     t.start();
     for (int r = 0; r < RUNS; r++)
     {
-        //auto &output =
+        //auto &output_dc =
             model_inference(layer_num_total, layer_params, intermediate_dims,
                             filter_buf_ptrs,
                             input_dc,
@@ -336,11 +330,20 @@ void inference()
 #else
     for (size_t ix = 0; ix < num_classes; ix++)
     {
-        printf("Output class %ld result: %d\n", ix, output[ix]);
+        printf("Output class %ld result: %d\n", ix, output_dc[ix]);
     }
 #endif
 
+    printf("deallocing %ld filters\n", num_filters);
+
+    for (size_t l = 0; l < num_filters; l++)
+    {
+        small::free_buffer(filter_buf_ptrs[l]);
+    }
+
+#if defined(NANO33BLE)
     small::detail::free_all();
+#endif
 }
 
 //****************************************************************************

@@ -15,7 +15,7 @@
 #include <stdexcept>
 #include <stdlib.h> // for posix_memalign
 #include <vector>
-#include <iostream>
+//#include <iostream>
 
 namespace small
 {
@@ -123,6 +123,11 @@ private:
 inline FloatBuffer *alloc_buffer(size_t num_elts)
 {
     return new FloatBuffer(num_elts);
+}
+
+inline void free_buffer(FloatBuffer *buffer)
+{
+    delete buffer;
 }
 
 } // small

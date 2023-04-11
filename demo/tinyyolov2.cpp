@@ -672,7 +672,7 @@ void inference(uint32_t C_i,
     for (size_t ix = 0; ix < num_outputs; ++ix)
     {
         std::cout << "Current, new " << ix << ": "
-                  << output_dc[ix] << ", " << output_a_dc[ix]
+                  << (float)output_dc[ix] << ", " << (float)output_a_dc[ix]
                   << std::endl;
     }
 
@@ -686,7 +686,7 @@ void inference(uint32_t C_i,
 
     for (size_t l = 0; l < filter_buf_ptrs.size(); l++)
     {
-        delete filter_buf_ptrs[l];
+        small::free_buffer(filter_buf_ptrs[l]);
     }
 
     //===============================End SMaLL================================
@@ -728,8 +728,8 @@ int main(int argc, char **argv)
 {
     if (argc < 6)
     {
-        printf("USAGE: %s "
-               "<Input Channels> <Input H> <Input W> <Output Classes> <# check blocks>",
+        printf("\nUsage ERROR: %s "
+               "<Input Channels> <Input H> <Input W> <Output Classes> <# check blocks>\n",
                argv[0]);
         printf("Recommended: %s 3 416 416 16 6\n", argv[0]);
         return 0;

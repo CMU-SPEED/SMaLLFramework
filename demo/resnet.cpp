@@ -785,7 +785,7 @@ void inference()
 	//printf("input dims: %d %d ", I_HEIGHT(i+1), I_WIDTH(i+1));
         printf("\n");
     }
-    #endif
+#endif
 
     /// @todo use a vector of smart pointers if possible
     std::vector<BufferT *> filter_buf_ptrs;
@@ -800,9 +800,9 @@ void inference()
             small::alloc_buffer(filter_dimensions);
         init(*filter_buf_ptr, filter_dimensions);
         filter_buf_ptrs.push_back(filter_buf_ptr);
-        std::cerr << l << ": &Buffer = " << (void*)filter_buf_ptr
-                  << ", data() = " << (void*)filter_buf_ptr->data()
-                  << ", size() = " << filter_buf_ptr->size() << std::endl;
+        // std::cerr << l << ": &Buffer = " << (void*)filter_buf_ptr
+        //           << ", data() = " << (void*)filter_buf_ptr->data()
+        //           << ", size() = " << filter_buf_ptr->size() << std::endl;
     }
 
     uint32_t filter_dimensions =
@@ -812,29 +812,16 @@ void inference()
     init(*filter_fc_dc_ptr, filter_dimensions);
     filter_buf_ptrs.push_back(filter_fc_dc_ptr);
     /// @todo assert(filter_buf_ptrs.size() == num_filters)
-    std::cerr << 0 << ": &Buffer = " << (void*)filter_fc_dc_ptr
-              << ", data() = " << (void*)filter_fc_dc_ptr->data()
-              << ", size() = " << filter_fc_dc_ptr->size() << std::endl;
+    // std::cerr << 0 << ": &Buffer = " << (void*)filter_fc_dc_ptr
+    //           << ", data() = " << (void*)filter_fc_dc_ptr->data()
+    //           << ", size() = " << filter_fc_dc_ptr->size() << std::endl;
 
     // allocate space for intermediate outputs
     // (use the max sizes calculated previously)
 #if defined(QUANTIZED)
-    std::cerr << max_numel_inter_0 << "," << max_numel_inter_1 << std::endl;
-    std::cerr << max_numel_inter_0+ C_ob*16*16*3
-              << "," << max_numel_inter_1 + C_ob*16*16*3
-              << "," << (max_numel_inter_0 / 2) + C_ob*16*16*3 << std::endl;
     BufferT inter_0_dc(max_numel_inter_0 + C_ob*16*16*32); // HACK
     BufferT inter_1_dc(max_numel_inter_1 + C_ob*16*16*32); // HACK
     BufferT inter_2_dc((max_numel_inter_0 / 2) + C_ob*16*16*3);
-    std::cerr << "inter_0 &Buffer = " << (void*)&inter_0_dc
-              << ", data() = " << (void*)inter_0_dc.data()
-              << ", size() = " << inter_0_dc.size() << std::endl;
-    std::cerr << "inter_1 &Buffer = " << (void*)&inter_1_dc
-              << ", data() = " << (void*)inter_1_dc.data()
-              << ", size() = " << inter_1_dc.size() << std::endl;
-    std::cerr << "inter_2 &Buffer = " << (void*)&inter_2_dc
-              << ", data() = " << (void*)inter_2_dc.data()
-              << ", size() = " << inter_2_dc.size() << std::endl;
 #else
     BufferT inter_0_dc(max_numel_inter_0);
     BufferT inter_1_dc(max_numel_inter_1);
@@ -912,7 +899,7 @@ void inference()
     printf("deallocing %ld filters\n", filter_buf_ptrs.size());
     for (size_t l = 0; l < filter_buf_ptrs.size(); l++)
     {
-        delete filter_buf_ptrs[l];
+        small::free_buffer(filter_buf_ptrs[l]);
     }
 
 #if defined(NANO33BLE)

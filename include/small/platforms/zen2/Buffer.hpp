@@ -111,6 +111,11 @@ inline FloatBuffer *alloc_buffer(size_t num_elts)
     return new FloatBuffer(num_elts);
 }
 
+inline void free_buffer(FloatBuffer *buffer)
+{
+    delete buffer;
+}
+
 } // small
 
 typedef small::FloatBuffer::value_type dtype;
