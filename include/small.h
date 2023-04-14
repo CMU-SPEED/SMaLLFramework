@@ -1,3 +1,5 @@
+
+
 //****************************************************************************
 // SMaLL, Software for Machine Learning Libraries
 // Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
@@ -16,7 +18,7 @@
 #define SMALL_MINOR_VERSION 0
 #define SMALL_SUB_VERSON 0
 
-#define PARALLEL 0
+#define PARALLEL 1
 
 // ================== Public API ====================
 // #include <small/interface.hpp>           // template declarations only

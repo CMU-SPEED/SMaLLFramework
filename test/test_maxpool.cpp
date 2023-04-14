@@ -1,7 +1,3 @@
-//-----------------------------------------------------------------------------
-// test/test_relu.cpp:  test cases for xxx
-//-----------------------------------------------------------------------------
-
 //****************************************************************************
 // SMaLL, Software for Machine Learning Libraries
 // Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
@@ -13,6 +9,8 @@
 // funding and support from the U.S. Government (see Acknowledgments.txt file).
 // DM23-0126
 //****************************************************************************
+
+#define PARALLEL 1
 
 #include <acutest.h>
 
@@ -27,6 +25,7 @@ typedef float dtype;
 #include <small.h>
 
 #include "test_utils.hpp"
+#include "Timer.hpp"
 
 std::string const data_dir("../test/regression_data");
 
@@ -150,8 +149,77 @@ void test_maxpool_regression_data(void)
 }
 
 //****************************************************************************
+void measure_maxpool_performance(void)
+{
+    size_t const C_i = 512;
+    size_t const H = 192;
+    size_t const W = 192;
+    size_t const k = 3;
+    size_t const s = 1;
+    char const p = 'f';
+
+    size_t Ho(compute_output_dim(H, k, s, p));
+    size_t Wo(compute_output_dim(W, k, s, p));
+
+    uint8_t t_pad=0, b_pad=0, l_pad=0, r_pad=0;
+    CALC_PADDING(H, k, s, t_pad, b_pad);
+    CALC_PADDING(W, k, s, l_pad, r_pad);
+
+    size_t num_input_elts(C_i*H*W);
+    size_t num_output_elts(C_i*Ho*Wo);
+
+    std::string label("MaxPool2D(float): ");
+    using RealT = float;
+
+    RealT *input_dc = small_alloc<RealT>(num_input_elts);
+    RealT *output_dc= small_alloc<RealT>(num_output_elts);
+
+    uint32_t const  num_threads[] = {1, 2, 4};
+    char const *str_num_threads[] = {"1", "2", "4"};
+    uint32_t const num_runs(100);
+
+    std::cout << std::endl;
+    Timer t;
+    for (size_t ix = 0; ix < 3; ++ix)
+    {
+        setenv("OMP_NUM_THREADS", str_num_threads[ix], 1);
+        //omp_set_num_threads(num_threads[ix]);
+        //auto nt = omp_get_num_threads();
+        std::string ont = std::getenv("OMP_NUM_THREADS");
+        auto nt = atol(ont.c_str());
+
+        double tx(0.);
+        double min_t = std::numeric_limits<double>::max();
+        double max_t = 0.;
+
+        for (size_t iy = 0; iy < num_runs; ++iy)
+        {
+            t.start();
+            Maxpool2D(0,
+                      k, s,
+                      t_pad, b_pad, l_pad, r_pad,
+                      C_i, H, W,
+                      input_dc, output_dc);
+            t.stop();
+            double ts = t.elapsed();
+            tx += ts;
+            min_t = std::min(min_t, ts);
+            max_t = std::max(max_t, ts);
+        }
+        std::cout << label << "MaxPool2D(),"
+                  << "k/s/C/H/W=" << k << "/" << s << "/" << C_i
+                  << "/" << H << "/" << W
+                  << ",nthd(set/get)=" << num_threads[ix] << "/" << nt
+                  << ",min=" << min_t
+                  << ",max=" << max_t
+                  << ",avg=" << (tx/num_runs) << std::endl;
+    }
+}
+
+//****************************************************************************
 //****************************************************************************
 TEST_LIST = {
     {"maxpool_regression_data",          test_maxpool_regression_data},
+    {"maxpool_performance", measure_maxpool_performance},
     {NULL, NULL}
 };
