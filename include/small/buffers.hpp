@@ -45,27 +45,27 @@ enum BufferTypeEnum
 template <class ScalarT>
 uint32_t convert_tensor2dc(ScalarT               const *flat_t,
                            BufferTypeEnum               type,
-                           uint32_t                     dim0, // C_o
-                           uint32_t                     dim1, // C_i
-                           uint32_t                     dim2, // H
-                           uint32_t                     dim3, // W
-                           uint32_t                     _C_ib,
-                           uint32_t                     _C_ob,
+                           uint32_t                     C_o, //dim0
+                           uint32_t                     C_i, //dim1
+                           uint32_t                     H,   //dim2
+                           uint32_t                     W,   //dim3
+                           uint32_t                     _C_ib,  /// @todo remove from public API
+                           uint32_t                     _C_ob,  /// @todo remove from public API
                            ScalarT                     *dc_array)
 {
-    uint32_t dim_3, dim_2, dim_1, dim_0;
+    //uint32_t C_o, C_i, H, W;
     uint32_t ip_block, op_block;
 
-    dim_3 = dim0;
-    dim_2 = dim1;
-    dim_1 = dim2;
-    dim_0 = dim3;
+    //C_o = dim0;
+    //C_i = dim1;
+    //H = dim2;
+    //W = dim3;
 
     // =============  Overrides for specific filter types ==============
     if(type == FILTER_FC)
     {
-        dim_1 = 1;
-        dim_0 = 1;
+        H = 1;
+        W = 1;
     }
 
     if (type == FILTER_DW)
@@ -76,9 +76,9 @@ uint32_t convert_tensor2dc(ScalarT               const *flat_t,
 
     if (type == FILTER_CONV)
     {
-        if (dim1 < _C_ob)
+        if (C_i < _C_ib) //(dim1 < _C_ob)
         {
-            //std::cerr << "HERE: dim1, C_ob: " << dim_1 << ", " << _C_ob << std::endl;;
+            //std::cerr << "HERE: dim1, C_ob: " << H << ", " << _C_ob << std::endl;;
             _C_ib = 3;    /// @todo why is this a 3?
         }
     }
@@ -109,29 +109,29 @@ uint32_t convert_tensor2dc(ScalarT               const *flat_t,
     }
 
     //fprintf(stderr, "copying tensor %d %d %d %d  --> %d %d %d %d %d %d\n",
-    //        dim_3, dim_2, dim_1, dim_0,
-    //        dim_3/op_block, dim_2/ip_block, dim_1, dim_0, ip_block, op_block);
+    //        C_o, C_i, H, W,
+    //        C_o/op_block, C_i/ip_block, H, W, ip_block, op_block);
 
     // copying
     uint32_t offset = 0;
-    for (uint32_t g = 0; g < dim_3; g += op_block)
+    for (uint32_t g = 0; g < C_o; g += op_block)
     {
-        uint32_t g_offset = g * dim_2 * dim_1 * dim_0;
-        for (uint32_t h = 0; h < dim_2; h += ip_block)
+        uint32_t g_offset = g * C_i * H * W;
+        for (uint32_t h = 0; h < C_i; h += ip_block)
         {
-            uint32_t h_offset = h * dim_1 * dim_0;
-            for (uint32_t i = 0; i < dim_1; i++)
+            uint32_t h_offset = h * H * W;
+            for (uint32_t i = 0; i < H; i++)
             {
-                uint32_t i_offset = i * dim_0;
-                for (uint32_t j = 0; j < dim_0; j++)
+                uint32_t i_offset = i * W;
+                for (uint32_t j = 0; j < W; j++)
                 {
                     uint32_t j_offset = j;
                     for (uint32_t k = 0; k < ip_block; k++)
                     {
-                        uint32_t k_offset = k * dim_1 * dim_0;
+                        uint32_t k_offset = k * H * W;
                         for (uint32_t l = 0; l < op_block; l++)
                         {
-                            int l_offset = l * dim_2 * dim_1 * dim_0;
+                            int l_offset = l * C_i * H * W;
                             //printf("offset: %d\n", offset);fflush(0);
                             //std::cerr << "dst index = " << offset << ", src index = "
                             //          << (g_offset + l_offset +
@@ -150,7 +150,7 @@ uint32_t convert_tensor2dc(ScalarT               const *flat_t,
             }
         }
     }
-    return dim_3*dim_2*dim_1*dim_0;
+    return C_o*C_i*H*W;
 }
 
 //************************************************************************
@@ -161,8 +161,8 @@ uint32_t pack_buffer(BufferT          const &flat_t,
                      uint32_t                dim1, // C_i
                      uint32_t                dim2, // H
                      uint32_t                dim3, // W
-                     uint32_t                _C_ib,
-                     uint32_t                _C_ob,
+                     uint32_t                _C_ib,  /// @todo remove from public API
+                     uint32_t                _C_ob,  /// @todo remove from public API
                      BufferT                &dc_array)
 {
     return convert_tensor2dc<typename BufferT::value_type>(
@@ -177,27 +177,24 @@ uint32_t pack_buffer(BufferT          const &flat_t,
 template <class ScalarT>
 uint32_t convert_dc2tensor(ScalarT               const *dc_array,
                            BufferTypeEnum               type,
-                           uint32_t                     dim0, // C_o
-                           uint32_t                     dim1, // C_i
-                           uint32_t                     dim2, // H
-                           uint32_t                     dim3, // W
-                           uint32_t                     _C_ib,
-                           uint32_t                     _C_ob,
+                           uint32_t                     C_o, //dim0
+                           uint32_t                     C_i, //dim1
+                           uint32_t                     H,   //dim2
+                           uint32_t                     W,   //dim3
+                           uint32_t                     _C_ib,  /// @todo remove from public API
+                           uint32_t                     _C_ob,  /// @todo remove from public API
                            ScalarT                     *flat_t)
 {
-    uint32_t dim_3, dim_2, dim_1, dim_0;
+    //uint32_t C_o, C_i, H, W;
+    //uint32_t _C_ib = C_ib;
+    //uint32_t _C_ob = C_ob;
     uint32_t ip_block, op_block;
-
-    dim_3 = dim0;
-    dim_2 = dim1;
-    dim_1 = dim2;
-    dim_0 = dim3;
 
     // =============  Overrides for specific filter types ==============
     if(type == FILTER_FC)
     {
-        dim_1 = 1;
-        dim_0 = 1;
+        H = 1;
+        W = 1;
     }
 
     if (type == FILTER_DW)
@@ -208,7 +205,7 @@ uint32_t convert_dc2tensor(ScalarT               const *dc_array,
 
     if (type == FILTER_CONV)
     {
-        if (dim_1 < _C_ob)
+        if (C_i < _C_ib) //(H < _C_ob)
             _C_ib = 3;    /// @todo why is this a 3?
     }
 
@@ -238,29 +235,29 @@ uint32_t convert_dc2tensor(ScalarT               const *dc_array,
     }
 
     //fprintf(stderr, "copying tensor %d %d %d %d  --> %d %d %d %d %d %d\n",
-    //        dim_3, dim_2, dim_1, dim_0,
-    //        dim_3/op_block, dim_2/ip_block, dim_1, dim_0, ip_block, op_block);
+    //        C_o, C_i, H, W,
+    //        C_o/op_block, C_i/ip_block, H, W, ip_block, op_block);
 
     // copying
     uint32_t offset = 0;
-    for (uint32_t g = 0; g < dim_3; g += op_block)
+    for (uint32_t g = 0; g < C_o; g += op_block)
     {
-        uint32_t g_offset = g * dim_2 * dim_1 * dim_0;
-        for (uint32_t h = 0; h < dim_2; h += ip_block)
+        uint32_t g_offset = g * C_i * H * W;
+        for (uint32_t h = 0; h < C_i; h += ip_block)
         {
-            uint32_t h_offset = h * dim_1 * dim_0;
-            for (uint32_t i = 0; i < dim_1; i++)
+            uint32_t h_offset = h * H * W;
+            for (uint32_t i = 0; i < H; i++)
             {
-                uint32_t i_offset = i * dim_0;
-                for (uint32_t j = 0; j < dim_0; j++)
+                uint32_t i_offset = i * W;
+                for (uint32_t j = 0; j < W; j++)
                 {
                     uint32_t j_offset = j;
                     for (uint32_t k = 0; k < ip_block; k++)
                     {
-                        uint32_t k_offset = k * dim_1 * dim_0;
+                        uint32_t k_offset = k * H * W;
                         for (uint32_t l = 0; l < op_block; l++)
                         {
-                            int l_offset = l * dim_2 * dim_1 * dim_0;
+                            int l_offset = l * C_i * H * W;
                             // printf("offset: %d\n", offset);fflush(0);
                             //std::cerr << "dst index = " << offset << ", src index = "
                             //          << (g_offset + l_offset +
@@ -278,7 +275,7 @@ uint32_t convert_dc2tensor(ScalarT               const *dc_array,
             }
         }
     }
-    return dim_3*dim_2*dim_1*dim_0;
+    return C_o*C_i*H*W;
 }
 
 //************************************************************************
@@ -289,8 +286,8 @@ uint32_t unpack_buffer(BufferT          const &dc_array,
                        uint32_t                dim1, // C_i
                        uint32_t                dim2, // H
                        uint32_t                dim3, // W
-                       uint32_t                _C_ib,
-                       uint32_t                _C_ob,
+                       uint32_t                _C_ib,  /// @todo remove from public API
+                       uint32_t                _C_ob,  /// @todo remove from public API
                        BufferT                &flat_t)
 {
     return convert_dc2tensor<typename BufferT::value_type>(

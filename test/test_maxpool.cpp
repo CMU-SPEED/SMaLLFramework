@@ -10,6 +10,8 @@
 // DM23-0126
 //****************************************************************************
 
+#define PARALLEL 1
+
 #include <acutest.h>
 
 #include <fstream>
@@ -22,6 +24,7 @@
 #include <small/MaxPool2DLayer.hpp>
 
 #include "test_utils.hpp"
+#include "Timer.hpp"
 
 std::string const data_dir("../test/regression_data");
 
@@ -248,9 +251,115 @@ void test_maxpool_layer_regression_data(void)
 }
 
 //****************************************************************************
+void measure_maxpool_performance(void)
+{
+    size_t const C_i = 512;
+    size_t const H = 192;
+    size_t const W = 192;
+    size_t const k = 3;
+    size_t const s = 1;
+    small::PaddingEnum p = small::PADDING_F;
+
+    size_t Ho(small::compute_output_dim(H, k, s, p));
+    size_t Wo(small::compute_output_dim(W, k, s, p));
+
+    uint8_t t_pad=0, b_pad=0, l_pad=0, r_pad=0;
+    small::calc_padding(H, k, s, t_pad, b_pad);
+    small::calc_padding(W, k, s, l_pad, r_pad);
+
+    size_t num_input_elts(C_i*H*W);
+    size_t num_output_elts(C_i*Ho*Wo);
+
+#if defined(QUANTIZED)
+    std::string label("MaxPool2D(quint8): ");
+    using Buffer = small::QUInt8Buffer;
+#else
+    std::string label("MaxPool2D(float): ");
+    using Buffer = small::FloatBuffer;
+#endif
+
+    Buffer input_dc(num_input_elts);
+    Buffer output_dc(num_output_elts);
+    small::MaxPool2DLayer<Buffer>  maxpool_layer(k, k, s, p, C_i, H, W);
+
+    small::init(input_dc, num_input_elts);
+
+    uint32_t const  num_threads[] = {1, 2, 4};
+    char const *str_num_threads[] = {"1", "2", "4"};
+    uint32_t const num_runs(100);
+
+    std::cout << std::endl;
+    Timer t;
+    for (size_t ix = 0; ix < 3; ++ix)
+    {
+        setenv("OMP_NUM_THREADS", str_num_threads[ix], 1);
+        //omp_set_num_threads(num_threads[ix]);
+        //auto nt = omp_get_num_threads();
+        std::string ont = std::getenv("OMP_NUM_THREADS");
+        auto nt = atol(ont.c_str());
+
+        double tx(0.);
+        double min_t = std::numeric_limits<double>::max();
+        double max_t = 0.;
+
+        for (size_t iy = 0; iy < num_runs; ++iy)
+        {
+            t.start();
+            small::MaxPool2D(k, s, t_pad, b_pad, l_pad, r_pad,
+                             C_i, H, W,
+                             input_dc, output_dc);
+            t.stop();
+            double ts = t.elapsed();
+            tx += ts;
+            min_t = std::min(min_t, ts);
+            max_t = std::max(max_t, ts);
+        }
+        std::cout << label << "MaxPool2D(),"
+                  << "k/s/C/H/W=" << k << "/" << s << "/" << C_i
+                  << "/" << H << "/" << W
+                  << ",nthd(set/get)=" << num_threads[ix] << "/" << nt
+                  << ",min=" << min_t
+                  << ",max=" << max_t
+                  << ",avg=" << (tx/num_runs) << std::endl;
+    }
+
+    for (size_t ix = 0; ix < 3; ++ix)
+    {
+        setenv("OMP_NUM_THREADS", str_num_threads[ix], 1);
+        //omp_set_num_threads(num_threads[ix]);
+        //auto nt = omp_get_num_threads();
+        std::string ont = std::getenv("OMP_NUM_THREADS");
+        auto nt = atol(ont.c_str());
+
+        double tx(0.);
+        double min_t = std::numeric_limits<double>::max();
+        double max_t = 0.;
+
+        for (size_t iy = 0; iy < num_runs; ++iy)
+        {
+            t.start();
+            maxpool_layer.compute_output(input_dc, output_dc);
+            t.stop();
+            double ts = t.elapsed();
+            tx += ts;
+            min_t = std::min(min_t, ts);
+            max_t = std::max(max_t, ts);
+        }
+        std::cout << label << "MaxPool2DLayer,"
+                  << "k/s/C/H/W=" << k << "/" << s << "/" << C_i
+                  << "/" << H << "/" << W
+                  << ",nthd(set/get)=" << num_threads[ix] << "/" << nt
+                  << ",min=" << min_t
+                  << ",max=" << max_t
+                  << ",avg=" << (tx/num_runs) << std::endl;
+    }
+}
+
+//****************************************************************************
 //****************************************************************************
 TEST_LIST = {
     {"maxpool_regression_data",       test_maxpool_regression_data},
     {"maxpool_layer_regression_data", test_maxpool_layer_regression_data},
+    {"maxpool_performance", measure_maxpool_performance},
     {NULL, NULL}
 };

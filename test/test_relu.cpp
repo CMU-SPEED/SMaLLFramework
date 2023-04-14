@@ -10,7 +10,10 @@
 // DM23-0126
 //****************************************************************************
 
+#define PARALLEL 1;
+
 #include <acutest.h>
+#include <stdlib.h>
 
 #include <fstream>
 #include <iostream>
@@ -21,6 +24,7 @@
 #include <small/ReLULayer.hpp>
 
 #include "test_utils.hpp"
+#include "Timer.hpp"
 
 
 //****************************************************************************
@@ -336,6 +340,95 @@ void test_relu_layer_regression_data(void)
 }
 
 //****************************************************************************
+void measure_relu_performance(void)
+{
+    size_t const C_i = 512;
+    size_t const H = 192;
+    size_t const W = 192;
+    size_t num_input_elts = C_i*H*W;
+
+#if defined(QUANTIZED)
+    std::string label("ReLU(quint8): ");
+    using Buffer = small::QUInt8Buffer;
+#else
+    std::string label("ReLU(float): ");
+    using Buffer = small::FloatBuffer;
+#endif
+
+    Buffer  input_dc = create_relu_data<small::FloatBuffer>(num_input_elts);
+    Buffer  output_dc(num_input_elts);
+    small::ReLULayer<Buffer> relu_layer(C_i, H, W);
+
+    small::init(input_dc, num_input_elts);
+
+    uint32_t const  num_threads[] = {1, 2, 4};
+    char const *str_num_threads[] = {"1", "2", "4"};
+    uint32_t const num_runs(100);
+
+    std::cout << std::endl;
+    Timer t;
+    for (size_t ix = 0; ix < 3; ++ix)
+    {
+        setenv("OMP_NUM_THREADS", str_num_threads[ix], 1);
+        //omp_set_num_threads(num_threads[ix]);
+        //auto nt = omp_get_num_threads();
+        std::string ont = std::getenv("OMP_NUM_THREADS");
+        auto nt = atol(ont.c_str());
+
+        double tx(0.);
+        double min_t = std::numeric_limits<double>::max();
+        double max_t = 0.;
+
+        for (size_t iy = 0; iy < num_runs; ++iy)
+        {
+            t.start();
+            small::ReLUActivation(C_i, H, W, input_dc, output_dc);
+            t.stop();
+            double ts = t.elapsed();
+            tx += ts;
+            min_t = std::min(min_t, ts);
+            max_t = std::max(max_t, ts);
+        }
+        std::cout << label << "ReLUActivation(),"
+                  << "C,H,W=" << C_i << "," << H << "," << W
+                  << ",nthd(set/get)=" << num_threads[ix] << "/" << nt
+                  << ",min=" << min_t
+                  << ",max=" << max_t
+                  << ",avg=" << (tx/num_runs) << std::endl;
+    }
+
+    for (size_t ix = 0; ix < 3; ++ix)
+    {
+        setenv("OMP_NUM_THREADS", str_num_threads[ix], 1);
+        //omp_set_num_threads(num_threads[ix]);
+        //auto nt = omp_get_num_threads();
+        std::string ont = std::getenv("OMP_NUM_THREADS");
+        auto nt = atol(ont.c_str());
+
+        double tx(0.);
+        double min_t = std::numeric_limits<double>::max();
+        double max_t = 0.;
+
+        for (size_t iy = 0; iy < num_runs; ++iy)
+        {
+            t.start();
+            relu_layer.compute_output(input_dc, output_dc);
+            t.stop();
+            double ts = t.elapsed();
+            tx += ts;
+            min_t = std::min(min_t, ts);
+            max_t = std::max(max_t, ts);
+        }
+        std::cout << label << "ReLULayer,"
+                  << "C,H,W=" << C_i << "," << H << "," << W
+                  << ",nthd(set/get)=" << num_threads[ix] << "/" << nt
+                  << ",min=" << min_t
+                  << ",max=" << max_t
+                  << ",avg=" << (tx/num_runs) << std::endl;
+    }
+}
+
+//****************************************************************************
 //****************************************************************************
 TEST_LIST = {
     {"relu_single_element",  test_relu_single_element},
@@ -343,5 +436,6 @@ TEST_LIST = {
     {"relu_large_tile",  test_relu_large_tile},
     {"relu_regression_data", test_relu_regression_data},
     {"relu_layer_regression_data", test_relu_layer_regression_data},
+    {"relu_performance", measure_relu_performance},
     {NULL, NULL}
 };

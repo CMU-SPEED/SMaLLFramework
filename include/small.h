@@ -17,7 +17,7 @@
 #define SMALL_SUB_VERSON 0
 
 /// @todo remove the following (add init() to set threading)
-#define PARALLEL 0
+#define PARALLEL 1
 
 // ============ Implementation details ==============
 // Platform specific includes.
