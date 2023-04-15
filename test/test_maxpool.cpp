@@ -13,11 +13,11 @@
 #define PARALLEL 1
 
 #include <acutest.h>
+#include <stdlib.h>
 
 #include <fstream>
 #include <iostream>
 #include <iomanip>
-#include <cmath>
 #include <random>
 
 #include <small.h>
@@ -180,7 +180,6 @@ bool run_maxpool_layer_config(LayerParams const &params)
         if (packed_output_dc[ix] != packed_output_dc_answers[ix])
         {
             passing = false;
-
             std::cout << "FAIL: Maxpool_out(" << ix << ")--> "
                       << std::setw(12) << std::setprecision(10)
                       << packed_output_dc[ix] << "(computed) != "
@@ -195,7 +194,6 @@ bool run_maxpool_layer_config(LayerParams const &params)
 }
 
 //****************************************************************************
-
 //****************************************************************************
 void test_maxpool_regression_data(void)
 {
@@ -253,105 +251,134 @@ void test_maxpool_layer_regression_data(void)
 //****************************************************************************
 void measure_maxpool_performance(void)
 {
-    size_t const C_i = 512;
-    size_t const H = 192;
-    size_t const W = 192;
-    size_t const k = 3;
-    size_t const s = 1;
-    small::PaddingEnum p = small::PADDING_F;
-
-    size_t Ho(small::compute_output_dim(H, k, s, p));
-    size_t Wo(small::compute_output_dim(W, k, s, p));
-
-    uint8_t t_pad=0, b_pad=0, l_pad=0, r_pad=0;
-    small::calc_padding(H, k, s, t_pad, b_pad);
-    small::calc_padding(W, k, s, l_pad, r_pad);
-
-    size_t num_input_elts(C_i*H*W);
-    size_t num_output_elts(C_i*Ho*Wo);
-
-#if defined(QUANTIZED)
-    std::string label("MaxPool2D(quint8): ");
-    using Buffer = small::QUInt8Buffer;
-#else
-    std::string label("MaxPool2D(float): ");
-    using Buffer = small::FloatBuffer;
-#endif
-
-    Buffer input_dc(num_input_elts);
-    Buffer output_dc(num_output_elts);
-    small::MaxPool2DLayer<Buffer>  maxpool_layer(k, k, s, p, C_i, H, W);
-
-    small::init(input_dc, num_input_elts);
+    // C_i,Hi,Wi,k,s,p,C_o
+    std::vector<LayerParams> params =
+    {
+        {  16,   48,  48, 3, 1, small::PADDING_F,   16},
+        {  32,   24,  24, 3, 1, small::PADDING_F,   32},
+        { 128,    6,   6, 3, 1, small::PADDING_F,  256},
+        {  64,   12,  12, 3, 1, small::PADDING_F,  128},
+        {  16,   48,  48, 3, 1, small::PADDING_F,   32},
+        {  32,   24,  24, 3, 1, small::PADDING_F,   64},
+        {  32,   48,  48, 3, 1, small::PADDING_F,   32},
+        { 128,   12,  12, 3, 1, small::PADDING_F,  128},
+        {  64,   24,  24, 3, 1, small::PADDING_F,   64},
+        { 128,   24,  24, 3, 1, small::PADDING_F,  128},
+        { 256,   12,  12, 3, 1, small::PADDING_F,  256},
+        { 512,   12,  12, 3, 1, small::PADDING_F,  512},
+        { 1024,   6,   6, 3, 1, small::PADDING_F, 1024},
+        {  32,  208, 208, 3, 1, small::PADDING_F,   64},
+        {  64,  104, 104, 3, 1, small::PADDING_F,  128},
+        { 128,   52,  52, 3, 1, small::PADDING_F,  256},
+        { 256,   26,  26, 3, 1, small::PADDING_F,  512},
+        { 512,   13,  13, 3, 1, small::PADDING_F, 1024}
+    };
 
     uint32_t const  num_threads[] = {1, 2, 4};
     char const *str_num_threads[] = {"1", "2", "4"};
     uint32_t const num_runs(100);
-
-    std::cout << std::endl;
     Timer t;
-    for (size_t ix = 0; ix < 3; ++ix)
+
+#if defined(QUANTIZED)
+    std::string type("quint8");
+    using Buffer = small::QUInt8Buffer;
+#else
+    std::string type("float");
+    using Buffer = small::FloatBuffer;
+#endif
+
+    std::cout << "\nMaxPool2D(" << type << "),\n"
+              << "C_i,H,W,k,s,nthd(set/get),runs,t_min,t_max,t_avg\n";
+
+    for (LayerParams const &p: params)
     {
-        setenv("OMP_NUM_THREADS", str_num_threads[ix], 1);
-        //omp_set_num_threads(num_threads[ix]);
-        //auto nt = omp_get_num_threads();
-        std::string ont = std::getenv("OMP_NUM_THREADS");
-        auto nt = atol(ont.c_str());
+        size_t Ho(small::compute_output_dim(p.H, p.k, p.s, p.p));
+        size_t Wo(small::compute_output_dim(p.W, p.k, p.s, p.p));
 
-        double tx(0.);
-        double min_t = std::numeric_limits<double>::max();
-        double max_t = 0.;
-
-        for (size_t iy = 0; iy < num_runs; ++iy)
+        uint8_t t_pad=0, b_pad=0, l_pad=0, r_pad=0;
+        if (p.p == small::PADDING_F)
         {
-            t.start();
-            small::MaxPool2D(k, s, t_pad, b_pad, l_pad, r_pad,
-                             C_i, H, W,
+            small::calc_padding(p.H, p.k, p.s, t_pad, b_pad);
+            small::calc_padding(p.W, p.k, p.s, l_pad, r_pad);
+        }
+
+        size_t num_input_elts(p.C_i*p.H*p.W);
+        size_t num_output_elts(p.C_i*Ho*Wo);
+
+        Buffer input_dc(num_input_elts);
+        Buffer output_dc(num_output_elts);
+        small::init(input_dc, num_input_elts);
+
+        small::MaxPool2DLayer<Buffer>
+            maxpool_layer(p.k, p.k, p.s, p.p, p.C_i, p.H, p.W);
+
+        for (size_t ix = 0; ix < 3; ++ix)
+        {
+            setenv("OMP_NUM_THREADS", str_num_threads[ix], 1);
+            std::string ont = std::getenv("OMP_NUM_THREADS"); // read it back
+            auto nt = atol(ont.c_str());
+
+            double tx(0.);
+            double min_t = std::numeric_limits<double>::max();
+            double max_t = 0.;
+
+            // Warmup
+            small::MaxPool2D(p.k, p.s, t_pad, b_pad, l_pad, r_pad,
+                             p.C_i, p.H, p.W,
                              input_dc, output_dc);
-            t.stop();
-            double ts = t.elapsed();
-            tx += ts;
-            min_t = std::min(min_t, ts);
-            max_t = std::max(max_t, ts);
+
+            for (size_t iy = 0; iy < num_runs; ++iy)
+            {
+                t.start();
+                small::MaxPool2D(p.k, p.s, t_pad, b_pad, l_pad, r_pad,
+                                 p.C_i, p.H, p.W,
+                                 input_dc, output_dc);
+                t.stop();
+                double ts = t.elapsed();
+                tx += ts;
+                min_t = std::min(min_t, ts);
+                max_t = std::max(max_t, ts);
+            }
+
+            std::cout << "function," << p.C_i << ","<< p.H << "," << p.W
+                      << "," << p.k << "," << p.s
+                      << "," << num_threads[ix] << "/" << nt
+                      << "," << num_runs
+                      << "," << min_t << "," << max_t
+                      << "," << (tx/num_runs) << std::endl;
         }
-        std::cout << label << "MaxPool2D(),"
-                  << "k/s/C/H/W=" << k << "/" << s << "/" << C_i
-                  << "/" << H << "/" << W
-                  << ",nthd(set/get)=" << num_threads[ix] << "/" << nt
-                  << ",min=" << min_t
-                  << ",max=" << max_t
-                  << ",avg=" << (tx/num_runs) << std::endl;
-    }
 
-    for (size_t ix = 0; ix < 3; ++ix)
-    {
-        setenv("OMP_NUM_THREADS", str_num_threads[ix], 1);
-        //omp_set_num_threads(num_threads[ix]);
-        //auto nt = omp_get_num_threads();
-        std::string ont = std::getenv("OMP_NUM_THREADS");
-        auto nt = atol(ont.c_str());
-
-        double tx(0.);
-        double min_t = std::numeric_limits<double>::max();
-        double max_t = 0.;
-
-        for (size_t iy = 0; iy < num_runs; ++iy)
+        for (size_t ix = 0; ix < 3; ++ix)
         {
-            t.start();
+            setenv("OMP_NUM_THREADS", str_num_threads[ix], 1);
+            std::string ont = std::getenv("OMP_NUM_THREADS");
+            auto nt = atol(ont.c_str());
+
+            double tx(0.);
+            double min_t = std::numeric_limits<double>::max();
+            double max_t = 0.;
+
+            // Warm up
             maxpool_layer.compute_output(input_dc, output_dc);
-            t.stop();
-            double ts = t.elapsed();
-            tx += ts;
-            min_t = std::min(min_t, ts);
-            max_t = std::max(max_t, ts);
+
+            for (size_t iy = 0; iy < num_runs; ++iy)
+            {
+                t.start();
+                maxpool_layer.compute_output(input_dc, output_dc);
+                t.stop();
+                double ts = t.elapsed();
+                tx += ts;
+                min_t = std::min(min_t, ts);
+                max_t = std::max(max_t, ts);
+            }
+
+            std::cout << "class," << p.C_i << ","<< p.H << "," << p.W
+                      << "," << p.k << "," << p.s
+                      << "," << num_threads[ix] << "/" << nt
+                      << "," << num_runs
+                      << "," << min_t << "," << max_t
+                      << "," << (tx/num_runs) << std::endl;
         }
-        std::cout << label << "MaxPool2DLayer,"
-                  << "k/s/C/H/W=" << k << "/" << s << "/" << C_i
-                  << "/" << H << "/" << W
-                  << ",nthd(set/get)=" << num_threads[ix] << "/" << nt
-                  << ",min=" << min_t
-                  << ",max=" << max_t
-                  << ",avg=" << (tx/num_runs) << std::endl;
     }
 }
 
