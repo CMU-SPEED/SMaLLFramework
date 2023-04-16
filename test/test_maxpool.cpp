@@ -13,11 +13,11 @@
 #define PARALLEL 1
 
 #include <acutest.h>
+#include <stdlib.h>
 
 #include <fstream>
 #include <iostream>
 #include <iomanip>
-#include <cmath>
 #include <random>
 
 typedef float dtype;
@@ -151,68 +151,97 @@ void test_maxpool_regression_data(void)
 //****************************************************************************
 void measure_maxpool_performance(void)
 {
-    size_t const C_i = 512;
-    size_t const H = 192;
-    size_t const W = 192;
-    size_t const k = 3;
-    size_t const s = 1;
-    char const p = 'f';
+    // C_i,Hi,Wi,k,s,p,C_o
+    std::vector<LayerParams> params =
+    {
+        {  16,   48,  48, 3, 1, 'f',   16},
+        {  32,   24,  24, 3, 1, 'f',   32},
 
-    size_t Ho(compute_output_dim(H, k, s, p));
-    size_t Wo(compute_output_dim(W, k, s, p));
+        {  32,   48,  48, 3, 1, 'f',   32},
+        {  64,   24,  24, 3, 1, 'f',   64},
+        { 128,   12,  12, 3, 1, 'f',  128},
 
-    uint8_t t_pad=0, b_pad=0, l_pad=0, r_pad=0;
-    CALC_PADDING(H, k, s, t_pad, b_pad);
-    CALC_PADDING(W, k, s, l_pad, r_pad);
+        {  16,   48,  48, 3, 1, 'f',   32},
+        {  32,   24,  24, 3, 1, 'f',   64},
+        {  64,   12,  12, 3, 1, 'f',  128},
+        { 128,    6,   6, 3, 1, 'f',  256},
 
-    size_t num_input_elts(C_i*H*W);
-    size_t num_output_elts(C_i*Ho*Wo);
+        { 128,   24,  24, 3, 1, 'f',  128},
+        { 256,   12,  12, 3, 1, 'f',  256},
 
-    std::string label("MaxPool2D(float): ");
-    using RealT = float;
+        { 512,   12,  12, 3, 1, 'f',  512},
+        {1024,    6,   6, 3, 1, 'f', 1024},
 
-    RealT *input_dc = small_alloc<RealT>(num_input_elts);
-    RealT *output_dc= small_alloc<RealT>(num_output_elts);
+        {  32,  208, 208, 3, 1, 'f',   64},
+        {  64,  104, 104, 3, 1, 'f',  128},
+        { 128,   52,  52, 3, 1, 'f',  256},
+        { 256,   26,  26, 3, 1, 'f',  512},
+        { 512,   13,  13, 3, 1, 'f', 1024}
+    };
 
     uint32_t const  num_threads[] = {1, 2, 4};
     char const *str_num_threads[] = {"1", "2", "4"};
     uint32_t const num_runs(100);
-
-    std::cout << std::endl;
     Timer t;
-    for (size_t ix = 0; ix < 3; ++ix)
+
+    using RealT = float;
+
+    printf("\nMaxPool2D(float)\n");
+    printf("\t\tC_i\tH\tW\tk\ts\tnthd(set/get)\truns\tt_min\tt_max\tt_avg\n");
+
+    for (LayerParams const &p: params)
     {
-        setenv("OMP_NUM_THREADS", str_num_threads[ix], 1);
-        //omp_set_num_threads(num_threads[ix]);
-        //auto nt = omp_get_num_threads();
-        std::string ont = std::getenv("OMP_NUM_THREADS");
-        auto nt = atol(ont.c_str());
+        size_t Ho(compute_output_dim(p.H, p.k, p.s, p.p));
+        size_t Wo(compute_output_dim(p.W, p.k, p.s, p.p));
 
-        double tx(0.);
-        double min_t = std::numeric_limits<double>::max();
-        double max_t = 0.;
-
-        for (size_t iy = 0; iy < num_runs; ++iy)
+        uint8_t t_pad=0, b_pad=0, l_pad=0, r_pad=0;
+        if (p.p == 'f')
         {
-            t.start();
-            Maxpool2D(0,
-                      k, s,
-                      t_pad, b_pad, l_pad, r_pad,
-                      C_i, H, W,
-                      input_dc, output_dc);
-            t.stop();
-            double ts = t.elapsed();
-            tx += ts;
-            min_t = std::min(min_t, ts);
-            max_t = std::max(max_t, ts);
+            CALC_PADDING(p.H, p.k, p.s, t_pad, b_pad);
+            CALC_PADDING(p.W, p.k, p.s, l_pad, r_pad);
         }
-        std::cout << label << "MaxPool2D(),"
-                  << "k/s/C/H/W=" << k << "/" << s << "/" << C_i
-                  << "/" << H << "/" << W
-                  << ",nthd(set/get)=" << num_threads[ix] << "/" << nt
-                  << ",min=" << min_t
-                  << ",max=" << max_t
-                  << ",avg=" << (tx/num_runs) << std::endl;
+
+        size_t num_input_elts(p.C_i*p.H*p.W);
+        size_t num_output_elts(p.C_i*Ho*Wo);
+
+        RealT *input_dc = small_alloc<RealT>(num_input_elts);
+        RealT *output_dc= small_alloc<RealT>(num_output_elts);
+
+        for (size_t ix = 0; ix < 3; ++ix)
+        {
+            setenv("OMP_NUM_THREADS", str_num_threads[ix], 1);
+            std::string ont = std::getenv("OMP_NUM_THREADS"); // read it back
+            auto nt = atol(ont.c_str());
+
+            double tx(0.);
+            double min_t = std::numeric_limits<double>::max();
+            double max_t = 0.;
+
+            // Warmup
+            Maxpool2D(0,
+                      p.k, p.s, t_pad, b_pad, l_pad, r_pad,
+                      p.C_i, p.H, p.W,
+                      input_dc, output_dc);
+
+            for (size_t iy = 0; iy < num_runs; ++iy)
+            {
+                t.start();
+                Maxpool2D(0,
+                          p.k, p.s, t_pad, b_pad, l_pad, r_pad,
+                          p.C_i, p.H, p.W,
+                          input_dc, output_dc);
+                t.stop();
+                double ts = t.elapsed();
+                tx += ts;
+                min_t = std::min(min_t, ts);
+                max_t = std::max(max_t, ts);
+            }
+
+            printf("function\t%ld\t%d\t%d\t%d\t%d\t%d/%ld\t%d\t%lf\t%lf\t%lf\n",
+                   p.C_i, p.H, p.W, p.k, p.s,
+                   num_threads[ix], nt, num_runs,
+                   min_t, max_t, (tx/num_runs));
+        }
     }
 }
 

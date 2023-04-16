@@ -10,7 +10,7 @@
 // DM23-0126
 //****************************************************************************
 
-#define PARALLEL 1;
+#define PARALLEL 1
 
 #include <acutest.h>
 #include <stdlib.h>
@@ -27,6 +27,7 @@ typedef float dtype;
 #include "test_utils.hpp"
 #include "Timer.hpp"
 
+std::string const data_dir("../test/regression_data");
 
 //****************************************************************************
 float* create_relu_data(size_t num_elements)
@@ -267,53 +268,81 @@ void test_relu_regression_data(void)
 //****************************************************************************
 void measure_relu_performance(void)
 {
-    size_t const C_i = 512;
-    size_t const H = 192;
-    size_t const W = 192;
-    size_t num_input_elts = C_i*H*W;
+    // C_i,Hi,Wi,k,s,p,C_o
+    std::vector<LayerParams> params =
+    {
+        {  16,   48,  48, 3, 1, 'f',   16},
+        {  32,   24,  24, 3, 1, 'f',   32},
 
-    using RealT = float;
+        {  32,   48,  48, 3, 1, 'f',   32},
+        {  64,   24,  24, 3, 1, 'f',   64},
+        { 128,   12,  12, 3, 1, 'f',  128},
 
-    RealT *input_dc = create_relu_data(num_input_elts);
-    RealT *output_dc = small_alloc<RealT>(num_input_elts);
+        {  16,   48,  48, 3, 1, 'f',   32},
+        {  32,   24,  24, 3, 1, 'f',   64},
+        {  64,   12,  12, 3, 1, 'f',  128},
+        { 128,    6,   6, 3, 1, 'f',  256},
 
-    std::string label("ReLUActivation(float): ");
+        { 128,   24,  24, 3, 1, 'f',  128},
+        { 256,   12,  12, 3, 1, 'f',  256},
+
+        { 512,   12,  12, 3, 1, 'f',  512},
+        {1024,    6,   6, 3, 1, 'f', 1024},
+
+        {  32,  208, 208, 3, 1, 'f',   64},
+        {  64,  104, 104, 3, 1, 'f',  128},
+        { 128,   52,  52, 3, 1, 'f',  256},
+        { 256,   26,  26, 3, 1, 'f',  512},
+        { 512,   13,  13, 3, 1, 'f', 1024}
+    };
+
     uint32_t const  num_threads[] = {1, 2, 4};
     char const *str_num_threads[] = {"1", "2", "4"};
     uint32_t const num_runs(100);
-
-    std::cout << std::endl;
     Timer t;
-    for (size_t ix = 0; ix < 3; ++ix)
+
+    using RealT = float;
+
+    printf("\nReLU(float)\n");
+    printf("\t\tC_i\tH\tW\tk\ts\tnthd(set/get)\truns\tt_min\tt_max\tt_avg\n");
+
+    for (LayerParams const &p: params)
     {
-        setenv("OMP_NUM_THREADS", str_num_threads[ix], 1);
-        //omp_set_num_threads(num_threads[ix]);
-        //auto nt = omp_get_num_threads();
-        std::string ont = std::getenv("OMP_NUM_THREADS");
-        auto nt = atol(ont.c_str());
+        size_t num_input_elts(p.C_i*p.H*p.W);
 
-        double tx(0.);
-        double min_t = std::numeric_limits<double>::max();
-        double max_t = 0.;
+        RealT *input_dc = create_relu_data(num_input_elts);
+        RealT *output_dc = small_alloc<RealT>(num_input_elts);
 
-        for (size_t iy = 0; iy < num_runs; ++iy)
+        for (size_t ix = 0; ix < 3; ++ix)
         {
-            t.start();
-            ReLUActivation(0, C_i, H, W, input_dc, output_dc);
-            t.stop();
-            double ts = t.elapsed();
-            tx += ts;
-            min_t = std::min(min_t, ts);
-            max_t = std::max(max_t, ts);
-        }
-        std::cout << label << "ReLUActivation(),"
-                  << "C,H,W=" << C_i << "," << H << "," << W
-                  << ",nthd(set/get)=" << num_threads[ix] << "/" << nt
-                  << ",min=" << min_t
-                  << ",max=" << max_t
-                  << ",avg=" << (tx/num_runs) << std::endl;
-    }
+            setenv("OMP_NUM_THREADS", str_num_threads[ix], 1);
+            std::string ont = std::getenv("OMP_NUM_THREADS"); // read it back
+            auto nt = atol(ont.c_str());
 
+            double tx(0.);
+            double min_t = std::numeric_limits<double>::max();
+            double max_t = 0.;
+
+            // Warmup
+            ReLUActivation(0, p.C_i, p.H, p.W, input_dc, output_dc);
+
+            for (size_t iy = 0; iy < num_runs; ++iy)
+            {
+                t.start();
+                ReLUActivation(0, p.C_i, p.H, p.W, input_dc, output_dc);
+                t.stop();
+                double ts = t.elapsed();
+                tx += ts;
+                min_t = std::min(min_t, ts);
+                max_t = std::max(max_t, ts);
+            }
+
+            printf("function\t%ld\t%d\t%d\t%d\t%d\t%d/%ld\t%d\t%lf\t%lf\t%lf\n",
+                   p.C_i, p.H, p.W, p.k, p.s,
+                   num_threads[ix], nt, num_runs,
+                   min_t, max_t, (tx/num_runs));
+        }
+    }
 }
 
 //****************************************************************************

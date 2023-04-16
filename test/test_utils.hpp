@@ -160,6 +160,20 @@ uint32_t read_float_inputs(std::string const &input_data_fname, float **in_buf)
 }
 
 //****************************************************************************
+void init(float *buffer, size_t num_elements)
+{
+    using RealT = float;
+
+    std::default_random_engine generator;
+    std::normal_distribution<RealT> distribution{0.f, 1.f};  // what distribution is Torch::Tensor::randn?
+
+    for (size_t ix = 0; ix < num_elements; ++ix)
+    {
+        buffer[ix] = distribution(generator);
+    }
+}
+
+//****************************************************************************
 // from https://www.tensorflow.org/api_docs/python/tf/keras/layers/MaxPool2D
 size_t compute_output_dim_old(size_t input_dim,
                               size_t kernel_dim,
@@ -214,7 +228,6 @@ size_t compute_output_dim(size_t input_dim,
         CALC_PADDING(input_dim, kernel_dim, stride, fpad, bpad);
         size_t padded_input_dim = input_dim + fpad + bpad;
         size_t output_dim = 1 + (padded_input_dim - kernel_dim)/stride;
-        std::cerr << "f output dim: " << output_dim << std::endl;
         return std::max(output_dim, 0UL);
     }
     else

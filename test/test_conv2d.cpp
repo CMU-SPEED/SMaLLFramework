@@ -27,6 +27,7 @@ typedef float dtype;
 #include <small.h>
 
 #include "test_utils.hpp"
+#include "Timer.hpp"
 
 std::string const data_dir("../test/regression_data");
 
@@ -185,8 +186,110 @@ void test_conv2d_regression_data(void)
 }
 
 //****************************************************************************
+void measure_conv2d_performance(void)
+{
+    // C_i,Hi,Wi,k,s,p,C_o
+    std::vector<LayerParams> params =
+    {
+        {  16,   48,  48, 3, 1, 'f',   16},
+        {  32,   24,  24, 3, 1, 'f',   32},
+
+        {  32,   48,  48, 3, 1, 'f',   32},
+        {  64,   24,  24, 3, 1, 'f',   64},
+        { 128,   12,  12, 3, 1, 'f',  128},
+
+        {  16,   48,  48, 3, 1, 'f',   32},
+        {  32,   24,  24, 3, 1, 'f',   64},
+        {  64,   12,  12, 3, 1, 'f',  128},
+        { 128,    6,   6, 3, 1, 'f',  256},
+
+        { 128,   24,  24, 3, 1, 'f',  128},
+        { 256,   12,  12, 3, 1, 'f',  256},
+
+        { 512,   12,  12, 3, 1, 'f',  512},
+        {1024,    6,   6, 3, 1, 'f', 1024},
+
+        {  32,  208, 208, 3, 1, 'f',   64},
+        {  64,  104, 104, 3, 1, 'f',  128},
+        { 128,   52,  52, 3, 1, 'f',  256},
+        { 256,   26,  26, 3, 1, 'f',  512},
+        { 512,   13,  13, 3, 1, 'f', 1024}
+    };
+
+    uint32_t const  num_threads[] = {1, 2, 4};
+    char const *str_num_threads[] = {"1", "2", "4"};
+    uint32_t const num_runs(10);
+    Timer t;
+
+    using RealT = float;
+
+    printf("\nConv2D(float)\n");
+    printf("\t\tC_i\tH\tW\tk\ts\tC_o\tnthd(set/get)\truns\tt_min\tt_max\tt_avg\n");
+
+    for (LayerParams const &p: params)
+    {
+        size_t Ho(compute_output_dim(p.H, p.k, p.s, p.p));
+        size_t Wo(compute_output_dim(p.W, p.k, p.s, p.p));
+
+        uint8_t t_pad=0, b_pad=0, l_pad=0, r_pad=0;
+        if (p.p == 'f')
+        {
+            CALC_PADDING(p.H, p.k, p.s, t_pad, b_pad);
+            CALC_PADDING(p.W, p.k, p.s, l_pad, r_pad);
+        }
+
+        size_t num_input_elts(p.C_i*p.H*p.W);
+        size_t num_filter_elts(p.C_i*p.k*p.k*p.C_o);
+        size_t num_output_elts(p.C_o*Ho*Wo);
+
+        RealT *input_dc = small_alloc<RealT>(num_input_elts);
+        RealT *filter_dc = small_alloc<RealT>(num_filter_elts);
+        RealT *output_dc = small_alloc<RealT>(num_output_elts);
+        init(input_dc, num_input_elts);
+        init(filter_dc, num_filter_elts);
+
+        for (size_t ix = 0; ix < 3; ++ix)
+        {
+            setenv("OMP_NUM_THREADS", str_num_threads[ix], 1);
+            std::string ont = std::getenv("OMP_NUM_THREADS"); // read it back
+            auto nt = atol(ont.c_str());
+
+            double tx(0.);
+            double min_t = std::numeric_limits<double>::max();
+            double max_t = 0.;
+
+            // Warmup
+            Conv2D(0,
+                   p.k, p.s, t_pad, b_pad, l_pad, r_pad,
+                   p.C_o, p.C_i, p.H, p.W,
+                   input_dc, filter_dc, output_dc);
+
+            for (size_t iy = 0; iy < num_runs; ++iy)
+            {
+                t.start();
+                Conv2D(0,
+                       p.k, p.s, t_pad, b_pad, l_pad, r_pad,
+                       p.C_o, p.C_i, p.H, p.W,
+                       input_dc, filter_dc, output_dc);
+                t.stop();
+                double ts = t.elapsed();
+                tx += ts;
+                min_t = std::min(min_t, ts);
+                max_t = std::max(max_t, ts);
+            }
+
+            printf("function\t%ld\t%d\t%d\t%d\t%d\t%ld\t%d/%ld\t%d\t%lf\t%lf\t%lf\n",
+                   p.C_i, p.H, p.W, p.k, p.s, p.C_o,
+                   num_threads[ix], nt, num_runs,
+                   min_t, max_t, (tx/num_runs));
+        }
+    }
+}
+
+//****************************************************************************
 //****************************************************************************
 TEST_LIST = {
     {"conv2d_regression_data",     test_conv2d_regression_data},
+    {"conv2d_performance", measure_conv2d_performance},
     {NULL, NULL}
 };
