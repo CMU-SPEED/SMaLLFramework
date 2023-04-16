@@ -10,7 +10,7 @@
 // DM23-0126
 //****************************************************************************
 
-#define PARALLEL 1;
+#define PARALLEL 1
 
 #include <acutest.h>
 #include <stdlib.h>
@@ -173,8 +173,10 @@ bool run_relu_config(LayerParams const &params)
                        packed_input_dc);
 
     // Read output regression data
-    size_t Ho(compute_output_dim(params.H, params.k, params.s, params.p));
-    size_t Wo(compute_output_dim(params.W, params.k, params.s, params.p));
+    size_t Ho(small::compute_output_dim(
+                  params.H, params.k, params.s, params.p));
+    size_t Wo(small::compute_output_dim(
+                  params.W, params.k, params.s, params.p));
     std::cerr << "Output image dims: " << Ho << ", " << Wo << std::endl;
     std::string out_fname =
         get_pathname(data_dir, "out", "relu",
@@ -252,8 +254,10 @@ bool run_relu_layer_config(LayerParams const &params)
                        packed_input_dc);
 
     // Read output regression data
-    size_t Ho(small::compute_output_dim(params.H, params.k, params.s, params.p));
-    size_t Wo(small::compute_output_dim(params.W, params.k, params.s, params.p));
+    size_t Ho(small::compute_output_dim(
+                  params.H, params.k, params.s, params.p));
+    size_t Wo(small::compute_output_dim(
+                  params.W, params.k, params.s, params.p));
     std::cerr << "Output image dims: " << Ho << ", " << Wo << std::endl;
     std::string out_fname =
         get_pathname(data_dir, "out", "relu",
@@ -350,17 +354,22 @@ void measure_relu_performance(void)
     {
         {  16,   48,  48, 3, 1, small::PADDING_F,   16},
         {  32,   24,  24, 3, 1, small::PADDING_F,   32},
-        { 128,    6,   6, 3, 1, small::PADDING_F,  256},
-        {  64,   12,  12, 3, 1, small::PADDING_F,  128},
+
+        {  32,   48,  48, 3, 1, small::PADDING_F,   32},
+        {  64,   24,  24, 3, 1, small::PADDING_F,   64},
+        { 128,   12,  12, 3, 1, small::PADDING_F,  128},
+
         {  16,   48,  48, 3, 1, small::PADDING_F,   32},
         {  32,   24,  24, 3, 1, small::PADDING_F,   64},
-        {  32,   48,  48, 3, 1, small::PADDING_F,   32},
-        { 128,   12,  12, 3, 1, small::PADDING_F,  128},
-        {  64,   24,  24, 3, 1, small::PADDING_F,   64},
+        {  64,   12,  12, 3, 1, small::PADDING_F,  128},
+        { 128,    6,   6, 3, 1, small::PADDING_F,  256},
+
         { 128,   24,  24, 3, 1, small::PADDING_F,  128},
         { 256,   12,  12, 3, 1, small::PADDING_F,  256},
+
         { 512,   12,  12, 3, 1, small::PADDING_F,  512},
-        { 1024,   6,   6, 3, 1, small::PADDING_F, 1024},
+        {1024,    6,   6, 3, 1, small::PADDING_F, 1024},
+
         {  32,  208, 208, 3, 1, small::PADDING_F,   64},
         {  64,  104, 104, 3, 1, small::PADDING_F,  128},
         { 128,   52,  52, 3, 1, small::PADDING_F,  256},
@@ -381,23 +390,23 @@ void measure_relu_performance(void)
     using Buffer = small::FloatBuffer;
 #endif
 
-    std::cout << "\nReLU(" << type << "),\n"
-              << "C_i,H,W,k,s,nthd(set/get),runs,t_min,t_max,t_avg\n";
+    printf("\nReLU(%s)\n", type.c_str());
+    printf("\t\tC_i\tH\tW\tk\ts\tnthd(set/get)\truns\tt_min\tt_max\tt_avg\n");
 
     for (LayerParams const &p: params)
     {
-        size_t num_elts(p.C_i*p.H*p.W);
+        size_t num_input_elts(p.C_i*p.H*p.W);
 
-        Buffer  input_dc(num_elts);
-        Buffer output_dc(num_elts);
-        small::init(input_dc, num_elts);
+        Buffer  input_dc(num_input_elts);
+        Buffer output_dc(num_input_elts);
+        small::init(input_dc, num_input_elts);
 
         small::ReLULayer<Buffer> relu_layer(p.C_i, p.H, p.W);
 
         for (size_t ix = 0; ix < 3; ++ix)
         {
             setenv("OMP_NUM_THREADS", str_num_threads[ix], 1);
-            std::string ont = std::getenv("OMP_NUM_THREADS");
+            std::string ont = std::getenv("OMP_NUM_THREADS"); // read it back
             auto nt = atol(ont.c_str());
 
             double tx(0.);
@@ -418,12 +427,10 @@ void measure_relu_performance(void)
                 max_t = std::max(max_t, ts);
             }
 
-            std::cout << "function," << p.C_i << ","<< p.H << "," << p.W
-                      << "," << p.k << "," << p.s
-                      << "," << num_threads[ix] << "/" << nt
-                      << "," << num_runs
-                      << "," << min_t << "," << max_t
-                      << "," << (tx/num_runs) << std::endl;
+            printf("function\t%ld\t%d\t%d\t%d\t%d\t%d/%ld\t%d\t%lf\t%lf\t%lf\n",
+                   p.C_i, p.H, p.W, p.k, p.s,
+                   num_threads[ix], nt, num_runs,
+                   min_t, max_t, (tx/num_runs));
         }
 
         for (size_t ix = 0; ix < 3; ++ix)
@@ -450,12 +457,10 @@ void measure_relu_performance(void)
                 max_t = std::max(max_t, ts);
             }
 
-            std::cout << "class," << p.C_i << ","<< p.H << "," << p.W
-                      << "," << p.k << "," << p.s
-                      << "," << num_threads[ix] << "/" << nt
-                      << "," << num_runs
-                      << "," << min_t << "," << max_t
-                      << "," << (tx/num_runs) << std::endl;
+            printf("class   \t%ld\t%d\t%d\t%d\t%d\t%d/%ld\t%d\t%lf\t%lf\t%lf\n",
+                   p.C_i, p.H, p.W, p.k, p.s,
+                   num_threads[ix], nt, num_runs,
+                   min_t, max_t, (tx/num_runs));
         }
     }
 }
