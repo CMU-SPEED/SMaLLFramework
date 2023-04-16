@@ -390,8 +390,8 @@ void measure_relu_performance(void)
     using Buffer = small::FloatBuffer;
 #endif
 
-    printf("\nReLU(%s)\n", type.c_str());
-    printf("\t\tC_i\tH\tW\tk\ts\tnthd(set/get)\truns\tt_min\tt_max\tt_avg\n");
+    printf("\nReLU(%s) func.\n", type.c_str());
+    printf("\tC_i\tH\tW\tk\ts\tnthd\truns\tt_min\tt_max\tt_avg\n");
 
     for (LayerParams const &p: params)
     {
@@ -401,13 +401,11 @@ void measure_relu_performance(void)
         Buffer output_dc(num_input_elts);
         small::init(input_dc, num_input_elts);
 
-        small::ReLULayer<Buffer> relu_layer(p.C_i, p.H, p.W);
-
         for (size_t ix = 0; ix < 3; ++ix)
         {
             setenv("OMP_NUM_THREADS", str_num_threads[ix], 1);
-            std::string ont = std::getenv("OMP_NUM_THREADS"); // read it back
-            auto nt = atol(ont.c_str());
+            //std::string ont = std::getenv("OMP_NUM_THREADS"); // read it back
+            //auto nt = atol(ont.c_str());
 
             double tx(0.);
             double min_t = std::numeric_limits<double>::max();
@@ -427,17 +425,31 @@ void measure_relu_performance(void)
                 max_t = std::max(max_t, ts);
             }
 
-            printf("function\t%ld\t%d\t%d\t%d\t%d\t%d/%ld\t%d\t%lf\t%lf\t%lf\n",
+            printf("function\t%ld\t%d\t%d\t%d\t%d\t%d\t%d\t%lf\t%lf\t%lf\n",
                    p.C_i, p.H, p.W, p.k, p.s,
-                   num_threads[ix], nt, num_runs,
+                   num_threads[ix], num_runs,
                    min_t, max_t, (tx/num_runs));
         }
+    }
+
+    printf("\nReLU(%s) class\n", type.c_str());
+    printf("\tC_i\tH\tW\tk\ts\tnthd\truns\tt_min\tt_max\tt_avg\n");
+
+    for (LayerParams const &p: params)
+    {
+        size_t num_input_elts(p.C_i*p.H*p.W);
+
+        Buffer  input_dc(num_input_elts);
+        Buffer output_dc(num_input_elts);
+        small::init(input_dc, num_input_elts);
+
+        small::ReLULayer<Buffer> relu_layer(p.C_i, p.H, p.W);
 
         for (size_t ix = 0; ix < 3; ++ix)
         {
             setenv("OMP_NUM_THREADS", str_num_threads[ix], 1);
-            std::string ont = std::getenv("OMP_NUM_THREADS");
-            auto nt = atol(ont.c_str());
+            //std::string ont = std::getenv("OMP_NUM_THREADS");
+            //auto nt = atol(ont.c_str());
 
             double tx(0.);
             double min_t = std::numeric_limits<double>::max();
@@ -457,9 +469,9 @@ void measure_relu_performance(void)
                 max_t = std::max(max_t, ts);
             }
 
-            printf("class   \t%ld\t%d\t%d\t%d\t%d\t%d/%ld\t%d\t%lf\t%lf\t%lf\n",
+            printf("class   \t%ld\t%d\t%d\t%d\t%d\t%d\t%d\t%lf\t%lf\t%lf\n",
                    p.C_i, p.H, p.W, p.k, p.s,
-                   num_threads[ix], nt, num_runs,
+                   num_threads[ix], num_runs,
                    min_t, max_t, (tx/num_runs));
         }
     }

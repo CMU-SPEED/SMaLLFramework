@@ -294,8 +294,65 @@ void measure_maxpool_performance(void)
     using Buffer = small::FloatBuffer;
 #endif
 
-    printf("\nMaxPool2D(%s)\n", type.c_str());
-    printf("\t\tC_i\tH\tW\tk\ts\tnthd(set/get)\truns\tt_min\tt_max\tt_avg\n");
+    printf("\nMaxPool2D(%s) func.\n", type.c_str());
+    printf("\tC_i\tH\tW\tk\ts\tnthd\truns\tt_min\tt_max\tt_avg\n");
+
+    for (LayerParams const &p: params)
+    {
+        size_t Ho(small::compute_output_dim(p.H, p.k, p.s, p.p));
+        size_t Wo(small::compute_output_dim(p.W, p.k, p.s, p.p));
+
+        uint8_t t_pad=0, b_pad=0, l_pad=0, r_pad=0;
+        if (p.p == small::PADDING_F)
+        {
+            small::calc_padding(p.H, p.k, p.s, t_pad, b_pad);
+            small::calc_padding(p.W, p.k, p.s, l_pad, r_pad);
+        }
+
+        size_t num_input_elts(p.C_i*p.H*p.W);
+        size_t num_output_elts(p.C_i*Ho*Wo);
+
+        Buffer  input_dc(num_input_elts);
+        Buffer output_dc(num_output_elts);
+        small::init(input_dc, num_input_elts);
+
+        for (size_t ix = 0; ix < 3; ++ix)
+        {
+            setenv("OMP_NUM_THREADS", str_num_threads[ix], 1);
+            //std::string ont = std::getenv("OMP_NUM_THREADS"); // read it back
+            //auto nt = atol(ont.c_str());
+
+            double tx(0.);
+            double min_t = std::numeric_limits<double>::max();
+            double max_t = 0.;
+
+            // Warmup
+            small::MaxPool2D(p.k, p.s, t_pad, b_pad, l_pad, r_pad,
+                             p.C_i, p.H, p.W,
+                             input_dc, output_dc);
+
+            for (size_t iy = 0; iy < num_runs; ++iy)
+            {
+                t.start();
+                small::MaxPool2D(p.k, p.s, t_pad, b_pad, l_pad, r_pad,
+                                 p.C_i, p.H, p.W,
+                                 input_dc, output_dc);
+                t.stop();
+                double ts = t.elapsed();
+                tx += ts;
+                min_t = std::min(min_t, ts);
+                max_t = std::max(max_t, ts);
+            }
+
+            printf("function\t%ld\t%d\t%d\t%d\t%d\t%d\t%d\t%lf\t%lf\t%lf\n",
+                   p.C_i, p.H, p.W, p.k, p.s,
+                   num_threads[ix], num_runs,
+                   min_t, max_t, (tx/num_runs));
+        }
+    }
+
+    printf("\nMaxPool2D(%s) class\n", type.c_str());
+    printf("\tC_i\tH\tW\tk\ts\tnthd\truns\tt_min\tt_max\tt_avg\n");
 
     for (LayerParams const &p: params)
     {
@@ -322,42 +379,8 @@ void measure_maxpool_performance(void)
         for (size_t ix = 0; ix < 3; ++ix)
         {
             setenv("OMP_NUM_THREADS", str_num_threads[ix], 1);
-            std::string ont = std::getenv("OMP_NUM_THREADS"); // read it back
-            auto nt = atol(ont.c_str());
-
-            double tx(0.);
-            double min_t = std::numeric_limits<double>::max();
-            double max_t = 0.;
-
-            // Warmup
-            small::MaxPool2D(p.k, p.s, t_pad, b_pad, l_pad, r_pad,
-                             p.C_i, p.H, p.W,
-                             input_dc, output_dc);
-
-            for (size_t iy = 0; iy < num_runs; ++iy)
-            {
-                t.start();
-                small::MaxPool2D(p.k, p.s, t_pad, b_pad, l_pad, r_pad,
-                                 p.C_i, p.H, p.W,
-                                 input_dc, output_dc);
-                t.stop();
-                double ts = t.elapsed();
-                tx += ts;
-                min_t = std::min(min_t, ts);
-                max_t = std::max(max_t, ts);
-            }
-
-            printf("function\t%ld\t%d\t%d\t%d\t%d\t%d/%ld\t%d\t%lf\t%lf\t%lf\n",
-                   p.C_i, p.H, p.W, p.k, p.s,
-                   num_threads[ix], nt, num_runs,
-                   min_t, max_t, (tx/num_runs));
-        }
-
-        for (size_t ix = 0; ix < 3; ++ix)
-        {
-            setenv("OMP_NUM_THREADS", str_num_threads[ix], 1);
-            std::string ont = std::getenv("OMP_NUM_THREADS");
-            auto nt = atol(ont.c_str());
+            //std::string ont = std::getenv("OMP_NUM_THREADS");
+            //auto nt = atol(ont.c_str());
 
             double tx(0.);
             double min_t = std::numeric_limits<double>::max();
@@ -377,9 +400,9 @@ void measure_maxpool_performance(void)
                 max_t = std::max(max_t, ts);
             }
 
-            printf("class   \t%ld\t%d\t%d\t%d\t%d\t%d/%ld\t%d\t%lf\t%lf\t%lf\n",
+            printf("class   \t%ld\t%d\t%d\t%d\t%d\t%d\t%d\t%lf\t%lf\t%lf\n",
                    p.C_i, p.H, p.W, p.k, p.s,
-                   num_threads[ix], nt, num_runs,
+                   num_threads[ix], num_runs,
                    min_t, max_t, (tx/num_runs));
         }
     }
