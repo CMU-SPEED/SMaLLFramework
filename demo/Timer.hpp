@@ -48,7 +48,7 @@ private:
     mbed::Timer m_timer;
 };
 //****************************************************************************
-#elif defined(UARCH_ZEN2)
+#elif 0
 //****************************************************************************
 class Timer
 {
@@ -84,7 +84,7 @@ private:
 };
 
 //****************************************************************************
-#elif defined(UARCH_ARM)
+#else //(defined(UARCH_ARM) || defined(UARCH_ZEN2) || defined(UARCH_REF))
 //****************************************************************************
 #include <time.h>
 
@@ -123,42 +123,43 @@ public:
         }
 
         // microseconds
-        return (double)temp.tv_sec*1000000.0 + (double)temp.tv_nsec / 1000.0;
+        // return (double)temp.tv_sec*1000000.0 + (double)temp.tv_nsec / 1000.0;
+        return (double)temp.tv_sec * 1000000000.0 + (double)temp.tv_nsec;
     }
 
 private:
     TimeType start_time, stop_time;
 };
 
-//****************************************************************************
-#else  // defined(UARCH_REF): default timer for Reference platforms
-//****************************************************************************
-#include <chrono>
+// //****************************************************************************
+// #else  // defined(UARCH_REF): default timer for Reference platforms
+// //****************************************************************************
+// #include <chrono>
 
-//****************************************************************************
-template <class ClockT = std::chrono::steady_clock,
-          class UnitsT = std::chrono::microseconds> //milliseconds>
-class Timer
-{
-public:
-    using TimeType = std::chrono::time_point<ClockT>;
+// //****************************************************************************
+// template <class ClockT = std::chrono::steady_clock,
+//           class UnitsT = std::chrono::microseconds> //milliseconds>
+// class Timer
+// {
+// public:
+//     using TimeType = std::chrono::time_point<ClockT>;
 
-    Timer() : start_time(), stop_time() {}
+//     Timer() : start_time(), stop_time() {}
 
-    TimeType start() { return (start_time = ClockT::now()); }
-    TimeType stop()  { return (stop_time  = ClockT::now()); }
+//     TimeType start() { return (start_time = ClockT::now()); }
+//     TimeType stop()  { return (stop_time  = ClockT::now()); }
 
-    // milliseconds
-    double elapsed() const
-    {
-        //std::cout << "start, stop: " << start_time.count()
-        //          << ", " << stop_time.count()
-        //          << std::endl;
-        return std::chrono::duration_cast<UnitsT>(
-            stop_time - start_time).count();
-    }
+//     // milliseconds
+//     double elapsed() const
+//     {
+//         //std::cout << "start, stop: " << start_time.count()
+//         //          << ", " << stop_time.count()
+//         //          << std::endl;
+//         return std::chrono::duration_cast<UnitsT>(
+//             stop_time - start_time).count();
+//     }
 
-private:
-    TimeType start_time, stop_time;
-};
+// private:
+//     TimeType start_time, stop_time;
+// };
 #endif
