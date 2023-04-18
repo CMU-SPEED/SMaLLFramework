@@ -12,7 +12,6 @@
 
 #include <math.h>
 #include <assert.h>
-#include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -26,15 +25,17 @@
 #include <iostream>
 // #include <functional>
 #include <numeric>
+#include <limits>
 
 typedef float dtype;
 
 #include <small.h>
+#include <small/utils/Timer.hpp>
 #include "utils.h"
 
 /// @todo Which of these defines are needed?
 #ifndef RUNS
-#define RUNS 1000
+#define RUNS 10
 #endif
 #ifndef PARALLEL
 #define PARALLEL 0
@@ -44,7 +45,6 @@ typedef float dtype;
 
 #define H_TILE 0
 #define POOLING 1
-
 
 #define LIMIT 1e-2
 
@@ -84,6 +84,8 @@ inline void dscnn_block(
     Conv2D(0, 1, 1, 0, 0, 0, 0, output_channels, input_channels, o_h, o_w, O_intermediate, F_1x1, O);
     ReLUActivation(1, output_channels, o_h, o_w, O, O);
 }
+
+//****************************************************************************
 
 #define REDUCTION_C(layer_num) layer_params[layer_num][0]
 #define GROUP_C(layer_num) layer_params[layer_num][1]
@@ -171,6 +173,7 @@ int main(int argc, char **argv)
     dtype *input_dc = alloc<dtype>(input_dimensions);
     init(input_dc, input_dimensions);
 
+    // ================================================
 
     uint16_t layer_params[30][10] = {1};
     uint32_t intermediate_dims[30][2];
@@ -218,7 +221,7 @@ int main(int argc, char **argv)
         STRIDE(layer_num) = layer_strides[ds_layer]; // stride
         CALC_PADDING(I_HEIGHT(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), t_pad, b_pad);
         CALC_PADDING(I_WIDTH(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), l_pad, r_pad);
-        SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad)
+        SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad);
         layer_num++; // 2
         intermediate_dims[layer_num][0] = O_WIDTH(layer_num);
         intermediate_dims[layer_num][1] = O_HEIGHT(layer_num);
@@ -231,7 +234,8 @@ int main(int argc, char **argv)
         REDUCTION_HW(layer_num) = 1;
         REDUCTION_W(layer_num) = 1;
         STRIDE(layer_num) = 1;
-        SET_PADDING(layer_num, 0, 0, 0, 0)
+        SET_PADDING(layer_num, 0, 0, 0, 0);
+
         layer_num++; // 3
         inter_dim = INPUT_NUMEL(layer_num);
         max_numel_inter_0 = (inter_dim > max_numel_inter_0) ? inter_dim : max_numel_inter_0;
@@ -245,9 +249,9 @@ int main(int argc, char **argv)
     REDUCTION_H(layer_num) = I_HEIGHT(layer_num);
     REDUCTION_W(layer_num) = I_WIDTH(layer_num);
     STRIDE(layer_num) = 1;
-    SET_PADDING(layer_num, 0, 0, 0, 0)
-    layer_num++;
+    SET_PADDING(layer_num, 0, 0, 0, 0);
 
+    layer_num++;
     intermediate_dims[layer_num][0] = 1;
     intermediate_dims[layer_num][1] = 1;
     REDUCTION_C(layer_num) = GROUPS(layer_num - 1);
@@ -255,14 +259,14 @@ int main(int argc, char **argv)
     GROUPS(layer_num) = 1;
     REDUCTION_HW(layer_num) = 1;
     STRIDE(layer_num) = 1;
-    SET_PADDING(layer_num, 0, 0, 0, 0)
+    SET_PADDING(layer_num, 0, 0, 0, 0);
     layer_num++;
 
-    auto layer_num_total = layer_num;
-    auto num_filters = layer_num_total - 1;
-    #if SUMMARY ==1
+    size_t layer_num_total = layer_num;
+    size_t num_filters = layer_num_total - 1;
+
+#if SUMMARY == 1
     printf("Layer num total: %d", layer_num_total);
-    // Direct Convolution Setup
     for (auto i = 0; i < layer_num_total; i++)
     {
         printf("layer %d: ", i);
@@ -271,11 +275,10 @@ int main(int argc, char **argv)
         {
             printf("%d, ", layer_params[i][j]);
         }
-        printf("\b\b");
-        // printf("input dims: %d %d ", I_HEIGHT(i+1), I_WIDTH(i+1));
-        printf("\n");
+        printf(", intermediate dims: %d %d\n",
+               intermediate_dims[i][0], intermediate_dims[i][1]);
     }
-    #endif
+#endif
 
     //  Copy layer weights to temporaries
     dtype *filter_fc_dc;
@@ -296,28 +299,34 @@ int main(int argc, char **argv)
     dtype *inter_1_dc = inter_0_dc + max_numel_inter_0;
     dtype *output_dc;
 
-    output_dc = model_inference(layer_num_total, layer_params, intermediate_dims, filter_ptrs, input_dc, inter_0_dc, inter_1_dc);
+    //======================================================
+    small::Timer my_timer;
 
-    unsigned long long sum_small; //, t0, t1;
-    sum_small = ULLONG_MAX;
-    std::vector<unsigned long long> small_timing;
+    std::cerr << "Warm up run (ORIG)" << std::endl;
+    my_timer.start();
+    output_dc = model_inference(layer_num_total, layer_params, intermediate_dims, filter_ptrs, input_dc, inter_0_dc, inter_1_dc);
+    my_timer.stop();
+    printf("\nElapsed time: %lf ns.\n", my_timer.elapsed());
+
+    //======================================================
+
+    double min_small = std::numeric_limits<double>::max();
+    std::vector<double> small_timing;
+
     for (int r = 0; r < RUNS; r++)
     {
-      //t0 = rdtsc();
-      clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
+        my_timer.start();
 
       output_dc = model_inference(layer_num_total, layer_params, intermediate_dims, filter_ptrs, input_dc, inter_0_dc, inter_1_dc);
 
-      clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
-      auto diff = time_difference(time1, time2);
-      sum_small = std::min<unsigned long long>(sum_small, diff);
-      small_timing.push_back(diff);
-
-      // MIN(sum_small, diff);
+        my_timer.stop();
+        auto diff = my_timer.elapsed();
+        min_small = std::min<double>(min_small, diff);
+        small_timing.push_back(diff);
     }
 
-    print_cycles(sum_small);
-    print_stats(small_timing, "SMaLL");
+    std::cout << "Minimum time: " << min_small << " ns.\n";
+    print_stats(small_timing, "\nSMaLL:dscnn");
 
     free(input_dc);
     for (size_t l = 0; l < num_filters; l++)

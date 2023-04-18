@@ -28,6 +28,8 @@ cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 #set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 #set (CMAKE_MACOSX_RPATH TRUE)
 
+set(CMAKE_CXX_STANDARD 17)
+
 # version of SMaLLFramework
 set (SMaLLFramework_DATE "March 2, 2023" )
 set (SMaLLFramework_VERSION_MAJOR 0 )

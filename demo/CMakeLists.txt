@@ -29,7 +29,6 @@ foreach( layer_name ${LAYER_NAMES} )
   add_executable(${demo_name} generic_driver.cpp )
   # target_link_libraries(${demo_name} check_interface.o)
   target_compile_definitions(${demo_name} PRIVATE LAYER=${layer_name})
-  set_property(TARGET ${demo_name} PROPERTY CXX_STANDARD 14)
 endforeach( layer_name ${LAYER_NAMES} )
 
 set(MODEL_SOURCES mobilenet.cpp resnet.cpp dscnn.cpp dscnn_square.cpp autoencoder.cpp)
@@ -42,8 +41,6 @@ foreach( model_source_file ${MODEL_SOURCES} )
     message("Adding: ${model_exename}")
     add_executable(${model_exename} ${model_source_file})
     # target_link_libraries( ${model_exename} check_interface.o)
-    set_property(TARGET ${model_exename} PROPERTY CXX_STANDARD 14)
 endforeach( model_source_file ${MODEL_SOURCES} )
 
 message("In demo/CMakeLists.txt: ${MODEL_SOURCES}")
-
