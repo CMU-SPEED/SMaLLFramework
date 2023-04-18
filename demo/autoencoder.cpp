@@ -10,6 +10,8 @@
 // DM23-0126
 //****************************************************************************
 
+#define PARALLEL 1
+
 #include <math.h>
 #include <assert.h>
 #include <stdio.h>
@@ -24,10 +26,7 @@
 
 /// @todo Which of these defines are needed?
 #ifndef RUNS
-#define RUNS 10
-#endif
-#ifndef PARALLEL
-#define PARALLEL 0
+#define RUNS 100
 #endif
 
 //****************************************************************************
@@ -422,8 +421,10 @@ void inference()
         small_timing.push_back(diff);
     }
 
-    std::cout << "Minimum time: " << min_small << " ns.\n";
-    print_stats(small_timing, "\nSMaLL:autoencoder");
+    std::cout << "\nMinimum time: " << min_small << " ns.\n";
+    const int num_th = atoi(std::getenv("OMP_NUM_THREADS"));
+    std::cout << "Num Threads: " << num_th << std::endl;
+    print_stats(small_timing, "SMaLL:autoencoder");
 
     printf("deallocing %ld filters\n", filter_buf_ptrs.size());
     for (size_t l = 0; l < filter_buf_ptrs.size(); l++)
