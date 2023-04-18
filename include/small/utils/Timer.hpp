@@ -27,7 +27,8 @@
 
 #pragma once
 
-/// @todo put in small namespace?
+namespace small
+{
 
 //****************************************************************************
 #if defined(NANO33BLE)
@@ -42,49 +43,16 @@ public:
     TimeType start() { m_timer.start(); return 0;}
     TimeType stop()  { m_timer.stop();  return m_timer.elapsed_time().count();}
 
+    ///  %todo determine units
     double   elapsed() { return m_timer.elapsed_time().count(); }
 
 private:
     mbed::Timer m_timer;
 };
-//****************************************************************************
-#elif defined(UARCH_ZEN2)
-//****************************************************************************
-class Timer
-{
-public:
-    using TimeType = unsigned long long;
-
-    Timer() : start_time(), stop_time() {}
-
-    TimeType start()
-    {
-        start_time = rdtsc();
-        return start_time;
-    }
-
-    TimeType stop()
-    {
-        stop_time = rdtsc();
-        return stop_time;
-    }
-
-    double   elapsed() { return stop_time - start_time; }
-
-private:
-    static __inline__ unsigned long long rdtsc()
-    {
-        unsigned hi, lo;
-        __asm__ __volatile__("rdtsc"
-                             : "=a"(lo), "=d"(hi));
-        return ((unsigned long long)lo) | (((unsigned long long)hi) << 32);
-    }
-
-    TimeType start_time, stop_time;
-};
 
 //****************************************************************************
-#elif defined(UARCH_ARM)
+//****************************************************************************
+#else //(defined(UARCH_ARM) || defined(UARCH_ZEN2) || defined(UARCH_REF))
 //****************************************************************************
 #include <time.h>
 
@@ -123,19 +91,60 @@ public:
         }
 
         // microseconds
-        return (double)temp.tv_sec*1000000.0 + (double)temp.tv_nsec / 1000.0;
+        // return (double)temp.tv_sec*1000000.0 + (double)temp.tv_nsec / 1000.0;
+
+        // nanoseconds
+        return (double)temp.tv_sec * 1000000000.0 + (double)temp.tv_nsec;
     }
 
 private:
     TimeType start_time, stop_time;
 };
+#endif
 
 //****************************************************************************
-#else  // defined(UARCH_REF): default timer for Reference platforms
+// Other Timer classes
+//****************************************************************************
+#if 0
+
+//****************************************************************************
+class Timer
+{
+public:
+    using TimeType = unsigned long long;
+
+    Timer() : start_time(), stop_time() {}
+
+    TimeType start()
+    {
+        start_time = rdtsc();
+        return start_time;
+    }
+
+    TimeType stop()
+    {
+        stop_time = rdtsc();
+        return stop_time;
+    }
+
+    // units are clock cycles.
+    double   elapsed() { return stop_time - start_time; }
+
+private:
+    static __inline__ unsigned long long rdtsc()
+    {
+        unsigned hi, lo;
+        __asm__ __volatile__("rdtsc"
+                             : "=a"(lo), "=d"(hi));
+        return ((unsigned long long)lo) | (((unsigned long long)hi) << 32);
+    }
+
+    TimeType start_time, stop_time;
+};
+
 //****************************************************************************
 #include <chrono>
 
-//****************************************************************************
 template <class ClockT = std::chrono::steady_clock,
           class UnitsT = std::chrono::microseconds> //milliseconds>
 class Timer
@@ -162,3 +171,5 @@ private:
     TimeType start_time, stop_time;
 };
 #endif
+
+} // small namespace

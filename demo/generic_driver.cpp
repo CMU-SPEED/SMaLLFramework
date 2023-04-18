@@ -21,10 +21,9 @@
 #include <vector>
 #include <string>
 #include <fstream>
-#include <time.h>
-
 
 #include <small.h>
+#include <small/utils/Timer.hpp>
 #include "utils.h"
 
 #include "check_interface.h"
@@ -211,13 +210,12 @@ int main(int argc, char **argv)
 
     printf("Computing with reference and platform kernels %d times.\n", RUNS);
 
-    unsigned long long sum = ULLONG_MAX;
-    int diff = 0;
+    small::Timer t;
+    double ref_time = std::numeric_limits<double>::max();
+
     for (int run = 0; run < RUNS; run++)
     {
-        /// @todo Use cross-platform timer
-        // t0 = rdtsc();
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
+        t.start();
 
 #if LAYER == RELU
         check_ReLUActivation(C_i,
@@ -249,20 +247,17 @@ int main(int argc, char **argv)
                             input_dc, filter_dc, out_check_dc);
 #endif
 
-        // t1 = rdtsc();
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
-
-        diff = time_difference(time1, time2);
-        sum = std::min<unsigned long long>(sum, diff);
+        t.stop();
+        ref_time = std::min<double>(ref_time, t.elapsed());
     }
 
-    print_cycles(sum);
-    auto sum_reference = sum;
-    sum = ULLONG_MAX;
-    diff = 0;
+    print_cycles(ref_time);
+
+
+    double platform_time = std::numeric_limits<double>::max();
     for (int run = 0; run < RUNS; run++)
     {
-        // t0 = rdtsc();
+        t.start();
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
 #if LAYER == RELU
         small::ReLUActivation(C_i,
@@ -293,18 +288,16 @@ int main(int argc, char **argv)
                              input_height, input_width,
                              input_dc, filter_dc, out_dc);
 #endif
-        // t1 = rdtsc();
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
-        diff = time_difference(time1, time2);
-        sum = std::min<unsigned long long>(sum, diff);
+        t.stop();
+        platform_time = std::min<double>(platform_time, t.elapsed());
     }
 
-    print_cycles(sum);
+    print_cycles(platform_time);
     printf("\n");
 
     fflush(0);
 
-    printf("reference time / platform time = %.4f ", (sum_reference*1.0)/(sum*1.0));
+    printf("reference time / platform time = %.4f ", (ref_time/platform_time));
 
     auto output_els = out_dimensions;
     double compute_ops = 0.0;
@@ -334,5 +327,5 @@ int main(int argc, char **argv)
     //dtype peak_cycles = compute_ops/throughput;
     //dtype scaled_peak_cycles = peak_cycles;
     const int num_th = atoi(std::getenv("OMP_NUM_THREADS"));
-    printf(" %.0f %.2f \n", throughput*num_th, (compute_ops) / (1.0 * sum));
+    printf(" %.0f %.2f \n", throughput*num_th, (compute_ops / platform_time));
 }

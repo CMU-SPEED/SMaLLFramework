@@ -20,6 +20,7 @@
 #include <vector>
 
 #include <small.h>
+#include <small/utils/Timer.hpp>
 #include "utils.h"
 
 /// @todo Which of these defines are needed?
@@ -810,11 +811,16 @@ int main(int argc, char **argv)
         exit(-1);
     }
 
+    small::Timer my_timer;
+    my_timer.start();
 #if defined(QUANTIZED)
     inference<small::QUInt8Buffer>(C_i, I_h, I_w, num_classes);
 #else
     inference<small::FloatBuffer>(C_i, I_h, I_w, num_classes);
 #endif
+    my_timer.stop();
+    print_cycles(my_timer.elapsed());
+
     return 0;
 }
 #endif

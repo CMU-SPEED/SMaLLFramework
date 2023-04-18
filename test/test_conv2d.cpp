@@ -21,10 +21,10 @@
 #include <random>
 
 #include <small.h>
+#include <small/utils/Timer.hpp>
 #include <small/Conv2DLayer.hpp>
 
 #include "test_utils.hpp"
-#include "Timer.hpp"
 
 std::string const data_dir("../test/regression_data");
 
@@ -365,7 +365,7 @@ void measure_conv2d_performance(void)
     uint32_t const  num_threads[] = {1, 2, 4};
     char const *str_num_threads[] = {"1", "2", "4"};
     uint32_t const num_runs(10);
-    Timer t;
+    small::Timer t;
 
 #if defined(QUANTIZED)
     std::string type("quint8");

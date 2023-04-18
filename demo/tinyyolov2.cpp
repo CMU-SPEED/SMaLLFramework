@@ -12,7 +12,6 @@
 
 #include <math.h>
 #include <assert.h>
-#include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -20,6 +19,7 @@
 #include <vector>
 
 #include <small.h>
+#include <small/utils/Timer.hpp>
 #include "utils.h"
 
 /// @todo Which of these defines are needed?
@@ -586,7 +586,10 @@ void inference(uint32_t C_i,
 #endif
 
     // ============================= model_inference =============================
+    small::Timer my_timer;
 
+    std::cerr << "Warm up run (ORIG)" << std::endl;
+    my_timer.start();
     //uint32_t inter_h, inter_w;
     layer_num = 0;
     yolo_block(intermediate_dims[layer_num],
@@ -647,8 +650,11 @@ void inference(uint32_t C_i,
     }
     auto &output_dc = inter_0_dc;
 
-    //========================================================================
-    std::cerr << "\ncreate_model (LAYERS)\n";
+    my_timer.stop();
+    printf("\nElapsed time: %lf ns.\n", my_timer.elapsed());
+
+    //======================================================
+
     auto layers(create_model<BufferT>(N, M,
                                       C_i, num_classes,
                                       check_blocks,
@@ -662,9 +668,12 @@ void inference(uint32_t C_i,
     BufferT inter_1a_dc(max_numel_inter_1);
 #endif
 
-    std::cerr << "\nWarm up run (LAYERS)\n";
+    std::cerr << "Warm up run (LAYERS)" << std::endl;
+    my_timer.start();
     auto &output_a_dc =
         model_inference(layers, check_blocks, input_dc, inter_0a_dc, inter_1a_dc);
+    my_timer.stop();
+    printf("\nElapsed time: %lf ns.\n", my_timer.elapsed());
 
     // Compare the results
     size_t num_outputs = layers.back()->output_buffer_size();

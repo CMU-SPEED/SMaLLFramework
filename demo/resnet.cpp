@@ -19,12 +19,12 @@
 #include <vector>
 
 #include <small.h>
+#include <small/utils/Timer.hpp>
 #include "utils.h"
-#include "Timer.hpp"
 
 /// @todo Which of these defines are needed?
 #ifndef RUNS
-#define RUNS 1
+#define RUNS 10
 #endif
 #ifndef PARALLEL
 #define PARALLEL 0
@@ -800,9 +800,6 @@ void inference()
             small::alloc_buffer(filter_dimensions);
         init(*filter_buf_ptr, filter_dimensions);
         filter_buf_ptrs.push_back(filter_buf_ptr);
-        // std::cerr << l << ": &Buffer = " << (void*)filter_buf_ptr
-        //           << ", data() = " << (void*)filter_buf_ptr->data()
-        //           << ", size() = " << filter_buf_ptr->size() << std::endl;
     }
 
     uint32_t filter_dimensions =
@@ -812,9 +809,6 @@ void inference()
     init(*filter_fc_dc_ptr, filter_dimensions);
     filter_buf_ptrs.push_back(filter_fc_dc_ptr);
     /// @todo assert(filter_buf_ptrs.size() == num_filters)
-    // std::cerr << 0 << ": &Buffer = " << (void*)filter_fc_dc_ptr
-    //           << ", data() = " << (void*)filter_fc_dc_ptr->data()
-    //           << ", size() = " << filter_fc_dc_ptr->size() << std::endl;
 
     // allocate space for intermediate outputs
     // (use the max sizes calculated previously)
@@ -828,7 +822,11 @@ void inference()
     BufferT inter_2_dc(max_numel_inter_0);
 #endif
 
+    //======================================================
+    small::Timer my_timer;
+
     std::cerr << "Warm up run (ORIG)" << std::endl;
+    my_timer.start();
     auto &output_dc =
         model_inference(layer_num_total, layer_params, intermediate_dims,
                         filter_buf_ptrs,
@@ -836,10 +834,11 @@ void inference()
                         inter_0_dc,
                         inter_1_dc,
                         inter_2_dc);
-
-    printf("\n");
+    my_timer.stop();
+    printf("\nElapsed time: %lf ns.\n", my_timer.elapsed());
 
     //======================================================
+
     auto layers(create_model<BufferT>(filter_buf_ptrs));
 
 #if defined(QUANTIZED)
@@ -852,9 +851,12 @@ void inference()
     BufferT inter_2a_dc(max_numel_inter_0);
 #endif
 
-    std::cerr << "Warm up run (LAYERS): " << layers.size() << std::endl;
+    std::cerr << "Warm up run (LAYERS)" << std::endl;
+    my_timer.start();
     auto &output_a_dc =
         model_inference(layers, input_dc, inter_0a_dc, inter_1a_dc, inter_2a_dc);
+    my_timer.stop();
+    printf("\nElapsed time: %lf ns.\n", my_timer.elapsed());
 
     // Compare the results
     size_t num_outputs = layers.back()->output_buffer_size();
@@ -868,11 +870,9 @@ void inference()
 
     // clean up model (move to model class destructor when built
     for (auto layer : layers) delete layer;
-
     //======================================================
 
-    Timer my_timer;
-    double sum_small = std::numeric_limits<double>::max();
+    double min_small = std::numeric_limits<double>::max();
     std::vector<double> small_timing;
 
     for (int r = 0; r < RUNS; r++)
@@ -889,12 +889,12 @@ void inference()
 
         my_timer.stop();
         auto diff = my_timer.elapsed();
-        sum_small = std::min<double>(sum_small, diff);
+        min_small = std::min<double>(min_small, diff);
         small_timing.push_back(diff);
     }
 
-    print_cycles(sum_small);
-    print_stats(small_timing, "SMaLL");
+    std::cout << "Minimum time: " << min_small << " ns.\n";
+    print_stats(small_timing, "\nSMaLL:mobilenet");
 
     printf("deallocing %ld filters\n", filter_buf_ptrs.size());
     for (size_t l = 0; l < filter_buf_ptrs.size(); l++)
@@ -918,6 +918,7 @@ int main()
 #else
     inference<small::FloatBuffer>();
 #endif
+
     return 0;
 }
 #endif

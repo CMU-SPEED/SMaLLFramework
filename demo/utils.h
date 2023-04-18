@@ -69,7 +69,7 @@ void print_stats(std::vector<T> v, const char *benchmark)
 {
     if (v.size() != 0)
     {
-        T sum = std::accumulate(v.begin(), v.end(), 0);
+        T sum = std::reduce(v.begin(), v.end());
         double mean = sum / (double)v.size();
         T min_elem = *min_element(v.begin(), v.end());
         T max_elem = *max_element(v.begin(), v.end());
@@ -82,7 +82,7 @@ void print_stats(std::vector<T> v, const char *benchmark)
 
 #define print_flops(ops, time)                      \
     {                                               \
-        printf("%.4lf\t", (ops) / (1.0 * time));    \
+        printf("%.4lf FLOPS\t", (ops) / (1.0 * time));    \
     }
 
 #define print_cycles(time)                  \

@@ -19,8 +19,8 @@
 #include <vector>
 
 #include <small.h>
+#include <small/utils/Timer.hpp>
 #include "utils.h"
-#include "Timer.hpp"
 
 /// @todo Which of these defines are needed?
 #ifndef RUNS
@@ -499,15 +499,19 @@ void inference()
     small::FloatBuffer inter_1_dc(max_numel_inter_1);
 #endif
 
+    //======================================================
+    small::Timer my_timer;
+
     std::cerr << "Warm up run (ORIG)" << std::endl;
+    my_timer.start();
     auto &output_dc =
         model_inference(layer_num_total, layer_params, intermediate_dims,
                         filter_buf_ptrs,
                         input_dc,
                         inter_0_dc,
                         inter_1_dc);
-
-    printf("\n");
+    my_timer.stop();
+    printf("\nElapsed time: %lf ns.\n", my_timer.elapsed());
 
     //======================================================
 
@@ -522,8 +526,11 @@ void inference()
 #endif
 
     std::cerr << "Warm up run (LAYERS)" << std::endl;
+    my_timer.start();
     auto &output_a_dc =
         model_inference(layers, input_dc, inter_0a_dc, inter_1a_dc);
+    my_timer.stop();
+    printf("\nElapsed time: %lf ns.\n", my_timer.elapsed());
 
     // Compare the results
     size_t num_outputs = layers.back()->output_buffer_size();
@@ -539,8 +546,7 @@ void inference()
     for (auto layer : layers) delete layer;
     //======================================================
 
-    Timer my_timer;
-    double sum_small = std::numeric_limits<double>::max();
+    double min_small = std::numeric_limits<double>::max();
     std::vector<double> small_timing;
 
     for (int r = 0; r < RUNS; r++)
@@ -554,12 +560,12 @@ void inference()
 
         my_timer.stop();
         auto diff = my_timer.elapsed();
-        sum_small = std::min<double>(sum_small, diff);
+        min_small = std::min<double>(min_small, diff);
         small_timing.push_back(diff);
     }
 
-    print_cycles(sum_small);
-    print_stats(small_timing, "SMaLL");
+    std::cout << "Minimum time: " << min_small << " ns.\n";
+    print_stats(small_timing, "\nSMaLL:dscnn");
 
     printf("deallocing %ld filters\n", filter_buf_ptrs.size());
     for (size_t l = 0; l < filter_buf_ptrs.size(); l++)
