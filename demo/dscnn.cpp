@@ -514,37 +514,6 @@ void inference()
 
     //======================================================
 
-    auto layers(create_model<BufferT>(filter_buf_ptrs));
-
-#if defined(QUANTIZED)
-    small::QUInt8Buffer inter_0a_dc(max_numel_inter_0*4);
-    small::QUInt8Buffer inter_1a_dc(max_numel_inter_1*4);
-#else
-    small::FloatBuffer inter_0a_dc(max_numel_inter_0);
-    small::FloatBuffer inter_1a_dc(max_numel_inter_1);
-#endif
-
-    std::cerr << "Warm up run (LAYERS)" << std::endl;
-    my_timer.start();
-    auto &output_a_dc =
-        model_inference(layers, input_dc, inter_0a_dc, inter_1a_dc);
-    my_timer.stop();
-    printf("\nElapsed time: %lf ns.\n", my_timer.elapsed());
-
-    // Compare the results
-    size_t num_outputs = layers.back()->output_buffer_size();
-    std::cout << "\nCHECK RESULTS: Num output elements: " << num_outputs << std::endl;
-    for (size_t ix = 0; ix < num_outputs; ++ix)
-    {
-        std::cout << "Current, new " << ix << ": "
-                  << output_dc[ix] << ", " << output_a_dc[ix]
-                  << std::endl;
-    }
-
-    // clean up model (move to model class destructor when built
-    for (auto layer : layers) delete layer;
-    //======================================================
-
     double min_small = std::numeric_limits<double>::max();
     std::vector<double> small_timing;
 
@@ -567,6 +536,42 @@ void inference()
     const int num_th = atoi(std::getenv("OMP_NUM_THREADS"));
     std::cout << "Num Threads: " << num_th << std::endl;
     print_stats(small_timing, "\nSMaLL:dscnn");
+
+    //======================================================
+    auto layers(create_model<BufferT>(filter_buf_ptrs));
+
+#if defined(QUANTIZED)
+    small::QUInt8Buffer inter_0a_dc(max_numel_inter_0*4);
+    small::QUInt8Buffer inter_1a_dc(max_numel_inter_1*4);
+#else
+    small::FloatBuffer inter_0a_dc(max_numel_inter_0);
+    small::FloatBuffer inter_1a_dc(max_numel_inter_1);
+    std::cout << "buffer sizes: " << max_numel_inter_0 << ", "
+              << max_numel_inter_1 << std::endl;
+#endif
+
+    std::cerr << "\n\nWarm up run (LAYERS)" << std::endl;
+    my_timer.start();
+    auto &output_a_dc =
+        model_inference(layers, input_dc, inter_0a_dc, inter_1a_dc);
+    my_timer.stop();
+    printf("\nElapsed time: %lf ns.\n", my_timer.elapsed());
+
+    // Compare the results
+    size_t num_outputs = layers.back()->output_buffer_size();
+    std::cout << "\nCHECK RESULTS: Num output elements: " << num_outputs
+              << std::endl;
+    for (size_t ix = 0; ix < num_outputs; ++ix)
+    {
+        std::cout << "Current, new " << ix << ": "
+                  << output_dc[ix] << ", " << output_a_dc[ix]
+                  << ((output_dc[ix] == output_a_dc[ix]) ? " (pass)" : " (fail)")
+                  << std::endl;
+    }
+
+    // clean up model (move to model class destructor when built
+    for (auto layer : layers) delete layer;
+    //======================================================
 
     printf("deallocing %ld filters\n", filter_buf_ptrs.size());
     for (size_t l = 0; l < filter_buf_ptrs.size(); l++)

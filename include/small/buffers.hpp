@@ -299,6 +299,8 @@ uint32_t unpack_buffer(BufferT          const &dc_array,
 }
 
 //****************************************************************************
+/// @todo random initializers are for testing only and should be moved to
+///       demo and/or test directories
 /// @todo rename to init_random(). Accept an optional seed?
 template <class BufferT>
 void init(BufferT &ptr, uint32_t numel)
@@ -310,7 +312,7 @@ void init(BufferT &ptr, uint32_t numel)
 
     if constexpr (std::is_same<float, typename BufferT::value_type>::value)
     {
-
+        srand(42);
         float *cur_ptr = ptr.data();
         for (size_t i = 0 ; i < numel ; i++)
         {
@@ -319,6 +321,7 @@ void init(BufferT &ptr, uint32_t numel)
     }
     else if constexpr (std::is_same<uint8_t, typename BufferT::value_type>::value)
     {
+        srand(42);
         uint8_t *cur_ptr = ptr.data();
         for (uint32_t i = 0; i < numel; i++)
         {

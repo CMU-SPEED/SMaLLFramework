@@ -449,7 +449,7 @@ void inference()
     size_t num_filters = layer_num_total - 1;
 
 #if SUMMARY == 1
-    printf("Layer num total: %d", layer_num_total);
+    printf("Layer num total: %d\n", layer_num_total);
     for (auto i = 0; i < layer_num_total; i++)
     {
         printf("layer %d: ", i);
@@ -562,10 +562,10 @@ void inference()
         small_timing.push_back(diff);
     }
 
-    std::cout << "Minimum time: " << min_small << " ns.\n";
+    std::cout << "\nMinimum time: " << min_small << " ns.\n";
     const int num_th = atoi(std::getenv("OMP_NUM_THREADS"));
     std::cout << "Num Threads: " << num_th << std::endl;
-    print_stats(small_timing, "\nSMaLL:dscnn_square");
+    print_stats(small_timing, "SMaLL:dscnn_square");
 
     printf("deallocing %ld filters\n", filter_buf_ptrs.size());
     for (size_t l = 0; l < filter_buf_ptrs.size(); l++)
