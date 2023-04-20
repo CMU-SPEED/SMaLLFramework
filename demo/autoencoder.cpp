@@ -226,6 +226,14 @@ int main()
     my_timer.stop();
     printf("\nElapsed time: %lf ns.\n", my_timer.elapsed());
 
+    // Compare the results
+    std::cout << "\nCHECK RESULTS: Num output elements: " << num_classes
+              << std::endl;
+    for (auto ix = 0; ix < num_classes; ++ix)
+    {
+        std::cout << "Output " << ix << ": " << output_dc[ix] << std::endl;
+    }
+
     //======================================================
 
     double min_small = std::numeric_limits<double>::max();

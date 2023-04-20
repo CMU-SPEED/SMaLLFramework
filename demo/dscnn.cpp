@@ -76,9 +76,9 @@ inline void dscnn_block(
     dtype *O_intermediate,
     dtype *O)
 {
-    DepthwiseConv2D(2, kernel_size, stride, t_pad, b_pad, l_pad, r_pad, input_channels, in_dims[0], in_dims[1], I, F_dw, O_intermediate);
-    uint32_t o_h = output_dim(in_dims[0] + t_pad + b_pad, stride, kernel_size);
-    uint32_t o_w = output_dim(in_dims[1] + l_pad + r_pad, stride, kernel_size);
+    DepthwiseConv2D(2, kernel_size, stride, t_pad, b_pad, l_pad, r_pad, input_channels, in_dims[1], in_dims[0], I, F_dw, O_intermediate);
+    uint32_t o_h = output_dim(in_dims[1] + t_pad + b_pad, stride, kernel_size);
+    uint32_t o_w = output_dim(in_dims[0] + l_pad + r_pad, stride, kernel_size);
     ReLUActivation(1, input_channels, o_h, o_w, O_intermediate, O_intermediate);
     Conv2D(0, 1, 1, 0, 0, 0, 0, output_channels, input_channels, o_h, o_w, O_intermediate, F_1x1, O);
     ReLUActivation(1, output_channels, o_h, o_w, O, O);
@@ -195,17 +195,17 @@ int main(int argc, char **argv)
     CALC_PADDING(I_HEIGHT(0), REDUCTION_H(0), STRIDE(0), t_pad, b_pad);
     CALC_PADDING(I_WIDTH(0), REDUCTION_W(0), STRIDE(0), l_pad, r_pad);
     SET_PADDING(0, t_pad, b_pad, l_pad, r_pad);
-    SET_PADDING(0, 1, 1, 1, 1);
+    //SET_PADDING(0, 1, 1, 1, 1);
 
     intermediate_dims[1][0] = 5;
     intermediate_dims[1][1] = 25;
 
     auto inter_dim = INPUT_NUMEL(1);
     max_numel_inter_0 = (inter_dim > max_numel_inter_0) ? inter_dim : max_numel_inter_0;
-    auto ds_blocks = 4;
 
     size_t layer_num = 1;
 
+    auto ds_blocks = 4;
     const int layer_strides[] = {1, 1, 1, 1};
     // dwise 1
     for (int ds_layer = 0; ds_layer < ds_blocks; ds_layer++)
@@ -287,15 +287,19 @@ int main(int argc, char **argv)
         dtype *filter_ptr;
         uint32_t filter_dimensions = REDUCTION_H(l) * REDUCTION_W(l) * REDUCTION_C(l) * GROUP_C(l) * GROUPS(l);
         filter_ptr = alloc<dtype>(filter_dimensions);
+        init(filter_ptr, filter_dimensions);
         filter_ptrs[l] = filter_ptr;
     }
 
     uint32_t filter_dimensions = REDUCTION_C(layer_num_total - 1) * GROUP_C(layer_num_total - 1);
     filter_fc_dc = alloc<dtype>(filter_dimensions);
+    init(filter_fc_dc, filter_dimensions);
     filter_ptrs[num_filters - 1] = filter_fc_dc;
 
-    dtype *inter_0_dc = alloc<dtype>(max_numel_inter_0 + max_numel_inter_1);
-    dtype *inter_1_dc = inter_0_dc + max_numel_inter_0;
+    dtype *inter_0_dc = alloc<dtype>(max_numel_inter_0);
+    dtype *inter_1_dc = alloc<dtype>(max_numel_inter_1);
+    //std::cout << "buffer sizes: " << max_numel_inter_0 << ", "
+    //          << max_numel_inter_1 << std::endl;
     dtype *output_dc;
 
     //======================================================
@@ -303,7 +307,10 @@ int main(int argc, char **argv)
 
     std::cerr << "Warm up run (ORIG)" << std::endl;
     my_timer.start();
-    output_dc = model_inference(layer_num_total, layer_params, intermediate_dims, filter_ptrs, input_dc, inter_0_dc, inter_1_dc);
+    output_dc = model_inference(layer_num_total, layer_params,
+                                intermediate_dims,
+                                filter_ptrs,
+                                input_dc, inter_0_dc, inter_1_dc);
     my_timer.stop();
     printf("\nElapsed time: %lf ns.\n", my_timer.elapsed());
 
@@ -316,7 +323,10 @@ int main(int argc, char **argv)
     {
         my_timer.start();
 
-      output_dc = model_inference(layer_num_total, layer_params, intermediate_dims, filter_ptrs, input_dc, inter_0_dc, inter_1_dc);
+        output_dc = model_inference(layer_num_total, layer_params,
+                                    intermediate_dims,
+                                    filter_ptrs,
+                                    input_dc, inter_0_dc, inter_1_dc);
 
         my_timer.stop();
         auto diff = my_timer.elapsed();
@@ -329,10 +339,21 @@ int main(int argc, char **argv)
     std::cout << "Num Threads: " << num_th << std::endl;
     print_stats(small_timing, "SMaLL:dscnn");
 
+    // Compare the results
+    std::cout << "\nCHECK RESULTS: Num output elements: " << num_classes
+              << std::endl;
+    for (auto ix = 0; ix < num_classes; ++ix)
+    {
+        std::cout << "Output " << ix << ": " << output_dc[ix] << std::endl;
+    }
+
     free(input_dc);
+    std::cout << "Freeing filters\n";
     for (size_t l = 0; l < num_filters; l++)
     {
         free(filter_ptrs[l]);
     }
-    free(output_dc);
+    std::cout << "Freeing buffers\n";
+    free(inter_0_dc);
+    free(inter_1_dc);
 }

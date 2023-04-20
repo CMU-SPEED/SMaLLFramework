@@ -46,6 +46,40 @@
 #ifndef LAYER
 #define LAYER DW_CONV
 #endif
+/* This is the runtime recording:
+
+   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:16,ichans:3,img:32x32,I,F,O)
+   ReLUActivation(chans:16,img:32x32,I,O)
+
+   ** First Stack **
+   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:16,ichans:16,img:32x32,I,F,O)
+   ReLUActivation(chans:16,img:32x32,I,O)
+   PartialConv2D(k:3,s:1,pad:[1,1,1,1],ochans:16,ichans:16,img:32x32,I,F,O)
+   ReLUActivation(chans:16,img:32x32,I,O)
+
+   ** Second Stack **
+   Conv2D(k:3,s:2,pad:[0,1,0,1],ochans:32,ichans:16,img:32x32,I,F,O)
+   ReLUActivation(chans:32,img:16x16,I,O)
+
+?  Conv2D(k:1,s:2,pad:[0,0,0,0],ochans:32,ichans:16,img:32x32,I,F,O)
+
+   PartialConv2D(k:3,s:1,pad:[1,1,1,1],ochans:32,ichans:32,img:16x16,I,F,O)
+   ReLUActivation(chans:32,img:16x16,I,O)
+
+   ** Third Stack **
+   Conv2D(k:3,s:2,pad:[0,1,0,1],ochans:64,ichans:32,img:16x16,I,F,O)
+   ReLUActivation(chans:64,img:8x8,I,O)
+
+?  Conv2D(k:1,s:2,pad:[0,0,0,0],ochans:64,ichans:32,img:16x16,I,F,O)
+
+   PartialConv2D(k:3,s:1,pad:[1,1,1,1],ochans:64,ichans:64,img:8x8,I,F,O)
+   ReLUActivation(chans:64,img:8x8,I,O)
+
+   ** Final Classification Layer ** (Keras Model: AveragePooling2D + Dense)
+   MaxPool2D(k:8,s:1,pad:[0,0,0,0],chans:64,img:8x8,I,O)
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:16,ichans:64,img:1x1,I,F,O)
+
+*/
 
 //****************************************************************************
 // The output of the block is stored in I
@@ -74,7 +108,7 @@ inline void resnet_block(
     Conv2D(2, kernel_size, stride, t_pad_0, b_pad_0, l_pad_0, r_pad_0, output_channels, input_channels, in_dims[0], in_dims[1], I, F_conv0, O_intermediate);
     uint32_t o_h = output_dim(in_dims[0] + t_pad_0 + b_pad_0, stride, kernel_size);
     uint32_t o_w = output_dim(in_dims[1] + l_pad_0 + r_pad_0, stride, kernel_size);
-    ReLUActivation(1, input_channels, o_h, o_w, O_intermediate, O_intermediate);
+    ReLUActivation(1, output_channels, o_h, o_w, O_intermediate, O_intermediate);
     if (scale_channels)
     {
         Conv2D(2, 1, stride, 0, 0, 0, 0, output_channels, input_channels, in_dims[0], in_dims[1], I, F_conv_1x1, O);
@@ -331,6 +365,14 @@ int main()
     output_dc = model_inference(layer_num_total, layer_params, intermediate_dims, filter_ptrs, input_dc, inter_0_dc, inter_1_dc, inter_2_dc);
     my_timer.stop();
     printf("\nElapsed time: %lf ns.\n", my_timer.elapsed());
+
+    // Compare the results
+    std::cout << "\nCHECK RESULTS: Num output elements: " << num_classes
+              << std::endl;
+    for (auto ix = 0; ix < num_classes; ++ix)
+    {
+        std::cout << "Output " << ix << ": " << output_dc[ix] << std::endl;
+    }
 
     //======================================================
 

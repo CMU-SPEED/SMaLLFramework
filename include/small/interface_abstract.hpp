@@ -22,6 +22,12 @@
 
 // #include <small/abstract_layer.hpp>
 
+//#define RECORD_CALLS
+
+#if defined(RECORD_CALLS)
+#include <iostream>
+#endif
+
 int clip(int n, int upper, int lower=0)
 {
     n = (n > lower) * n + !(n > lower) * lower;
@@ -77,6 +83,16 @@ void Conv2D(int layer_num,
             OperandT const *filter_ptr,
             OperandT       *output_ptr)
 {
+#if defined(RECORD_CALLS)
+    std::cout << "Conv2D(k:" << kernel_size << ",s:" << stride
+              << ",pad:[" << (int)t_pad << "," << (int)b_pad
+              << "," << (int)l_pad << "," << (int)r_pad
+              << "],ochans:" << output_channels
+              << ",ichans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I,F,O)\n";
+#endif
+
     /// @todo do we need another specific case for input_channels==1?
 
     //Specific case for the first layer
@@ -153,6 +169,17 @@ void PartialConv2D(int layer_num,
                    OperandT const *filter_ptr,
                    OperandT       *output_ptr)
 {
+#if defined(RECORD_CALLS)
+    std::cout << "PartialConv2D(k:" << kernel_size << ",s:" << stride
+              << ",pad:[" << (int)t_pad << "," << (int)b_pad
+              << "," << (int)l_pad << "," << (int)r_pad
+              << "],ochans:" << output_channels
+              << ",ichans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I,F,O)\n";
+#endif
+    /// @todo We need another specific case for input_channels==1 (maybe more)
+
     // Specific case for the first layer
     if (input_channels == 3)
     {
@@ -226,6 +253,15 @@ void Maxpool2D(int layer_num,
                OperandT const *input_ptr,
                OperandT       *output_ptr)
 {
+#if defined(RECORD_CALLS)
+    std::cout << "MaxPool2D(k:" << kernel_size << ",s:" << stride
+              << ",pad:[" << (int)t_pad << "," << (int)b_pad
+              << "," << (int)l_pad << "," << (int)r_pad
+              << "],chans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I,O)\n";
+#endif
+
     if (stride == 1)
     {
         abstract_layer<OperandT, C_ob, 1, 1, W_ob, 1, 1, 'p', 1, 1>(
@@ -267,6 +303,14 @@ void DepthwiseConv2D(int layer_num,
                      OperandT const *filter_ptr,
                      OperandT       *output_ptr)
 {
+#if defined(RECORD_CALLS)
+    std::cout << "DepthwiseConv2D(k:" << kernel_size << ",s:" << stride
+              << ",pad:[" << (int)t_pad << "," << (int)b_pad
+              << "," << (int)l_pad << "," << (int)r_pad
+              << "],chans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I,F,O)\n";
+#endif
     if (stride == 1)
     {
 
@@ -307,6 +351,11 @@ void ReLUActivation(int layer_num,
                     OperandT       *output_ptr,
                     int zero = 0)
 {
+#if defined(RECORD_CALLS)
+    std::cout << "ReLUActivation(chans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I,O)\n";
+#endif
     abstract_layer<OperandT, C_ob, 1, 1, W_ob, 1, 1, 'a', 0, 1>(
         input_channels, // Output Channel Grouping
         1,              // Output Channels per group
@@ -342,6 +391,9 @@ void Dense(int layer_num,
            OperandT const *filter_ptr,
            OperandT       *output_ptr)
 {
+#if defined(RECORD_CALLS)
+    std::cout << "Dense(I,F,O)\n";
+#endif
     abstract_layer<OperandT, C_ob, 1, 1, W_ob, 1, 1, 'c', 1, 1>(
         output_elements, // Output Channel Grouping
         1,              // Output Channels per group
@@ -363,6 +415,17 @@ void Conv2D_rect(int layer_num,
                  OperandT const *filter_ptr,
                  OperandT       *output_ptr)
 {
+#if defined(RECORD_CALLS)
+    std::cout << "Conv2D_rect(k:" << kernel_size_h << "x" << kernel_size_w
+              << ",s:" << stride
+              << ",pad:[" << (int)t_pad << "," << (int)b_pad
+              << "," << (int)l_pad << "," << (int)r_pad
+              << "],ochans:" << output_channels
+              << ",ichans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I,F,O)\n";
+#endif
+
     // Specific case for the first layer
     if (input_channels == 3)
     {
@@ -437,6 +500,15 @@ void MaxPool2D_rect(int layer_num,
                     OperandT const *input_ptr,
                     OperandT       *output_ptr)
 {
+#if defined(RECORD_CALLS)
+    std::cout << "MaxPool2D_rect(k:" << kernel_size_h << "x" << kernel_size_w
+              << ",s:" << stride
+              << ",pad:[" << (int)t_pad << "," << (int)b_pad
+              << "," << (int)l_pad << "," << (int)r_pad
+              << "],chans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I,O)\n";
+#endif
     if (stride == 1)
     {
         abstract_layer<OperandT, C_ob, 1, 1, W_ob, 1, 1, 'p', 1, 1>(

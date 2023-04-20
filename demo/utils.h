@@ -136,6 +136,7 @@ dtype *alloc(uint32_t numel)
 
 void init(float * ptr, uint32_t numel)
 {
+  srand(42);
   float * cur_ptr = ptr;
   for(uint32_t i = 0 ; i < numel ; i++)
   {
@@ -146,6 +147,7 @@ void init(float * ptr, uint32_t numel)
 // template <typename>
 void init(uint8_t *ptr, uint32_t numel)
 {
+  srand(42);
   uint8_t *cur_ptr = ptr;
   for (uint32_t i = 0; i < numel; i++)
   {
