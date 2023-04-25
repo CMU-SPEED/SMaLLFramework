@@ -105,9 +105,9 @@ dtype *model_inference(uint32_t layer_num_total, uint16_t layer_params[30][10], 
     for (uint32_t cur_layer = 1; cur_layer < layer_num_total; cur_layer++)
     {
 
+        layer_num++;
         Conv2D(0, 1, 1, 0, 0, 0, 0, GROUP_C(layer_num), REDUCTION_C(layer_num), 1, 1, inter_0_dc, filter_ptrs[layer_num], out_inter_dc);
         ReLUActivation(1, GROUP_C(layer_num), 1, 1, out_inter_dc, inter_1_dc);
-        layer_num++;
         inter_1_dc = inter_0_dc;
         inter_0_dc = out_inter_dc;
         out_inter_dc = inter_1_dc;
