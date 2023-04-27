@@ -18,82 +18,57 @@
 
 namespace small
 {
-namespace detail
-{
-//****************************************************************************
-// Allocation
-//****************************************************************************
-template <typename T, size_t alignment=64UL>
-struct buffer_allocator : std::allocator<T>
-{
-    typedef typename std::allocator<T>::pointer pointer;
-    typedef typename std::allocator<T>::size_type size_type;
-
-    template<typename U>
-    struct rebind {
-        typedef buffer_allocator<U> other;
-    };
-
-    buffer_allocator() {}
-
-    template<typename U>
-    buffer_allocator(buffer_allocator<U> const& u)
-        :std::allocator<T>(u) {}
-
-    pointer allocate(size_type num_elements,
-                     std::allocator<void>::const_pointer = 0) {
-        pointer buffer;
-        if (0 != posix_memalign((void**)&buffer,
-                                alignment,
-                                num_elements*sizeof(T)))
-        {
-            throw std::bad_alloc();
-        }
-        return buffer;
-    }
-
-    void deallocate(pointer p, size_type) {
-        std::free(p);
-    }
-
-};
-} // detail
 
 //****************************************************************************
 // Buffer class templated on size_t must be defined by a specific
 // platform by defining in params.h of the platform-specific headers.
 // Must have:
 // - value_type typedef for the type of scalars stored in the buffer
+// - accum_type typedef for the type of scalars used to accumulate values
 // - data() method that returns raw pointer to data buffer
 // - size() method that returns number of elements of sizeof(ScalarT) in
 //          the data buffer.
 // - swap() method that swaps the contents of two Buffer instances of the
 //          same scalar type (shallow pointer swaps where possible)
 // - operator[size_t] - element-wise access.
-//
+// - zero() the additive identity for the accum_type
 
-//************************************************************************
+//****************************************************************************
 class FloatBuffer
 {
 public:
     typedef float value_type;
     typedef float accum_type;
 
-    FloatBuffer(size_t num_elts) :  m_buffer(num_elts) {}
+    FloatBuffer(size_t num_elts) : m_num_elts(num_elts)
+    {
+        if (0 != posix_memalign((void**)&m_buffer,
+                                64,
+                                num_elts*sizeof(value_type)))
+        {
+            throw std::bad_alloc();
+        }
+    }
 
-    size_t size() const { return m_buffer.size(); }
+    ~FloatBuffer()
+    {
+        free(m_buffer);
+    }
 
-    value_type       *data()       { return m_buffer.data(); }
-    value_type const *data() const { return m_buffer.data(); }
+    inline size_t size() const { return m_num_elts; }
 
-    value_type       &operator[](size_t index)       { return m_buffer[index]; }
-    value_type const &operator[](size_t index) const { return m_buffer[index]; }
+    inline value_type       *data()       { return m_buffer; }
+    inline value_type const *data() const { return m_buffer; }
 
-    void swap(FloatBuffer &other)
+    inline value_type       &operator[](size_t index)       { return m_buffer[index]; }
+    inline value_type const &operator[](size_t index) const { return m_buffer[index]; }
+
+    inline void swap(FloatBuffer &other)
     {
         if (this != &other)
         {
             std::swap(m_buffer, other.m_buffer);
+            std::swap(m_num_elts, other.m_num_elts);
         }
     }
 
@@ -101,8 +76,8 @@ public:
     inline accum_type zero() const { return (accum_type)0; }
 
 private:
-    // consider raw buffer instead, std::array does not support allocator
-    std::vector<value_type, small::detail::buffer_allocator<value_type>> m_buffer;
+    size_t      m_num_elts;
+    value_type *m_buffer;
 };
 
 //**********************************************************************
