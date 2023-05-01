@@ -1,100 +1,241 @@
+//****************************************************************************
+// SMaLL, Software for Machine Learning Libraries
+// Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
+// SPDX-License-Identifier: BSD-3-Clause
+//
+// For additional details (including references to third party source code and
+// other files) see the LICENSE file or contact permission@sei.cmu.edu. See
+// Contributors.txt for a full list of contributors. Created, in part, with
+// funding and support from the U.S. Government (see Acknowledgments.txt file).
+// DM23-0126
+//****************************************************************************
+
 #include <math.h>
 #include <assert.h>
-#include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <climits>
 #include <vector>
-#include <string>
-#include <fstream>
-#include <algorithm> // std::min_element
-#include <iterator>
 
 #include <small.h>
+#include <small/utils/Timer.hpp>
 #include "utils.h"
 
 /// @todo Which of these defines are needed?
 #ifndef RUNS
-#define RUNS 1000
+#define RUNS 10
 #endif
 #ifndef PARALLEL
 #define PARALLEL 0
 #endif
 
-#define PREFETCH 1
+//****************************************************************************
+/* This is the runtime recording (for check_blocks==6):
 
-#define H_TILE 0
-#define POOLING 1
+   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:16,ichans:3,img:416x416,I,F,O)
+   ReLUActivation(chans:16,img:416x416,I,O)
+   MaxPool2D(k:2,s:2,pad:[0,0,0,0],chans:16,img:416x416,I,O)
+   layer 2
+   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:32,ichans:16,img:208x208,I,F,O)
+   ReLUActivation(chans:32,img:208x208,I,O)
+   MaxPool2D(k:2,s:2,pad:[0,0,0,0],chans:32,img:208x208,I,O)
+   layer 4
+   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:64,ichans:32,img:104x104,I,F,O)
+   ReLUActivation(chans:64,img:104x104,I,O)
+   MaxPool2D(k:2,s:2,pad:[0,0,0,0],chans:64,img:104x104,I,O)
+   layer 6
+   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:128,ichans:64,img:52x52,I,F,O)
+   ReLUActivation(chans:128,img:52x52,I,O)
+   MaxPool2D(k:2,s:2,pad:[0,0,0,0],chans:128,img:52x52,I,O)
+   layer 8
+   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:256,ichans:128,img:26x26,I,F,O)
+   ReLUActivation(chans:256,img:26x26,I,O)
+   MaxPool2D(k:2,s:2,pad:[0,0,0,0],chans:256,img:26x26,I,O)
+   layer 10
+   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:512,ichans:256,img:13x13,I,F,O)
+   ReLUActivation(chans:512,img:13x13,I,O)
+   MaxPool2D(k:2,s:1,pad:[0,1,0,1],chans:512,img:13x13,I,O)
 
+   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:512,ichans:256,img:13x13,I,F,O)
+   ReLUActivation(chans:512,img:13x13,I,O)
 
-#define LIMIT 1e-2
+   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:512,ichans:512,img:13x13,I,F,O)
+   ReLUActivation(chans:512,img:13x13,I,O)
 
-#define CONV 0
-#define PARTIAL_CONV 1 // under development
-#define DW_CONV 2      // under development
-#define GROUP_CONV 3   // under development
-#define POOL 4
-#define RELU 5
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:16,ichans:512,img:13x13,I,F,O)
+   ReLUActivation(chans:16,img:13x13,I,O)
 
-#ifndef LAYER
-#define LAYER DW_CONV
-#endif
+ */
 
 //****************************************************************************
-// The output of the block is stored in O
-// The weights must have been copied into F_conv beforehand
-inline void yolo_block(
-    std::array<uint32_t, 2> in_dims, uint32_t input_channels, // Input dimensions
-    uint32_t kernel_size,
-    uint32_t stride, // Covolution parameters
-    uint32_t output_channels,
-    uint8_t t_pad,
-    uint8_t b_pad,
-    uint8_t l_pad,
-    uint8_t r_pad,
-    uint32_t kernel_size_pool,
-    uint32_t stride_pool, // MaxPooling parameters
-    uint8_t t_pad_pool,
-    uint8_t b_pad_pool,
-    uint8_t l_pad_pool,
-    uint8_t r_pad_pool,
-    float *I,
-    float *F_conv,
-    float *O_intermediate,
-    float *O)
-{
 
-    Conv2D(2, kernel_size, stride, t_pad, b_pad, l_pad, r_pad, output_channels, input_channels, in_dims[0], in_dims[1], I, F_conv, O_intermediate);
-    uint32_t o_h, o_w;
-    op_dim(in_dims[0] + t_pad + b_pad, stride, kernel_size, o_h);
-    op_dim(in_dims[1] + l_pad + r_pad, stride, kernel_size, o_w);
-    ReLUActivation(1, output_channels, o_h, o_w, O_intermediate, O_intermediate);
-    Maxpool2D(0, kernel_size_pool, stride_pool, t_pad_pool, b_pad_pool, l_pad_pool, r_pad_pool, output_channels, o_h, o_w, O_intermediate, O);
-    // ReLUActivation(1, output_channels, o_h, o_w, O, O);
+#include<small/Layer.hpp>
+#include<small/Conv2DLayer.hpp>
+#include<small/MaxPool2DLayer.hpp>
+#include<small/ReLULayer.hpp>
+
+template <class BufferT>
+std::vector<small::Layer<BufferT>*> create_model(
+    uint32_t input_height,
+    uint32_t input_width,
+    uint32_t model_input_channels,
+    uint32_t model_output_channels,
+    uint32_t check_blocks,
+    std::vector<BufferT*> const &filters)
+{
+    std::vector<small::Layer<BufferT>*> layers;
+
+    // settings for first layer
+    uint32_t kernel_size = 3U;
+    uint32_t stride = 1U;
+    uint32_t input_channels = model_input_channels;
+    uint32_t output_channels = 16U;
+
+    size_t filter_num = 0U;
+    uint32_t num_yolo_blocks = ((check_blocks < 6U) ? check_blocks : 6U);
+    uint32_t layer_strides[] = {2,2,2,2,2,1};
+
+    for (size_t yolo_block = 0; yolo_block < num_yolo_blocks; ++yolo_block)
+    {
+        kernel_size = 3;
+        stride = 1;
+        {
+            BufferT tmp(filters[filter_num]->size());
+            small::unpack_buffer(*filters[filter_num], small::FILTER_CONV,
+                                 output_channels, input_channels,
+                                 kernel_size, kernel_size,
+                                 C_ib, C_ob, tmp);
+            layers.push_back(
+                new small::Conv2DLayer<BufferT>(kernel_size, kernel_size,
+                                                stride, small::PADDING_F,
+                                                input_channels, output_channels,
+                                                input_height, input_width, tmp));
+            ++filter_num;
+        }
+
+        layers.push_back(
+            new small::ReLULayer<BufferT>(output_channels,
+                                          input_height, input_width));
+
+        kernel_size = 2;
+        stride = layer_strides[yolo_block];
+        layers.push_back(
+            new small::MaxPool2DLayer<BufferT>(kernel_size, kernel_size,
+                                               stride, small::PADDING_F, /// @todo check
+                                               output_channels,
+                                               input_height, input_width));
+
+        input_height = small::compute_output_dim(input_height, kernel_size,
+                                                 stride, small::PADDING_F);
+        input_width  = small::compute_output_dim(input_width, kernel_size,
+                                                 stride, small::PADDING_F);
+
+        input_channels = output_channels;
+        output_channels = 2*input_channels;
+    }
+
+    // Final convolution layers
+    //=====================================
+    kernel_size = 3;
+    stride = 1;
+    {
+        BufferT tmp(filters[filter_num]->size());
+        small::unpack_buffer(*filters[filter_num], small::FILTER_CONV,
+                             output_channels, input_channels,
+                             kernel_size, kernel_size,
+                             C_ib, C_ob, tmp);
+        layers.push_back(
+            new small::Conv2DLayer<BufferT>(kernel_size, kernel_size,
+                                            stride, small::PADDING_F,
+                                            input_channels, output_channels,
+                                            input_height, input_width, tmp));
+        ++filter_num;
+    }
+
+    layers.push_back(
+        new small::ReLULayer<BufferT>(output_channels,
+                                      input_height, input_width));
+
+    //=====================================
+    input_channels = output_channels;
+    {
+        BufferT tmp(filters[filter_num]->size());
+        small::unpack_buffer(*filters[filter_num], small::FILTER_CONV,
+                             output_channels, input_channels,
+                             kernel_size, kernel_size,
+                             C_ib, C_ob, tmp);
+        layers.push_back(
+            new small::Conv2DLayer<BufferT>(kernel_size, kernel_size,
+                                            stride, small::PADDING_F,
+                                            input_channels, output_channels,
+                                            input_height, input_width, tmp));
+        ++filter_num;
+    }
+
+    layers.push_back(
+        new small::ReLULayer<BufferT>(output_channels,
+                                      input_height, input_width));
+
+    //=====================================
+    kernel_size = 1;
+    output_channels = model_output_channels;
+    {
+        BufferT tmp(filters[filter_num]->size());
+        small::unpack_buffer(*filters[filter_num], small::FILTER_CONV,
+                             output_channels, input_channels,
+                             kernel_size, kernel_size,
+                             C_ib, C_ob, tmp);
+        layers.push_back(
+            new small::Conv2DLayer<BufferT>(kernel_size, kernel_size,
+                                            stride, small::PADDING_F,
+                                            input_channels, output_channels,
+                                            input_height, input_width, tmp));
+        ++filter_num;
+    }
+
+    layers.push_back(
+        new small::ReLULayer<BufferT>(output_channels,
+                                      input_height, input_width));
+
+    return layers;
 }
 
 //****************************************************************************
-inline void conv_block(
-    std::array<uint32_t, 2> in_dims, uint32_t input_channels, // Input dimensions
-    uint32_t kernel_size,
-    uint32_t stride, // Covolution parameters
-    uint32_t output_channels,
-    uint8_t t_pad,
-    uint8_t b_pad,
-    uint8_t l_pad,
-    uint8_t r_pad,
-    float *I,
-    float *F_conv,
-    float *O_intermediate,
-    float *O)
+template <class BufferT>
+BufferT &model_inference(
+    std::vector<small::Layer<BufferT>*> const &layers,
+    uint32_t                                   check_blocks,
+    BufferT                             const &input_dc,
+    BufferT                                   &inter_0_dc,
+    BufferT                                   &inter_1_dc)
 {
-    Conv2D(2, kernel_size, stride, t_pad, b_pad, l_pad, r_pad, output_channels, input_channels, in_dims[0], in_dims[1], I, F_conv, O_intermediate);
-    uint32_t o_h, o_w;
-    op_dim(in_dims[0] + t_pad + b_pad, stride, kernel_size, o_h);
-    op_dim(in_dims[1] + l_pad + r_pad, stride, kernel_size, o_w);
-    ReLUActivation(1, output_channels, o_h, o_w, O_intermediate, O_intermediate);
+    size_t layer_num = 0;
+    uint32_t num_yolo_blocks = ((check_blocks < 6U) ? check_blocks : 6U);
+
+    // yolo_block = 0
+    layers[layer_num++]->compute_output(input_dc, inter_1_dc);   // Conv2D
+    layers[layer_num++]->compute_output(inter_1_dc, inter_1_dc); // ReLU
+    layers[layer_num++]->compute_output(inter_1_dc, inter_0_dc); // MaxPool2D
+
+    for (size_t yolo_block = 1; yolo_block < num_yolo_blocks; ++yolo_block)
+    {
+        layers[layer_num++]->compute_output(inter_0_dc, inter_1_dc);
+        layers[layer_num++]->compute_output(inter_1_dc, inter_1_dc);
+        layers[layer_num++]->compute_output(inter_1_dc, inter_0_dc);
+    }
+
+    for (size_t conv_block = 0; conv_block < 3; ++conv_block)
+    {
+        layers[layer_num++]->compute_output(inter_0_dc, inter_1_dc); // Conv2D
+        layers[layer_num++]->compute_output(inter_1_dc, inter_1_dc); // ReLU
+        inter_0_dc.swap(inter_1_dc);
+    }
+
+    return inter_0_dc;
 }
+
+//****************************************************************************
 
 #define REDUCTION_C(layer_num) layer_params[layer_num][0]
 #define GROUP_C(layer_num) layer_params[layer_num][1]
@@ -122,75 +263,144 @@ inline void conv_block(
 #define INPUT_NUMEL(layer_num) \
     (O_HEIGHT(layer_num) * O_WIDTH(layer_num) * GROUP_C(layer_num - 1) * GROUPS(layer_num - 1))
 
-
 //****************************************************************************
-//****************************************************************************
-int main(int argc, char **argv)
+// The output of the block is stored in O
+//
+template <class BufferT>
+inline void yolo_block(
+    std::array<uint32_t, 2> in_dims, uint32_t input_channels, // Input dimensions
+    uint32_t kernel_size,
+    uint32_t stride, // Covolution parameters
+    uint32_t output_channels,
+    uint8_t t_pad,
+    uint8_t b_pad,
+    uint8_t l_pad,
+    uint8_t r_pad,
+    uint32_t kernel_size_pool,
+    uint32_t stride_pool, // MaxPooling parameters
+    uint8_t t_pad_pool,
+    uint8_t b_pad_pool,
+    uint8_t l_pad_pool,
+    uint8_t r_pad_pool,
+    BufferT const &I,
+    BufferT const &F_conv,
+    BufferT       &O_intermediate,
+    BufferT       &O)
 {
+    small::Conv2D(kernel_size, stride,
+                  t_pad, b_pad, l_pad, r_pad,
+                  output_channels, input_channels,
+                  in_dims[0], in_dims[1],
+                  I, F_conv, O_intermediate);
 
-    if (argc < 4)
-    {
-        printf("USAGE: torch_pool <Input Height> <Input Width> <Input Channels> <Output Classes>");
-        return 0;
-    }
+    uint32_t o_h = small::output_dim(in_dims[0] + t_pad + b_pad,
+                                     stride, kernel_size);
+    uint32_t o_w = small::output_dim(in_dims[1] + l_pad + r_pad,
+                                     stride, kernel_size);
 
-    // printf("layer %d %d %d \n", LAYER, uarch, W_ob);
-    int C_i = atoi(argv[1]);
+    small::ReLUActivation(output_channels,   /// @todo should this be input_channels?
+                          o_h, o_w,
+                          O_intermediate, O_intermediate);
+    small::MaxPool2D(kernel_size_pool, stride_pool,
+                     t_pad_pool, b_pad_pool, l_pad_pool, r_pad_pool,
+                     output_channels,
+                     o_h, o_w,
+                     O_intermediate, O);
+    // small::ReLUActivation(output_channels, o_h, o_w, O, O);
+}
 
-    uint32_t N = atol(argv[2]);
-    uint32_t M = atol(argv[3]);
+//****************************************************************************
+template <class BufferT>
+inline void conv_block(
+    std::array<uint32_t, 2> in_dims, uint32_t input_channels, // Input dimensions
+    uint32_t kernel_size,
+    uint32_t stride, // Convolution parameters
+    uint32_t output_channels,
+    uint8_t t_pad,
+    uint8_t b_pad,
+    uint8_t l_pad,
+    uint8_t r_pad,
+    BufferT const &I,
+    BufferT const &F_conv,
+    BufferT       &O_intermediate,
+    BufferT       &O)  /// @todo not used
+{
+    small::Conv2D(kernel_size, stride,
+                  t_pad, b_pad, l_pad, r_pad,
+                  output_channels, input_channels,
+                  in_dims[0], in_dims[1],
+                  I, F_conv, O_intermediate);
 
-    // int C_i = atol(argv[3]);
+    uint32_t o_h = small::output_dim(in_dims[0] + t_pad + b_pad,
+                                     stride, kernel_size);
+    uint32_t o_w = small::output_dim(in_dims[1] + l_pad + r_pad,
+                                     stride, kernel_size);
+    small::ReLUActivation(output_channels,
+                          o_h, o_w,
+                          O_intermediate, O_intermediate);
+}
 
-    int num_classes = atol(argv[4]);
-
-    uint32_t check_blocks = atol(argv[5]);
-    if (num_classes % 16 != 0)
-    {
-        printf("Number of output classes must be a multiple of 16\n");
-        exit(-1);
-    }
+//****************************************************************************
+//****************************************************************************
+template <class BufferT>
+void inference(uint32_t C_i,
+               uint32_t N,   // I_h
+               uint32_t M,   // I_w
+               uint32_t num_classes,
+               uint32_t check_blocks)
+{
+    //uint32_t C_i = 3;
+    //uint32_t N = 32;
+    //uint32_t M = 32;
+    //uint32_t num_classes = 16;
+    //uint32_t check_blocks = 6;
 
     //int C_o = 32;
     //int padding_elements = 0;
     //int kernel_size = 3;
     //int stride = 1;
+
     // Create and Initialize Input tensors
     uint32_t input_dimensions = C_i * N * M;
-    float *input_dc = alloc(input_dimensions);
+    BufferT input_dc(input_dimensions);
     init(input_dc, input_dimensions);
-    // std::cout<<a<<std::endl;
+
+    // ================================================
 
     std::vector<std::vector<uint64_t>> implementations;
 
-    // Set up all pytorch layers
-    // calculate total number of weight elements
-    //uint32_t total_num_weights = 0;
-    int layer_num = 0;
-    int pool_layer_num = 0, conv_layer_num = 0;
     uint16_t layer_params[30][10] = {1};
-    uint32_t max_numel_inter_0 = 0, max_numel_inter_1 = 0;
-    uint32_t inter_dim = 0;
-
     std::vector<std::array<uint32_t, 2>> intermediate_dims;
 
     uint8_t t_pad, b_pad, r_pad, l_pad;
 
-    intermediate_dims.push_back(std::array<uint, 2>({N, M}));
+    int layer_num = 0;
+    int pool_layer_num = 0, conv_layer_num = 0;
+    uint32_t max_numel_inter_0 = 0, max_numel_inter_1 = 0;
+    uint32_t inter_dim = 0;
+
+    intermediate_dims.push_back(std::array<uint, 2>({N, M}));  //(height, width)
+
     // conv
     REDUCTION_C(layer_num) = C_i; // input channels
     GROUP_C(layer_num) = 16;      // output channels
     GROUPS(layer_num) = 1;
     REDUCTION_HW(layer_num) = 3; // kernel size
     STRIDE(layer_num) = 1;       // stride
-    CALC_PADDING(I_HEIGHT(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), t_pad, b_pad);
-    CALC_PADDING(I_WIDTH(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), l_pad, r_pad);
-    SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad)
+    small::calc_padding(I_HEIGHT(layer_num), REDUCTION_HW(layer_num),
+                        STRIDE(layer_num), t_pad, b_pad);
+    small::calc_padding(I_WIDTH(layer_num),  REDUCTION_HW(layer_num),
+                        STRIDE(layer_num), l_pad, r_pad);
+    SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad);
+    TYPE(layer_num) = 1; // conv2d
+
     layer_num++; // 1
     conv_layer_num++;
-    inter_dim = INPUT_NUMEL(layer_num);
-    max_numel_inter_1 = (inter_dim > max_numel_inter_1) ? inter_dim : max_numel_inter_1;
     intermediate_dims.push_back(std::array<uint, 2>(OUTPUT_DIMS(layer_num)));
+    inter_dim = INPUT_NUMEL(layer_num);
+    max_numel_inter_1 =   // @todo Should this be inter_0?
+        (inter_dim > max_numel_inter_1) ? inter_dim : max_numel_inter_1;
+    TYPE(layer_num) = 0; // not conv2d
 
     // Pool
     REDUCTION_C(layer_num) = 1; // input channels
@@ -198,14 +408,18 @@ int main(int argc, char **argv)
     GROUPS(layer_num) = GROUP_C(layer_num - 1); // output channels
     REDUCTION_HW(layer_num) = 2;                // kernel size
     STRIDE(layer_num) = 2;                      // stride
-    CALC_PADDING(I_HEIGHT(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), t_pad, b_pad);
-    CALC_PADDING(I_WIDTH(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), l_pad, r_pad);
-    SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad)
+    small::calc_padding(I_HEIGHT(layer_num), REDUCTION_HW(layer_num),
+                        STRIDE(layer_num), t_pad, b_pad);
+    small::calc_padding(I_WIDTH(layer_num),  REDUCTION_HW(layer_num),
+                        STRIDE(layer_num), l_pad, r_pad);
+    SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad);
+
     layer_num++; // 2
     pool_layer_num++;
-    inter_dim = INPUT_NUMEL(layer_num);
-    max_numel_inter_0 = (inter_dim > max_numel_inter_0) ? inter_dim : max_numel_inter_0;
     intermediate_dims.push_back(std::array<uint, 2>(OUTPUT_DIMS(layer_num)));
+    inter_dim = INPUT_NUMEL(layer_num);
+    max_numel_inter_0 =
+        (inter_dim > max_numel_inter_0) ? inter_dim : max_numel_inter_0;
 
     // common set up for model architecture
     uint32_t ds_blocks = (check_blocks < 6) ? check_blocks : 6;
@@ -215,19 +429,23 @@ int main(int argc, char **argv)
     // dwise 1
     for (uint32_t ds_layer = 1U; ds_layer < ds_blocks; ds_layer++)  ///@todo verify start at 1
     {
-        REDUCTION_C(layer_num) = GROUPS(layer_num - 1);
-        ;                                                                 // input channels
+        REDUCTION_C(layer_num) = GROUPS(layer_num - 1);                   // input channels
         GROUP_C(layer_num) = channel_multiplier * REDUCTION_C(layer_num); // output channels
         GROUPS(layer_num) = 1;
-        REDUCTION_HW(layer_num) = 3; // kernel size
-        STRIDE(layer_num) = 1;       // stride
-        CALC_PADDING(I_HEIGHT(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), t_pad, b_pad);
-        CALC_PADDING(I_WIDTH(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), l_pad, r_pad);
-        SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad)
+        REDUCTION_HW(layer_num) = 3;
+        STRIDE(layer_num) = 1;
+        small::calc_padding(I_HEIGHT(layer_num), REDUCTION_HW(layer_num),
+                            STRIDE(layer_num), t_pad, b_pad);
+        small::calc_padding(I_WIDTH(layer_num),  REDUCTION_HW(layer_num),
+                            STRIDE(layer_num), l_pad, r_pad);
+        SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad);
+        TYPE(layer_num) = 1; // conv2d
+
         layer_num++; // 3
         conv_layer_num++;
         inter_dim = INPUT_NUMEL(layer_num);
-        max_numel_inter_1 = (inter_dim > max_numel_inter_1) ? inter_dim : max_numel_inter_1;
+        max_numel_inter_1 =
+            (inter_dim > max_numel_inter_1) ? inter_dim : max_numel_inter_1;
         intermediate_dims.push_back(std::array<uint, 2>(OUTPUT_DIMS(layer_num)));
         // std::cout << intermediate_dims[layer_num - 1][0] << " " << intermediate_dims[layer_num - 1][1] << std::endl;
 
@@ -239,14 +457,18 @@ int main(int argc, char **argv)
         STRIDE(layer_num) = layer_strides[ds_layer]; // stride
         if (STRIDE(layer_num) == 1)
         {
-            SET_PADDING(layer_num, 0, 1, 0, 1)
+            SET_PADDING(layer_num, 0, 1, 0, 1);
         }
         else
         {
-            CALC_PADDING(I_HEIGHT(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), t_pad, b_pad);
-            CALC_PADDING(I_WIDTH(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), l_pad, r_pad);
-            SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad)
+            small::calc_padding(I_HEIGHT(layer_num), REDUCTION_HW(layer_num),
+                                STRIDE(layer_num), t_pad, b_pad);
+            small::calc_padding(I_WIDTH(layer_num),  REDUCTION_HW(layer_num),
+                                STRIDE(layer_num), l_pad, r_pad);
+            SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad);
         }
+        TYPE(layer_num) = 0; // conv2d
+
         layer_num++; // 2
         pool_layer_num++;
         inter_dim = INPUT_NUMEL(layer_num);
@@ -259,13 +481,18 @@ int main(int argc, char **argv)
     GROUPS(layer_num) = 1;       // GROUP_C(layer_num - 1);
     REDUCTION_HW(layer_num) = 3; // I_HEIGHT(layer_num);
     STRIDE(layer_num) = 1;
-    CALC_PADDING(I_HEIGHT(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), t_pad, b_pad);
-    CALC_PADDING(I_WIDTH(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), l_pad, r_pad);
-    SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad)
+    small::calc_padding(I_HEIGHT(layer_num), REDUCTION_HW(layer_num),
+                        STRIDE(layer_num), t_pad, b_pad);
+    small::calc_padding(I_WIDTH(layer_num),  REDUCTION_HW(layer_num),
+                        STRIDE(layer_num), l_pad, r_pad);
+    SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad);
+    TYPE(layer_num) = 1; // conv2d
+
     layer_num++;
     conv_layer_num++;
     inter_dim = INPUT_NUMEL(layer_num);
-    max_numel_inter_1 = (inter_dim > max_numel_inter_1) ? inter_dim : max_numel_inter_1;
+    max_numel_inter_1 =
+        (inter_dim > max_numel_inter_1) ? inter_dim : max_numel_inter_1;
     intermediate_dims.push_back(std::array<uint, 2>(OUTPUT_DIMS(layer_num)));
 
     REDUCTION_C(layer_num) = GROUP_C(layer_num - 1);
@@ -273,9 +500,13 @@ int main(int argc, char **argv)
     GROUPS(layer_num) = 1;       // GROUP_C(layer_num - 1);
     REDUCTION_HW(layer_num) = 3; // I_HEIGHT(layer_num);
     STRIDE(layer_num) = 1;
-    CALC_PADDING(I_HEIGHT(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), t_pad, b_pad);
-    CALC_PADDING(I_WIDTH(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num), l_pad, r_pad);
-    SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad)
+    small::calc_padding(I_HEIGHT(layer_num), REDUCTION_HW(layer_num),
+                        STRIDE(layer_num), t_pad, b_pad);
+    small::calc_padding(I_WIDTH(layer_num),  REDUCTION_HW(layer_num),
+                        STRIDE(layer_num), l_pad, r_pad);
+    SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad);
+    TYPE(layer_num) = 1; // conv2d
+
     layer_num++;
     conv_layer_num++;
     inter_dim = INPUT_NUMEL(layer_num);
@@ -288,7 +519,9 @@ int main(int argc, char **argv)
     GROUPS(layer_num) = 1;       // GROUP_C(layer_num - 1);
     REDUCTION_HW(layer_num) = 1; // I_HEIGHT(layer_num);
     STRIDE(layer_num) = 1;
-    SET_PADDING(layer_num, 0, 0, 0, 0)
+    SET_PADDING(layer_num, 0, 0, 0, 0);
+    TYPE(layer_num) = 1; // conv2d
+
     layer_num++;
     conv_layer_num++;
     inter_dim = INPUT_NUMEL(layer_num);
@@ -301,18 +534,17 @@ int main(int argc, char **argv)
     for (auto i = 0; i < layer_num_total; i++)
     {
         printf("%d, ", i);
-        printf("%d, %d ", I_HEIGHT(i), I_WIDTH(i));
+        printf("HxW: %d, %d, layer_params: ", I_HEIGHT(i), I_WIDTH(i));
         for (auto j = 0; j < 10; j++)
         {
             printf("%d, ", layer_params[i][j]);
         }
-        printf("\b");
-        printf("\b");
-        // printf("input dims: %d %d ", I_HEIGHT(i+1), I_WIDTH(i+1));
+        printf("intermediate dims: %d %d ",
+               intermediate_dims[i][0], intermediate_dims[i][1]);
         printf("\n");
     }
 
-    printf("set up %d pool layers and %d conv layers total: %d\n", pool_layer_num, conv_layer_num, layer_num_total);
+    printf("set up %d pool layers, %d conv layers, total: %d\n", pool_layer_num, conv_layer_num, layer_num_total);
 
 
     //====================================SMaLL===================================
@@ -320,29 +552,48 @@ int main(int argc, char **argv)
     //_____________________setup______________________________________________
 
     //  Copy layer weights to temporaries
-    std::vector<float *> filter_ptrs;
+    std::vector<BufferT *> filter_buf_ptrs;
 
-    for (int l = 0; l < conv_layer_num; l++)
+    for (int l = 0; l < layer_num_total; ++l) //conv_layer_num; l++)
     {
-        float *filter_ptr;
-        // weights = layers[l]->weight; // conv_1x1->weight;
-        uint32_t filter_dimensions = REDUCTION_HW(l) * REDUCTION_HW(l) * REDUCTION_C(l) * GROUP_C(l) * GROUPS(l);
-        filter_ptr = alloc(filter_dimensions);
-        init(filter_ptr, filter_dimensions);
-        filter_ptrs.push_back(filter_ptr);
+        if (1 == TYPE(l))
+        {
+            //float *filter_ptr;
+            // weights = layers[l]->weight; // conv_1x1->weight;
+            uint32_t filter_dimensions =
+                REDUCTION_HW(l) * REDUCTION_HW(l) * REDUCTION_C(l) *
+                GROUP_C(l) * GROUPS(l);
+            BufferT *filter_buf_ptr =
+                new BufferT(filter_dimensions);
+            //filter_ptr = alloc(filter_dimensions);
+            init(*filter_buf_ptr, filter_dimensions);
+            filter_buf_ptrs.push_back(filter_buf_ptr);
+        }
     }
-    printf("set up weights\n");
-    //_______________________________________inference_________________________
+    printf("\n");
 
+    //_______________________________________inference_________________________
+    std::cerr << "\nWarm up run (ORIG)\n";
 
     // allocate space for intermediate outputs (use the max sizes calculated previously)
     printf("Size of intermediate buffers: %d %d\n", max_numel_inter_0, max_numel_inter_1);
-    float *inter_0_dc = alloc(max_numel_inter_0);
-    float *inter_1_dc = alloc(max_numel_inter_1);
+#if defined(QUANTIZED)
+    BufferT inter_0_dc(max_numel_inter_0*2);  /// @todo HACK need to determine correct size
+    BufferT inter_1_dc(max_numel_inter_1*2);  /// @todo HACK need to determine correct size
+#else
+    BufferT inter_0_dc(max_numel_inter_0);
+    BufferT inter_1_dc(max_numel_inter_1);
+#endif
 
+    // ============================= model_inference =============================
+    small::Timer my_timer;
+
+    std::cerr << "Warm up run (ORIG)" << std::endl;
+    my_timer.start();
     //uint32_t inter_h, inter_w;
     layer_num = 0;
-    yolo_block(intermediate_dims[layer_num], REDUCTION_C(layer_num), // Input dimensions
+    yolo_block(intermediate_dims[layer_num],
+               REDUCTION_C(layer_num), // Input dimensions
                REDUCTION_HW(layer_num),
                STRIDE(layer_num), // Params for the  convolution
                GROUP_C(layer_num),
@@ -351,7 +602,7 @@ int main(int argc, char **argv)
                STRIDE(layer_num + 1), // Params for the pooling
                PADDING(layer_num + 1),
                input_dc,
-               filter_ptrs[layer_num],
+               *filter_buf_ptrs[layer_num],
                inter_1_dc,
                inter_0_dc);
 
@@ -360,7 +611,8 @@ int main(int argc, char **argv)
     for (uint32_t ds_layer = 1U; ds_layer < ds_blocks; ds_layer++)
     {
         printf("layer %d\n", layer_num);
-        yolo_block(intermediate_dims[layer_num], REDUCTION_C(layer_num), // Input dimensions
+        yolo_block(intermediate_dims[layer_num],
+                   REDUCTION_C(layer_num), // Input dimensions
                    REDUCTION_HW(layer_num),
                    STRIDE(layer_num), // Params for the convolution
                    GROUP_C(layer_num),
@@ -369,12 +621,11 @@ int main(int argc, char **argv)
                    STRIDE(layer_num + 1), // Params for the pooling
                    PADDING(layer_num + 1),
                    inter_0_dc,
-                   filter_ptrs[ds_layer],
+                   *filter_buf_ptrs[ds_layer],
                    inter_1_dc,
                    inter_0_dc);
 
         layer_num += 2;
-
     }
 
     // //Epilogue layers with no pooling
@@ -387,30 +638,69 @@ int main(int argc, char **argv)
                    GROUP_C(layer_num),
                    PADDING(layer_num),
                    inter_0_dc,
-                   filter_ptrs[ds_blocks + epilogue_layer],
+                   *filter_buf_ptrs[ds_blocks + epilogue_layer],
                    inter_1_dc,
                    inter_0_dc);
         layer_num++;
 
-        float *tmp = inter_0_dc;
-        inter_0_dc = inter_1_dc;
-        inter_1_dc = tmp;
+        inter_0_dc.swap(inter_1_dc);
+        //float *tmp = inter_0_dc;
+        //inter_0_dc = inter_1_dc;
+        //inter_1_dc = tmp;
+    }
+    auto &output_dc = inter_0_dc;
+
+    my_timer.stop();
+    printf("\nElapsed time: %lf ns.\n", my_timer.elapsed());
+
+    //======================================================
+
+    auto layers(create_model<BufferT>(N, M,
+                                      C_i, num_classes,
+                                      check_blocks,
+                                      filter_buf_ptrs));
+
+#if defined(QUANTIZED)
+    BufferT inter_0a_dc(max_numel_inter_0*2);  /// @todo HACK need to determine correct size
+    BufferT inter_1a_dc(max_numel_inter_1*2);  /// @todo HACK need to determine correct size
+#else
+    BufferT inter_0a_dc(max_numel_inter_0);
+    BufferT inter_1a_dc(max_numel_inter_1);
+#endif
+
+    std::cerr << "Warm up run (LAYERS)" << std::endl;
+    my_timer.start();
+    auto &output_a_dc =
+        model_inference(layers, check_blocks, input_dc, inter_0a_dc, inter_1a_dc);
+    my_timer.stop();
+    printf("\nElapsed time: %lf ns.\n", my_timer.elapsed());
+
+    // Compare the results
+    size_t num_outputs = layers.back()->output_buffer_size();
+    std::cout << "\nCHECK RESULTS: Num output elements: " << num_outputs << std::endl;
+    for (size_t ix = 0; ix < num_outputs; ++ix)
+    {
+        std::cout << "Current, new " << ix << ": "
+                  << (float)output_dc[ix] << ", " << (float)output_a_dc[ix]
+                  << std::endl;
     }
 
-    //float *output_dc = inter_0_dc;
+    // clean up model (move to model class destructor when built
+    for (auto layer : layers) delete layer;
+    //======================================================
 
-    //_______________________________________end inference_________________________
+    //__________________________________end inference_________________________
 
     // Free allocated weight buffers
 
-    for (size_t l = 0; l < filter_ptrs.size(); l++)
+    for (size_t l = 0; l < filter_buf_ptrs.size(); l++)
     {
-        free(filter_ptrs[l]);
+        small::free_buffer(filter_buf_ptrs[l]);
     }
 
-    //====================================End SMaLL===================================
+    //===============================End SMaLL================================
 
-    //____________________________Correctness check_________________________________
+    //___________________________Correctness check____________________________
     // bool check = 1;
     // std::vector<uint32_t>
     //     inter_0_dims, inter_1_dims;
@@ -434,7 +724,46 @@ int main(int argc, char **argv)
     // assert(check == 1);
 
     // Free input and output buffers
-    free(input_dc);
-    free(inter_0_dc);
-    free(inter_1_dc);
+    //free(input_dc);
+    //free(inter_0_dc);
+    //free(inter_1_dc);
 }
+
+//****************************************************************************
+// For non-arduino platforms.  ... move to driver.cpp?
+//****************************************************************************
+#ifndef NANO33BLE
+int main(int argc, char **argv)
+{
+    if (argc < 6)
+    {
+        printf("\nUsage ERROR: %s "
+               "<Input Channels> <Input H> <Input W> <Output Classes> <# check blocks>\n",
+               argv[0]);
+        printf("Recommended: %s 3 416 416 16 6\n", argv[0]);
+        return 0;
+    }
+
+    // printf("layer %d %d %d \n", LAYER, uarch, W_ob);
+    uint32_t C_i = atoi(argv[1]);
+
+    uint32_t I_h = atol(argv[2]);  //N
+    uint32_t I_w = atol(argv[3]);  //M
+
+    uint32_t num_classes = atol(argv[4]);
+
+    uint32_t check_blocks = atol(argv[5]);
+    if (num_classes % 16 != 0)
+    {
+        printf("Number of output classes must be a multiple of 16\n");
+        exit(-1);
+    }
+
+#if defined(QUANTIZED)
+    inference<small::QUInt8Buffer>(C_i, I_h, I_w, num_classes, check_blocks);
+#else
+    inference<small::FloatBuffer>(C_i, I_h, I_w, num_classes, check_blocks);
+#endif
+    return 0;
+}
+#endif

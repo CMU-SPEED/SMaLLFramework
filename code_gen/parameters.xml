@@ -1,9 +1,0 @@
-<params>
-        <param name='C_ob' type='Integer' />
-        <param name='C_ib' type='Integer' />
-        <param name='W_ob'>
-          <op name="conv" value=6 type='Integer'>
-          <op name="pool" value=4 type='Integer'>
-        </param>
-
-</params>
