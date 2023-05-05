@@ -281,7 +281,7 @@ void measure_conv2d_rect_performance(void)
                 max_t = std::max(max_t, ts);
             }
 
-            printf("function\t%d\t%d\t%d\t%d\t%d\t%ld\t%d\t%d\t%lf\t%lf\t%lf\n",
+            printf("function\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%lf\t%lf\t%lf\n",
                    p.C_i, p.H, p.W, p.k, p.s, p.C_o,
                    num_threads[ix], num_runs,
                    min_t, max_t, (tx/num_runs));
