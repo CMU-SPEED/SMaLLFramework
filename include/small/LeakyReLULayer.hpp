@@ -21,23 +21,26 @@ namespace small
 
 //****************************************************************************
 template <typename BufferT>
-class ReLULayer : public Layer<BufferT>
+class LeakyReLULayer : public Layer<BufferT>
 {
 public:
     typedef typename BufferT::value_type value_type;
     typedef typename Tensor<BufferT>::shape_type shape_type;
 
-    ReLULayer(Layer<BufferT> const &predecessor)
+    LeakyReLULayer(Layer<BufferT> const &predecessor,
+                   float negative_slope = 0.01f)  /// @todo use value_type?
         : Layer<BufferT>(&predecessor),
           m_shape(predecessor.output_buffer_shape()),
-          m_buffer_size(predecessor.output_buffer_size())
+          m_buffer_size(predecessor.output_buffer_size()),
+          m_negative_slope(negative_slope)
     {
-        // std::cerr << "ReLU(chans:" << m_shape[0]
+        // std::cerr << "LeakyReLU(chans:" << m_shape[0]
+        //           << ",negative_slope:" << m_negative_slope
         //           << ",img:" << m_shape[1] << "x" << m_shape[2]
         //           << ")" << std::endl;
     }
 
-    virtual ~ReLULayer() {}
+    virtual ~LeakyReLULayer() {}
 
     virtual size_t output_buffer_size() const { return m_buffer_size; }
     virtual shape_type output_buffer_shape() const { return m_shape; }
@@ -45,33 +48,36 @@ public:
     virtual void compute_output(Tensor<BufferT> const &input,
                                 Tensor<BufferT>       &output) const
     {
-        // assert(input.shape()  == m_shape);
-        // assert(output.capacity() >= m_buffer_size);
+        // assert(input_dc.size() >= m_buffer_size);
+        // assert(output.size()   >= m_buffer_size);
 
         if (input.shape() != m_shape)
         {
             throw std::invalid_argument(
-                "ReLULayer::compute_output() ERROR: "
+                "LeakyReLULayer::compute_output() ERROR: "
                 "incorrect input buffer shape.");
         }
 
         if (output.capacity() < m_buffer_size)
         {
             throw std::invalid_argument(
-                "ReLULayer::compute_output() ERROR: "
+                "LeakyReLULayer::compute_output() ERROR: "
                 "insufficient output buffer space.");
         }
 
+        /// @todo placeholder for the leaky function
         small::ReLUActivation(m_shape[0],
                               m_shape[1], m_shape[2],
+                              // m_negative_slope   /// @todo
                               input.buffer(),
                               output.buffer());
         output.set_shape(m_shape);
     }
 
 private:
-    shape_type const m_shape;        // {C, H, W}
+    shape_type const m_shape;
     size_t     const m_buffer_size;
+    float      const m_negative_slope;  /// @todo should this be value_type?
 };
 
 }

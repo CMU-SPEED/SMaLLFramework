@@ -21,8 +21,9 @@
 #include <random>
 
 #include <small.h>
-#include <small/DepthwiseConv2DLayer.hpp>
 #include <small/utils/Timer.hpp>
+#include <small/InputLayer.hpp>
+#include <small/DepthwiseConv2DLayer.hpp>
 
 #include "test_utils.hpp"
 
@@ -154,24 +155,24 @@ bool run_dw_layer_config(LayerParams const &params)
     TEST_ASSERT(filter_dc.size() == params.C_i*params.k*params.k);
 
     //=========================================================================
-    small::DepthwiseConv2DLayer<BufferT> dw_layer(params.k, params.s,
-                                                  params.p, params.C_i,
-                                                  params.H, params.W,
-                                                  filter_dc);
+    small::InputLayer<BufferT>  input_layer({params.C_i, params.H, params.W});
+    small::DepthwiseConv2DLayer<BufferT> dw_layer(input_layer,
+                                                  params.k, params.s,
+                                                  params.p,
+                                                  filter_dc, false);
     //=========================================================================
 
     // Read input data
     std::string in_fname =
         get_pathname(data_dir, "in", "dw_conv",
                      params,
-                     params.C_i*params.H*params.W);
+                     input_layer.output_buffer_size());
     std::cout << "\nDepthwiseConv: input file = " << in_fname << std::endl;
 
     // Allocate the input buffer
-    BufferT input_dc = read_inputs<BufferT>(in_fname);
+    BufferT input_dc(read_inputs<BufferT>(in_fname));
 
-    TEST_ASSERT(input_dc.size() == params.C_i*params.H*params.W);
-    TEST_ASSERT(dw_layer.input_buffer_size() == params.C_i*params.H*params.W);
+    TEST_ASSERT(input_dc.size() == input_layer.output_buffer_size());
 
     // Pack input data
     BufferT packed_input_dc(input_dc.size());
@@ -181,27 +182,30 @@ bool run_dw_layer_config(LayerParams const &params)
                        C_ib, C_ob,
                        packed_input_dc);
 
+    small::Tensor<BufferT> packed_input_tensor(
+        input_layer.output_buffer_shape(),
+        std::move(packed_input_dc));
+
     // Read output regression data
-    size_t Ho(small::compute_output_dim(
-                  params.H, params.k, params.s, params.p));
-    size_t Wo(small::compute_output_dim(
-                  params.W, params.k, params.s, params.p));
-    std::cerr << "Output image dims: " << Ho << ", " << Wo << std::endl;
+    auto output_shape(dw_layer.output_buffer_shape());
+    size_t output_buffer_size(dw_layer.output_buffer_size());
+
+    std::cerr << "Output image dims: "
+              << output_shape[1] << "x" << output_shape[2] << std::endl;
     std::string out_fname =
         get_pathname(data_dir, "out", "dw_conv",
                      params,
-                     params.C_i*Ho*Wo);
+                     output_buffer_size);
     std::cout << "DepthwiseConv: output file= " << out_fname << std::endl;
 
     BufferT output_dc_answers = read_inputs<BufferT>(out_fname);
-    TEST_ASSERT(output_dc_answers.size() == params.C_i*Ho*Wo);
-    TEST_ASSERT(dw_layer.output_buffer_size() == params.C_i*Ho*Wo);
+    TEST_ASSERT(output_dc_answers.size() == output_buffer_size);
 
     // Pack output answer data
     BufferT packed_output_dc_answers(output_dc_answers.size());
     small::pack_buffer(output_dc_answers,
                        small::OUTPUT,
-                       1U, params.C_i, Ho, Wo,
+                       1U, output_shape[0], output_shape[1], output_shape[2],
                        C_ib, C_ob,
                        packed_output_dc_answers);
 
@@ -211,26 +215,29 @@ bool run_dw_layer_config(LayerParams const &params)
 #else
     BufferT packed_output_dc(output_dc_answers.size());
 #endif
+    small::Tensor<BufferT> packed_output_tensor(output_shape,
+                                                std::move(packed_output_dc));
 
     // Compute layer
-    dw_layer.compute_output(packed_input_dc, packed_output_dc);
+    dw_layer.compute_output(packed_input_tensor, packed_output_tensor);
 
     // Check answer
     bool passing = true;
-    for (size_t ix = 0; ix < dw_layer.output_buffer_size(); ++ix)
+    BufferT &buf(packed_output_tensor.buffer());
+    for (size_t ix = 0; ix < packed_output_tensor.size(); ++ix)
     {
 #if defined(QUANTIZED)
-        if (packed_output_dc[ix] != packed_output_dc_answers[ix])
+        if (buf[ix] != packed_output_dc_answers[ix])
 #else
-        if ((packed_output_dc[ix] != packed_output_dc_answers[ix]) &&
-            !almost_equal(packed_output_dc[ix], packed_output_dc_answers[ix]))
+        if ((buf[ix] != packed_output_dc_answers[ix]) &&
+            !almost_equal(buf[ix], packed_output_dc_answers[ix]))
 #endif
         {
             passing = false;
 
             std::cout << "FAIL: DepthwiseConv_out(" << ix << ")-->"
                       << std::setw(12) << std::setprecision(10)
-                      << packed_output_dc[ix] << "(computed) != "
+                      << buf[ix] << "(computed) != "
                       << std::setw(12) << std::setprecision(10)
                       << packed_output_dc_answers[ix]
                       << std::endl;
@@ -401,7 +408,7 @@ void measure_dw_performance(void)
                 max_t = std::max(max_t, ts);
             }
 
-            printf("function\t%ld\t%d\t%d\t%d\t%d\t%d\t%d\t%lf\t%lf\t%lf\n",
+            printf("function\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%lf\t%lf\t%lf\n",
                    p.C_i, p.H, p.W, p.k, p.s,
                    num_threads[ix], num_runs,
                    min_t, max_t, (tx/num_runs));
@@ -427,14 +434,17 @@ void measure_dw_performance(void)
         size_t num_filter_elts(p.C_i*p.k*p.k);
         size_t num_output_elts(p.C_i*Ho*Wo);
 
-        Buffer input_dc(num_input_elts);
         Buffer filter_dc(num_filter_elts);
-        Buffer output_dc(num_output_elts);
-        small::init(input_dc, num_input_elts);
         small::init(filter_dc, num_filter_elts);
 
+        small::Tensor<Buffer> input_dc({p.C_i, p.H, p.W});
+        small::init(input_dc.buffer(), num_input_elts);
+
+        small::Tensor<Buffer> output_dc(num_output_elts);
+
+        small::InputLayer<Buffer> input_layer({p.C_i, p.H, p.W});
         small::DepthwiseConv2DLayer<Buffer>
-            dw_layer(p.k, p.s, p.p, p.C_i, p.H, p.W, filter_dc);
+            dw_layer(input_layer, p.k, p.s, p.p, filter_dc, true);
 
         for (size_t ix = 0; ix < 3; ++ix)
         {
@@ -460,7 +470,7 @@ void measure_dw_performance(void)
                 max_t = std::max(max_t, ts);
             }
 
-            printf("class   \t%ld\t%d\t%d\t%d\t%d\t%d\t%d\t%lf\t%lf\t%lf\n",
+            printf("class   \t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%lf\t%lf\t%lf\n",
                    p.C_i, p.H, p.W, p.k, p.s,
                    num_threads[ix], num_runs,
                    min_t, max_t, (tx/num_runs));

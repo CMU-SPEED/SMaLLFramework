@@ -27,13 +27,13 @@
 
 struct LayerParams
 {
-    size_t   C_i;
+    uint32_t C_i;
     uint32_t H; // image_height;
     uint32_t W; // image_width;
     uint32_t k; // kernel_size;
     uint16_t s; // stride;
     small::PaddingEnum p; // PADDING_V or _F
-    size_t   C_o;
+    uint32_t C_o;
 };
 
 //****************************************************************************

@@ -12,30 +12,45 @@
 
 #pragma once
 
-#include<vector>
-#include<small.h>
-#include<small/Tensor.hpp>
+#include <small.h>
+#include <small/buffers.hpp>
+#include <small/Layer.hpp>
 
 namespace small
 {
+
 //****************************************************************************
 template <typename BufferT>
-class Layer
+class InputLayer : public Layer<BufferT>
 {
 public:
+    typedef typename BufferT::value_type value_type;
     typedef typename Tensor<BufferT>::shape_type shape_type;
-    Layer(Layer<BufferT> const *predecessor) : m_predecessor(predecessor) {};
 
-    virtual ~Layer() {}
+    InputLayer(shape_type const &shape) // {C, H, W}
+        : Layer<BufferT>(nullptr),      // has no predecessor
+          m_shape(shape),
+          m_buffer_size(shape[0]*shape[1]*shape[2])
+    {
+        // std::cerr << "Input(chans:" << shape[0]
+        //           << ",img:" << shape[1] << "x" << shape[2]
+        //           << ")" << std::endl;
+    }
 
-    virtual size_t output_buffer_size() const = 0;
-    virtual shape_type output_buffer_shape() const = 0;
+    virtual ~InputLayer() {}
+
+    virtual size_t output_buffer_size() const { return m_buffer_size; }
+    virtual shape_type output_buffer_shape() const { return m_shape; }
 
     virtual void compute_output(Tensor<BufferT> const &input,
-                                Tensor<BufferT>       &output) const = 0;
+                                Tensor<BufferT>       &output) const
+    {
+        ///@todo Do nothing or throw? or pack the input into the output?
+    }
 
-protected:
-    Layer<BufferT> const *m_predecessor;
+private:
+    shape_type   m_shape;
+    size_t const m_buffer_size;
 };
 
 }

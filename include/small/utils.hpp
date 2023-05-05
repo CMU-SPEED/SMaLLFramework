@@ -12,6 +12,7 @@
 
 #pragma once
 #include <stdint.h> // for uint8_t
+#include <cmath>
 
 namespace small
 {
@@ -39,7 +40,7 @@ enum PaddingEnum
  * and kernel dimension.  Call this twice to compute l,r and t,b pairs.
  *
  */
-inline void calc_padding(uint32_t  I_dim,
+inline void calc_padding(size_t    I_dim,
                          uint32_t  K_dim,
                          uint16_t  stride,
                          uint8_t  &padding_front,
@@ -198,13 +199,13 @@ inline size_t compute_output_dim(size_t input_dim,
 }
 
 //****************************************************************************
-inline void compute_padding_output_dim(uint32_t  unpadded_input_dim,
+inline void compute_padding_output_dim(size_t    unpadded_input_dim,
                                        uint32_t  kernel_dim,
                                        uint32_t  stride,
                                        PaddingEnum padding_type,
                                        uint8_t  &front_pad,
                                        uint8_t  &back_pad,
-                                       uint32_t &output_dim)
+                                       size_t   &output_dim)
 {
     front_pad = 0;
     back_pad = 0;

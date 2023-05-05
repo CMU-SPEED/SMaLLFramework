@@ -65,14 +65,16 @@ public:
 
     TimeType start()
     {
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start_time);
+        //clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start_time);
         //clock_gettime(CLOCK_REALTIME, &start_time);
+        clock_gettime(CLOCK_MONOTONIC, &start_time);
         return start_time;  //.tv_nsec;
     }
     TimeType stop()
     {
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &stop_time);
+        //clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &stop_time);
         //clock_gettime(CLOCK_REALTIME, &stop_time);
+        clock_gettime(CLOCK_MONOTONIC, &stop_time);
         return stop_time;  //.tv_nsec;
     }
 
