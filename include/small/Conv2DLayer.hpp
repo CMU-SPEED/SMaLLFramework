@@ -83,11 +83,11 @@ public:
         m_output_buffer_size =
             m_output_shape[0]*m_output_shape[1]*m_output_shape[2];
 
-        // Pack the filter buffers for SMaLL use
         BufferT packed_filters(m_output_shape[0]*m_input_shape[0]*
                                kernel_height*kernel_width);
         if (!filters_are_packed)
         {
+            // Pack the filter buffers for SMaLL use
             small::pack_buffer(filters,
                                FILTER_CONV,
                                m_output_shape[0], m_input_shape[0],

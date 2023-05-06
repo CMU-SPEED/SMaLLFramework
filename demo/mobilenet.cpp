@@ -115,19 +115,20 @@ template <class BufferT>
 std::vector<small::Layer<BufferT>*> create_model(
     std::vector<BufferT*> const &filters)
 {
+    std::vector<small::Layer<BufferT>*> layers;
+
     // settings for first layers
     uint32_t kernel_size = 3;
     uint32_t stride = 2;
     uint32_t input_size = 96;
     uint32_t input_channels = 3, output_channels = 32;
     uint32_t num_classes = 16;
+    size_t   filter_num = 0;
 
-    std::vector<small::Layer<BufferT>*> layers;
     small::Layer<BufferT> *prev =
         new small::InputLayer<BufferT>({input_channels, input_size, input_size});
     layers.push_back(prev);
 
-    size_t filter_num = 0;
 
     prev = new small::Conv2DLayer<BufferT>(*prev,
                                            kernel_size, kernel_size,
