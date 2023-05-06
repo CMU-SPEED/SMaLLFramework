@@ -12,6 +12,8 @@
 
 #pragma once
 
+//#define DEBUG_LAYERS
+
 #include<vector>
 #include<small.h>
 #include<small/Tensor.hpp>

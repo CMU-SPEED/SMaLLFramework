@@ -32,9 +32,11 @@ public:
           m_shape(shape),
           m_buffer_size(shape[0]*shape[1]*shape[2])
     {
-        // std::cerr << "Input(chans:" << shape[0]
-        //           << ",img:" << shape[1] << "x" << shape[2]
-        //           << ")" << std::endl;
+#if defined(DEBUG_LAYERS)
+        std::cerr << "Input(chans:" << shape[0]
+                  << ",img:" << shape[1] << "x" << shape[2]
+                  << ")" << std::endl;
+#endif
     }
 
     virtual ~InputLayer() {}

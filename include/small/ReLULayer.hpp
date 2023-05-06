@@ -32,9 +32,11 @@ public:
           m_shape(predecessor.output_buffer_shape()),
           m_buffer_size(predecessor.output_buffer_size())
     {
-        // std::cerr << "ReLU(chans:" << m_shape[0]
-        //           << ",img:" << m_shape[1] << "x" << m_shape[2]
-        //           << ")" << std::endl;
+#if defined(DEBUG_LAYERS)
+        std::cerr << "ReLU(chans:" << m_shape[0]
+                  << ",img:" << m_shape[1] << "x" << m_shape[2]
+                  << ")" << std::endl;
+#endif
     }
 
     virtual ~ReLULayer() {}

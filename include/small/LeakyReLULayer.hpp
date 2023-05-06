@@ -34,10 +34,12 @@ public:
           m_buffer_size(predecessor.output_buffer_size()),
           m_negative_slope(negative_slope)
     {
-        // std::cerr << "LeakyReLU(chans:" << m_shape[0]
-        //           << ",negative_slope:" << m_negative_slope
-        //           << ",img:" << m_shape[1] << "x" << m_shape[2]
-        //           << ")" << std::endl;
+#if defined(DEBUG_LAYERS)
+        std::cerr << "LeakyReLU(chans:" << m_shape[0]
+                  << ",negative_slope:" << m_negative_slope
+                  << ",img:" << m_shape[1] << "x" << m_shape[2]
+                  << ")" << std::endl;
+#endif
     }
 
     virtual ~LeakyReLULayer() {}

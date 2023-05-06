@@ -40,12 +40,14 @@ public:
           m_input_shape(predecessor.output_buffer_shape()),
           m_input_buffer_size(predecessor.output_buffer_size())
     {
-        // std::cerr << "MaxPool2D(k:" << kernel_height << "x" << kernel_width
-        //           << ",s:" << stride
-        //           << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
-        //           << ",chans:" << m_input_shape[0]
-        //           << ",img:" << m_input_shape[1] << "x" << m_input_shape[1]
-        //           << std::endl;
+#if defined(DEBUG_LAYERS)
+        std::cerr << "MaxPool2D(k:" << kernel_height << "x" << kernel_width
+                  << ",s:" << stride
+                  << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
+                  << ",chans:" << m_input_shape[0]
+                  << ",img:" << m_input_shape[1] << "x" << m_input_shape[1]
+                  << std::endl;
+#endif
 
         /// @todo is there a clean way to make these const members, or
         ///       will image size get moved to compute_output() and all of

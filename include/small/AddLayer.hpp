@@ -34,6 +34,11 @@ public:
           m_shape(predecessor1.output_buffer_shape()),
           m_buffer_size(predecessor1.output_buffer_size())
     {
+#if defined(DEBUG_LAYERS)
+        std::cerr << "Add(chans:" << m_shape[0]
+                  << ",img:" << m_shape[1] << "x" << m_shape[2]
+                  << ")" << std::endl;
+#endif
         shape_type shape = {1, 1, 1};
         size_t buf_size = predecessor2.compute_output_buffer_size(shape);
 
@@ -44,9 +49,6 @@ public:
                 "AddLayer ctor ERROR: "
                 "predecessors do not have same output shape.");
         }
-        // std::cerr << "Add(chans:" << m_shape[0]
-        //           << ",img:" << m_shape[1] << "x" << m_shape[2]
-        //           << ")" << std::endl;
     }
 
     virtual ~AddLayer() {}

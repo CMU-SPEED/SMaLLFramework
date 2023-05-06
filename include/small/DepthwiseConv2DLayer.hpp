@@ -46,12 +46,14 @@ public:
           m_input_shape(predecessor.output_buffer_shape()),
           m_input_buffer_size(predecessor.output_buffer_size())
     {
-        // std::cerr << "DW(k:" << kernel_size
-        //           << ",s:" << stride
-        //           << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
-        //           << ",chans:" << m_input_shape[0]
-        //           << ",img:" << m_input_shape[1] << "x" << m_input_shape[1]
-        //           << "), filters.size=" << filters.size() << std::endl;
+#if defined(DEBUG_LAYERS)
+        std::cerr << "DW(k:" << kernel_size
+                  << ",s:" << stride
+                  << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
+                  << ",chans:" << m_input_shape[0]
+                  << ",img:" << m_input_shape[1] << "x" << m_input_shape[1]
+                  << "), filters.size=" << filters.size() << std::endl;
+#endif
 
         if (filters.size() < m_input_shape[0]*kernel_size*kernel_size)
         {

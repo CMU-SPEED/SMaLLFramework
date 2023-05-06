@@ -26,7 +26,7 @@
 
 /// @todo Which of these defines are needed?
 #ifndef RUNS
-#define RUNS 1
+#define RUNS 20
 #endif
 
 /* From https://github.com/mlcommons/tiny/blob/master/benchmark/training/image_classification/keras_model.py
@@ -301,12 +301,14 @@ std::vector<small::Layer<BufferT>*> create_model(
     // Second and Third Stacks
     for (auto ix = 0; ix < 2; ++ix)
     {
+        small::Layer<BufferT> *block_prev = prev;
+
         //==================
         ++filter_num;
 
         output_channels = 2*output_channels;
         stride = 2;
-        prev = new small::Conv2DLayer<BufferT>(*prev,
+        prev = new small::Conv2DLayer<BufferT>(*block_prev,
                                                kernel_size, kernel_size,
                                                stride, small::PADDING_F,
                                                output_channels,
@@ -319,7 +321,7 @@ std::vector<small::Layer<BufferT>*> create_model(
         //==================
         ++filter_num;  ///@note out of order filter access here/next
 
-        prev = new small::Conv2DLayer<BufferT>(*prev,
+        prev = new small::Conv2DLayer<BufferT>(*block_prev,
                                                1U, 1U,
                                                stride, small::PADDING_V,
                                                output_channels,
@@ -384,7 +386,9 @@ small::Tensor<BufferT> &model_inference(
     {
         layers[layer_num++]->compute_output(inter_0_dc, inter_1_dc); // Conv2D
         layers[layer_num++]->compute_output(inter_1_dc, inter_1_dc); // ReLU
+
         layers[layer_num++]->compute_output(inter_0_dc, inter_2_dc); // Conv2D
+
         layers[layer_num++]->compute_output(inter_1_dc, inter_2_dc); // buf2+=Conv2D(buf1)
         layers[layer_num++]->compute_output(inter_2_dc, inter_2_dc); // ReLU
 
