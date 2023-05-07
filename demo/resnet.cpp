@@ -359,7 +359,8 @@ std::vector<small::Layer<BufferT>*> create_model(
                                            *filters[filter_num], true);
     layers.push_back(prev);
 
-    std::cerr << "Filters consumed: " << filter_num << "," << filters.size() << std::endl;
+    std::cerr << "Filters consumed: " << ++filter_num << ","
+              << filters.size() << std::endl;
     std::cerr << "Layers created:   " << layers.size() << std::endl;
     return layers;
 }
@@ -733,7 +734,6 @@ void inference()
     layer_num++;
     intermediate_dims[layer_num][0] = O_WIDTH(layer_num);
     intermediate_dims[layer_num][1] = O_HEIGHT(layer_num);
-
     REDUCTION_C(layer_num) = GROUPS(layer_num - 1);
     GROUP_C(layer_num) = num_classes;
     GROUPS(layer_num) = 1;
@@ -742,22 +742,21 @@ void inference()
     SET_PADDING(layer_num, 0, 0, 0, 0);
     layer_num++;
 
-    // fc dims
     size_t layer_num_total = layer_num;
     size_t num_filters = layer_num_total - 1;
 
 #if SUMMARY == 1
-    for (uint32_t i = 0; i < layer_num_total; i++)
+    printf("Layer num total: %d", layer_num_total);
+    for (auto i = 0; i < layer_num_total; i++)
     {
         printf("layer %d: ", i);
-	printf(" input_dims: %d %d ", I_HEIGHT(i), I_WIDTH(i));
+        printf(" input_dims: %d %d ", I_HEIGHT(i), I_WIDTH(i));
         for (auto j = 0; j < 10; j++)
         {
             printf("%d, ", layer_params[i][j]);
         }
-	printf("\b\b");
-	//printf("input dims: %d %d ", I_HEIGHT(i+1), I_WIDTH(i+1));
-        printf("\n");
+        printf(", intermediate dims: %d %d\n",
+               intermediate_dims[i][0], intermediate_dims[i][1]);
     }
 #endif
 
@@ -813,43 +812,6 @@ void inference()
 
     //======================================================
 
-    auto layers(create_model<BufferT>(filter_buf_ptrs));
-
-#if defined(QUANTIZED)
-    small::Tensor<BufferT> input_tensor({3, 32, 32}, input_dc);
-    small::Tensor<BufferT> inter_0_tensor(max_numel_inter_0 + C_ob*16*16*32);
-    small::Tensor<BufferT> inter_1_tensor(max_numel_inter_1 + C_ob*16*16*32);
-    small::Tensor<BufferT> inter_2_tensor((max_numel_inter_0 / 2) + C_ob*16*16*3);
-#else
-    small::Tensor<BufferT> input_tensor({3, 32, 32}, input_dc);
-    small::Tensor<BufferT> inter_0_tensor(max_numel_inter_0);
-    small::Tensor<BufferT> inter_1_tensor(max_numel_inter_1);
-    small::Tensor<BufferT> inter_2_tensor(max_numel_inter_0);
-#endif
-
-    std::cerr << "Warm up run (LAYERS)" << std::endl;
-    my_timer.start();
-    auto &output_tensor =
-        model_inference(layers, input_tensor,
-                        inter_0_tensor, inter_1_tensor, inter_2_tensor);
-    my_timer.stop();
-    printf("\nElapsed time: %lf ns.\n", my_timer.elapsed());
-
-    // Compare the results
-    size_t num_outputs = layers.back()->output_buffer_size();
-    std::cout << "\nCHECK RESULTS: Num output elements: " << num_outputs << std::endl;
-    for (size_t ix = 0; ix < num_outputs; ++ix)
-    {
-        std::cout << "Current, new " << ix
-                  << ": " << (float)output_dc[ix]
-                  << ", " << (float)output_tensor.buffer()[ix]
-                  << std::endl;
-    }
-
-    // clean up model (move to model class destructor when built
-    for (auto layer : layers) delete layer;
-    //======================================================
-
     double min_small = std::numeric_limits<double>::max();
     std::vector<double> small_timing;
 
@@ -874,8 +836,46 @@ void inference()
     std::cout << "Minimum time: " << min_small << " ns.\n";
     const int num_th = atoi(std::getenv("OMP_NUM_THREADS"));
     std::cout << "Num Threads: " << num_th << std::endl;
-
     print_stats(small_timing, "\nSMaLL:resnet");
+
+    //======================================================
+    auto layers(create_model<BufferT>(filter_buf_ptrs));
+
+    small::Tensor<BufferT> input_tensor({3, 32, 32}, input_dc); // C_i, N, M
+#if defined(QUANTIZED)
+    small::Tensor<BufferT> inter_0_tensor(max_numel_inter_0 + C_ob*16*16*32);
+    small::Tensor<BufferT> inter_1_tensor(max_numel_inter_1 + C_ob*16*16*32);
+    small::Tensor<BufferT> inter_2_tensor((max_numel_inter_0 / 2) + C_ob*16*16*3);
+#else
+    small::Tensor<BufferT> inter_0_tensor(max_numel_inter_0);
+    small::Tensor<BufferT> inter_1_tensor(max_numel_inter_1);
+    small::Tensor<BufferT> inter_2_tensor(max_numel_inter_0);
+#endif
+
+    std::cerr << "Warm up run (LAYERS)" << std::endl;
+    my_timer.start();
+    auto &output_tensor =
+        model_inference(layers, input_tensor,
+                        inter_0_tensor, inter_1_tensor, inter_2_tensor);
+    my_timer.stop();
+    printf("\nElapsed time: %lf ns.\n", my_timer.elapsed());
+
+    // Compare the results
+    size_t num_outputs = layers.back()->output_buffer_size();
+    std::cout << "\nCHECK RESULTS: Num output elements: " << num_outputs
+              << std::endl;
+    for (size_t ix = 0; ix < num_outputs; ++ix)
+    {
+        std::cout << "Current, new " << ix
+                  << ": " << (float)output_dc[ix]
+                  << ", " << (float)output_tensor.buffer()[ix]
+                  << ((output_dc[ix] == output_tensor.buffer()[ix]) ? " (pass)" : " (fail)")
+                  << std::endl;
+    }
+
+    // clean up model (move to model class destructor when built
+    for (auto layer : layers) delete layer;
+    //======================================================
 
     printf("deallocing %ld filters\n", filter_buf_ptrs.size());
     for (size_t l = 0; l < filter_buf_ptrs.size(); l++)

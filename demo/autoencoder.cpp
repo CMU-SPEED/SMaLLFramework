@@ -106,6 +106,7 @@ ReLUActivation(chans:128,img:1x1,I,O)
 */
 
 #include<small/Layer.hpp>
+#include<small/InputLayer.hpp>
 #include<small/Conv2DLayer.hpp>
 #include<small/ReLULayer.hpp>
 
@@ -113,34 +114,31 @@ template <class BufferT>
 std::vector<small::Layer<BufferT>*> create_model(
     std::vector<BufferT*> const &filters)
 {
+    std::vector<small::Layer<BufferT>*> layers;
+
     uint32_t kernel_size = 1;
     uint32_t stride = 1;
-    small::PaddingEnum padding_type = small::PADDING_V;
     uint32_t input_height = 1, input_width = 1;
+    uint32_t input_channels = 128, output_channels = 128;
 
-    std::vector<small::Layer<BufferT>*> layers;
+    small::Layer<BufferT> *prev =
+        new small::InputLayer<BufferT>({input_channels, input_height, input_width});
+    layers.push_back(prev);
+
     for (auto ix = 0U; ix < filters.size(); ++ix)
     {
-        uint32_t num_input_channels = 128;
-        uint32_t num_output_channels = 128;
-        if (ix + 1 == filters.size()) num_output_channels = 16;
+        output_channels = 128;
+        if (ix + 1 == filters.size()) output_channels = 16;  /// @todo ix == 4
 
-        BufferT tmp(filters[ix]->size());
-        small::unpack_buffer(*filters[ix], small::FILTER_CONV,
-                             num_output_channels, num_input_channels,
-                             kernel_size, kernel_size,
-                             C_ib, C_ob, tmp);
+        prev = new small::Conv2DLayer<BufferT>(*prev,
+                                               kernel_size, kernel_size,
+                                               stride, small::PADDING_V,
+                                               output_channels,
+                                               *filters[ix], true);
+        layers.push_back(prev);
 
-        layers.push_back(new small::Conv2DLayer<BufferT>(kernel_size, kernel_size,
-                                                         stride, padding_type,
-                                                         num_input_channels,
-                                                         num_output_channels,
-                                                         input_height, input_width,
-                                                         tmp)
-            );
-        layers.push_back(new small::ReLULayer<BufferT>(num_output_channels,
-                                                       input_height, input_width)
-            );
+        prev = new small::ReLULayer<BufferT>(*prev);
+        layers.push_back(prev);
     }
 
     return layers;
@@ -148,16 +146,16 @@ std::vector<small::Layer<BufferT>*> create_model(
 
 //****************************************************************************
 template <class BufferT>
-BufferT &model_inference(
+small::Tensor<BufferT> &model_inference(
     std::vector<small::Layer<BufferT>*> const &layers,
-    BufferT                             const &input_dc,
-    BufferT                                   &inter_0_dc,
-    BufferT                                   &inter_1_dc)
+    small::Tensor<BufferT>                             const &input_dc,
+    small::Tensor<BufferT>                                   &inter_0_dc,
+    small::Tensor<BufferT>                                   &inter_1_dc)
 {
-    layers[0]->compute_output(input_dc, inter_0_dc);   // Conv2D
-    layers[1]->compute_output(inter_0_dc, inter_0_dc); // ReLU
+    size_t layer_num = 1; // skip InputLayer
+    layers[layer_num++]->compute_output(input_dc, inter_0_dc);   // Conv2D
+    layers[layer_num++]->compute_output(inter_0_dc, inter_0_dc); // ReLU
 
-    size_t layer_num = 2;
     while (layer_num < layers.size() - 1)
     {
         layers[layer_num]->compute_output(inter_0_dc, inter_1_dc);
@@ -347,11 +345,11 @@ void inference()
     // std::cerr << "Intermediate buffer sizes: "
     //           << max_numel_inter_0 << ", " << max_numel_inter_1
     //           << std::endl;
-    small::QUInt8Buffer inter_0_dc(max_numel_inter_0*4); /// @todo potential alignment issues
-    small::QUInt8Buffer inter_1_dc(max_numel_inter_1*4);
+    BufferT inter_0_dc(max_numel_inter_0*4);
+    BufferT inter_1_dc(max_numel_inter_1*4);
 #else
-    small::FloatBuffer inter_0_dc(max_numel_inter_0);
-    small::FloatBuffer inter_1_dc(max_numel_inter_1);
+    BufferT inter_0_dc(max_numel_inter_0);
+    BufferT inter_1_dc(max_numel_inter_1);
 #endif
 
     //======================================================
@@ -368,37 +366,6 @@ void inference()
     my_timer.stop();
     printf("\nElapsed time: %lf ns.\n", my_timer.elapsed());
 
-    //======================================================
-
-    auto layers(create_model<BufferT>(filter_buf_ptrs));
-
-#if defined(QUANTIZED)
-    small::QUInt8Buffer inter_0a_dc(max_numel_inter_0*4);
-    small::QUInt8Buffer inter_1a_dc(max_numel_inter_1*4);
-#else
-    small::FloatBuffer inter_0a_dc(max_numel_inter_0);
-    small::FloatBuffer inter_1a_dc(max_numel_inter_1);
-#endif
-
-    std::cerr << "Warm up run (LAYERS)" << std::endl;
-    my_timer.start();
-    auto &output_a_dc =
-        model_inference(layers, input_dc, inter_0a_dc, inter_1a_dc);
-    my_timer.stop();
-    printf("\nElapsed time: %lf ns.\n", my_timer.elapsed());
-
-    // Compare the results
-    size_t num_outputs = layers.back()->output_buffer_size();
-    std::cout << "\nCHECK RESULTS: Num output elements: " << num_outputs << std::endl;
-    for (size_t ix = 0; ix < num_outputs; ++ix)
-    {
-        std::cout << "Current, new " << ix << ": "
-                  << output_dc[ix] << ", " << output_a_dc[ix]
-                  << std::endl;
-    }
-
-    // clean up model (move to model class destructor when built
-    for (auto layer : layers) delete layer;
     //======================================================
 
     double min_small = std::numeric_limits<double>::max();
@@ -421,10 +388,49 @@ void inference()
         small_timing.push_back(diff);
     }
 
-    std::cout << "\nMinimum time: " << min_small << " ns.\n";
+    std::cout << "Minimum time: " << min_small << " ns.\n";
     const int num_th = atoi(std::getenv("OMP_NUM_THREADS"));
     std::cout << "Num Threads: " << num_th << std::endl;
-    print_stats(small_timing, "SMaLL:autoencoder");
+    print_stats(small_timing, "\nSMaLL:autoencoder");
+
+    //======================================================
+    auto layers(create_model<BufferT>(filter_buf_ptrs));
+
+    small::Tensor<BufferT> input_tensor({128, 1, 1}, input_dc); // C_i, N, M
+#if defined(QUANTIZED)
+    small::Tensor<BufferT> inter_0_tensor(max_numel_inter_0*4);
+    small::Tensor<BufferT> inter_1_tensor(max_numel_inter_1*4);
+#else
+    small::Tensor<BufferT> inter_0_tensor(max_numel_inter_0);
+    small::Tensor<BufferT> inter_1_tensor(max_numel_inter_1);
+    std::cout << "buffer sizes: " << max_numel_inter_0 << ", "
+              << max_numel_inter_1 << std::endl;
+#endif
+
+    std::cerr << "Warm up run (LAYERS)" << std::endl;
+    my_timer.start();
+    auto &output_tensor =
+        model_inference(layers, input_tensor,
+                        inter_0_tensor, inter_1_tensor);
+    my_timer.stop();
+    printf("\nElapsed time: %lf ns.\n", my_timer.elapsed());
+
+    // Compare the results
+    size_t num_outputs = layers.back()->output_buffer_size();
+    std::cout << "\nCHECK RESULTS: Num output elements: " << num_outputs
+              << std::endl;
+    for (size_t ix = 0; ix < num_outputs; ++ix)
+    {
+        std::cout << "Current, new " << ix
+                  << ": " << (float)output_dc[ix]
+                  << ", " << (float)output_tensor.buffer()[ix]
+                  << ((output_dc[ix] == output_tensor.buffer()[ix]) ? " (pass)" : " (fail)")
+                  << std::endl;
+    }
+
+    // clean up model (move to model class destructor when built
+    for (auto layer : layers) delete layer;
+    //======================================================
 
     printf("deallocing %ld filters\n", filter_buf_ptrs.size());
     for (size_t l = 0; l < filter_buf_ptrs.size(); l++)
