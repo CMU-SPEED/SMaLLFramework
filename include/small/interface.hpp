@@ -233,6 +233,48 @@ void ReLUActivation(int input_channels,
 
 //****************************************************************************
 /**
+ * Perform the computation for a "leaky" rectified linear unit (ReLU) layer.
+ *
+ * @param[in]  input_channels  Number of channels associated with input image
+ * @param[in]  input_height    Height of input image in pixels
+ * @param[in]  input_width     Width of input image in pixels
+ * @param[in]  negative_slope  The attenuation factor for negative values (1e-2)
+ * @param[in]  input_buf       Buffer of input (image x channels) data
+ *                             size = Ci x iH x iW
+ * @param[out] output_buf      Buffer of output data computed for layer
+ *                             size = oH x oW x Co where the output image size
+ *                             depends on input image size, kernel, padding
+ *                             and stride parameters.
+ */
+template <class BufferT>
+void LeakyReLUActivation(int input_channels,
+                         int input_height, int input_width,
+                         float negative_slope,  /// @todo should this be valueT
+                         BufferT const &input_buf,
+                         BufferT       &output_buf);
+
+//****************************************************************************
+/**
+ * Element-wise accumulation of input buffer into output buffer.
+ *
+ * @param[in]  input_channels  Number of channels associated with input image
+ * @param[in]  input_height    Height of input image in pixels
+ * @param[in]  input_width     Width of input image in pixels
+ * @param[in]  input_buf       Buffer of input (image x channels) data
+ *                             size = Ci x iH x iW
+ * @param[out] output_buf      Buffer of output data computed for layer
+ *                             size = oH x oW x Co where the output image size
+ *                             depends on input image size, kernel, padding
+ *                             and stride parameters.
+ */
+template <class BufferT>
+void Accum(int input_channels,
+           int input_height, int input_width,
+           BufferT const &input_buf,
+           BufferT       &output_buf);
+
+//****************************************************************************
+/**
  * Perform the computation for a fully-connected layer?
  *
  * @param[in]  output_elements ???

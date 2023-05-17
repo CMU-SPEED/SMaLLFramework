@@ -68,11 +68,11 @@ public:
         }
 
         /// @todo placeholder for the leaky function
-        small::ReLUActivation(m_shape[0],
-                              m_shape[1], m_shape[2],
-                              // m_negative_slope   /// @todo
-                              input.buffer(),
-                              output.buffer());
+        small::LeakyReLUActivation(m_shape[0],
+                                   m_shape[1], m_shape[2],
+                                   m_negative_slope,
+                                   input.buffer(),
+                                   output.buffer());
         output.set_shape(m_shape);
     }
 
