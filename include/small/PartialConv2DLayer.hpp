@@ -58,7 +58,7 @@ public:
                   << "), filter.size=" << filters.size() << std::endl;
 #endif
         if (filters.size() <
-            num_output_channels*m_input_shape[BATCH]*kernel_size*kernel_size)
+            num_output_channels*m_input_shape[CHANNEL]*kernel_size*kernel_size)
         {
             throw std::invalid_argument(
                 "PartialConv2DLayer::ctor ERROR: "
