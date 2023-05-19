@@ -33,8 +33,9 @@ public:
           m_buffer_size(predecessor.output_buffer_size())
     {
 #if defined(DEBUG_LAYERS)
-        std::cerr << "ReLU(chans:" << m_shape[0]
-                  << ",img:" << m_shape[1] << "x" << m_shape[2]
+        std::cerr << "ReLU(batches:" << m_shape[BATCH]
+                  << ",chans:" << m_shape[CHANNEL]
+                  << ",img:" << m_shape[HEIGHT] << "x" << m_shape[WIDTH]
                   << ")" << std::endl;
 #endif
     }
@@ -64,15 +65,15 @@ public:
                 "insufficient output buffer space.");
         }
 
-        small::ReLUActivation(m_shape[0],
-                              m_shape[1], m_shape[2],
+        small::ReLUActivation(m_shape[CHANNEL],
+                              m_shape[HEIGHT], m_shape[WIDTH],
                               input.buffer(),
                               output.buffer());
         output.set_shape(m_shape);
     }
 
 private:
-    shape_type const m_shape;        // {C, H, W}
+    shape_type const m_shape;
     size_t     const m_buffer_size;
 };
 

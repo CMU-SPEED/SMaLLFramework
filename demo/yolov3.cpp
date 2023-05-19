@@ -455,10 +455,11 @@ void create_conv_block(uint32_t kernel_size,
                        std::vector<BufferT*> &filters,
                        std::vector<small::Layer<BufferT>*> &layers)
 {
-    auto&& [input_channels, input_height, input_width] =
+    auto&& [input_batches, input_channels, input_height, input_width] =
         layers.back()->output_buffer_shape();
 
-    std::cerr << "conv_block(k:" << kernel_size << ",s:" << stride
+    std::cerr << "conv_block(batches:" << input_batches
+              << ",k:" << kernel_size << ",s:" << stride
               << "),in(chans:" << input_channels
               << ",img:" << input_height << "x" << input_width << ")->";
 
@@ -508,7 +509,7 @@ std::vector<small::Layer<BufferT>*> create_model(
     uint32_t output_channels = 32U;
 
     layers.push_back(new small::InputLayer<BufferT>(
-                         {input_channels, image_height, image_width}));
+                         {1UL, input_channels, image_height, image_width}));
 
     // first conv block
     //size_t filter_num = 0U;
@@ -703,7 +704,7 @@ void inference(uint32_t C_i,
     uint32_t input_dimensions = C_i * N * M;
     BufferT input_dc(input_dimensions);
     init(input_dc, input_dimensions);
-    small::Tensor<BufferT> input_tensor({C_i, N, M}, input_dc);
+    small::Tensor<BufferT> input_tensor({1, C_i, N, M}, input_dc);
 
     std::cerr << "\ncreate_model (LAYERS)\n";
     std::vector<BufferT *> filter_buf_ptrs;

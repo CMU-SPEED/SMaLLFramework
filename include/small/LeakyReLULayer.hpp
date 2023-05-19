@@ -35,9 +35,10 @@ public:
           m_negative_slope(negative_slope)
     {
 #if defined(DEBUG_LAYERS)
-        std::cerr << "LeakyReLU(chans:" << m_shape[0]
+        std::cerr << "LeakyReLU(batches:" << m_shape[BATCH]
+                  << ",chans:" << m_shape[CHANNEL]
                   << ",negative_slope:" << m_negative_slope
-                  << ",img:" << m_shape[1] << "x" << m_shape[2]
+                  << ",img:" << m_shape[HEIGHT] << "x" << m_shape[WIDTH]
                   << ")" << std::endl;
 #endif
     }
@@ -68,8 +69,8 @@ public:
         }
 
         /// @todo placeholder for the leaky function
-        small::LeakyReLUActivation(m_shape[0],
-                                   m_shape[1], m_shape[2],
+        small::LeakyReLUActivation(m_shape[CHANNEL],
+                                   m_shape[HEIGHT], m_shape[WIDTH],
                                    m_negative_slope,
                                    input.buffer(),
                                    output.buffer());

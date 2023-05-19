@@ -19,18 +19,36 @@
 namespace small
 {
 
+enum ShapeFields {
+    BATCH   = 0,
+    CHANNEL = 1,
+    HEIGHT  = 2,
+    WIDTH   = 3
+};
+
 //****************************************************************************
+// Wraps a buffer and defines a set of dimensions of dense data that can be
+// stored in the buffer.
+//
+// The buffer can contain more storage than the dimensions require (not less)
+//
+// The dimension describe in order:
+//   0: the number of batches
+//   1: the number of channels
+//   2: image/input height
+//   3: image/input width
+//
 template <typename BufferT>
 class Tensor
 {
 public:
     typedef typename BufferT::value_type value_type;
-    typedef std::array<size_t, 3UL>      shape_type; //{C, H, W}
+    typedef std::array<size_t, 4UL>      shape_type; //{#batch, #chan, H, W}
 
     Tensor() = delete;
 
     Tensor(size_t capacity)
-        : m_shape({capacity, 1, 1}),  /// @todo revisit
+        : m_shape({capacity, 1, 1, 1}),  /// @todo revisit
           m_buffer(capacity)
     {
     }

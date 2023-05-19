@@ -50,16 +50,18 @@ public:
           m_input_buffer_size(predecessor.output_buffer_size())
     {
 #if defined(DEBUG_LAYERS)
-        std::cerr << "Conv2D(k:" << kernel_height << "x" << kernel_width
+        std::cerr << "Conv2D(batches:" << m_input_shape[BATCH]
+                  << ",k:" << kernel_height << "x" << kernel_width
                   << ",s:" << stride
                   << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
-                  << ",ichans:" << m_input_shape[0]
+                  << ",ichans:" << m_input_shape[CHANNEL]
                   << ",ochans:" << num_output_channels
-                  << ",img:" << m_input_shape[1] << "x" << m_input_shape[1]
+                  << ",img:" << m_input_shape[HEIGHT] << "x" << m_input_shape[WIDTH]
                   << "), filters.size=" << filters.size() << std::endl;
 #endif
         if (filters.size() <
-            num_output_channels*m_input_shape[0]*kernel_height*kernel_width)
+            num_output_channels*m_input_shape[CHANNEL]*
+            kernel_height*kernel_width)
         {
             throw std::invalid_argument(
                 "Conv2DLayer::ctor ERROR: "
@@ -69,29 +71,30 @@ public:
         /// @todo is there a clean way to make these const members, or
         ///       will image size get moved to compute_output and all of
         ///       this moves to compute output?
-        m_output_shape[0] = num_output_channels;
-        small::compute_padding_output_dim(m_input_shape[1], kernel_height,
+        m_output_shape[BATCH] = m_input_shape[BATCH];
+        m_output_shape[CHANNEL] = num_output_channels;
+        small::compute_padding_output_dim(m_input_shape[HEIGHT], kernel_height,
                                           stride, padding_type,
                                           m_t_pad, m_b_pad,
-                                          m_output_shape[1]);
-        small::compute_padding_output_dim(m_input_shape[2], kernel_width,
+                                          m_output_shape[HEIGHT]);
+        small::compute_padding_output_dim(m_input_shape[WIDTH], kernel_width,
                                           stride, padding_type,
                                           m_l_pad, m_r_pad,
-                                          m_output_shape[2]);
+                                          m_output_shape[WIDTH]);
         // std::cerr << "Conv2D padding: " << (int)m_t_pad << "," << (int)m_b_pad
         //           << "," << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
 
-        m_output_buffer_size =
-            m_output_shape[0]*m_output_shape[1]*m_output_shape[2];
+        m_output_buffer_size = m_output_shape[BATCH]*
+            m_output_shape[CHANNEL]*m_output_shape[HEIGHT]*m_output_shape[WIDTH];
 
-        BufferT packed_filters(m_output_shape[0]*m_input_shape[0]*
+        BufferT packed_filters(m_output_shape[CHANNEL]*m_input_shape[CHANNEL]*
                                kernel_height*kernel_width);
         if (!filters_are_packed)
         {
             // Pack the filter buffers for SMaLL use
             small::pack_buffer(filters,
                                FILTER_CONV,
-                               m_output_shape[0], m_input_shape[0],
+                               m_output_shape[CHANNEL], m_input_shape[CHANNEL],
                                m_kernel_height,   m_kernel_width,
                                C_ib, C_ob,
                                packed_filters);
@@ -137,9 +140,9 @@ public:
             Conv2D(m_kernel_width,
                    m_stride,
                    m_t_pad, m_b_pad, m_l_pad, m_r_pad,
-                   m_output_shape[0],  // channels,
-                   m_input_shape[0],   // channels
-                   m_input_shape[1], m_input_shape[2],
+                   m_output_shape[CHANNEL],  // channels,
+                   m_input_shape[CHANNEL],   // channels
+                   m_input_shape[HEIGHT], m_input_shape[WIDTH],
                    input.buffer(),
                    m_packed_filters,
                    output.buffer());
@@ -149,9 +152,9 @@ public:
             Conv2D_rect(m_kernel_height, m_kernel_width,
                         m_stride,
                         m_t_pad, m_b_pad, m_l_pad, m_r_pad,
-                        m_output_shape[0],  // channels,
-                        m_input_shape[0],   // channels
-                        m_input_shape[1], m_input_shape[2],
+                        m_output_shape[CHANNEL],  // channels,
+                        m_input_shape[CHANNEL],   // channels
+                        m_input_shape[HEIGHT], m_input_shape[WIDTH],
                         input.buffer(),
                         m_packed_filters,
                         output.buffer());

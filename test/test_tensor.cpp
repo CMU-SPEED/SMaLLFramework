@@ -27,24 +27,25 @@ void test_capacity_ctor(void)
     TEST_CHECK(tensor.capacity() == 42);
     TEST_CHECK(tensor.size() == 42);
     TEST_CHECK(tensor.buffer().data() != nullptr);
-    TEST_CHECK(tensor.shape() == small::Tensor<Buffer>::shape_type({42, 1, 1}));
+    TEST_CHECK(tensor.shape().size() == 4);
+    TEST_CHECK(tensor.shape() == small::Tensor<Buffer>::shape_type({42, 1, 1, 1}));
 }
 
 //****************************************************************************
 void test_shape_ctor(void)
 {
-    small::Tensor<Buffer> tensor({10, 10, 10});
+    small::Tensor<Buffer> tensor({1, 10, 10, 10});
 
     TEST_CHECK(tensor.capacity() == 1000);
     TEST_CHECK(tensor.size() == 1000);
     TEST_CHECK(tensor.buffer().data() != nullptr);
-    TEST_CHECK(tensor.shape() == small::Tensor<Buffer>::shape_type({10, 10, 10}));
+    TEST_CHECK(tensor.shape() == small::Tensor<Buffer>::shape_type({1, 10, 10, 10}));
 }
 
 //****************************************************************************
 void test_buffer_ctor(void)
 {
-    small::Tensor<Buffer>::shape_type shp({10, 10, 10});
+    small::Tensor<Buffer>::shape_type shp({1, 10, 10, 10});
     Buffer small_buffer(100);
     bool test_passed = false;
     try
@@ -68,14 +69,14 @@ void test_buffer_ctor(void)
     TEST_CHECK(tensor.capacity() == 10000);
     TEST_CHECK(tensor.size() == 1000);
     TEST_CHECK(tensor.buffer().data() != nullptr);
-    TEST_CHECK(tensor.shape() == small::Tensor<Buffer>::shape_type({10, 10, 10}));
+    TEST_CHECK(tensor.shape() == small::Tensor<Buffer>::shape_type({1, 10, 10, 10}));
     TEST_CHECK(999 == tensor.buffer()[0]);
 }
 
 //****************************************************************************
 void test_buffer_move_ctor(void)
 {
-    small::Tensor<Buffer>::shape_type shp({10, 10, 10});
+    small::Tensor<Buffer>::shape_type shp({1, 10, 10, 10});
     Buffer small_buffer(100);
     bool test_passed = false;
     try
@@ -99,14 +100,14 @@ void test_buffer_move_ctor(void)
     TEST_CHECK(tensor.capacity() == 10000);
     TEST_CHECK(tensor.size() == 1000);
     TEST_CHECK(tensor.buffer().data() == data_ptr);
-    TEST_CHECK(tensor.shape() == small::Tensor<Buffer>::shape_type({10, 10, 10}));
+    TEST_CHECK(tensor.shape() == small::Tensor<Buffer>::shape_type({1, 10, 10, 10}));
     TEST_CHECK(999 == tensor.buffer()[0]);
 }
 
 //****************************************************************************
 void test_set_shape(void)
 {
-    small::Tensor<Buffer>::shape_type shp({10, 10, 10});
+    small::Tensor<Buffer>::shape_type shp({1, 10, 10, 10});
     Buffer buffer(1000);
     buffer[0] = 999;
     small::Tensor<Buffer> tensor(shp, std::move(buffer));
@@ -115,12 +116,13 @@ void test_set_shape(void)
     TEST_CHECK(tensor.buffer()[0] == 999);
 
     auto shp1 = tensor.shape();
-    TEST_CHECK(shp1[0] == 10);
-    TEST_CHECK(shp1[1] == 10);
-    TEST_CHECK(shp1[2] == 10);
+    TEST_CHECK(shp1[small::BATCH] == 1);
+    TEST_CHECK(shp1[small::CHANNEL] == 10);
+    TEST_CHECK(shp1[small::HEIGHT] == 10);
+    TEST_CHECK(shp1[small::WIDTH] == 10);
 
     bool test_passed = false;
-    small::Tensor<Buffer>::shape_type bad_shape({10, 10, 11});
+    small::Tensor<Buffer>::shape_type bad_shape({1, 10, 10, 11});
     try
     {
         tensor.set_shape(bad_shape);
@@ -135,16 +137,17 @@ void test_set_shape(void)
     TEST_CHECK(tensor.capacity() == 1000);
 
 
-    small::Tensor<Buffer>::shape_type small_shape({10, 10, 3});
+    small::Tensor<Buffer>::shape_type small_shape({1, 10, 10, 3});
     tensor.set_shape(small_shape);
     TEST_CHECK(tensor.size() == 300);
     TEST_CHECK(tensor.capacity() == 1000);
     TEST_CHECK(tensor.buffer()[0] == 999);
 
     shp1 = tensor.shape();
-    TEST_CHECK(shp1[0] == 10);
-    TEST_CHECK(shp1[1] == 10);
-    TEST_CHECK(shp1[2] == 3);
+    TEST_CHECK(shp1[small::BATCH] == 1);
+    TEST_CHECK(shp1[small::CHANNEL] == 10);
+    TEST_CHECK(shp1[small::HEIGHT] == 10);
+    TEST_CHECK(shp1[small::WIDTH] == 3);
 }
 
 //****************************************************************************
@@ -152,26 +155,28 @@ void test_swap(void)
 {
     Buffer buffer(1000);
     buffer[0] = 999;
-    small::Tensor<Buffer> tensor({10, 10, 10}, std::move(buffer));
+    small::Tensor<Buffer> tensor({1, 10, 10, 10}, std::move(buffer));
     TEST_CHECK(tensor.size() == 1000);
     TEST_CHECK(tensor.capacity() == 1000);
     TEST_CHECK(tensor.buffer()[0] == 999);
 
     auto shp = tensor.shape();
-    TEST_CHECK(shp[0] == 10);
-    TEST_CHECK(shp[1] == 10);
-    TEST_CHECK(shp[2] == 10);
+    TEST_CHECK(shp[small::BATCH]   == 1);
+    TEST_CHECK(shp[small::CHANNEL] == 10);
+    TEST_CHECK(shp[small::HEIGHT]  == 10);
+    TEST_CHECK(shp[small::WIDTH]   == 10);
 
-    small::Tensor<Buffer> tensor2({3, 3, 3});
+    small::Tensor<Buffer> tensor2({1, 3, 3, 3});
     tensor2.buffer()[0] = -999;
     TEST_CHECK(tensor2.size() == 27);
     TEST_CHECK(tensor2.capacity() == 27);
     TEST_CHECK(tensor2.buffer()[0] == -999);
 
     shp = tensor2.shape();
-    TEST_CHECK(shp[0] == 3);
-    TEST_CHECK(shp[1] == 3);
-    TEST_CHECK(shp[2] == 3);
+    TEST_CHECK(shp[small::BATCH]   == 1);
+    TEST_CHECK(shp[small::CHANNEL] == 3);
+    TEST_CHECK(shp[small::HEIGHT]  == 3);
+    TEST_CHECK(shp[small::WIDTH]   == 3);
 
     tensor.swap(tensor2);
 
@@ -180,18 +185,20 @@ void test_swap(void)
     TEST_CHECK(tensor.buffer()[0] == -999);
 
     shp = tensor.shape();
-    TEST_CHECK(shp[0] == 3);
-    TEST_CHECK(shp[1] == 3);
-    TEST_CHECK(shp[2] == 3);
+    TEST_CHECK(shp[small::BATCH]   == 1);
+    TEST_CHECK(shp[small::CHANNEL] == 3);
+    TEST_CHECK(shp[small::HEIGHT]  == 3);
+    TEST_CHECK(shp[small::WIDTH]   == 3);
 
     TEST_CHECK(tensor2.size() == 1000);
     TEST_CHECK(tensor2.capacity() == 1000);
     TEST_CHECK(tensor2.buffer()[0] == 999);
 
     shp = tensor2.shape();
-    TEST_CHECK(shp[0] == 10);
-    TEST_CHECK(shp[1] == 10);
-    TEST_CHECK(shp[2] == 10);
+    TEST_CHECK(shp[small::BATCH]   == 1);
+    TEST_CHECK(shp[small::CHANNEL] == 10);
+    TEST_CHECK(shp[small::HEIGHT]  == 10);
+    TEST_CHECK(shp[small::WIDTH]   == 10);
 }
 
 //****************************************************************************

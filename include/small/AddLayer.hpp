@@ -35,8 +35,9 @@ public:
           m_buffer_size(predecessor1.output_buffer_size())
     {
 #if defined(DEBUG_LAYERS)
-        std::cerr << "Add(chans:" << m_shape[0]
-                  << ",img:" << m_shape[1] << "x" << m_shape[2]
+        std::cerr << "Add(batches:" << m_shape[BATCH]
+                  << ",chans:" << m_shape[CHANNEL]
+                  << ",img:" << m_shape[HEIGHT] << "x" << m_shape[WIDTH]
                   << ")" << std::endl;
 #endif
 
@@ -75,8 +76,8 @@ public:
         }
 
         /// out += in
-        small::Accum(m_shape[0],
-                     m_shape[1], m_shape[2],
+        small::Accum(m_shape[CHANNEL],
+                     m_shape[HEIGHT], m_shape[WIDTH],
                      input.buffer(),
                      output.buffer());
 

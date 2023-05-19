@@ -87,8 +87,9 @@ std::vector<small::Layer<BufferT>*> create_model(
 {
     std::vector<small::Layer<BufferT>*> layers;
 
-    layers.push_back(new small::InputLayer<BufferT>(
-                         {model_input_channels, input_height, input_width}));
+    layers.push_back(
+        new small::InputLayer<BufferT>(
+            {1UL, model_input_channels, input_height, input_width}));
 
     // settings for first layer
     uint32_t kernel_size = 3U;
@@ -164,7 +165,6 @@ std::vector<small::Layer<BufferT>*> create_model(
                                         *filters[filter_num], true));
     ++filter_num;
 
-
     layers.push_back(new small::ReLULayer<BufferT>(*layers.back()));
 
     return layers;
@@ -184,7 +184,7 @@ small::Tensor<BufferT> &model_inference(
     uint32_t num_yolo_blocks = ((check_blocks < 6U) ? check_blocks : 6U);
 
     // yolo_block = 0
-    layers[layer_num++]->compute_output(input_dc, inter_1_dc);   // Conv2D
+    layers[layer_num++]->compute_output(input_dc,   inter_1_dc); // Conv2D
     layers[layer_num++]->compute_output(inter_1_dc, inter_1_dc); // ReLU
     layers[layer_num++]->compute_output(inter_1_dc, inter_0_dc); // MaxPool2D
 
@@ -580,7 +580,7 @@ void inference(uint32_t C_i,
     layer_num += 2;
     for (uint32_t ds_layer = 1U; ds_layer < ds_blocks; ds_layer++)
     {
-        printf("layer %d\n", layer_num);
+        //printf("layer %d\n", layer_num);
         yolo_block(intermediate_dims[layer_num],
                    REDUCTION_C(layer_num), // Input dimensions
                    REDUCTION_HW(layer_num),
@@ -630,7 +630,7 @@ void inference(uint32_t C_i,
                                       check_blocks,
                                       filter_buf_ptrs));
 
-    small::Tensor<BufferT> input_tensor({C_i, N, M}, input_dc);
+    small::Tensor<BufferT> input_tensor({1, C_i, N, M}, input_dc);
 #if defined(QUANTIZED)
     small::Tensor<BufferT> inter_0_tensor(max_numel_inter_0*2);  /// @todo HACK need to determine correct size
     small::Tensor<BufferT> inter_1_tensor(max_numel_inter_1*2);  /// @todo HACK need to determine correct size
@@ -652,8 +652,10 @@ void inference(uint32_t C_i,
     std::cout << "\nCHECK RESULTS: Num output elements: " << num_outputs << std::endl;
     for (size_t ix = 0; ix < num_outputs; ++ix)
     {
-        std::cout << "Current, new " << ix << ": "
-                  << (float)output_dc[ix] << ", " << (float)output_tensor.buffer()[ix]
+        std::cout << "Current, new " << ix
+                  << ": " << (float)output_dc[ix]
+                  << ", " << (float)output_tensor.buffer()[ix]
+                  << ((output_dc[ix] == output_tensor.buffer()[ix]) ? " (pass)" : " (fail)")
                   << std::endl;
     }
 

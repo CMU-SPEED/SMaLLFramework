@@ -122,7 +122,8 @@ bool run_maxpool_layer_config(LayerParams const &params)
 {
     /// @todo add smart pointer to buffers
     //=========================================================================
-    small::InputLayer<BufferT>  input_layer({params.C_i, params.H, params.W});
+    small::InputLayer<BufferT>  input_layer(
+        {1UL, params.C_i, params.H, params.W});
     small::MaxPool2DLayer<BufferT> maxpool_layer(input_layer,
                                                  params.k, params.k, params.s,
                                                  params.p);
@@ -157,7 +158,8 @@ bool run_maxpool_layer_config(LayerParams const &params)
     size_t output_buffer_size(maxpool_layer.output_buffer_size());
 
     std::cerr << "Output image dims: "
-              << output_shape[1] << "x" << output_shape[2] << std::endl;
+              << output_shape[small::HEIGHT] << "x" << output_shape[small::WIDTH]
+              << std::endl;
     std::string out_fname =
         get_pathname(data_dir, "out", "pool",
                      params,
@@ -171,7 +173,8 @@ bool run_maxpool_layer_config(LayerParams const &params)
     BufferT packed_output_dc_answers(output_dc_answers.size());
     small::pack_buffer(output_dc_answers,
                        small::OUTPUT,
-                       1U, output_shape[0], output_shape[1], output_shape[2],
+                       1U, output_shape[small::CHANNEL],
+                       output_shape[small::HEIGHT], output_shape[small::WIDTH],
                        C_ib, C_ob,
                        packed_output_dc_answers);
 
@@ -382,12 +385,12 @@ void measure_maxpool_performance(void)
         size_t num_input_elts(p.C_i*p.H*p.W);
         size_t num_output_elts(p.C_i*Ho*Wo);
 
-        small::Tensor<Buffer> input_dc({p.C_i, p.H, p.W});
+        small::Tensor<Buffer> input_dc({1UL, p.C_i, p.H, p.W});
         small::init(input_dc.buffer(), num_input_elts);
 
         small::Tensor<Buffer> output_dc(num_output_elts);
 
-        small::InputLayer<Buffer> input_layer({p.C_i, p.H, p.W});
+        small::InputLayer<Buffer> input_layer({1UL, p.C_i, p.H, p.W});
         small::MaxPool2DLayer<Buffer>
             maxpool_layer(input_layer, p.k, p.k, p.s, p.p);
 

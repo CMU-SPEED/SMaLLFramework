@@ -80,7 +80,8 @@ std::vector<small::Layer<BufferT>*> create_model(
     size_t   filter_num = 0;
 
     small::Layer<BufferT> *prev =
-        new small::InputLayer<BufferT>({input_channels, input_height, input_width});
+        new small::InputLayer<BufferT>(
+            {1UL, input_channels, input_height, input_width});
     layers.push_back(prev);
 
     prev = new small::Conv2DLayer<BufferT>(*prev,
@@ -515,14 +516,22 @@ void inference()
     }
 
     std::cout << "Minimum time: " << min_small << " ns.\n";
-    const int num_th = atoi(std::getenv("OMP_NUM_THREADS"));
+
+    int num_th = 1;
+#if PARALLEL == 1
+    char const *env_nt(std::getenv("OMP_NUM_THREADS"));
+    if (nullptr != env_nt)
+    {
+        num_th = atoi(std::getenv("OMP_NUM_THREADS"));
+    }
+#endif
     std::cout << "Num Threads: " << num_th << std::endl;
     print_stats(small_timing, "SMaLL:dscnn_square");
 
     //======================================================
     auto layers(create_model<BufferT>(filter_buf_ptrs));
 
-    small::Tensor<BufferT> input_tensor({3, 49, 10}, input_dc); // C_i, N, M
+    small::Tensor<BufferT> input_tensor({1, 3, 49, 10}, input_dc); // B, C_i, N, M
 #if defined(QUANTIZED)
     small::Tensor<BufferT> inter_0_tensor(max_numel_inter_0*4);
     small::Tensor<BufferT> inter_1_tensor(max_numel_inter_1*4);

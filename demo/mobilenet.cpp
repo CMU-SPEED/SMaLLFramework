@@ -26,7 +26,7 @@
 
 /// @todo Which of these defines are needed?
 #ifndef RUNS
-#define RUNS 100
+#define RUNS 10
 #endif
 
 //****************************************************************************
@@ -126,7 +126,8 @@ std::vector<small::Layer<BufferT>*> create_model(
     size_t   filter_num = 0;
 
     small::Layer<BufferT> *prev =
-        new small::InputLayer<BufferT>({input_channels, input_size, input_size});
+        new small::InputLayer<BufferT>(
+            {1UL, input_channels, input_size, input_size});
     layers.push_back(prev);
 
 
@@ -164,7 +165,7 @@ std::vector<small::Layer<BufferT>*> create_model(
         kernel_size = 1;
         stride = 1;
         output_channels =
-            prev->output_buffer_shape()[0]*channel_multiplier[block_num];
+            prev->output_buffer_shape()[small::CHANNEL]*channel_multiplier[block_num];
 
         prev = new small::Conv2DLayer<BufferT>(*prev,
                                                kernel_size, kernel_size,
@@ -535,12 +536,11 @@ void inference()
 
     auto layers(create_model<BufferT>(filter_buf_ptrs));
 
+    small::Tensor<BufferT> input_tensor({1, 3, 96, 96}, input_dc);
 #if defined(QUANTIZED)
-    small::Tensor<small::QUInt8Buffer> input_tensor({3, 96, 96}, input_dc);
     small::Tensor<small::QUInt8Buffer> inter_0_tensor(max_numel_inter_0*2);
     small::Tensor<small::QUInt8Buffer> inter_1_tensor(max_numel_inter_1);
 #else
-    small::Tensor<small::FloatBuffer> input_tensor({3, 96, 96}, input_dc);
     small::Tensor<small::FloatBuffer> inter_0_tensor(max_numel_inter_0);
     small::Tensor<small::FloatBuffer> inter_1_tensor(max_numel_inter_1);
 #endif
@@ -557,8 +557,10 @@ void inference()
     std::cout << "\nCHECK RESULTS: Num output elements: " << num_outputs << std::endl;
     for (size_t ix = 0; ix < num_outputs; ++ix)
     {
-        std::cout << "Current, new " << ix << ": "
-                  << output_dc[ix] << ", " << output_tensor.buffer()[ix]
+        std::cout << "Current, new " << ix
+                  << ": " << (float)output_dc[ix]
+                  << ", " << (float)output_tensor.buffer()[ix]
+                  << ((output_dc[ix] == output_tensor.buffer()[ix]) ? " (pass)" : " (fail)")
                   << std::endl;
     }
 
@@ -585,7 +587,15 @@ void inference()
     }
 
     std::cout << "Minimum time: " << min_small << " ns.\n";
-    const int num_th = atoi(std::getenv("OMP_NUM_THREADS"));
+
+    int num_th = 1;
+#if PARALLEL == 1
+    char const *env_nt(std::getenv("OMP_NUM_THREADS"));
+    if (nullptr != env_nt)
+    {
+        num_th = atoi(std::getenv("OMP_NUM_THREADS"));
+    }
+#endif
     std::cout << "Num Threads: " << num_th << std::endl;
     print_stats(small_timing, "\nSMaLL:mobilenet");
 

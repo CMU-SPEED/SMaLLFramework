@@ -26,7 +26,7 @@
 
 /// @todo Which of these defines are needed?
 #ifndef RUNS
-#define RUNS 20
+#define RUNS 10
 #endif
 
 /* From https://github.com/mlcommons/tiny/blob/master/benchmark/training/image_classification/keras_model.py
@@ -262,7 +262,8 @@ std::vector<small::Layer<BufferT>*> create_model(
     size_t   filter_num = 0;
 
     small::Layer<BufferT> *prev =
-        new small::InputLayer<BufferT>({input_channels, image_size, image_size});
+        new small::InputLayer<BufferT>(
+            {1UL, input_channels, image_size, image_size});
     layers.push_back(prev);
 
     prev = new small::Conv2DLayer<BufferT>(*prev,
@@ -341,7 +342,7 @@ std::vector<small::Layer<BufferT>*> create_model(
         layers.push_back(prev);
     }
 
-    kernel_size = layers.back()->output_buffer_shape()[1]; //image_size;
+    kernel_size = layers.back()->output_buffer_shape()[small::HEIGHT]; //image_size;
     stride = 1;
     /// @todo should be AveragePooling2D
     prev = new small::MaxPool2DLayer<BufferT>(*prev,
@@ -834,14 +835,22 @@ void inference()
     }
 
     std::cout << "Minimum time: " << min_small << " ns.\n";
-    const int num_th = atoi(std::getenv("OMP_NUM_THREADS"));
+
+    int num_th = 1;
+#if PARALLEL == 1
+    char const *env_nt(std::getenv("OMP_NUM_THREADS"));
+    if (nullptr != env_nt)
+    {
+        num_th = atoi(std::getenv("OMP_NUM_THREADS"));
+    }
+#endif
     std::cout << "Num Threads: " << num_th << std::endl;
     print_stats(small_timing, "\nSMaLL:resnet");
 
     //======================================================
     auto layers(create_model<BufferT>(filter_buf_ptrs));
 
-    small::Tensor<BufferT> input_tensor({3, 32, 32}, input_dc); // C_i, N, M
+    small::Tensor<BufferT> input_tensor({1, 3, 32, 32}, input_dc); // B, C_i, N, M
 #if defined(QUANTIZED)
     small::Tensor<BufferT> inter_0_tensor(max_numel_inter_0 + C_ob*16*16*32);
     small::Tensor<BufferT> inter_1_tensor(max_numel_inter_1 + C_ob*16*16*32);

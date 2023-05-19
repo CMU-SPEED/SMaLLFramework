@@ -41,31 +41,33 @@ public:
           m_input_buffer_size(predecessor.output_buffer_size())
     {
 #if defined(DEBUG_LAYERS)
-        std::cerr << "MaxPool2D(k:" << kernel_height << "x" << kernel_width
+        std::cerr << "MaxPool2D(batches:" << m_input_shape[BATCH]
+                  << ",k:" << kernel_height << "x" << kernel_width
                   << ",s:" << stride
                   << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
-                  << ",chans:" << m_input_shape[0]
-                  << ",img:" << m_input_shape[1] << "x" << m_input_shape[1]
+                  << ",chans:" << m_input_shape[CHANNEL]
+                  << ",img:" << m_input_shape[HEIGHT] << "x" << m_input_shape[WIDTH]
                   << std::endl;
 #endif
 
         /// @todo is there a clean way to make these const members, or
         ///       will image size get moved to compute_output() and all of
         ///       this moves to compute_output()?
-        m_output_shape[0] = m_input_shape[0];
-        small::compute_padding_output_dim(m_input_shape[1], kernel_height,
+        m_output_shape[BATCH] = m_input_shape[BATCH];
+        m_output_shape[CHANNEL] = m_input_shape[CHANNEL];
+        small::compute_padding_output_dim(m_input_shape[HEIGHT], kernel_height,
                                           stride, padding_type,
                                           m_t_pad, m_b_pad,
-                                          m_output_shape[1]);
-        small::compute_padding_output_dim(m_input_shape[2], kernel_width,
+                                          m_output_shape[HEIGHT]);
+        small::compute_padding_output_dim(m_input_shape[WIDTH], kernel_width,
                                           stride, padding_type,
                                           m_l_pad, m_r_pad,
-                                          m_output_shape[2]);
+                                          m_output_shape[WIDTH]);
         // std::cerr << "MaxPool2D padding: "
         //           << (int)m_t_pad << "," << (int)m_b_pad
         //          << "," << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
-        m_output_buffer_size =
-            m_output_shape[0]*m_output_shape[1]*m_output_shape[2];
+        m_output_buffer_size = m_output_shape[BATCH]*
+            m_output_shape[CHANNEL]*m_output_shape[HEIGHT]*m_output_shape[WIDTH];
     }
 
     virtual ~MaxPool2DLayer() {}
@@ -83,13 +85,6 @@ public:
 
         if (input.shape() != m_input_shape)
         {
-            std::cerr << "MaxPool2DLayer ERROR: incorrect input buffer shape. "
-                      << "Expected: " << m_input_shape[0]
-                      << "," << m_input_shape[1]
-                      << "," << m_input_shape[2]
-                      << ", received: " << input.shape()[0]
-                      << "," << input.shape()[1]
-                      << "," << input.shape()[2] << std::endl;
             throw std::invalid_argument(
                 "MaxPool2DLayer::compute_output() ERROR: "
                 "incorrect input buffer shape.");
@@ -97,10 +92,6 @@ public:
 
         if (output.capacity() < m_output_buffer_size)
         {
-            std::cerr << "MaxPool2DLayer ERROR: output buffer size = "
-                      << output.capacity()
-                      << ", required size = " << m_output_buffer_size
-                      << ": got " << output.capacity() << std::endl;
             throw std::invalid_argument(
                 "MaxPool2DLayer::compute_output ERROR: "
                 "insufficient output buffer space.");
@@ -111,8 +102,8 @@ public:
             MaxPool2D(m_kernel_width,
                       m_stride,
                       m_t_pad, m_b_pad, m_l_pad, m_r_pad,
-                      m_input_shape[0],
-                      m_input_shape[1], m_input_shape[2],
+                      m_input_shape[CHANNEL],
+                      m_input_shape[HEIGHT], m_input_shape[WIDTH],
                       input.buffer(),
                       output.buffer());
         }
@@ -121,8 +112,8 @@ public:
             MaxPool2D_rect(m_kernel_height, m_kernel_width,
                            m_stride,
                            m_t_pad, m_b_pad, m_l_pad, m_r_pad,
-                           m_input_shape[0],
-                           m_input_shape[1], m_input_shape[2],
+                           m_input_shape[CHANNEL],
+                           m_input_shape[HEIGHT], m_input_shape[WIDTH],
                            input.buffer(),
                            output.buffer());
         }

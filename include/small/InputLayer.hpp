@@ -27,14 +27,15 @@ public:
     typedef typename BufferT::value_type value_type;
     typedef typename Tensor<BufferT>::shape_type shape_type;
 
-    InputLayer(shape_type const &shape) // {C, H, W}
+    InputLayer(shape_type const &shape) // {B, C, H, W}
         : Layer<BufferT>(nullptr),      // has no predecessor
           m_shape(shape),
-          m_buffer_size(shape[0]*shape[1]*shape[2])
+          m_buffer_size(shape[BATCH]*shape[CHANNEL]*shape[HEIGHT]*shape[WIDTH])
     {
 #if defined(DEBUG_LAYERS)
-        std::cerr << "Input(chans:" << shape[0]
-                  << ",img:" << shape[1] << "x" << shape[2]
+        std::cerr << "Input(batches:" << m_shape[BATCH]
+                  << ",chans:" << m_shape[CHANNEL]
+                  << ",img:" << m_shape[HEIGHT] << "x" << m_shape[WIDTH]
                   << ")" << std::endl;
 #endif
     }
