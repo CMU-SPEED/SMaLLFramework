@@ -17,56 +17,10 @@
 #include <stdlib.h> // for posix_memalign
 #include <vector>
 #include <iostream>
+#include <cmath>
 
 namespace small
 {
-namespace detail
-{
-// Adapted from reference
-
-//****************************************************************************
-//Allocation
-//****************************************************************************
-template <typename T, size_t alignment=64UL>
-struct buffer_allocator : std::allocator<T>
-{
-    typedef typename std::allocator<T>::pointer pointer;
-    typedef typename std::allocator<T>::size_type size_type;
-
-    template<typename U>
-    struct rebind {
-        typedef buffer_allocator<U> other;
-    };
-
-    buffer_allocator() {}
-
-    template<typename U>
-    buffer_allocator(buffer_allocator<U> const& u)
-        :std::allocator<T>(u) {}
-
-    pointer allocate(size_type num_elements,
-                     std::allocator<void>::const_pointer = 0) {
-        pointer buffer;
-        if (0 != posix_memalign((void**)&buffer,
-                                alignment,
-                                num_elements*sizeof(T)))
-        {
-            throw std::bad_alloc();
-        }
-
-        //std::cerr << "buffer_allocator::allocate: " << (void*)buffer << std::endl;
-        return buffer;
-    }
-
-    void deallocate(pointer p, size_type) {
-        //std::cerr << "buffer_allocator::deallocator: " << (void*)p << std::endl;
-        std::free(p);
-    }
-
-};
-
-}  // detail
-
 
 //****************************************************************************
 // define the Buffer type in the small namespace (qdtype becomes QUInt8Buffer)
@@ -78,47 +32,119 @@ public:
     typedef uint8_t value_type;
     typedef int32_t accum_type;
 
+    QUInt8Buffer() :
+        m_num_elts(0),
+        m_buffer(nullptr)
+    {
+        quantized_init();
+    }
+
     /// @todo add min_val and max_val parameters defaulted to the limits below
     QUInt8Buffer(size_t num_elts) :
-        scale(0.752941),
-        offset(0),
-        multiplier(1616928864),
-        lshift(0),
-        rshift(3),
-        m_zero(0),
-        min_val(0),       // std::numeric_limits<value_type>::lowest()
-        max_val(255),     // std::numeric_limits<value_type>::max()
-        b(8),
-        m_buffer(num_elts)
+        //scale(0.752941),
+        //offset(0),
+        //multiplier(1616928864),
+        //lshift(0),
+        //rshift(3),
+        //m_zero(0),
+        //min_val(0),       // std::numeric_limits<value_type>::lowest()
+        //max_val(255),     // std::numeric_limits<value_type>::max()
+        //b(8),
+        m_num_elts(num_elts)
     {
         /// @todo Merge with member initialization
         quantized_init();
 
-        // todo should the buffer be cleared?
+        if (0 != posix_memalign((void**)&m_buffer,
+                                64,
+                                num_elts*sizeof(value_type)))
+        {
+            throw std::bad_alloc();
+        }
+
         // std::cerr << "QUInt8Buffer::ctor " << (void*)this
         //           << ", data_ptr = " << (void*)m_buffer.data()
         //           << ", size = " << m_buffer.size() << std::endl;
     }
 
-    ~QUInt8Buffer()
+    QUInt8Buffer(QUInt8Buffer const &other)
+        : scale(other.scale),
+          offset(other.offset),  // not set by quantized_init
+          multiplier(other.multiplier),
+          lshift(other.lshift),
+          rshift(other.rshift),
+          m_zero(other.m_zero),
+          min_val(other.min_val),
+          max_val(other.max_val),
+          b(other.b),
+          m_num_elts(other.m_num_elts)
     {
-        // std::cerr << "QUInt8Buffer::dtor " << (void*)this
-        //           << ", data_ptr = " << (void*)m_buffer.data()
-        //           << ", size = " << m_buffer.size() << std::endl;
+
+        //std::cerr << "FloatBuffer copy ctor\n";
+        if (0 != posix_memalign((void**)&m_buffer,
+                                64,
+                                m_num_elts*sizeof(value_type)))
+        {
+            throw std::bad_alloc();
+        }
+
+        std::copy(other.m_buffer, other.m_buffer + m_num_elts,
+                  m_buffer);
     }
 
-    size_t size() const { return m_buffer.size(); }
-
-    value_type       *data()       { return m_buffer.data(); }
-    value_type const *data() const { return m_buffer.data(); }
-
-    value_type       &operator[](size_t index)       { return m_buffer[index]; }
-    value_type const &operator[](size_t index) const { return m_buffer[index]; }
-
-    void swap(QUInt8Buffer &other)
+    QUInt8Buffer(QUInt8Buffer&& other) noexcept
+        : m_num_elts(0),
+          m_buffer(nullptr)
     {
+        //std::cerr << "QUInt8Buffer move ctor\n";
+        std::swap(scale,      other.scale);
+        std::swap(offset,     other.offset);  // not set by quantized_init
+        std::swap(multiplier, other.multiplier);
+        std::swap(lshift,     other.lshift);
+        std::swap(rshift,     other.rshift);
+        std::swap(m_zero,     other.m_zero);
+        std::swap(min_val,    other.min_val);
+        std::swap(max_val,    other.max_val);
+        std::swap(b,          other.b);
+
+        std::swap(m_num_elts, other.m_num_elts);
+        std::swap(m_buffer,   other.m_buffer);
+    }
+
+    QUInt8Buffer &operator=(QUInt8Buffer const &other)
+    {
+        //std::cerr << "QUInt8Buffer copy assignment\n";
         if (this != &other)
         {
+            // expensive, but with exception guarantees.
+            QUInt8Buffer tmp(other);
+
+            std::swap(scale,      tmp.scale);
+            std::swap(offset,     tmp.offset);  // not set by quantized_init
+            std::swap(multiplier, tmp.multiplier);
+            std::swap(lshift,     tmp.lshift);
+            std::swap(rshift,     tmp.rshift);
+            std::swap(m_zero,     tmp.m_zero);
+            std::swap(min_val,    tmp.min_val);
+            std::swap(max_val,    tmp.max_val);
+            std::swap(b,          tmp.b);
+
+            std::swap(m_num_elts, tmp.m_num_elts);
+            std::swap(m_buffer,   tmp.m_buffer);
+        }
+
+        return *this;
+    }
+
+    QUInt8Buffer &operator=(QUInt8Buffer&& other) noexcept
+    {
+        //std::cerr << "QUInt8Buffer move assignment\n";
+        if (this != &other)
+        {
+            m_num_elts = 0;
+            free(m_buffer);
+            m_buffer = nullptr;
+
             std::swap(scale,      other.scale);
             std::swap(offset,     other.offset);  // not set by quantized_init
             std::swap(multiplier, other.multiplier);
@@ -128,6 +154,48 @@ public:
             std::swap(min_val,    other.min_val);
             std::swap(max_val,    other.max_val);
             std::swap(b,          other.b);
+
+            std::swap(m_num_elts, other.m_num_elts);
+            std::swap(m_buffer,   other.m_buffer);
+        }
+
+        return *this;
+    }
+
+    ~QUInt8Buffer()
+    {
+        // std::cerr << "QUInt8Buffer::dtor " << (void*)this
+        //           << ", data_ptr = " << (void*)m_buffer.data()
+        //           << ", size = " << m_buffer.size() << std::endl;
+        if (m_buffer != nullptr)
+        {
+            free(m_buffer);
+        }
+    }
+
+    size_t size() const { return m_num_elts; }
+
+    value_type       *data()       { return m_buffer; }
+    value_type const *data() const { return m_buffer; }
+
+    value_type       &operator[](size_t index)       { return m_buffer[index]; }
+    value_type const &operator[](size_t index) const { return m_buffer[index]; }
+
+    void swap(QUInt8Buffer &other)
+    {
+        if (this != &other)
+        {
+            std::swap(scale,      other.scale);
+            std::swap(offset,     other.offset);
+            std::swap(multiplier, other.multiplier);
+            std::swap(lshift,     other.lshift);
+            std::swap(rshift,     other.rshift);
+            std::swap(m_zero,     other.m_zero);
+            std::swap(min_val,    other.min_val);
+            std::swap(max_val,    other.max_val);
+            std::swap(b,          other.b);
+
+            std::swap(m_num_elts, other.m_num_elts);
             std::swap(m_buffer,   other.m_buffer);
         }
     }
@@ -185,12 +253,11 @@ private:
         rshift = shift > 0 ? 0 : -shift;
         min_val = 0;
         max_val = 255;
-
-        /// @todo offset not set
+        offset = 0;
     }
 
-    // consider raw buffer instead, std::array does not support allocator
-    std::vector<value_type, small::detail::buffer_allocator<value_type>> m_buffer;
+    size_t      m_num_elts;
+    value_type *m_buffer;
 };
 
 //**********************************************************************

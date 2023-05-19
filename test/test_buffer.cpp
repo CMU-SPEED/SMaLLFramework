@@ -17,6 +17,9 @@
 /// @todo test both float and quantized integer buffers eventually
 #if !defined(QUANTIZED)
 using Buffer = small::FloatBuffer;
+#else
+using Buffer = small::QUInt8Buffer;
+#endif
 
 //****************************************************************************
 void test_ctor_default(void)
@@ -148,16 +151,16 @@ void test_swap(void)
     for (size_t ix = 0; ix < SIZE; ++ix)
     {
         buf[ix]       =  static_cast<Buffer::value_type>(ix);
-        buf2[ix]      = -static_cast<Buffer::value_type>(ix);
+        buf2[ix]      =  static_cast<Buffer::value_type>(ix)/2;
         buf2[ix+SIZE] =  static_cast<Buffer::value_type>(ix);
     }
 
     TEST_CHECK(SIZE == buf.size());
     TEST_CHECK(2*SIZE == buf2.size());
 
-    TEST_CHECK(buf[5] == 5.f);
-    TEST_CHECK(buf2[5] == -5.f);
-    TEST_CHECK(buf2[5+SIZE] == 5.f);
+    TEST_CHECK(buf[5] == 5);
+    TEST_CHECK(buf2[5] == 5U/2U);
+    TEST_CHECK(buf2[5+SIZE] == 5);
 
     buf.swap(buf2);
 
@@ -167,7 +170,7 @@ void test_swap(void)
     for (size_t ix = 0; ix < SIZE; ++ix)
     {
         TEST_CHECK(buf2[ix] == static_cast<Buffer::value_type>(ix));
-        TEST_CHECK(buf[ix] == -static_cast<Buffer::value_type>(ix));
+        TEST_CHECK(buf[ix] == static_cast<Buffer::value_type>(ix)/2);
         TEST_CHECK(buf[ix+SIZE] == static_cast<Buffer::value_type>(ix));
     }
 }
@@ -184,4 +187,3 @@ TEST_LIST = {
     {"swap", test_swap},
     {NULL, NULL}
 };
-#endif
