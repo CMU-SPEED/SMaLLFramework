@@ -21,8 +21,9 @@
 #include <random>
 
 #include <small.h>
-#include <small/MaxPool2DLayer.hpp>
 #include <small/utils/Timer.hpp>
+#include <small/InputLayer.hpp>
+#include <small/MaxPool2DLayer.hpp>
 
 #include "test_utils.hpp"
 
@@ -120,22 +121,25 @@ template <typename BufferT>
 bool run_maxpool_layer_config(LayerParams const &params)
 {
     /// @todo add smart pointer to buffers
-    small::MaxPool2DLayer<BufferT> maxpool_layer(params.k, params.k, params.s,
-                                                 params.p, params.C_i,
-                                                 params.H, params.W);
+    //=========================================================================
+    small::InputLayer<BufferT>  input_layer(
+        {1UL, params.C_i, params.H, params.W});
+    small::MaxPool2DLayer<BufferT> maxpool_layer(input_layer,
+                                                 params.k, params.k, params.s,
+                                                 params.p);
+    //=========================================================================
 
     // Read input data
     std::string in_fname =
         get_pathname(data_dir, "in", "pool",
                      params,
-                     params.C_i*params.H*params.W);
+                     input_layer.output_buffer_size());
     std::cout << "\nMaxPool: input file = " << in_fname << std::endl;
 
     // Allocate the input buffer
     BufferT input_dc = read_inputs<BufferT>(in_fname);
 
-    TEST_ASSERT(input_dc.size() == params.C_i*params.H*params.W);
-    TEST_ASSERT(maxpool_layer.input_buffer_size() == params.C_i*params.H*params.W);
+    TEST_ASSERT(input_dc.size() == input_layer.output_buffer_size());
 
     // Pack input data
     BufferT packed_input_dc(input_dc.size());
@@ -145,46 +149,58 @@ bool run_maxpool_layer_config(LayerParams const &params)
                        C_ib, C_ob,
                        packed_input_dc);
 
+    small::Tensor<BufferT> packed_input_tensor(
+        input_layer.output_buffer_shape(),
+        std::move(packed_input_dc));
+
     // Read output regression data
-    size_t Ho(small::compute_output_dim(
-                  params.H, params.k, params.s, params.p));
-    size_t Wo(small::compute_output_dim(
-                  params.W, params.k, params.s, params.p));
-    std::cerr << "Output image dims: " << Ho << ", " << Wo << std::endl;
+    auto output_shape(maxpool_layer.output_buffer_shape());
+    size_t output_buffer_size(maxpool_layer.output_buffer_size());
+
+    std::cerr << "Output image dims: "
+              << output_shape[small::HEIGHT] << "x" << output_shape[small::WIDTH]
+              << std::endl;
     std::string out_fname =
         get_pathname(data_dir, "out", "pool",
                      params,
-                     params.C_i*Ho*Wo);
+                     output_buffer_size);
     std::cout << "MaxPool: output file= " << out_fname << std::endl;
 
     BufferT output_dc_answers = read_inputs<BufferT>(out_fname);
-    TEST_ASSERT(output_dc_answers.size() == params.C_i*Ho*Wo);
-    TEST_ASSERT(maxpool_layer.output_buffer_size() == params.C_i*Ho*Wo);
+    TEST_ASSERT(output_dc_answers.size() == output_buffer_size);
 
     // Pack output answer data
     BufferT packed_output_dc_answers(output_dc_answers.size());
     small::pack_buffer(output_dc_answers,
                        small::OUTPUT,
-                       1U, params.C_i, Ho, Wo,
+                       1U, output_shape[small::CHANNEL],
+                       output_shape[small::HEIGHT], output_shape[small::WIDTH],
                        C_ib, C_ob,
                        packed_output_dc_answers);
 
     // Allocate output buffer
+#if defined(QUANTIZED)
+    BufferT packed_output_dc(output_dc_answers.size()*4);  /// @todo HACK hardcoded.
+#else
     BufferT packed_output_dc(output_dc_answers.size());
+#endif
+    small::Tensor<BufferT> packed_output_tensor(output_shape,
+                                                std::move(packed_output_dc));
 
     // Compute layer
-    maxpool_layer.compute_output(packed_input_dc, packed_output_dc);
+    maxpool_layer.compute_output(packed_input_tensor, packed_output_tensor);
 
     // Check answer
     bool passing = true;
-    for (size_t ix = 0; ix < maxpool_layer.output_buffer_size(); ++ix)
+    BufferT &buf(packed_output_tensor.buffer());
+    for (size_t ix = 0; ix < packed_output_tensor.size(); ++ix)
     {
-        if (packed_output_dc[ix] != packed_output_dc_answers[ix])
+        if (buf[ix] != packed_output_dc_answers[ix])
         {
             passing = false;
             std::cout << "FAIL: Maxpool_out(" << ix << ")--> "
                       << std::setw(12) << std::setprecision(10)
-                      << packed_output_dc[ix] << "(computed) != "
+                      << buf[ix] << "(computed) != "
                       << std::setw(12) << std::setprecision(10)
                       << packed_output_dc_answers[ix]
                       << std::endl;
@@ -344,7 +360,7 @@ void measure_maxpool_performance(void)
                 max_t = std::max(max_t, ts);
             }
 
-            printf("function\t%ld\t%d\t%d\t%d\t%d\t%d\t%d\t%lf\t%lf\t%lf\n",
+            printf("function\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%lf\t%lf\t%lf\n",
                    p.C_i, p.H, p.W, p.k, p.s,
                    num_threads[ix], num_runs,
                    min_t, max_t, (tx/num_runs));
@@ -369,12 +385,14 @@ void measure_maxpool_performance(void)
         size_t num_input_elts(p.C_i*p.H*p.W);
         size_t num_output_elts(p.C_i*Ho*Wo);
 
-        Buffer  input_dc(num_input_elts);
-        Buffer output_dc(num_output_elts);
-        small::init(input_dc, num_input_elts);
+        small::Tensor<Buffer> input_dc({1UL, p.C_i, p.H, p.W});
+        small::init(input_dc.buffer(), num_input_elts);
 
+        small::Tensor<Buffer> output_dc(num_output_elts);
+
+        small::InputLayer<Buffer> input_layer({1UL, p.C_i, p.H, p.W});
         small::MaxPool2DLayer<Buffer>
-            maxpool_layer(p.k, p.k, p.s, p.p, p.C_i, p.H, p.W);
+            maxpool_layer(input_layer, p.k, p.k, p.s, p.p);
 
         for (size_t ix = 0; ix < 3; ++ix)
         {
@@ -400,7 +418,7 @@ void measure_maxpool_performance(void)
                 max_t = std::max(max_t, ts);
             }
 
-            printf("class   \t%ld\t%d\t%d\t%d\t%d\t%d\t%d\t%lf\t%lf\t%lf\n",
+            printf("class   \t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%lf\t%lf\t%lf\n",
                    p.C_i, p.H, p.W, p.k, p.s,
                    num_threads[ix], num_runs,
                    min_t, max_t, (tx/num_runs));

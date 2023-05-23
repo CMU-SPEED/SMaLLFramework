@@ -24,7 +24,7 @@
 
 /// @todo Which of these defines are needed?
 #ifndef RUNS
-#define RUNS 10
+#define RUNS 1
 #endif
 #ifndef PARALLEL
 #define PARALLEL 0
@@ -71,6 +71,7 @@
 //****************************************************************************
 
 #include<small/Layer.hpp>
+#include<small/InputLayer.hpp>
 #include<small/Conv2DLayer.hpp>
 #include<small/MaxPool2DLayer.hpp>
 #include<small/ReLULayer.hpp>
@@ -86,10 +87,13 @@ std::vector<small::Layer<BufferT>*> create_model(
 {
     std::vector<small::Layer<BufferT>*> layers;
 
+    layers.push_back(
+        new small::InputLayer<BufferT>(
+            {1UL, model_input_channels, input_height, input_width}));
+
     // settings for first layer
     uint32_t kernel_size = 3U;
     uint32_t stride = 1U;
-    uint32_t input_channels = model_input_channels;
     uint32_t output_channels = 16U;
 
     size_t filter_num = 0U;
@@ -100,121 +104,87 @@ std::vector<small::Layer<BufferT>*> create_model(
     {
         kernel_size = 3;
         stride = 1;
-        {
-            BufferT tmp(filters[filter_num]->size());
-            small::unpack_buffer(*filters[filter_num], small::FILTER_CONV,
-                                 output_channels, input_channels,
-                                 kernel_size, kernel_size,
-                                 C_ib, C_ob, tmp);
-            layers.push_back(
-                new small::Conv2DLayer<BufferT>(kernel_size, kernel_size,
-                                                stride, small::PADDING_F,
-                                                input_channels, output_channels,
-                                                input_height, input_width, tmp));
-            ++filter_num;
-        }
 
         layers.push_back(
-            new small::ReLULayer<BufferT>(output_channels,
-                                          input_height, input_width));
+            new small::Conv2DLayer<BufferT>(*layers.back(),
+                                            kernel_size, kernel_size,
+                                            stride, small::PADDING_F,
+                                            output_channels,
+                                            *filters[filter_num], true));
+        ++filter_num;
+
+        layers.push_back(new small::ReLULayer<BufferT>(*layers.back()));
 
         kernel_size = 2;
         stride = layer_strides[yolo_block];
         layers.push_back(
-            new small::MaxPool2DLayer<BufferT>(kernel_size, kernel_size,
-                                               stride, small::PADDING_F, /// @todo check
-                                               output_channels,
-                                               input_height, input_width));
+            new small::MaxPool2DLayer<BufferT>(*layers.back(),
+                                               kernel_size, kernel_size,
+                                               stride,
+                                               small::PADDING_F)); /// @todo check
 
-        input_height = small::compute_output_dim(input_height, kernel_size,
-                                                 stride, small::PADDING_F);
-        input_width  = small::compute_output_dim(input_width, kernel_size,
-                                                 stride, small::PADDING_F);
-
-        input_channels = output_channels;
-        output_channels = 2*input_channels;
+        output_channels = 2*output_channels;
     }
 
     // Final convolution layers
     //=====================================
     kernel_size = 3;
     stride = 1;
-    {
-        BufferT tmp(filters[filter_num]->size());
-        small::unpack_buffer(*filters[filter_num], small::FILTER_CONV,
-                             output_channels, input_channels,
-                             kernel_size, kernel_size,
-                             C_ib, C_ob, tmp);
-        layers.push_back(
-            new small::Conv2DLayer<BufferT>(kernel_size, kernel_size,
-                                            stride, small::PADDING_F,
-                                            input_channels, output_channels,
-                                            input_height, input_width, tmp));
-        ++filter_num;
-    }
 
     layers.push_back(
-        new small::ReLULayer<BufferT>(output_channels,
-                                      input_height, input_width));
+        new small::Conv2DLayer<BufferT>(*layers.back(),
+                                        kernel_size, kernel_size,
+                                        stride, small::PADDING_F,
+                                        output_channels,
+                                        *filters[filter_num], true));
+    ++filter_num;
+
+    layers.push_back(new small::ReLULayer<BufferT>(*layers.back()));
 
     //=====================================
-    input_channels = output_channels;
-    {
-        BufferT tmp(filters[filter_num]->size());
-        small::unpack_buffer(*filters[filter_num], small::FILTER_CONV,
-                             output_channels, input_channels,
-                             kernel_size, kernel_size,
-                             C_ib, C_ob, tmp);
-        layers.push_back(
-            new small::Conv2DLayer<BufferT>(kernel_size, kernel_size,
-                                            stride, small::PADDING_F,
-                                            input_channels, output_channels,
-                                            input_height, input_width, tmp));
-        ++filter_num;
-    }
 
     layers.push_back(
-        new small::ReLULayer<BufferT>(output_channels,
-                                      input_height, input_width));
+        new small::Conv2DLayer<BufferT>(*layers.back(),
+                                        kernel_size, kernel_size,
+                                        stride, small::PADDING_F,
+                                        output_channels,
+                                        *filters[filter_num], true));
+    ++filter_num;
+
+    layers.push_back(new small::ReLULayer<BufferT>(*layers.back()));
 
     //=====================================
     kernel_size = 1;
     output_channels = model_output_channels;
-    {
-        BufferT tmp(filters[filter_num]->size());
-        small::unpack_buffer(*filters[filter_num], small::FILTER_CONV,
-                             output_channels, input_channels,
-                             kernel_size, kernel_size,
-                             C_ib, C_ob, tmp);
-        layers.push_back(
-            new small::Conv2DLayer<BufferT>(kernel_size, kernel_size,
-                                            stride, small::PADDING_F,
-                                            input_channels, output_channels,
-                                            input_height, input_width, tmp));
-        ++filter_num;
-    }
 
     layers.push_back(
-        new small::ReLULayer<BufferT>(output_channels,
-                                      input_height, input_width));
+        new small::Conv2DLayer<BufferT>(*layers.back(),
+                                        kernel_size, kernel_size,
+                                        stride, small::PADDING_F,
+                                        output_channels,
+                                        *filters[filter_num], true));
+    ++filter_num;
+
+    layers.push_back(new small::ReLULayer<BufferT>(*layers.back()));
 
     return layers;
 }
 
 //****************************************************************************
 template <class BufferT>
-BufferT &model_inference(
+small::Tensor<BufferT> &model_inference(
     std::vector<small::Layer<BufferT>*> const &layers,
     uint32_t                                   check_blocks,
-    BufferT                             const &input_dc,
-    BufferT                                   &inter_0_dc,
-    BufferT                                   &inter_1_dc)
+    small::Tensor<BufferT>              const &input_dc,
+    small::Tensor<BufferT>                    &inter_0_dc,
+    small::Tensor<BufferT>                    &inter_1_dc)
 {
-    size_t layer_num = 0;
+    size_t layer_num = 1; // skip input layer
+
     uint32_t num_yolo_blocks = ((check_blocks < 6U) ? check_blocks : 6U);
 
     // yolo_block = 0
-    layers[layer_num++]->compute_output(input_dc, inter_1_dc);   // Conv2D
+    layers[layer_num++]->compute_output(input_dc,   inter_1_dc); // Conv2D
     layers[layer_num++]->compute_output(inter_1_dc, inter_1_dc); // ReLU
     layers[layer_num++]->compute_output(inter_1_dc, inter_0_dc); // MaxPool2D
 
@@ -610,7 +580,7 @@ void inference(uint32_t C_i,
     layer_num += 2;
     for (uint32_t ds_layer = 1U; ds_layer < ds_blocks; ds_layer++)
     {
-        printf("layer %d\n", layer_num);
+        //printf("layer %d\n", layer_num);
         yolo_block(intermediate_dims[layer_num],
                    REDUCTION_C(layer_num), // Input dimensions
                    REDUCTION_HW(layer_num),
@@ -660,18 +630,20 @@ void inference(uint32_t C_i,
                                       check_blocks,
                                       filter_buf_ptrs));
 
+    small::Tensor<BufferT> input_tensor({1, C_i, N, M}, input_dc);
 #if defined(QUANTIZED)
-    BufferT inter_0a_dc(max_numel_inter_0*2);  /// @todo HACK need to determine correct size
-    BufferT inter_1a_dc(max_numel_inter_1*2);  /// @todo HACK need to determine correct size
+    small::Tensor<BufferT> inter_0_tensor(max_numel_inter_0*2);  /// @todo HACK need to determine correct size
+    small::Tensor<BufferT> inter_1_tensor(max_numel_inter_1*2);  /// @todo HACK need to determine correct size
 #else
-    BufferT inter_0a_dc(max_numel_inter_0);
-    BufferT inter_1a_dc(max_numel_inter_1);
+    small::Tensor<BufferT> inter_0_tensor(max_numel_inter_0);
+    small::Tensor<BufferT> inter_1_tensor(max_numel_inter_1);
 #endif
 
     std::cerr << "Warm up run (LAYERS)" << std::endl;
     my_timer.start();
-    auto &output_a_dc =
-        model_inference(layers, check_blocks, input_dc, inter_0a_dc, inter_1a_dc);
+    auto &output_tensor =
+        model_inference(layers, check_blocks,
+                        input_tensor, inter_0_tensor, inter_1_tensor);
     my_timer.stop();
     printf("\nElapsed time: %lf ns.\n", my_timer.elapsed());
 
@@ -680,8 +652,10 @@ void inference(uint32_t C_i,
     std::cout << "\nCHECK RESULTS: Num output elements: " << num_outputs << std::endl;
     for (size_t ix = 0; ix < num_outputs; ++ix)
     {
-        std::cout << "Current, new " << ix << ": "
-                  << (float)output_dc[ix] << ", " << (float)output_a_dc[ix]
+        std::cout << "Current, new " << ix
+                  << ": " << (float)output_dc[ix]
+                  << ", " << (float)output_tensor.buffer()[ix]
+                  << ((output_dc[ix] == output_tensor.buffer()[ix]) ? " (pass)" : " (fail)")
                   << std::endl;
     }
 

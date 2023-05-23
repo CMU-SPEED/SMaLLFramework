@@ -25,6 +25,7 @@ class DepthwiseConv2DLayer : public Layer<BufferT>
 {
 public:
     typedef typename BufferT::value_type value_type;
+    typedef typename Tensor<BufferT>::shape_type shape_type;
 
     //DepthwiseConv2DLayer () delete;
 
@@ -32,33 +33,30 @@ public:
     ///                     in the following order:
     ///                     {in_chans, out_chans, kern_h, kern_w}
     ///
-    DepthwiseConv2DLayer(uint32_t       kernel_size,
+    DepthwiseConv2DLayer(Layer<BufferT> const &predecessor,
+                         uint32_t       kernel_size,
                          uint32_t       stride,
                          PaddingEnum    padding_type,
-                         uint32_t       num_channels,
-                         uint32_t       input_height,
-                         uint32_t       input_width,
-                         BufferT const &filters)
-        : Layer<BufferT>(),
+                         BufferT const &filters,      /// @todo support move
+                         bool filters_are_packed = true)
+        : Layer<BufferT>(&predecessor),
           m_kernel_size(kernel_size),
           m_stride(stride),
-          m_padding_type(padding_type),
-          m_num_channels(num_channels),
-          m_input_height(input_height),
-          m_input_width(input_width),
-          m_input_buffer_size(num_channels*input_height*input_width),
           m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0),
-          m_output_buffer_size(0),
-          m_packed_filters(num_channels*kernel_size*kernel_size)
+          m_input_shape(predecessor.output_buffer_shape()),
+          m_input_buffer_size(predecessor.output_buffer_size())
     {
-        // std::cerr << "DW(k:" << kernel_size
-        //           << ",s:" << block_strides[block_num]
-        //           << ",'f'"
-        //           << ",chans:" << num_channels
-        //           << ",img:" << input_size
-        //           << "), filter=" << tmp.size() << std::endl;
+#if defined(DEBUG_LAYERS)
+        std::cerr << "DWConv(batches:" << m_input_shape[BATCH]
+                  << ",k:" << kernel_size
+                  << ",s:" << stride
+                  << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
+                  << ",chans:" << m_input_shape[CHANNEL]
+                  << ",img:" << m_input_shape[HEIGHT] << "x" << m_input_shape[WIDTH]
+                  << "), filters.size=" << filters.size() << std::endl;
+#endif
 
-        if (filters.size() < num_channels*kernel_size*kernel_size)
+        if (filters.size() < m_input_shape[CHANNEL]*kernel_size*kernel_size)
         {
             throw std::invalid_argument(
                 "DepthwiseConv2DLayer::ctor ERROR: "
@@ -68,73 +66,62 @@ public:
         /// @todo is there a clean way to make these const members, or
         ///       will image size get moved to compute_output and all of
         ///       this moves to compute output?
-        small::compute_padding_output_dim(input_height, kernel_size,
+        m_output_shape[BATCH] = m_input_shape[BATCH];
+        m_output_shape[CHANNEL] = m_input_shape[CHANNEL];
+        small::compute_padding_output_dim(m_input_shape[HEIGHT], kernel_size,
                                           stride, padding_type,
                                           m_t_pad, m_b_pad,
-                                          m_output_height);
-        small::compute_padding_output_dim(input_width, kernel_size,
+                                          m_output_shape[HEIGHT]);
+        small::compute_padding_output_dim(m_input_shape[WIDTH], kernel_size,
                                           stride, padding_type,
                                           m_l_pad, m_r_pad,
-                                          m_output_width);
+                                          m_output_shape[WIDTH]);
         // std::cerr << "DW padding: " << (int)m_t_pad << "," << (int)m_b_pad
         //           << "," << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
-        m_output_buffer_size = num_channels*m_output_height*m_output_width;
+        m_output_buffer_size = m_output_shape[BATCH]*
+            m_output_shape[CHANNEL]*m_output_shape[HEIGHT]*m_output_shape[WIDTH];
 
         // Pack the filter buffers for SMaLL use
-        small::pack_buffer(filters,
-                           FILTER_DW,
-                           m_num_channels, 1U, m_kernel_size, m_kernel_size,
-                           C_ib, C_ob,
-                           m_packed_filters);
+        BufferT packed_filters(m_output_shape[CHANNEL]*kernel_size*kernel_size);
+        if (!filters_are_packed)
+        {
+            small::pack_buffer(filters,
+                               FILTER_DW,
+                               m_output_shape[CHANNEL], 1U,
+                               m_kernel_size, m_kernel_size,
+                               C_ib, C_ob,
+                               packed_filters);
+        }
+        else
+        {
+            std::copy(filters.data(),
+                      filters.data() + packed_filters.size(),
+                      packed_filters.data());
+        }
+        m_packed_filters = std::move(packed_filters);
     }
 
     virtual ~DepthwiseConv2DLayer() {}
 
-    virtual size_t  input_buffer_size() const { return  m_input_buffer_size; }
     virtual size_t output_buffer_size() const { return m_output_buffer_size; }
-
-#if 0
-    virtual std::array<size_t, 3UL> compute_output_dimensions(
-        std::array<size_t, 3UL> const &input_dimensions) const
-    {
-        if (input_dimensions[0]  != m_num_channels)
-        {
-            throw std::invalid_argument(
-                "DepthwiseConv2DLayer::compute_output_dimensions ERROR: "
-                "mismatched input channels.");
-        }
-
-        uint8_t t_pad, b_pad, l_pad, r_pad;
-        size_t  Ho, Wo;
-        small::compute_padding_output_dim(input_dimensions[1],
-                                          m_kernel_size, m_stride,
-                                          m_padding_type,
-                                          t_pad, b_pad, Ho);
-
-        small::compute_padding_output_dim(input_dimensions[2],
-                                          m_kernel_size, m_stride,
-                                          m_padding_type,
-                                          l_pad, r_pad, Wo);
-        return std::array<size_t, 3UL>{m_num_channels, Ho, Wo};
-    }
-#endif
+    virtual shape_type output_buffer_shape() const { return m_output_shape; }
 
     // The input buffer is already packed for SMaLL computation ('dc')
     // The output buffer will be packed for SMaLL computation ('dc')
-    virtual void compute_output(BufferT const &input_dc,
-                                BufferT       &output_dc) const
+    virtual void compute_output(Tensor<BufferT> const &input,
+                                Tensor<BufferT>       &output) const
     {
-        // assert(input_dc.size() >= m_input_buffer_size);
-        // assert(output.size()   >= m_output_buffer_size);
+        // assert(input.shape() != m_input_shape);
+        // assert(output.capacity() >= m_output_buffer_size);
 
-        if (input_dc.size() < m_input_buffer_size)
+        if (input.shape() != m_input_shape)
         {
             throw std::invalid_argument(
                 "DepthwiseConv2DLayer::compute_output() ERROR: "
-                "insufficient input buffer space.");
+                "incorrect input buffer shape.");
         }
 
-        if (output_dc.size() < m_output_buffer_size)
+        if (output.capacity() < m_output_buffer_size)
         {
             throw std::invalid_argument(
                 "DepthwiseConv2DLayer::compute_output() ERROR: "
@@ -143,27 +130,29 @@ public:
 
         DepthwiseConv2D(m_kernel_size, m_stride,
                         m_t_pad, m_b_pad, m_l_pad, m_r_pad,
-                        m_num_channels,
-                        m_input_height, m_input_width,
-                        input_dc,
+                        m_input_shape[CHANNEL], // channels
+                        m_input_shape[HEIGHT], m_input_shape[WIDTH],
+                        input.buffer(),
                         m_packed_filters,
-                        output_dc);
+                        output.buffer());
+        output.set_shape(m_output_shape);
     }
 
 private:
-    uint32_t              const m_kernel_size;
-    uint32_t              const m_stride;
-    small::PaddingEnum    const m_padding_type;
-    uint32_t              const m_num_channels;
-    uint32_t const m_input_height, m_input_width;
-    size_t   const m_input_buffer_size;
+    uint32_t   const m_kernel_size;
+    uint32_t   const m_stride;
 
     /// @todo: how to make const?
-    uint8_t  m_t_pad, m_b_pad, m_l_pad, m_r_pad;
-    uint32_t m_output_height, m_output_width;
-    size_t   m_output_buffer_size;
+    uint8_t          m_t_pad, m_b_pad, m_l_pad, m_r_pad;
 
-    BufferT  m_packed_filters;
+    shape_type const m_input_shape;
+    size_t     const m_input_buffer_size;
+
+    /// @todo: how to make const?
+    shape_type       m_output_shape;
+    size_t           m_output_buffer_size;
+
+    BufferT          m_packed_filters;
 };
 
 }

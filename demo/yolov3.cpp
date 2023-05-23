@@ -20,12 +20,15 @@
 #include <vector>
 
 #include <small.h>
+#include <small/Conv2DLayer.hpp>
+#include <small/LeakyReLULayer.hpp>
+#include <small/AddLayer.hpp>
 #include <small/utils/Timer.hpp>
 #include "utils.h"
 
 /// @todo Which of these defines are needed?
 #ifndef RUNS
-#define RUNS 10
+#define RUNS 1
 #endif
 #ifndef PARALLEL
 #define PARALLEL 0
@@ -34,141 +37,141 @@
 //****************************************************************************
 /* This is the runtime recording
 
-   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:32,ichans:3,img:416x416,I,F,O)
+1  Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:32,ichans:3,img:416x416,I,F,O)
    ReLUActivation(chans:32,img:416x416,I,O)
 
-   Conv2D(k:3,s:2,pad:[0,1,0,1],ochans:64,ichans:32,img:416x416,I,F,O)
+2  Conv2D(k:3,s:2,pad:[0,1,0,1],ochans:64,ichans:32,img:416x416,I,F,O)
    ReLUActivation(chans:64,img:208x208,I,O)
    ================
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:32,ichans:64,img:208x208,I,F,O)
+3  Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:32,ichans:64,img:208x208,I,F,O)
    ReLUActivation(chans:32,img:208x208,I,O)
-   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:64,ichans:32,img:208x208,I,F,O)
+4  Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:64,ichans:32,img:208x208,I,F,O)
    ReLUActivation(chans:64,img:208x208,I,O)
 
    ================
-   Conv2D(k:3,s:2,pad:[0,1,0,1],ochans:128,ichans:64,img:208x208,I,F,O)
+5  Conv2D(k:3,s:2,pad:[0,1,0,1],ochans:128,ichans:64,img:208x208,I,F,O)
    ReLUActivation(chans:128,img:104x104,I,O)
    ================ x2
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:64,ichans:128,img:104x104,I,F,O)
+6  Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:64,ichans:128,img:104x104,I,F,O)
    ReLUActivation(chans:64,img:104x104,I,O)
-   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:128,ichans:64,img:104x104,I,F,O)
+7  Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:128,ichans:64,img:104x104,I,F,O)
    ReLUActivation(chans:128,img:104x104,I,O)
 
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:64,ichans:128,img:104x104,I,F,O)
+8  Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:64,ichans:128,img:104x104,I,F,O)
    ReLUActivation(chans:64,img:104x104,I,O)
-   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:128,ichans:64,img:104x104,I,F,O)
+9  Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:128,ichans:64,img:104x104,I,F,O)
    ReLUActivation(chans:128,img:104x104,I,O)
 
    ================
-   Conv2D(k:3,s:2,pad:[0,1,0,1],ochans:256,ichans:128,img:104x104,I,F,O)
+10 Conv2D(k:3,s:2,pad:[0,1,0,1],ochans:256,ichans:128,img:104x104,I,F,O)
    ReLUActivation(chans:256,img:52x52,I,O)
    ================ x8
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:128,ichans:256,img:52x52,I,F,O)
+11 Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:128,ichans:256,img:52x52,I,F,O)
    ReLUActivation(chans:128,img:52x52,I,O)
-   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:256,ichans:128,img:52x52,I,F,O)
+12 Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:256,ichans:128,img:52x52,I,F,O)
    ReLUActivation(chans:256,img:52x52,I,O)
 
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:128,ichans:256,img:52x52,I,F,O)
+13 Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:128,ichans:256,img:52x52,I,F,O)
    ReLUActivation(chans:128,img:52x52,I,O)
-   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:256,ichans:128,img:52x52,I,F,O)
+14 Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:256,ichans:128,img:52x52,I,F,O)
    ReLUActivation(chans:256,img:52x52,I,O)
 
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:128,ichans:256,img:52x52,I,F,O)
+15 Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:128,ichans:256,img:52x52,I,F,O)
    ReLUActivation(chans:128,img:52x52,I,O)
-   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:256,ichans:128,img:52x52,I,F,O)
+16 Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:256,ichans:128,img:52x52,I,F,O)
    ReLUActivation(chans:256,img:52x52,I,O)
 
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:128,ichans:256,img:52x52,I,F,O)
+17 Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:128,ichans:256,img:52x52,I,F,O)
    ReLUActivation(chans:128,img:52x52,I,O)
-   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:256,ichans:128,img:52x52,I,F,O)
+18 Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:256,ichans:128,img:52x52,I,F,O)
    ReLUActivation(chans:256,img:52x52,I,O)
 
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:128,ichans:256,img:52x52,I,F,O)
+19 Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:128,ichans:256,img:52x52,I,F,O)
    ReLUActivation(chans:128,img:52x52,I,O)
-   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:256,ichans:128,img:52x52,I,F,O)
+20 Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:256,ichans:128,img:52x52,I,F,O)
    ReLUActivation(chans:256,img:52x52,I,O)
 
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:128,ichans:256,img:52x52,I,F,O)
+21 Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:128,ichans:256,img:52x52,I,F,O)
    ReLUActivation(chans:128,img:52x52,I,O)
-   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:256,ichans:128,img:52x52,I,F,O)
+22 Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:256,ichans:128,img:52x52,I,F,O)
    ReLUActivation(chans:256,img:52x52,I,O)
 
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:128,ichans:256,img:52x52,I,F,O)
+23 Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:128,ichans:256,img:52x52,I,F,O)
    ReLUActivation(chans:128,img:52x52,I,O)
-   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:256,ichans:128,img:52x52,I,F,O)
+24 Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:256,ichans:128,img:52x52,I,F,O)
    ReLUActivation(chans:256,img:52x52,I,O)
 
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:128,ichans:256,img:52x52,I,F,O)
+25 Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:128,ichans:256,img:52x52,I,F,O)
    ReLUActivation(chans:128,img:52x52,I,O)
-   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:256,ichans:128,img:52x52,I,F,O)
+26 Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:256,ichans:128,img:52x52,I,F,O)
    ReLUActivation(chans:256,img:52x52,I,O)
 
    ================
-   Conv2D(k:3,s:2,pad:[0,1,0,1],ochans:512,ichans:256,img:52x52,I,F,O)
+27 Conv2D(k:3,s:2,pad:[0,1,0,1],ochans:512,ichans:256,img:52x52,I,F,O)
    ReLUActivation(chans:512,img:26x26,I,O)
    ================ x8
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:256,ichans:512,img:26x26,I,F,O)
+28 Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:256,ichans:512,img:26x26,I,F,O)
    ReLUActivation(chans:256,img:26x26,I,O)
-   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:512,ichans:256,img:26x26,I,F,O)
+29 Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:512,ichans:256,img:26x26,I,F,O)
    ReLUActivation(chans:512,img:26x26,I,O)
 
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:256,ichans:512,img:26x26,I,F,O)
+30 Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:256,ichans:512,img:26x26,I,F,O)
    ReLUActivation(chans:256,img:26x26,I,O)
-   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:512,ichans:256,img:26x26,I,F,O)
+31 Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:512,ichans:256,img:26x26,I,F,O)
    ReLUActivation(chans:512,img:26x26,I,O)
 
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:256,ichans:512,img:26x26,I,F,O)
+32 Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:256,ichans:512,img:26x26,I,F,O)
    ReLUActivation(chans:256,img:26x26,I,O)
-   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:512,ichans:256,img:26x26,I,F,O)
+33 Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:512,ichans:256,img:26x26,I,F,O)
    ReLUActivation(chans:512,img:26x26,I,O)
 
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:256,ichans:512,img:26x26,I,F,O)
+34 Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:256,ichans:512,img:26x26,I,F,O)
    ReLUActivation(chans:256,img:26x26,I,O)
-   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:512,ichans:256,img:26x26,I,F,O)
+35 Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:512,ichans:256,img:26x26,I,F,O)
    ReLUActivation(chans:512,img:26x26,I,O)
 
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:256,ichans:512,img:26x26,I,F,O)
+36 Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:256,ichans:512,img:26x26,I,F,O)
    ReLUActivation(chans:256,img:26x26,I,O)
-   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:512,ichans:256,img:26x26,I,F,O)
+37 Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:512,ichans:256,img:26x26,I,F,O)
    ReLUActivation(chans:512,img:26x26,I,O)
 
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:256,ichans:512,img:26x26,I,F,O)
+38 Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:256,ichans:512,img:26x26,I,F,O)
    ReLUActivation(chans:256,img:26x26,I,O)
-   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:512,ichans:256,img:26x26,I,F,O)
+39 Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:512,ichans:256,img:26x26,I,F,O)
    ReLUActivation(chans:512,img:26x26,I,O)
 
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:256,ichans:512,img:26x26,I,F,O)
+40 Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:256,ichans:512,img:26x26,I,F,O)
    ReLUActivation(chans:256,img:26x26,I,O)
-   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:512,ichans:256,img:26x26,I,F,O)
+41 Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:512,ichans:256,img:26x26,I,F,O)
    ReLUActivation(chans:512,img:26x26,I,O)
 
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:256,ichans:512,img:26x26,I,F,O)
+42 Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:256,ichans:512,img:26x26,I,F,O)
    ReLUActivation(chans:256,img:26x26,I,O)
-   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:512,ichans:256,img:26x26,I,F,O)
+43 Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:512,ichans:256,img:26x26,I,F,O)
    ReLUActivation(chans:512,img:26x26,I,O)
 
    ================
-   Conv2D(k:3,s:2,pad:[0,1,0,1],ochans:1024,ichans:512,img:26x26,I,F,O)
+44 Conv2D(k:3,s:2,pad:[0,1,0,1],ochans:1024,ichans:512,img:26x26,I,F,O)
    ReLUActivation(chans:1024,img:13x13,I,O)
    ================ x4
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:512,ichans:1024,img:13x13,I,F,O)
+45 Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:512,ichans:1024,img:13x13,I,F,O)
    ReLUActivation(chans:512,img:13x13,I,O)
-   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:1024,ichans:512,img:13x13,I,F,O)
+46 Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:1024,ichans:512,img:13x13,I,F,O)
    ReLUActivation(chans:1024,img:13x13,I,O)
 
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:512,ichans:1024,img:13x13,I,F,O)
+47 Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:512,ichans:1024,img:13x13,I,F,O)
    ReLUActivation(chans:512,img:13x13,I,O)
-   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:1024,ichans:512,img:13x13,I,F,O)
+48 Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:1024,ichans:512,img:13x13,I,F,O)
    ReLUActivation(chans:1024,img:13x13,I,O)
 
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:512,ichans:1024,img:13x13,I,F,O)
+49 Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:512,ichans:1024,img:13x13,I,F,O)
    ReLUActivation(chans:512,img:13x13,I,O)
-   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:1024,ichans:512,img:13x13,I,F,O)
+50 Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:1024,ichans:512,img:13x13,I,F,O)
    ReLUActivation(chans:1024,img:13x13,I,O)
 
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:512,ichans:1024,img:13x13,I,F,O)
+51 Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:512,ichans:1024,img:13x13,I,F,O)
    ReLUActivation(chans:512,img:13x13,I,O)
-   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:1024,ichans:512,img:13x13,I,F,O)
+52 Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:1024,ichans:512,img:13x13,I,F,O)
    ReLUActivation(chans:1024,img:13x13,I,O)
 
  */
@@ -436,6 +439,7 @@ random=1
 //****************************************************************************
 
 #include<small/Layer.hpp>
+#include<small/InputLayer.hpp>
 #include<small/Conv2DLayer.hpp>
 #include<small/MaxPool2DLayer.hpp>
 #include<small/ReLULayer.hpp>
@@ -444,47 +448,45 @@ random=1
 template <class BufferT>
 void create_conv_block(uint32_t kernel_size,
                        uint32_t stride,
-                       uint32_t input_channels,
                        uint32_t output_channels,
-                       uint32_t &image_height,
-                       uint32_t &image_width,
                        //std::vector<float> batch_norm_params,
                        //BufferT const &filter,
                        //bool pack_filters,
                        std::vector<BufferT*> &filters,
                        std::vector<small::Layer<BufferT>*> &layers)
 {
-    std::cerr << "conv_block(k:" << kernel_size << ",s" << stride
-              << "), in(chans:" << input_channels
-              << ",img:" << image_height << "x" << image_width << ")->";
+    auto&& [input_batches, input_channels, input_height, input_width] =
+        layers.back()->output_buffer_shape();
+
+    std::cerr << "conv_block(batches:" << input_batches
+              << ",k:" << kernel_size << ",s:" << stride
+              << "),in(chans:" << input_channels
+              << ",img:" << input_height << "x" << input_width << ")->";
 
     // ---------- TEMPORARY CODE --------------
     // create an unpacked filter
-    size_t filter_numel(kernel_size*kernel_size*input_channels*output_channels);
+    size_t filter_numel(output_channels*input_channels*kernel_size*kernel_size);
     auto *filter = small::alloc_buffer(filter_numel);
     init(*filter, filter_numel);
     filters.push_back(filter);
     // ---------- TEMPORARY CODE --------------
 
     layers.push_back(
-        new small::Conv2DLayer<BufferT>(kernel_size, kernel_size,
+        new small::Conv2DLayer<BufferT>(*layers.back(),
+                                        kernel_size, kernel_size,
                                         stride, small::PADDING_F,
-                                        input_channels, output_channels,
-                                        image_height, image_width,
-                                        // batch_norm_params, pack_filters,
-                                        *filter));
-
-    image_height = small::compute_output_dim(image_height, kernel_size,
-                                             stride, small::PADDING_F);
-    image_width  = small::compute_output_dim(image_width, kernel_size,
-                                             stride, small::PADDING_F);
+                                        output_channels,
+                                        /// @todo batch_norm_params,
+                                        /// @todo bias terms,
+                                        *filter, false));
 
     layers.push_back(
-        //new small::LeakyReLULayer(output_channels, image_height, image_width)
-        new small::ReLULayer<BufferT>(
-            output_channels, image_height, image_width));
-    std::cerr << ", out(chans:" << output_channels
-              << ",img:" << image_height << "x" << image_width << ")\n";
+        new small::LeakyReLULayer<BufferT>(*layers.back(), 1.0e-2));
+
+    std::cerr << "out(chans:" << output_channels
+              << ",img:" << input_height << "x" << input_width
+              << "),activation:leaky(1e-2)"
+              << ")\n";
 }
 
 //****************************************************************************
@@ -500,19 +502,22 @@ std::vector<small::Layer<BufferT>*> create_model(
     std::vector<small::Layer<BufferT>*> layers;
 
     // settings for first layer
-    bool pack_filters = true;
+    //bool pack_filters = true;
     uint32_t kernel_size = 3U;
     uint32_t stride = 1U;
     uint32_t input_channels = model_input_channels;
     uint32_t output_channels = 32U;
 
+    layers.push_back(new small::InputLayer<BufferT>(
+                         {1UL, input_channels, image_height, image_width}));
+
     // first conv block
     //size_t filter_num = 0U;
     create_conv_block(kernel_size, stride,
-                      input_channels, output_channels,
-                      image_height, image_width,
-                      //batch_norm_params[filter_num],
-                      //filters[filter_num++], pack_filters,
+                      output_channels,
+                      /// @todo batch_norm_params[filter_num],
+                      /// @todo bias terms,
+                      //filters[filter_num++],
                       filters,
                       layers);
 
@@ -521,17 +526,17 @@ std::vector<small::Layer<BufferT>*> create_model(
     for (size_t stage_num = 0; stage_num < 5; ++stage_num)
     {
         std::cerr << "== Begin Stage " << stage_num << " ==\n";
-        kernel_size = 3U;
-        stride = 2U;
-        input_channels = output_channels;
-        output_channels = 2*input_channels;
 
         // halve the image size and double the number of channels
+        kernel_size = 3U;
+        stride = 2U;
+        output_channels = 2*output_channels;
+
         create_conv_block(kernel_size, stride,
-                          input_channels, output_channels,
-                          image_height, image_width,
-                          //batch_norm_params[filter_num],
-                          //filters[filter_num++], pack_filters,
+                          output_channels,
+                          /// @todo batch_norm_params[filter_num],
+                          /// @todo bias terms,
+                          //filters[filter_num++],
                           filters,
                           layers);
 
@@ -541,41 +546,44 @@ std::vector<small::Layer<BufferT>*> create_model(
         {
             std::cerr << "===== Begin Residual Block " << stage_num
                       << "/" << block_num << " =====\n";
+            // save output of skip connection
+            auto skip_layer = layers.back();
+
             // ================= Begin Residual Block =================
             kernel_size = 1U;
             stride = 1U;
-            input_channels = output_channels;
-            output_channels = input_channels/2;
+            output_channels = output_channels/2;
             create_conv_block(kernel_size, stride,
-                              input_channels, output_channels,
-                              image_height, image_width,
+                              output_channels,
                               //batch_norm_params[filter_num],
+                              //bias terms
                               //filters[filter_num++], pack_filters,
                               filters,
                               layers);
 
-            input_channels = output_channels;
-            output_channels = 2*input_channels;
+            output_channels = 2*output_channels;
             kernel_size = 3U;
             create_conv_block(kernel_size, stride,
-                              input_channels, output_channels,
-                              image_height, image_width,
+                              output_channels,
                               //batch_norm_params[filter_num],
+                              //bias terms
                               //filters[filter_num++], pack_filters,
                               filters,
                               layers);
 
             /// @todo for adding two tensors
-            //layers.push_back(
-            //  new small::LinearLayer(output_channels,image_height,image_width));
+            layers.push_back(
+                new small::AddLayer(*(layers.back()), *skip_layer));
+            std::cerr << "skip_connection(this, -4)\n";
             // ================== End Residual Block ==================
             std::cerr << "====== End Residual Block ======\n";
         }
     }
 
-
+    //=====================================
     // Begin detection layers
     //=====================================
+    /// @todo detection layers
 
     return layers;
 }
@@ -588,7 +596,7 @@ void compute_buffer_sizes(
     size_t                                    &max_numel_1,
     size_t                                    &max_numel_2)
 {
-    size_t layer_num = 0;
+    size_t layer_num = 1; // skip input layer
 
     //layers[layer_num++]->compute_output(input_dc, inter_1_dc);   // conv 3x3/1
     //layers[layer_num++]->compute_output(inter_1_dc, inter_1_dc); // ReLU
@@ -608,6 +616,9 @@ void compute_buffer_sizes(
         for (size_t block_num = 0; block_num < residual_blocks[stage_num];
              ++block_num)
         {
+            max_numel_0 = std::max<size_t>(max_numel_0,
+                                           layers[layer_num-1]->output_buffer_size());
+
             //layers[layer_num++]->compute_output(inter_0_dc, inter_1_dc); //conv 1x1/1
             //layers[layer_num++]->compute_output(inter_1_dc, inter_1_dc); //relu
             max_numel_1 = std::max<size_t>(max_numel_1,
@@ -620,11 +631,12 @@ void compute_buffer_sizes(
                                            layers[layer_num]->output_buffer_size());
             layer_num += 2;
 
-            /// @todo add inter_1 to inter_0 to complete residual layer
-            /// layers[layer_num++]->compute_output(inter_2_dc, inter_0_dc); // linear
+            /// @todo add inter_2 to inter_0 to complete residual layer
+            /// layers[layer_num++]->compute_output(inter_2_dc, inter_0_dc); // accum
             //inter_0_dc.swap(inter_2_dc); // placeholder for (buf0 += buf2)
             std::cerr << "should be the same: " << max_numel_0 << "?="
                       << max_numel_2 << std::endl;
+            layer_num++;
             //max_numel_0 = std::max<size_t>(max_numel_0, max_numel_2); // NOT OPTIMAL
         }
         //inter_1_dc.swap(inter_0_dc)
@@ -637,14 +649,14 @@ void compute_buffer_sizes(
 
 //****************************************************************************
 template <class BufferT>
-BufferT &model_inference(
+small::Tensor<BufferT> &model_inference(
     std::vector<small::Layer<BufferT>*> const &layers,
-    BufferT                             const &input_dc,
-    BufferT                                   &inter_0_dc,
-    BufferT                                   &inter_1_dc,
-    BufferT                                   &inter_2_dc)
+    small::Tensor<BufferT>              const &input_dc,
+    small::Tensor<BufferT>                    &inter_0_dc,
+    small::Tensor<BufferT>                    &inter_1_dc,
+    small::Tensor<BufferT>                    &inter_2_dc)
 {
-    size_t layer_num = 0;
+    size_t layer_num = 1; // skip input layer
 
     // yolo_block = 0
     layers[layer_num++]->compute_output(input_dc, inter_1_dc);   // conv 3x3/1
@@ -665,13 +677,15 @@ BufferT &model_inference(
             layers[layer_num++]->compute_output(inter_1_dc, inter_2_dc); //conv 3x3/1
             layers[layer_num++]->compute_output(inter_2_dc, inter_2_dc); //relu
 
-            /// @todo add inter_1 to inter_0 to complete residual layer
-            // layers[layer_num++]->compute_output(inter_2_dc, inter_0_dc); // linear
-            inter_0_dc.swap(inter_2_dc); // placeholder for (buf0 += buf2)
+            // add inter_2 to inter_0 to complete residual layer
+            layers[layer_num++]->compute_output(inter_2_dc, inter_0_dc); //accum
         }
         inter_1_dc.swap(inter_0_dc);
     }
 
+    if (layer_num > layers.size())
+        std::cerr << "ERROR: layer overrun, " << layer_num << " > "
+                  << layers.size() << std::endl;
     return inter_0_dc;
 }
 
@@ -690,6 +704,7 @@ void inference(uint32_t C_i,
     uint32_t input_dimensions = C_i * N * M;
     BufferT input_dc(input_dimensions);
     init(input_dc, input_dimensions);
+    small::Tensor<BufferT> input_tensor({1, C_i, N, M}, input_dc);
 
     std::cerr << "\ncreate_model (LAYERS)\n";
     std::vector<BufferT *> filter_buf_ptrs;
@@ -703,21 +718,21 @@ void inference(uint32_t C_i,
     // allocate space for intermediate outputs (use the max sizes calculated previously)
 
 #if defined(QUANTIZED)
-    BufferT inter_0_dc(max_numel_0*2);  /// @todo HACK need to determine correct size
-    BufferT inter_1_dc(max_numel_1*2);  /// @todo HACK need to determine correct size
-    BufferT inter_2_dc(max_numel_2*2);  /// @todo HACK need to determine correct size
+    small::Tensor<BufferT> inter_0_tensor(max_numel_0*2);  /// @todo HACK need to determine correct size
+    small::Tensor<BufferT> inter_1_tensor(max_numel_1*2);  /// @todo HACK need to determine correct size
+    small::Tensor<BufferT> inter_2_tensor(max_numel_2*2);  /// @todo HACK need to determine correct size
 #else
-    BufferT inter_0_dc(max_numel_0);
-    BufferT inter_1_dc(max_numel_1);
-    BufferT inter_2_dc(max_numel_2);
+    small::Tensor<BufferT> inter_0_tensor(max_numel_0);
+    small::Tensor<BufferT> inter_1_tensor(max_numel_1);
+    small::Tensor<BufferT> inter_2_tensor(max_numel_2);
 #endif
 
     //========================================================================
 
     std::cerr << "\nWarm up run (LAYERS)\n";
-    auto &output_a_dc =
-        model_inference(layers, input_dc,
-                        inter_0_dc, inter_1_dc, inter_2_dc);
+    //auto &output_a_dc =
+        model_inference(layers, input_tensor,
+                        inter_0_tensor, inter_1_tensor, inter_2_tensor);
 
     // Compare the results
     size_t num_outputs = layers.back()->output_buffer_size();

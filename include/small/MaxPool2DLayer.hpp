@@ -25,78 +25,73 @@ class MaxPool2DLayer : public Layer<BufferT>
 {
 public:
     typedef typename BufferT::value_type value_type;
+    typedef typename Tensor<BufferT>::shape_type shape_type;
 
-    MaxPool2DLayer(uint32_t    kernel_height,
+    MaxPool2DLayer(Layer<BufferT> const &predecessor,
+                   uint32_t    kernel_height,
                    uint32_t    kernel_width,
                    uint32_t    stride,
-                   PaddingEnum padding_type,
-                   uint32_t    num_channels,
-                   uint32_t    input_height,
-                   uint32_t    input_width)
-        : Layer<BufferT>(),
+                   PaddingEnum padding_type)
+        : Layer<BufferT>(&predecessor),
           m_kernel_height(kernel_height),
           m_kernel_width(kernel_width),
           m_stride(stride),
-          m_num_channels(num_channels),
-          m_input_height(input_height),
-          m_input_width(input_width),
-          m_input_buffer_size(num_channels*input_height*input_width),
           m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0),
-          m_output_buffer_size(0)
+          m_input_shape(predecessor.output_buffer_shape()),
+          m_input_buffer_size(predecessor.output_buffer_size())
     {
-        // std::cerr << "*MaxPool2D(k:" << kernel_size
-        //           << ",s:" << stride
-        //           << ",'v'"
-        //           << ",chans:" << num_channels
-        //           << ",img:" << input_size
-        //           << std::endl;
+#if defined(DEBUG_LAYERS)
+        std::cerr << "MaxPool2D(batches:" << m_input_shape[BATCH]
+                  << ",k:" << kernel_height << "x" << kernel_width
+                  << ",s:" << stride
+                  << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
+                  << ",chans:" << m_input_shape[CHANNEL]
+                  << ",img:" << m_input_shape[HEIGHT] << "x" << m_input_shape[WIDTH]
+                  << std::endl;
+#endif
 
         /// @todo is there a clean way to make these const members, or
         ///       will image size get moved to compute_output() and all of
         ///       this moves to compute_output()?
-        small::compute_padding_output_dim(input_height, kernel_height,
+        m_output_shape[BATCH] = m_input_shape[BATCH];
+        m_output_shape[CHANNEL] = m_input_shape[CHANNEL];
+        small::compute_padding_output_dim(m_input_shape[HEIGHT], kernel_height,
                                           stride, padding_type,
                                           m_t_pad, m_b_pad,
-                                          m_output_height);
-        small::compute_padding_output_dim(input_width, kernel_width,
+                                          m_output_shape[HEIGHT]);
+        small::compute_padding_output_dim(m_input_shape[WIDTH], kernel_width,
                                           stride, padding_type,
                                           m_l_pad, m_r_pad,
-                                          m_output_width);
-        // std::cerr << "MaxPool2D padding: " << (int)m_t_pad << "," << (int)m_b_pad
+                                          m_output_shape[WIDTH]);
+        // std::cerr << "MaxPool2D padding: "
+        //           << (int)m_t_pad << "," << (int)m_b_pad
         //          << "," << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
-        m_output_buffer_size = num_channels*m_output_height*m_output_width;
+        m_output_buffer_size = m_output_shape[BATCH]*
+            m_output_shape[CHANNEL]*m_output_shape[HEIGHT]*m_output_shape[WIDTH];
     }
 
     virtual ~MaxPool2DLayer() {}
 
-    virtual size_t  input_buffer_size() const { return  m_input_buffer_size; }
     virtual size_t output_buffer_size() const { return m_output_buffer_size; }
+    virtual shape_type output_buffer_shape() const { return m_output_shape; }
 
     // The input buffer is already packed for SMaLL computation ('dc')
     // The output buffer will be packed for SMaLL computation ('dc')
-    virtual void compute_output(BufferT const &input_dc,
-                                BufferT       &output_dc) const
+    virtual void compute_output(Tensor<BufferT> const &input,
+                                Tensor<BufferT>       &output) const
     {
-        // assert(input_dc.size() >= m_input_buffer_size);
-        // assert(output.size()   >= m_output_buffer_size);
+        // assert(input.shape() == m_input_shape)
+        // assert(output.capacity() >= m_output_buffer_size);
 
-        if (input_dc.size() < m_input_buffer_size)
+        if (input.shape() != m_input_shape)
         {
-            std::cerr << "MaxPool2DLayer ERROR: input buffer size = " << input_dc.size()
-                      << ", required size = " << m_input_buffer_size
-                      << ": " << m_input_height << "x" << m_input_width
-                      << "x" << m_num_channels << std::endl;
             throw std::invalid_argument(
-                "MaxPool2DLayer::compute_output ERROR: "
-                "insufficient input buffer space.");
+                "MaxPool2DLayer::compute_output() ERROR: "
+                "incorrect input buffer shape.");
         }
 
-        if (output_dc.size() < m_output_buffer_size)
+        if (output.capacity() < m_output_buffer_size)
         {
-            std::cerr << "MaxPool2DLayer ERROR: output buffer size = " << output_dc.size()
-                      << ", required size = " << m_output_buffer_size
-                      << ": " << m_input_height << "x" << m_input_width
-                      << "x" << m_num_channels << std::endl;
             throw std::invalid_argument(
                 "MaxPool2DLayer::compute_output ERROR: "
                 "insufficient output buffer space.");
@@ -107,34 +102,37 @@ public:
             MaxPool2D(m_kernel_width,
                       m_stride,
                       m_t_pad, m_b_pad, m_l_pad, m_r_pad,
-                      m_num_channels,
-                      m_input_height, m_input_width,
-                      input_dc,
-                      output_dc);
+                      m_input_shape[CHANNEL],
+                      m_input_shape[HEIGHT], m_input_shape[WIDTH],
+                      input.buffer(),
+                      output.buffer());
         }
         else
         {
             MaxPool2D_rect(m_kernel_height, m_kernel_width,
                            m_stride,
                            m_t_pad, m_b_pad, m_l_pad, m_r_pad,
-                           m_num_channels,
-                           m_input_height, m_input_width,
-                           input_dc,
-                           output_dc);
+                           m_input_shape[CHANNEL],
+                           m_input_shape[HEIGHT], m_input_shape[WIDTH],
+                           input.buffer(),
+                           output.buffer());
         }
+        output.set_shape(m_output_shape);
     }
 
 private:
-    uint32_t const m_kernel_height, m_kernel_width;
-    uint32_t const m_stride;
-    uint32_t const m_num_channels;
-    uint32_t const m_input_height, m_input_width;
-    size_t   const m_input_buffer_size;
+    uint32_t   const m_kernel_height, m_kernel_width;
+    uint32_t   const m_stride;
 
     /// @todo: how to make const?
-    uint8_t  m_t_pad, m_b_pad, m_l_pad, m_r_pad;
-    uint32_t m_output_height, m_output_width;
-    size_t   m_output_buffer_size;
+    uint8_t          m_t_pad, m_b_pad, m_l_pad, m_r_pad;
+
+    shape_type const m_input_shape;
+    size_t     const m_input_buffer_size;
+
+    /// @todo: is it worth it to make const?
+    shape_type       m_output_shape;
+    size_t           m_output_buffer_size;
 };
 
 }

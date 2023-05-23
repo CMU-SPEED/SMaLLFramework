@@ -21,26 +21,26 @@ namespace small
 
 //****************************************************************************
 template <typename BufferT>
-class ReLULayer : public Layer<BufferT>
+class InputLayer : public Layer<BufferT>
 {
 public:
     typedef typename BufferT::value_type value_type;
     typedef typename Tensor<BufferT>::shape_type shape_type;
 
-    ReLULayer(Layer<BufferT> const &predecessor)
-        : Layer<BufferT>(&predecessor),
-          m_shape(predecessor.output_buffer_shape()),
-          m_buffer_size(predecessor.output_buffer_size())
+    InputLayer(shape_type const &shape) // {B, C, H, W}
+        : Layer<BufferT>(nullptr),      // has no predecessor
+          m_shape(shape),
+          m_buffer_size(shape[BATCH]*shape[CHANNEL]*shape[HEIGHT]*shape[WIDTH])
     {
 #if defined(DEBUG_LAYERS)
-        std::cerr << "ReLU(batches:" << m_shape[BATCH]
+        std::cerr << "Input(batches:" << m_shape[BATCH]
                   << ",chans:" << m_shape[CHANNEL]
                   << ",img:" << m_shape[HEIGHT] << "x" << m_shape[WIDTH]
                   << ")" << std::endl;
 #endif
     }
 
-    virtual ~ReLULayer() {}
+    virtual ~InputLayer() {}
 
     virtual size_t output_buffer_size() const { return m_buffer_size; }
     virtual shape_type output_buffer_shape() const { return m_shape; }
@@ -48,33 +48,12 @@ public:
     virtual void compute_output(Tensor<BufferT> const &input,
                                 Tensor<BufferT>       &output) const
     {
-        // assert(input.shape()  == m_shape);
-        // assert(output.capacity() >= m_buffer_size);
-
-        if (input.shape() != m_shape)
-        {
-            throw std::invalid_argument(
-                "ReLULayer::compute_output() ERROR: "
-                "incorrect input buffer shape.");
-        }
-
-        if (output.capacity() < m_buffer_size)
-        {
-            throw std::invalid_argument(
-                "ReLULayer::compute_output() ERROR: "
-                "insufficient output buffer space.");
-        }
-
-        small::ReLUActivation(m_shape[CHANNEL],
-                              m_shape[HEIGHT], m_shape[WIDTH],
-                              input.buffer(),
-                              output.buffer());
-        output.set_shape(m_shape);
+        ///@todo Do nothing or throw? or pack the input into the output?
     }
 
 private:
-    shape_type const m_shape;
-    size_t     const m_buffer_size;
+    shape_type   m_shape;
+    size_t const m_buffer_size;
 };
 
 }

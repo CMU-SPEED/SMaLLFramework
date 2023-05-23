@@ -15,6 +15,7 @@
 #include <stdexcept>
 #include <stdlib.h> // for posix_memalign
 #include <vector>
+//#include <iostream>
 
 namespace small
 {
@@ -25,6 +26,7 @@ namespace small
 // Must have:
 // - value_type typedef for the type of scalars stored in the buffer
 // - accum_type typedef for the type of scalars used to accumulate values
+// - move constructor and move assignment operator
 // - data() method that returns raw pointer to data buffer
 // - size() method that returns number of elements of sizeof(ScalarT) in
 //          the data buffer.
@@ -40,6 +42,12 @@ public:
     typedef float value_type;
     typedef float accum_type;
 
+    FloatBuffer() :
+        m_num_elts(0),
+        m_buffer(nullptr)
+    {
+    }
+
     FloatBuffer(size_t num_elts) : m_num_elts(num_elts)
     {
         if (0 != posix_memalign((void**)&m_buffer,
@@ -53,12 +61,69 @@ public:
         //           << ", size = " << m_buffer.size() << std::endl;
     }
 
+    FloatBuffer(FloatBuffer const &other)
+        : m_num_elts(other.m_num_elts)
+    {
+        //std::cerr << "FloatBuffer copy ctor\n";
+        if (0 != posix_memalign((void**)&m_buffer,
+                                64,
+                                m_num_elts*sizeof(value_type)))
+        {
+            throw std::bad_alloc();
+        }
+
+        std::copy(other.m_buffer, other.m_buffer + m_num_elts,
+                  m_buffer);
+    }
+
+    FloatBuffer(FloatBuffer&& other) noexcept
+        : m_num_elts(0),
+          m_buffer(nullptr)
+    {
+        //std::cerr << "FloatBuffer move ctor\n";
+        std::swap(m_num_elts, other.m_num_elts);
+        std::swap(m_buffer,   other.m_buffer);
+    }
+
+    FloatBuffer &operator=(FloatBuffer const &other)
+    {
+        //std::cerr << "FloatBuffer copy assignment\n";
+        if (this != &other)
+        {
+            // expensive, but with exception guarantees.
+            FloatBuffer tmp(other);
+
+            std::swap(m_num_elts, tmp.m_num_elts);
+            std::swap(m_buffer,   tmp.m_buffer);
+        }
+
+        return *this;
+    }
+
+    FloatBuffer &operator=(FloatBuffer&& other) noexcept
+    {
+        //std::cerr << "FloatBuffer move assignment\n";
+        if (this != &other)
+        {
+            m_num_elts = 0;
+            free(m_buffer);
+            m_buffer = nullptr;
+            std::swap(m_num_elts, other.m_num_elts);
+            std::swap(m_buffer,   other.m_buffer);
+        }
+
+        return *this;
+    }
+
     ~FloatBuffer()
     {
-        free(m_buffer);
         // std::cerr << "FloatBuffer::dtor " << (void*)this
         //           << ", data_ptr = " << (void*)m_buffer.data()
         //           << ", size = " << m_buffer.size() << std::endl;
+        if (m_buffer != nullptr)
+        {
+            free(m_buffer);
+        }
     }
 
     inline size_t size() const { return m_num_elts; }

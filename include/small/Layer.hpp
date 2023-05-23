@@ -12,8 +12,11 @@
 
 #pragma once
 
+//#define DEBUG_LAYERS
+
 #include<vector>
 #include<small.h>
+#include<small/Tensor.hpp>
 
 namespace small
 {
@@ -22,42 +25,19 @@ template <typename BufferT>
 class Layer
 {
 public:
-
-    Layer() {};
+    typedef typename Tensor<BufferT>::shape_type shape_type;
+    Layer(Layer<BufferT> const *predecessor) : m_predecessor(predecessor) {};
 
     virtual ~Layer() {}
 
-    virtual size_t  input_buffer_size() const = 0;
     virtual size_t output_buffer_size() const = 0;
+    virtual shape_type output_buffer_shape() const = 0;
 
-    virtual void compute_output(BufferT const &input,
-                                BufferT       &output) const = 0;
-
-#if 0
-    // CONSIDER THE FOLLOWING INTERFACE INSTEAD
-    virtual size_t  input_buffer_size(uint32_t       input_height,
-                                      uint32_t       input_width) = 0;
-    virtual size_t output_buffer_size(uint32_t       input_height,
-                                      uint32_t       input_width) = 0;
-
-    virtual void compute_output(uint32_t       input_height,
-                                uint32_t       input_width,
-                                BufferT const &input_dc,
-                                uint32_t      &output_height,
-                                uint32_t      &output_width
-                                BufferT       &output_dc) const = 0;
-    {
-        /// If I do this then padding needs to be recomputed everytime
-    }
-
-    // IS THIS NECESSARY?
-    static BufferT allocate_buffer(size_t num_elements)
-    {
-        return BufferT(num_elements);
-    }
-#endif
+    virtual void compute_output(Tensor<BufferT> const &input,
+                                Tensor<BufferT>       &output) const = 0;
 
 protected:
+    Layer<BufferT> const *m_predecessor;
 };
 
 }

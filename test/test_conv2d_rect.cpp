@@ -22,6 +22,7 @@
 
 #include <small.h>
 #include <small/utils/Timer.hpp>
+#include <small/InputLayer.hpp>
 #include <small/Conv2DLayer.hpp>
 
 #include "test_utils.hpp"
@@ -125,7 +126,7 @@ bool run_conv2d_rect_config(LayerParams const &params)
         {
             passing = false;
 
-            std::cout << "FAIL: Conv2d_Rect_out(" << ix << ")-->"
+            std::cout << "FAIL: Conv2D_rect_out(" << ix << ")-->"
                       << std::setw(12) << std::setprecision(10)
                       << packed_output_dc[ix] << "(computed) != "
                       << std::setw(12) << std::setprecision(10)
@@ -280,7 +281,7 @@ void measure_conv2d_rect_performance(void)
                 max_t = std::max(max_t, ts);
             }
 
-            printf("function\t%ld\t%d\t%d\t%d\t%d\t%ld\t%d\t%d\t%lf\t%lf\t%lf\n",
+            printf("function\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%lf\t%lf\t%lf\n",
                    p.C_i, p.H, p.W, p.k, p.s, p.C_o,
                    num_threads[ix], num_runs,
                    min_t, max_t, (tx/num_runs));

@@ -335,6 +335,50 @@ void ReLUActivation(int input_channels,
 
 //****************************************************************************
 template <class BufferT>
+void LeakyReLUActivation(int input_channels,
+                         int input_height, int input_width,
+                         float negative_slope,
+                         BufferT const &input_buf,
+                         BufferT       &output_buf)
+{
+#if defined(RECORD_CALLS)
+    std::cout << "LeakyReLUActivation(chans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",slope:" << negative_slope
+              << ",I,O)\n";
+#endif
+
+    /// @todo Create an abstract_layer call for this layer type.
+    for (auto ix = 0; ix < input_channels*input_height*input_width; ++ix)
+    {
+        output_buf[ix] = ((input_buf[ix] < 0) ?
+                          (negative_slope*input_buf[ix]) :
+                          input_buf[ix]);
+    }
+}
+
+//****************************************************************************
+template <class BufferT>
+void Accum(int input_channels,
+           int input_height, int input_width,
+           BufferT const &input_buf,
+           BufferT       &output_buf)
+{
+#if defined(RECORD_CALLS)
+    std::cout << "Accum(chans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I,O)\n";
+#endif
+
+    /// @todo Create an abstract_layer call for this layer type.
+    for (auto ix = 0; ix < input_channels*input_height*input_width; ++ix)
+    {
+        output_buf[ix] += input_buf[ix];
+    }
+}
+
+//****************************************************************************
+template <class BufferT>
 void Dense(int output_elements, int input_elements,
            BufferT const &input_buf,
            BufferT const &filter_buf,
