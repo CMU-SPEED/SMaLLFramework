@@ -32,13 +32,12 @@ public:
                    uint32_t    kernel_width,
                    uint32_t    stride,
                    PaddingEnum padding_type)
-        : Layer<BufferT>(&predecessor),
+        : Layer<BufferT>(),
+          m_input_shape(predecessor.output_shape()),
           m_kernel_height(kernel_height),
           m_kernel_width(kernel_width),
           m_stride(stride),
-          m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0),
-          m_input_shape(predecessor.output_buffer_shape()),
-          m_input_buffer_size(predecessor.output_buffer_size())
+          m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0)
     {
 #if defined(DEBUG_LAYERS)
         std::cerr << "MaxPool2D(batches:" << m_input_shape[BATCH]
@@ -46,43 +45,37 @@ public:
                   << ",s:" << stride
                   << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
                   << ",chans:" << m_input_shape[CHANNEL]
-                  << ",img:" << m_input_shape[HEIGHT] << "x" << m_input_shape[WIDTH]
+                  << ",img:" << m_input_shape[HEIGHT]
+                  << "x" << m_input_shape[WIDTH]
                   << std::endl;
 #endif
 
         /// @todo is there a clean way to make these const members, or
         ///       will image size get moved to compute_output() and all of
         ///       this moves to compute_output()?
-        m_output_shape[BATCH] = m_input_shape[BATCH];
-        m_output_shape[CHANNEL] = m_input_shape[CHANNEL];
+        shape_type output_shape;
+        output_shape[BATCH] = m_input_shape[BATCH];
+        output_shape[CHANNEL] = m_input_shape[CHANNEL];
         small::compute_padding_output_dim(m_input_shape[HEIGHT], kernel_height,
                                           stride, padding_type,
                                           m_t_pad, m_b_pad,
-                                          m_output_shape[HEIGHT]);
+                                          output_shape[HEIGHT]);
         small::compute_padding_output_dim(m_input_shape[WIDTH], kernel_width,
                                           stride, padding_type,
                                           m_l_pad, m_r_pad,
-                                          m_output_shape[WIDTH]);
+                                          output_shape[WIDTH]);
         // std::cerr << "MaxPool2D padding: "
         //           << (int)m_t_pad << "," << (int)m_b_pad
         //          << "," << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
-        m_output_buffer_size = m_output_shape[BATCH]*
-            m_output_shape[CHANNEL]*m_output_shape[HEIGHT]*m_output_shape[WIDTH];
+
+        this->set_output_shape(output_shape);
     }
 
     virtual ~MaxPool2DLayer() {}
 
-    virtual size_t output_buffer_size() const { return m_output_buffer_size; }
-    virtual shape_type output_buffer_shape() const { return m_output_shape; }
-
-    // The input buffer is already packed for SMaLL computation ('dc')
-    // The output buffer will be packed for SMaLL computation ('dc')
     virtual void compute_output(Tensor<BufferT> const &input,
                                 Tensor<BufferT>       &output) const
     {
-        // assert(input.shape() == m_input_shape)
-        // assert(output.capacity() >= m_output_buffer_size);
-
         if (input.shape() != m_input_shape)
         {
             throw std::invalid_argument(
@@ -90,7 +83,7 @@ public:
                 "incorrect input buffer shape.");
         }
 
-        if (output.capacity() < m_output_buffer_size)
+        if (output.capacity() < Layer<BufferT>::output_size())
         {
             throw std::invalid_argument(
                 "MaxPool2DLayer::compute_output ERROR: "
@@ -117,22 +110,17 @@ public:
                            input.buffer(),
                            output.buffer());
         }
-        output.set_shape(m_output_shape);
+        output.set_shape(Layer<BufferT>::output_shape());
     }
 
 private:
+    shape_type const m_input_shape;
+
     uint32_t   const m_kernel_height, m_kernel_width;
     uint32_t   const m_stride;
 
     /// @todo: how to make const?
     uint8_t          m_t_pad, m_b_pad, m_l_pad, m_r_pad;
-
-    shape_type const m_input_shape;
-    size_t     const m_input_buffer_size;
-
-    /// @todo: is it worth it to make const?
-    shape_type       m_output_shape;
-    size_t           m_output_buffer_size;
 };
 
 }

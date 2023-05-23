@@ -425,7 +425,7 @@ void inference()
     printf("\nElapsed time: %lf ns.\n", my_timer.elapsed());
 
     // Compare the results
-    size_t num_outputs = layers.back()->output_buffer_size();
+    size_t num_outputs = layers.back()->output_size();
     std::cout << "\nCHECK RESULTS: Num output elements: " << num_outputs
               << std::endl;
     for (size_t ix = 0; ix < num_outputs; ++ix)

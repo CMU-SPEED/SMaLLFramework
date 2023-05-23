@@ -446,17 +446,19 @@ random=1
 
 //****************************************************************************
 template <class BufferT>
-void create_conv_block(uint32_t kernel_size,
-                       uint32_t stride,
-                       uint32_t output_channels,
-                       //std::vector<float> batch_norm_params,
-                       //BufferT const &filter,
-                       //bool pack_filters,
-                       std::vector<BufferT*> &filters,
-                       std::vector<small::Layer<BufferT>*> &layers)
+void create_conv_block(
+    typename small::Tensor<BufferT>::shape_type const &input_shape,
+    uint32_t kernel_size,
+    uint32_t stride,
+    uint32_t output_channels,
+    //std::vector<float> batch_norm_params,
+    //BufferT const &filter,
+    //bool pack_filters,
+    std::vector<BufferT*> &filters,
+    std::vector<small::Layer<BufferT>*> &layers)
 {
-    auto&& [input_batches, input_channels, input_height, input_width] =
-        layers.back()->output_buffer_shape();
+    auto&& [input_batches, input_channels, input_height, input_width]
+        = input_shape;
 
     std::cerr << "conv_block(batches:" << input_batches
               << ",k:" << kernel_size << ",s:" << stride
@@ -508,12 +510,16 @@ std::vector<small::Layer<BufferT>*> create_model(
     uint32_t input_channels = model_input_channels;
     uint32_t output_channels = 32U;
 
+    /// @todo remove need for InputLayer (get input shape from Model)
     layers.push_back(new small::InputLayer<BufferT>(
                          {1UL, input_channels, image_height, image_width}));
+    typename small::Tensor<BufferT>::shape_type input_shape(
+        {1UL, input_channels, image_height, image_width});
 
     // first conv block
     //size_t filter_num = 0U;
-    create_conv_block(kernel_size, stride,
+    create_conv_block(input_shape,
+                      kernel_size, stride,
                       output_channels,
                       /// @todo batch_norm_params[filter_num],
                       /// @todo bias terms,
@@ -532,7 +538,8 @@ std::vector<small::Layer<BufferT>*> create_model(
         stride = 2U;
         output_channels = 2*output_channels;
 
-        create_conv_block(kernel_size, stride,
+        create_conv_block(layers.back()->output_shape(),
+                          kernel_size, stride,
                           output_channels,
                           /// @todo batch_norm_params[filter_num],
                           /// @todo bias terms,
@@ -546,14 +553,16 @@ std::vector<small::Layer<BufferT>*> create_model(
         {
             std::cerr << "===== Begin Residual Block " << stage_num
                       << "/" << block_num << " =====\n";
-            // save output of skip connection
+
+            // save current output for the skip connection
             auto skip_layer = layers.back();
 
             // ================= Begin Residual Block =================
             kernel_size = 1U;
             stride = 1U;
             output_channels = output_channels/2;
-            create_conv_block(kernel_size, stride,
+            create_conv_block(layers.back()->output_shape(),
+                              kernel_size, stride,
                               output_channels,
                               //batch_norm_params[filter_num],
                               //bias terms
@@ -563,7 +572,8 @@ std::vector<small::Layer<BufferT>*> create_model(
 
             output_channels = 2*output_channels;
             kernel_size = 3U;
-            create_conv_block(kernel_size, stride,
+            create_conv_block(layers.back()->output_shape(),
+                              kernel_size, stride,
                               output_channels,
                               //batch_norm_params[filter_num],
                               //bias terms
@@ -601,7 +611,7 @@ void compute_buffer_sizes(
     //layers[layer_num++]->compute_output(input_dc, inter_1_dc);   // conv 3x3/1
     //layers[layer_num++]->compute_output(inter_1_dc, inter_1_dc); // ReLU
     max_numel_1 = std::max<size_t>(max_numel_1,
-                                   layers[layer_num]->output_buffer_size());
+                                   layers[layer_num]->output_size());
     layer_num += 2;
 
     uint32_t residual_blocks[] = {1,2,8,8,4};
@@ -610,25 +620,25 @@ void compute_buffer_sizes(
         //layers[layer_num++]->compute_output(inter_1_dc, inter_0_dc); //conv 3x3/2
         //layers[layer_num++]->compute_output(inter_0_dc, inter_0_dc); //relu
         max_numel_0 = std::max<size_t>(max_numel_0,
-                                       layers[layer_num]->output_buffer_size());
+                                       layers[layer_num]->output_size());
         layer_num += 2;
 
         for (size_t block_num = 0; block_num < residual_blocks[stage_num];
              ++block_num)
         {
             max_numel_0 = std::max<size_t>(max_numel_0,
-                                           layers[layer_num-1]->output_buffer_size());
+                                           layers[layer_num-1]->output_size());
 
             //layers[layer_num++]->compute_output(inter_0_dc, inter_1_dc); //conv 1x1/1
             //layers[layer_num++]->compute_output(inter_1_dc, inter_1_dc); //relu
             max_numel_1 = std::max<size_t>(max_numel_1,
-                                           layers[layer_num]->output_buffer_size());
+                                           layers[layer_num]->output_size());
             layer_num += 2;
 
             //layers[layer_num++]->compute_output(inter_1_dc, inter_2_dc); //conv 3x3/1
             //layers[layer_num++]->compute_output(inter_2_dc, inter_2_dc); //relu
             max_numel_2 = std::max<size_t>(max_numel_2,
-                                           layers[layer_num]->output_buffer_size());
+                                           layers[layer_num]->output_size());
             layer_num += 2;
 
             /// @todo add inter_2 to inter_0 to complete residual layer
@@ -718,9 +728,10 @@ void inference(uint32_t C_i,
     // allocate space for intermediate outputs (use the max sizes calculated previously)
 
 #if defined(QUANTIZED)
-    small::Tensor<BufferT> inter_0_tensor(max_numel_0*2);  /// @todo HACK need to determine correct size
-    small::Tensor<BufferT> inter_1_tensor(max_numel_1*2);  /// @todo HACK need to determine correct size
-    small::Tensor<BufferT> inter_2_tensor(max_numel_2*2);  /// @todo HACK need to determine correct size
+    /// @todo HACK need to determine correct sizes for quantized buffers
+    small::Tensor<BufferT> inter_0_tensor(max_numel_0*2);
+    small::Tensor<BufferT> inter_1_tensor(max_numel_1*2);
+    small::Tensor<BufferT> inter_2_tensor(max_numel_2*2);
 #else
     small::Tensor<BufferT> inter_0_tensor(max_numel_0);
     small::Tensor<BufferT> inter_1_tensor(max_numel_1);
@@ -735,7 +746,7 @@ void inference(uint32_t C_i,
                         inter_0_tensor, inter_1_tensor, inter_2_tensor);
 
     // Compare the results
-    size_t num_outputs = layers.back()->output_buffer_size();
+    size_t num_outputs = layers.back()->output_size();
     std::cout << "\nNum output elements: " << num_outputs << std::endl;
     // for (size_t ix = 0; ix < num_outputs; ++ix)
     // {

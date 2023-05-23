@@ -239,13 +239,13 @@ bool run_relu_layer_config(LayerParams const &params)
     std::string in_fname =
         get_pathname(data_dir, "in", "relu",
                      params,
-                     input_layer.output_buffer_size());
+                     input_layer.output_size());
     std::cout << "\nReLU: input file = " << in_fname << std::endl;
 
     // Allocate the input buffer
     BufferT input_dc = read_inputs<BufferT>(in_fname);
 
-    TEST_ASSERT(input_dc.size() == input_layer.output_buffer_size());
+    TEST_ASSERT(input_dc.size() == input_layer.output_size());
 
     // Pack input data
     BufferT packed_input_dc(input_dc.size());
@@ -256,12 +256,12 @@ bool run_relu_layer_config(LayerParams const &params)
                        packed_input_dc);
 
     small::Tensor<BufferT> packed_input_tensor(
-        input_layer.output_buffer_shape(),
+        input_layer.output_shape(),
         std::move(packed_input_dc));
 
     // Read output regression data
-    auto output_shape(relu_layer.output_buffer_shape());
-    size_t output_buffer_size(relu_layer.output_buffer_size());
+    auto output_shape(relu_layer.output_shape());
+    size_t output_buffer_size(relu_layer.output_size());
 
     std::cerr << "Output image dims: "
               << output_shape[small::HEIGHT] << "x" << output_shape[small::WIDTH]
@@ -285,7 +285,7 @@ bool run_relu_layer_config(LayerParams const &params)
                        packed_output_dc_answers);
 
     // Allocate output buffer
-    BufferT packed_output_dc(relu_layer.output_buffer_size());
+    BufferT packed_output_dc(relu_layer.output_size());
     small::Tensor<BufferT> packed_output_tensor(output_shape,
                                                 std::move(packed_output_dc));
 

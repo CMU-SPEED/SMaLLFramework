@@ -133,13 +133,13 @@ bool run_maxpool_layer_config(LayerParams const &params)
     std::string in_fname =
         get_pathname(data_dir, "in", "pool",
                      params,
-                     input_layer.output_buffer_size());
+                     input_layer.output_size());
     std::cout << "\nMaxPool: input file = " << in_fname << std::endl;
 
     // Allocate the input buffer
     BufferT input_dc = read_inputs<BufferT>(in_fname);
 
-    TEST_ASSERT(input_dc.size() == input_layer.output_buffer_size());
+    TEST_ASSERT(input_dc.size() == input_layer.output_size());
 
     // Pack input data
     BufferT packed_input_dc(input_dc.size());
@@ -150,12 +150,12 @@ bool run_maxpool_layer_config(LayerParams const &params)
                        packed_input_dc);
 
     small::Tensor<BufferT> packed_input_tensor(
-        input_layer.output_buffer_shape(),
+        input_layer.output_shape(),
         std::move(packed_input_dc));
 
     // Read output regression data
-    auto output_shape(maxpool_layer.output_buffer_shape());
-    size_t output_buffer_size(maxpool_layer.output_buffer_size());
+    auto output_shape(maxpool_layer.output_shape());
+    size_t output_buffer_size(maxpool_layer.output_size());
 
     std::cerr << "Output image dims: "
               << output_shape[small::HEIGHT] << "x" << output_shape[small::WIDTH]

@@ -40,12 +40,11 @@ public:
                        uint32_t       num_output_channels,
                        BufferT const &filters,
                        bool           filters_are_packed = true)
-        : Layer<BufferT>(&predecessor),
+        : Layer<BufferT>(),
+          m_input_shape(predecessor.output_shape()),
           m_kernel_size(kernel_size),
           m_stride(stride),
-          m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0),
-          m_input_shape(predecessor.output_buffer_shape()),
-          m_input_buffer_size(predecessor.output_buffer_size())
+          m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0)
     {
 #if defined(DEBUG_LAYERS)
         std::cerr << "PartialConv2D(batches:" << m_input_shape[BATCH]
@@ -57,6 +56,7 @@ public:
                   << ",img:" << m_input_shape[HEIGHT] << "x" << m_input_shape[WIDTH]
                   << "), filter.size=" << filters.size() << std::endl;
 #endif
+
         if (filters.size() <
             num_output_channels*m_input_shape[CHANNEL]*kernel_size*kernel_size)
         {
@@ -68,31 +68,31 @@ public:
         /// @todo is there a clean way to make these const members, or
         ///       will image size get moved to compute_output and all of
         ///       this moves to compute output?
-        m_output_shape[BATCH] = m_input_shape[BATCH];
-        m_output_shape[CHANNEL] = num_output_channels;
+        shape_type output_shape;
+        output_shape[BATCH] = m_input_shape[BATCH];
+        output_shape[CHANNEL] = num_output_channels;
         small::compute_padding_output_dim(m_input_shape[HEIGHT], kernel_size,
                                           stride, padding_type,
                                           m_t_pad, m_b_pad,
-                                          m_output_shape[HEIGHT]);
+                                          output_shape[HEIGHT]);
         small::compute_padding_output_dim(m_input_shape[WIDTH], kernel_size,
                                           stride, padding_type,
                                           m_l_pad, m_r_pad,
-                                          m_output_shape[WIDTH]);
+                                          output_shape[WIDTH]);
         // std::cerr << "Conv2D padding: " << (int)m_t_pad << "," << (int)m_b_pad
         //           << "," << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
 
-        m_output_buffer_size = m_output_shape[BATCH]*
-            m_output_shape[CHANNEL]*m_output_shape[HEIGHT]*m_output_shape[WIDTH];
+        Layer<BufferT>::set_output_shape(output_shape);
 
-        BufferT packed_filters(m_output_shape[CHANNEL]*m_input_shape[CHANNEL]*
+        BufferT packed_filters(output_shape[CHANNEL]*m_input_shape[CHANNEL]*
                                kernel_size*kernel_size);
         if (!filters_are_packed)
         {
             // Pack the filter buffers for SMaLL use
             small::pack_buffer(filters,
                                FILTER_CONV,
-                               m_output_shape[CHANNEL], m_input_shape[CHANNEL],
-                               m_kernel_size,   m_kernel_size,
+                               output_shape[CHANNEL], m_input_shape[CHANNEL],
+                               m_kernel_size, m_kernel_size,
                                C_ib, C_ob,
                                packed_filters);
         }
@@ -107,17 +107,9 @@ public:
 
     virtual ~PartialConv2DLayer() {}
 
-    virtual size_t output_buffer_size() const { return m_output_buffer_size; }
-    virtual shape_type output_buffer_shape() const { return m_output_shape; }
-
-    // The input buffer is already packed for SMaLL computation ('dc')
-    // The output buffer will be packed for SMaLL computation ('dc')
     virtual void compute_output(Tensor<BufferT> const &input,
                                 Tensor<BufferT>       &output) const
     {
-        // assert(input.shape() != m_input_shape);
-        // assert(output.capacity())  >= m_output_buffer_size);
-
         if (input.shape() != m_input_shape)
         {
             throw std::invalid_argument(
@@ -125,38 +117,35 @@ public:
                 "incorrect input buffer shape.");
         }
 
-        if (output.capacity() < m_output_buffer_size)
+        if (output.capacity() < Layer<BufferT>::output_size())
         {
             throw std::invalid_argument(
                 "PartialConv2DLayer::compute_output() ERROR: "
                 "insufficient output buffer space.");
         }
 
+        auto output_channels(Layer<BufferT>::output_shape()[CHANNEL]);
+
         PartialConv2D(m_kernel_size,
                       m_stride,
                       m_t_pad, m_b_pad, m_l_pad, m_r_pad,
-                      m_output_shape[CHANNEL],  // channels,
-                      m_input_shape[CHANNEL],   // channels
+                      output_channels,
+                      m_input_shape[CHANNEL],
                       m_input_shape[HEIGHT], m_input_shape[WIDTH],
                       input.buffer(),
                       m_packed_filters,
                       output.buffer());
-        output.set_shape(m_output_shape);
+        output.set_shape(Layer<BufferT>::output_shape());
     }
 
 private:
-    uint32_t const m_kernel_size;
-    uint32_t const m_stride;
-
-    /// @todo: how to make const?
-    uint8_t        m_t_pad, m_b_pad, m_l_pad, m_r_pad;
-
     shape_type const m_input_shape;
-    size_t     const m_input_buffer_size;
+
+    uint32_t   const m_kernel_size;
+    uint32_t   const m_stride;
 
     /// @todo: how to make const?
-    shape_type       m_output_shape;
-    size_t           m_output_buffer_size;
+    uint8_t          m_t_pad, m_b_pad, m_l_pad, m_r_pad;
 
     BufferT          m_packed_filters;
 };

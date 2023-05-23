@@ -159,7 +159,7 @@ void test_swap(void)
     TEST_CHECK(2*SIZE == buf2.size());
 
     TEST_CHECK(buf[5] == 5);
-    TEST_CHECK(buf2[5] == 5U/2U);
+    TEST_CHECK(buf2[5] == static_cast<Buffer::value_type>(5UL)/2);
     TEST_CHECK(buf2[5+SIZE] == 5);
 
     buf.swap(buf2);

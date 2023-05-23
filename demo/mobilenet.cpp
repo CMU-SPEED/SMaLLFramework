@@ -165,7 +165,7 @@ std::vector<small::Layer<BufferT>*> create_model(
         kernel_size = 1;
         stride = 1;
         output_channels =
-            prev->output_buffer_shape()[small::CHANNEL]*channel_multiplier[block_num];
+            prev->output_shape()[small::CHANNEL]*channel_multiplier[block_num];
 
         prev = new small::Conv2DLayer<BufferT>(*prev,
                                                kernel_size, kernel_size,
@@ -553,7 +553,7 @@ void inference()
     printf("\nElapsed time: %lf ns.\n", my_timer.elapsed());
 
     // Compare the results
-    size_t num_outputs = layers.back()->output_buffer_size();
+    size_t num_outputs = layers.back()->output_size();
     std::cout << "\nCHECK RESULTS: Num output elements: " << num_outputs << std::endl;
     for (size_t ix = 0; ix < num_outputs; ++ix)
     {
