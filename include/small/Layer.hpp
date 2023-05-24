@@ -20,24 +20,45 @@
 
 namespace small
 {
+
+// Currently only for Conv2DLayer
+enum ActivationType {
+    NONE    = 0,  // aka LINEAR
+    RELU    = 1,
+    LEAKY   = 2
+};
+
 //****************************************************************************
 template <typename BufferT>
 class Layer
 {
 public:
     typedef typename Tensor<BufferT>::shape_type shape_type;
-    Layer(Layer<BufferT> const *predecessor) : m_predecessor(predecessor) {};
+
+    Layer() {}
+    Layer(shape_type const &shape)
+    {
+        set_output_shape(shape);
+    }
 
     virtual ~Layer() {}
 
-    virtual size_t output_buffer_size() const = 0;
-    virtual shape_type output_buffer_shape() const = 0;
+    inline size_t            output_size()  const { return m_output_size; }
+    inline shape_type const &output_shape() const { return m_output_shape; }
 
     virtual void compute_output(Tensor<BufferT> const &input,
                                 Tensor<BufferT>       &output) const = 0;
 
 protected:
-    Layer<BufferT> const *m_predecessor;
+    inline void set_output_shape(shape_type const &output_shape)
+    {
+        m_output_shape = output_shape;
+        m_output_size = (output_shape[0]*output_shape[1]*
+                         output_shape[2]*output_shape[3]);
+    }
+
+    shape_type m_output_shape;
+    size_t     m_output_size;
 };
 
 }

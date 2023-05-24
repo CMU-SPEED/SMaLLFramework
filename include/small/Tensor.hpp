@@ -117,17 +117,19 @@ public:
         }
     }
 
-private:
     static size_t compute_size(shape_type const &shape)
     {
-        size_t sz = 1;
-        for (auto dim : shape)
-        {
-            sz *= dim;
-        }
-        return sz;
+        return shape[0]*shape[1]*shape[2]*shape[3];
+
+        // size_t sz = 1;
+        // for (auto dim : shape)
+        // {
+        //     sz *= dim;
+        // }
+        // return sz;
     }
 
+private:
     shape_type m_shape;
     BufferT    m_buffer;
 };

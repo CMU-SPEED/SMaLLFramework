@@ -28,32 +28,23 @@ public:
     typedef typename Tensor<BufferT>::shape_type shape_type;
 
     InputLayer(shape_type const &shape) // {B, C, H, W}
-        : Layer<BufferT>(nullptr),      // has no predecessor
-          m_shape(shape),
-          m_buffer_size(shape[BATCH]*shape[CHANNEL]*shape[HEIGHT]*shape[WIDTH])
+        : Layer<BufferT>(shape)
     {
 #if defined(DEBUG_LAYERS)
-        std::cerr << "Input(batches:" << m_shape[BATCH]
-                  << ",chans:" << m_shape[CHANNEL]
-                  << ",img:" << m_shape[HEIGHT] << "x" << m_shape[WIDTH]
+        std::cerr << "Input(batches:" << shape[BATCH]
+                  << ",chans:" << shape[CHANNEL]
+                  << ",img:" << shape[HEIGHT] << "x" << shape[WIDTH]
                   << ")" << std::endl;
 #endif
     }
 
     virtual ~InputLayer() {}
 
-    virtual size_t output_buffer_size() const { return m_buffer_size; }
-    virtual shape_type output_buffer_shape() const { return m_shape; }
-
     virtual void compute_output(Tensor<BufferT> const &input,
                                 Tensor<BufferT>       &output) const
     {
         ///@todo Do nothing or throw? or pack the input into the output?
     }
-
-private:
-    shape_type   m_shape;
-    size_t const m_buffer_size;
 };
 
 }

@@ -342,7 +342,7 @@ std::vector<small::Layer<BufferT>*> create_model(
         layers.push_back(prev);
     }
 
-    kernel_size = layers.back()->output_buffer_shape()[small::HEIGHT]; //image_size;
+    kernel_size = layers.back()->output_shape()[small::HEIGHT]; //image_size;
     stride = 1;
     /// @todo should be AveragePooling2D
     prev = new small::MaxPool2DLayer<BufferT>(*prev,
@@ -870,7 +870,7 @@ void inference()
     printf("\nElapsed time: %lf ns.\n", my_timer.elapsed());
 
     // Compare the results
-    size_t num_outputs = layers.back()->output_buffer_size();
+    size_t num_outputs = layers.back()->output_size();
     std::cout << "\nCHECK RESULTS: Num output elements: " << num_outputs
               << std::endl;
     for (size_t ix = 0; ix < num_outputs; ++ix)
