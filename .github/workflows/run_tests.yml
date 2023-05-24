@@ -1,0 +1,19 @@
+name: test_models
+
+on:
+  push:
+    branches: [ $default-branch ]
+  pull_request:
+    branches: [ $default-branch ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: mkdir build && cd build
+      run: mkdir build && cd build
+    - name: cmake ..
+      run: cmake ..
