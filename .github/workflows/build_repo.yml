@@ -1,0 +1,13 @@
+name: Build Repo
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Configure CMAKE
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_UARCH=REF
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build
