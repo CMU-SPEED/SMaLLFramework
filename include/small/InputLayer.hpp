@@ -25,7 +25,6 @@ class InputLayer : public Layer<BufferT>
 {
 public:
     typedef typename BufferT::value_type value_type;
-    typedef typename Tensor<BufferT>::shape_type shape_type;
 
     InputLayer(shape_type const &shape) // {B, C, H, W}
         : Layer<BufferT>(shape)
@@ -40,8 +39,9 @@ public:
 
     virtual ~InputLayer() {}
 
-    virtual void compute_output(Tensor<BufferT> const &input,
-                                Tensor<BufferT>       &output) const
+    virtual void compute_output(
+        std::vector<Tensor<BufferT>*> const &input,
+        std::vector<Tensor<BufferT>*>       &output) const
     {
         ///@todo Do nothing or throw? or pack the input into the output?
     }

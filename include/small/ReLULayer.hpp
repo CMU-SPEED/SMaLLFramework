@@ -25,7 +25,6 @@ class ReLULayer : public Layer<BufferT>
 {
 public:
     typedef typename BufferT::value_type value_type;
-    typedef typename Tensor<BufferT>::shape_type shape_type;
 
     ReLULayer(shape_type const &input_shape)
         : Layer<BufferT>({input_shape})       // input_shape == output_shape
@@ -46,8 +45,6 @@ public:
         std::vector<Tensor<BufferT>*> const &input,
         std::vector<Tensor<BufferT>*>       &output) const
     {
-        // assert input.size()==1, output.size()==1
-
         if ((input.size() != 1) || (input[0]->shape() != this->output_shape(0)))
         {
             throw std::invalid_argument(
@@ -55,7 +52,7 @@ public:
                 "incorrect input buffer shape.");
         }
 
-        if ((output.size() != 1) || output[0]->capacity() < this->output_size(0))
+        if ((output.size() != 1) || (output[0]->capacity() < this->output_size(0)))
         {
             throw std::invalid_argument(
                 "ReLULayer::compute_output() ERROR: "

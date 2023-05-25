@@ -25,15 +25,14 @@ class MaxPool2DLayer : public Layer<BufferT>
 {
 public:
     typedef typename BufferT::value_type value_type;
-    typedef typename Tensor<BufferT>::shape_type shape_type;
 
-    MaxPool2DLayer(Layer<BufferT> const &predecessor,
+    MaxPool2DLayer(shape_type const &input_shape,
                    uint32_t    kernel_height,
                    uint32_t    kernel_width,
                    uint32_t    stride,
                    PaddingEnum padding_type)
         : Layer<BufferT>(),
-          m_input_shape(predecessor.output_shape()),
+          m_input_shape(input_shape),
           m_kernel_height(kernel_height),
           m_kernel_width(kernel_width),
           m_stride(stride),
@@ -68,22 +67,23 @@ public:
         //           << (int)m_t_pad << "," << (int)m_b_pad
         //          << "," << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
 
-        this->set_output_shape(output_shape);
+        this->set_output_shapes({output_shape});
     }
 
     virtual ~MaxPool2DLayer() {}
 
-    virtual void compute_output(Tensor<BufferT> const &input,
-                                Tensor<BufferT>       &output) const
+    virtual void compute_output(
+        std::vector<Tensor<BufferT>*> const &input,
+        std::vector<Tensor<BufferT>*>       &output) const
     {
-        if (input.shape() != m_input_shape)
+        if ((input.size() != 1) || (input[0]->shape() != m_input_shape))
         {
             throw std::invalid_argument(
                 "MaxPool2DLayer::compute_output() ERROR: "
                 "incorrect input buffer shape.");
         }
 
-        if (output.capacity() < Layer<BufferT>::output_size())
+        if ((output.size() != 1) || (output[0]->capacity() < this->output_size(0)))
         {
             throw std::invalid_argument(
                 "MaxPool2DLayer::compute_output ERROR: "
@@ -97,8 +97,8 @@ public:
                       m_t_pad, m_b_pad, m_l_pad, m_r_pad,
                       m_input_shape[CHANNEL],
                       m_input_shape[HEIGHT], m_input_shape[WIDTH],
-                      input.buffer(),
-                      output.buffer());
+                      input[0]->buffer(),
+                      output[0]->buffer());
         }
         else
         {
@@ -107,10 +107,11 @@ public:
                            m_t_pad, m_b_pad, m_l_pad, m_r_pad,
                            m_input_shape[CHANNEL],
                            m_input_shape[HEIGHT], m_input_shape[WIDTH],
-                           input.buffer(),
-                           output.buffer());
+                           input[0]->buffer(),
+                           output[0]->buffer());
         }
-        output.set_shape(Layer<BufferT>::output_shape());
+
+        output[0]->set_shape(this->output_shape(0));
     }
 
 private:

@@ -303,7 +303,7 @@ void test_autoencoder(void)
     // Model class
     //************************************************************************
 
-    small::Tensor<BufferT>::shape_type input_shape({1UL, C_i, N, M});
+    small::shape_type input_shape({1UL, C_i, N, M});
     size_t dimension_reduction = num_classes;
 
     small::AutoencoderTiny<BufferT> model(input_shape, dimension_reduction,

@@ -17,6 +17,24 @@
 #include <small/Tensor.hpp>
 #include <small/Layer.hpp>
 
+// Some possible requirements
+// - stores the input shape
+// - manages/owns all of the layers in a model
+// - pure virtual functions for
+//      - create model [NO]
+//      - inference [YES]
+//      - post process output [DON'T THINK SO]
+// - Should this class be subclassed for specific models
+//      - building model occurs during subclass constructor.
+// - support multiple input nodes??
+// - support multiple outputs??
+//      - Must the output be stored in a BufferT?
+// - Manages the DAG of computation [POSSIBLE]
+//      - automatic assignment of reusable buffers?
+//      - automatic computation of buffer high water marks?
+// - Where should .cfg file parsing be done.
+//      - is there a general purpose Model subclass that can parse any input file
+
 namespace small
 {
 
@@ -25,8 +43,6 @@ template <typename BufferT>
 class Model
 {
 public:
-    typedef typename Tensor<BufferT>::shape_type shape_type;
-
     Model() = delete;
 
     // Assume one input layer with a single shape for now

@@ -25,7 +25,6 @@ class Conv2DLayer : public Layer<BufferT>
 {
 public:
     typedef typename BufferT::value_type value_type;
-    typedef typename Tensor<BufferT>::shape_type shape_type;
 
     //Conv2DLayer () delete;
 
@@ -33,7 +32,7 @@ public:
     ///                     in the following order:
     ///                     {in_chans, out_chans, kern_h, kern_w}
     ///
-    Conv2DLayer(shape_type const &input_shape,    //predecessor.output_shape()
+    Conv2DLayer(shape_type const &input_shape,    //pred.output_shape()
                 uint32_t          kernel_height,
                 uint32_t          kernel_width,
                 uint32_t          stride,
@@ -89,7 +88,8 @@ public:
                                           output_shape[WIDTH]);
 
 #if defined(DEBUG_LAYERS)
-        std::cerr << "Conv2D padding: " << (int)m_t_pad << "," << (int)m_b_pad
+        std::cerr << "Conv2D padding: "
+                  << (int)m_t_pad << "," << (int)m_b_pad
                   << "," << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
         if (activation_type == RELU)
         {
@@ -110,7 +110,7 @@ public:
         }
 #endif
 
-        Layer<BufferT>::set_output_shapes({output_shape});
+        this->set_output_shapes({output_shape});
 
         BufferT packed_filters(output_shape[CHANNEL]*m_input_shape[CHANNEL]*
                                kernel_height*kernel_width);
@@ -139,8 +139,6 @@ public:
         std::vector<Tensor<BufferT>*> const &input,
         std::vector<Tensor<BufferT>*>       &output) const
     {
-        // assert input.size()==1, output.size()==1
-
         if ((input.size() != 1) || (input[0]->shape() != m_input_shape))
         {
             throw std::invalid_argument(

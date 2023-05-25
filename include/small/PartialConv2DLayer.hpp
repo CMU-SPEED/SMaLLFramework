@@ -25,7 +25,6 @@ class PartialConv2DLayer : public Layer<BufferT>
 {
 public:
     typedef typename BufferT::value_type value_type;
-    typedef typename Tensor<BufferT>::shape_type shape_type;
 
     //PartialConv2DLayer () delete;
 
@@ -33,15 +32,15 @@ public:
     ///                     in the following order:
     ///                     {in_chans, out_chans, kern_h, kern_w}
     ///
-    PartialConv2DLayer(Layer<BufferT> const &predecessor,
-                       uint32_t       kernel_size,
-                       uint32_t       stride,
-                       PaddingEnum    padding_type,
-                       uint32_t       num_output_channels,
-                       BufferT const &filters,
-                       bool           filters_are_packed = true)
+    PartialConv2DLayer(shape_type const &input_shape,    //pred.output_shape()
+                       uint32_t         kernel_size,
+                       uint32_t         stride,
+                       PaddingEnum      padding_type,
+                       uint32_t         num_output_channels,
+                       BufferT   const &filters,
+                       bool             filters_are_packed = true)
         : Layer<BufferT>(),
-          m_input_shape(predecessor.output_shape()),
+          m_input_shape(input_shape),
           m_kernel_size(kernel_size),
           m_stride(stride),
           m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0)
@@ -53,7 +52,8 @@ public:
                   << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
                   << ",ichans:" << m_input_shape[CHANNEL]
                   << ",ochans:" << num_output_channels
-                  << ",img:" << m_input_shape[HEIGHT] << "x" << m_input_shape[WIDTH]
+                  << ",img:" << m_input_shape[HEIGHT]
+                  << "x" << m_input_shape[WIDTH]
                   << "), filter.size=" << filters.size() << std::endl;
 #endif
 
@@ -79,10 +79,14 @@ public:
                                           stride, padding_type,
                                           m_l_pad, m_r_pad,
                                           output_shape[WIDTH]);
-        // std::cerr << "Conv2D padding: " << (int)m_t_pad << "," << (int)m_b_pad
-        //           << "," << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
 
-        Layer<BufferT>::set_output_shape(output_shape);
+#if defined(DEBUG_LAYERS)
+        std::cerr << "PartialConv2D padding: "
+                  << (int)m_t_pad << "," << (int)m_b_pad
+                  << "," << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
+#endif
+
+        this->set_output_shapes({output_shape});
 
         BufferT packed_filters(output_shape[CHANNEL]*m_input_shape[CHANNEL]*
                                kernel_size*kernel_size);
@@ -107,8 +111,9 @@ public:
 
     virtual ~PartialConv2DLayer() {}
 
-    virtual void compute_output(Tensor<BufferT> const &input,
-                                Tensor<BufferT>       &output) const
+    virtual void compute_output(
+        std::vector<Tensor<BufferT>*> const &input,
+        std::vector<Tensor<BufferT>*>       &output) const
     {
         if (input.shape() != m_input_shape)
         {
@@ -117,25 +122,25 @@ public:
                 "incorrect input buffer shape.");
         }
 
-        if (output.capacity() < Layer<BufferT>::output_size())
+        if (output.capacity() < this->output_size())
         {
             throw std::invalid_argument(
                 "PartialConv2DLayer::compute_output() ERROR: "
                 "insufficient output buffer space.");
         }
 
-        auto output_channels(Layer<BufferT>::output_shape()[CHANNEL]);
+        auto& output_shape(this->output_shape(0));
 
         PartialConv2D(m_kernel_size,
                       m_stride,
                       m_t_pad, m_b_pad, m_l_pad, m_r_pad,
-                      output_channels,
+                      output_shape[CHANNEL],
                       m_input_shape[CHANNEL],
                       m_input_shape[HEIGHT], m_input_shape[WIDTH],
-                      input.buffer(),
+                      input[0]->buffer(),
                       m_packed_filters,
-                      output.buffer());
-        output.set_shape(Layer<BufferT>::output_shape());
+                      output[0]->buffer());
+        output[0]->set_shape(output_shape);
     }
 
 private:

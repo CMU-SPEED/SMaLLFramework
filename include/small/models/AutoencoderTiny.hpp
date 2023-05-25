@@ -19,6 +19,88 @@
 #include <small/Conv2DLayer.hpp>
 #include <small/ReLULayer.hpp>
 
+//****************************************************************************
+
+/* From https://github.com/mlcommons/tiny/blob/master/benchmark/training/anomaly_detection/keras_model.py#L26
+
+from tensorflow.keras.layers import Input, Dense, BatchNormalization, Activation
+def get_model(inputDim):
+    """
+    define the keras model
+    the model based on the simple dense auto encoder
+    (128*128*128*128*8*128*128*128*128)
+    """
+    inputLayer = Input(shape=(inputDim,)) // batches (unspecified) of 'inputDim' sized vectors
+
+    h = Dense(128)(inputLayer)   // input=inDim, output=128, weights=128xinDim
+    h = BatchNormalization()(h)  // pointwise norm. using set mean / std values
+    h = Activation('relu')(h)
+
+    h = Dense(128)(h)
+    h = BatchNormalization()(h)
+    h = Activation('relu')(h)
+
+    h = Dense(128)(h)
+    h = BatchNormalization()(h)
+    h = Activation('relu')(h)
+
+    h = Dense(128)(h)
+    h = BatchNormalization()(h)
+    h = Activation('relu')(h)
+
+    h = Dense(8)(h)               <---------- 8
+    h = BatchNormalization()(h)
+    h = Activation('relu')(h)
+
+    h = Dense(128)(h)
+    h = BatchNormalization()(h)
+    h = Activation('relu')(h)
+
+    h = Dense(128)(h)
+    h = BatchNormalization()(h)
+    h = Activation('relu')(h)
+
+    h = Dense(128)(h)
+    h = BatchNormalization()(h)
+    h = Activation('relu')(h)
+
+    h = Dense(128)(h)
+    h = BatchNormalization()(h)
+    h = Activation('relu')(h)
+
+    h = Dense(inputDim)(h)
+
+    return Model(inputs=inputLayer, outputs=h)
+ */
+
+//****************************************************************************
+/* RECORD_CALLS:
+
+  Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:128,ichans:128,img:1x1,I,F,O) <-- ichans:inDim
+  ReLUActivation(chans:128,img:1x1,I,O)
+  Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:128,ichans:128,img:1x1,I,F,O)
+  ReLUActivation(chans:128,img:1x1,I,O)
+  Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:128,ichans:128,img:1x1,I,F,O)
+  ReLUActivation(chans:128,img:1x1,I,O)
+  Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:128,ichans:128,img:1x1,I,F,O)
+  ReLUActivation(chans:128,img:1x1,I,O)
+
+  Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:16,ichans:128,img:1x1,I,F,O)  <-- ochans:8
+  ReLUActivation(chans:16,img:1x1,I,O)
+
+  Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:128,ichans:16,img:1x1,I,F,O)
+  ReLUActivation(chans:128,img:1x1,I,O)
+  Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:128,ichans:128,img:1x1,I,F,O)
+  ReLUActivation(chans:128,img:1x1,I,O)
+  Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:128,ichans:128,img:1x1,I,F,O)
+  ReLUActivation(chans:128,img:1x1,I,O)
+  Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:128,ichans:128,img:1x1,I,F,O)
+  ReLUActivation(chans:128,img:1x1,I,O)
+
+  Missing:
+  Conv2D(k:1,s:1,pad:[?,?,?,?],ochans:inDim,ichans:128,img:1x1,I,F,O)
+*/
+
 namespace small
 {
 
@@ -27,8 +109,6 @@ template <typename BufferT>
 class AutoencoderTiny : public Model<BufferT>
 {
 public:
-    typedef typename Tensor<BufferT>::shape_type shape_type;
-
     AutoencoderTiny() = delete;
 
     // Assume one input layer with a single shape for now

@@ -33,8 +33,6 @@ template <typename BufferT>
 class Layer
 {
 public:
-    typedef typename Tensor<BufferT>::shape_type shape_type;
-
     Layer() {}
     Layer(std::vector<shape_type> const &output_shapes)
     {
