@@ -357,6 +357,39 @@ void LeakyReLUActivation(int input_channels,
     }
 }
 
+// nearest neighbor
+template <typename BufferT>
+void UpSample2D(
+                int kernel_size,
+                int input_channels,
+                int input_height, int input_width,
+                BufferT const &input_buf,
+                BufferT &output_buf,
+                int zero = 0)
+{
+
+    if (kernel_size == 1)
+    {
+        output_buf = input_buf;
+    }
+    else if (kernel_size == 2)
+    {
+        detail::abstract_layer<BufferT, C_ob, 1, 1, W_ob, 2, 1, 'u', 0, 1>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            1, 1,
+            0, 0, 0, 0,
+            &input_buf, (BufferT *)NULL, &output_buf);
+    }
+    else
+    {
+        // printf("This stride is unsupported, please change the interface.cpp file\n");
+        throw std::invalid_argument("Upsample ERROR: stride unsupported.");
+    }
+}
+
 //****************************************************************************
 template <class BufferT>
 void Accum(int input_channels,
@@ -376,6 +409,9 @@ void Accum(int input_channels,
         output_buf[ix] += input_buf[ix];
     }
 }
+
+
+
 
 //****************************************************************************
 template <class BufferT>

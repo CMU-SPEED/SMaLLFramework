@@ -109,6 +109,31 @@ __m256 a_reg, b0, b1, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13
     }                                                   \
   }
 
+// Upsampling loads (stride < 1)
+
+#define LOAD_TILE_C_upsample(O, stride, _C_ib, _W_ob, C_ob)   \
+    c0 = _mm256_load_ps(O + ((0 / stride) * (_C_ib)));        \
+    c1 = _mm256_load_ps(O + ((0 / stride) * (_C_ib) + SIMD)); \
+    c2 = _mm256_load_ps(O + ((1 / stride) * (_C_ib)));        \
+    c3 = _mm256_load_ps(O + ((1 / stride) * (_C_ib) + SIMD)); \
+    c4 = _mm256_load_ps(O + ((2 / stride) * (_C_ib)));        \
+    c5 = _mm256_load_ps(O + ((2 / stride) * (_C_ib) + SIMD)); \
+    c6 = _mm256_load_ps(O + ((3 / stride) * (_C_ib)));        \
+    c7 = _mm256_load_ps(O + ((3 / stride) * (_C_ib) + SIMD)); \
+    c8 = _mm256_load_ps(O + ((4 / stride) * (_C_ib)));        \
+    c9 = _mm256_load_ps(O + ((4 / stride) * (_C_ib) + SIMD)); \
+    c10 = _mm256_load_ps(O + ((5 / stride) * (_C_ib)));       \
+    c11 = _mm256_load_ps(O + ((5 / stride) * (_C_ib) + SIMD));
+
+#define LOAD_END_C_upsample(O, stride, _C_ib, _W_ob, C_ob)            \
+    for (uint32_t kk = 0; kk < _W_ob; kk++)                           \
+    {                                                                 \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                        \
+        {                                                             \
+            c_tile[kk * C_ob + jj] = O[(kk / stride) * (_C_ib) + jj]; \
+        }                                                             \
+    }
+
 //Stores
 
 #define STORE_TILE_C(O, W_ob, C_ob)             \
