@@ -16,20 +16,21 @@
 
 include_directories ( ${CMAKE_SOURCE_DIR}/demo )
 
+# TODO: Remove these from the demo + check_interface doesn't work 
 # # TODO: Fix name mismatch between source and object
-add_library(check_interface.o STATIC check_interface_abstract.cpp)
-target_compile_definitions(check_interface.o PRIVATE uarch=${CMAKE_UARCH})
+# add_library(check_interface.o STATIC check_interface_abstract.cpp)
+# target_compile_definitions(check_interface.o PRIVATE uarch=${CMAKE_UARCH})
 
-set(LAYER_NAMES RELU CONV PARTIAL_CONV POOL DW_CONV)
-message("In demo/CMakeLists.txt: ${LAYER_NAMES}")
+# set(LAYER_NAMES RELU CONV PARTIAL_CONV POOL DW_CONV)
+# message("In demo/CMakeLists.txt: ${LAYER_NAMES}")
 
-foreach( layer_name ${LAYER_NAMES} )
-  set(demo_name "test_interface_${layer_name}.exe")
-  message("Adding executable: ${demo_name}")
-  add_executable(${demo_name} generic_driver.cpp )
-  target_link_libraries(${demo_name} check_interface.o)
-  target_compile_definitions(${demo_name} PRIVATE LAYER=${layer_name})
-endforeach( layer_name ${LAYER_NAMES} )
+# foreach( layer_name ${LAYER_NAMES} )
+#   set(demo_name "test_interface_${layer_name}.exe")
+#   message("Adding executable: ${demo_name}")
+#   add_executable(${demo_name} generic_driver.cpp )
+#   target_link_libraries(${demo_name} check_interface.o)
+#   target_compile_definitions(${demo_name} PRIVATE LAYER=${layer_name})
+# endforeach( layer_name ${LAYER_NAMES} )
 
 set(MODEL_SOURCES mobilenet.cpp resnet.cpp dscnn.cpp dscnn_square.cpp autoencoder.cpp tinyyolov2.cpp yolov3.cpp)
 message("In demo/CMakeLists.txt: ${MODEL_SOURCES}")
@@ -40,7 +41,7 @@ foreach( model_source_file ${MODEL_SOURCES} )
   set(model_exename "model_${model_exename}")
     message("Adding: ${model_exename}")
     add_executable(${model_exename} ${model_source_file})
-    target_link_libraries( ${model_exename} check_interface.o)
+    # target_link_libraries( ${model_exename} check_interface.o)
 endforeach( model_source_file ${MODEL_SOURCES} )
 
 message("In demo/CMakeLists.txt: ${MODEL_SOURCES}")

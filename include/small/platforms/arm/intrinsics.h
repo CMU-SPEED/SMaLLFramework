@@ -128,6 +128,43 @@ for (uint32_t kk = 0; kk < _W_ob; kk++)					\
     }                                                                           \
   }
 #endif
+
+//Upsample loads
+#define LOAD_TILE_C_upsample(O, stride, _C_ib, _W_ob, C_ob) \
+  c_0_0 = vld1q_f32(O + (0/stride) * C_ob + 0 * SIMD);               \
+  c_0_1 = vld1q_f32(O + (0/stride) * C_ob + 1 * SIMD);               \
+  c_0_2 = vld1q_f32(O + (0/stride) * C_ob + 2 * SIMD);               \
+  c_0_3 = vld1q_f32(O + (0/stride) * C_ob + 3 * SIMD);               \
+  c_1_0 = vld1q_f32(O + (1/stride) * C_ob + 0 * SIMD);               \
+  c_1_1 = vld1q_f32(O + (1/stride) * C_ob + 1 * SIMD);               \
+  c_1_2 = vld1q_f32(O + (1/stride) * C_ob + 2 * SIMD);               \
+  c_1_3 = vld1q_f32(O + (1/stride) * C_ob + 3 * SIMD);               \
+  c_2_0 = vld1q_f32(O + (2/stride) * C_ob + 0 * SIMD);               \
+  c_2_1 = vld1q_f32(O + (2/stride) * C_ob + 1 * SIMD);               \
+  c_2_2 = vld1q_f32(O + (2/stride) * C_ob + 2 * SIMD);               \
+  c_2_3 = vld1q_f32(O + (2/stride) * C_ob + 3 * SIMD);               \
+  c_3_0 = vld1q_f32(O + (3/stride) * C_ob + 0 * SIMD);               \
+  c_3_1 = vld1q_f32(O + (3/stride) * C_ob + 1 * SIMD);               \
+  c_3_2 = vld1q_f32(O + (3/stride) * C_ob + 2 * SIMD);               \
+  c_3_3 = vld1q_f32(O + (3/stride) * C_ob + 3 * SIMD);               \
+  c_4_0 = vld1q_f32(O + (4/stride) * C_ob + 0 * SIMD);               \
+  c_4_1 = vld1q_f32(O + (4/stride) * C_ob + 1 * SIMD);               \
+  c_4_2 = vld1q_f32(O + (4/stride) * C_ob + 2 * SIMD);               \
+  c_4_3 = vld1q_f32(O + (4/stride) * C_ob + 3 * SIMD);               \
+  c_5_0 = vld1q_f32(O + (5/stride) * C_ob + 0 * SIMD);               \
+  c_5_1 = vld1q_f32(O + (5/stride) * C_ob + 1 * SIMD);               \
+  c_5_2 = vld1q_f32(O + (5/stride) * C_ob + 2 * SIMD);               \
+  c_5_3 = vld1q_f32(O + (5/stride) * C_ob + 3 * SIMD);
+
+#define LOAD_END_C_upsample(O, stride, _C_ib, _W_ob, C_ob)      \
+  for (uint32_t kk = 0; kk < _W_ob; kk++)                       \
+  {                                                             \
+    for (uint32_t jj = 0; jj < C_ob; jj++)                      \
+    {                                                           \
+      c_tile[kk * C_ob + jj] = O[(kk / stride) * (_C_ib) + jj]; \
+    }                                                           \
+  }
+
 // === End Loads ==============================================================
 
 // === Stores =================================================================
