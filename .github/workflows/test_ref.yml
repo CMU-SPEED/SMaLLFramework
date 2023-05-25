@@ -16,7 +16,7 @@ jobs:
     needs: build
     steps:
     - name: Run all tests
-      run: bash ${{github.workspace}}/run_tests.sh ${{github.workspace}}/build
+      run: bash ./run_tests.sh ${{github.workspace}}/build
       
   
   
