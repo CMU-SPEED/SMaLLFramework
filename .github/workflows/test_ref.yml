@@ -3,7 +3,7 @@ name: Test Reference Build
 on: [push, pull_request]
 
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -11,12 +11,9 @@ jobs:
         run: cmake -B ${{github.workspace}}/build -DCMAKE_UARCH=REF
       - name: Build
         run: cmake --build ${{github.workspace}}/build
-  tests:
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-    - name: Run all tests
-      run: bash ./run_tests.sh ${{github.workspace}}/build
+      - name: Run all tests
+      run: bash ${{github.workspace}}/run_tests.sh ${{github.workspace}}/build
+    
       
   
   
