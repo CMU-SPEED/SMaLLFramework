@@ -27,10 +27,10 @@ public:
     typedef typename BufferT::value_type value_type;
 
     ReLULayer(shape_type const &input_shape)
-        : Layer<BufferT>({input_shape})       // input_shape == output_shape
+        : Layer<BufferT>(input_shape)       // input_shape == output_shape
     {
 #if defined(DEBUG_LAYERS)
-        auto const &output_shape(this->output_shape(0));
+        auto const &output_shape(this->output_shape());
         std::cerr << "ReLU(batches:" << output_shape[BATCH]
                   << ",chans:" << output_shape[CHANNEL]
                   << ",img:" << output_shape[HEIGHT]
@@ -42,8 +42,8 @@ public:
     virtual ~ReLULayer() {}
 
     virtual void compute_output(
-        std::vector<Tensor<BufferT>*> const &input,
-        std::vector<Tensor<BufferT>*>       &output) const
+        std::vector<Tensor<BufferT> const *> input,
+        std::vector<Tensor<BufferT>*>        output) const
     {
         if ((input.size() != 1) || (input[0]->shape() != this->output_shape(0)))
         {

@@ -221,13 +221,8 @@ bool run_conv2d_layer_config(LayerParams const &params)
     small::Tensor<BufferT> packed_output_tensor(output_shape,
                                                 std::move(packed_output_dc));
 
-    std::vector<small::Tensor<BufferT>*> inputs;
-    inputs.push_back(&packed_input_tensor);
-    std::vector<small::Tensor<BufferT>*> outputs;
-    outputs.push_back(&packed_output_tensor);
-
     // Compute layer
-    conv2d_layer.compute_output(inputs, outputs);
+    conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
     TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size(0));
 
     // Check answer
@@ -475,12 +470,8 @@ void measure_conv2d_performance(void)
 
         small::Tensor<Buffer> input_dc(input_shape);
         small::init(input_dc.buffer(), num_input_elts);
-        std::vector<small::Tensor<Buffer>*> inputs;
-        inputs.push_back(&input_dc);
 
         small::Tensor<Buffer> output_dc(num_output_elts);
-        std::vector<small::Tensor<Buffer>*> outputs;
-        outputs.push_back(&output_dc);
 
         small::Conv2DLayer<Buffer>
             conv2d_layer(input_shape, p.k, p.k, p.s, p.p,
@@ -497,12 +488,12 @@ void measure_conv2d_performance(void)
             double max_t = 0.;
 
             // Warm up
-            conv2d_layer.compute_output(inputs, outputs);
+            conv2d_layer.compute_output({&input_dc}, {&output_dc});
 
             for (size_t iy = 0; iy < num_runs; ++iy)
             {
                 t.start();
-                conv2d_layer.compute_output(inputs, outputs);
+                conv2d_layer.compute_output({&input_dc}, {&output_dc});
                 t.stop();
                 double ts = t.elapsed();
                 tx += ts;

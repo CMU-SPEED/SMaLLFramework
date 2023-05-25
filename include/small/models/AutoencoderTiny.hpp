@@ -116,27 +116,23 @@ public:
                     size_t                       dimension_reduction,
                     std::vector<BufferT*> const &filters,
                     bool                         filters_are_packed = false)
-        : Model<BufferT>(input_shape)
+        : Model<BufferT>(input_shape),
+          m_buffer_0(nullptr),
+          m_buffer_1(nullptr)
     {
         create_model_and_buffers(dimension_reduction, filters, filters_are_packed);
     }
 
     virtual ~AutoencoderTiny()
     {
-        for (auto buffer : m_buffers_0)
-        {
-            delete buffer;
-        }
-        for (auto buffer : m_buffers_1)
-        {
-            delete buffer;
-        }
+        delete m_buffer_0;
+        delete m_buffer_1;
     }
 
-    /// @todo consider returning a vector of weak pointers to internal buffers for
-    ///       the outputs
-    virtual void inference(std::vector<Tensor<BufferT>*> const &input_tensors,
-                           std::vector<Tensor<BufferT>*>       &output_tensors) //weakptr?
+    /// @todo Consider returning a vector of smart pointers (weak_ptr?) to the
+    ///       output buffers.
+    virtual std::vector<Tensor<BufferT>*>
+        inference(std::vector<Tensor<BufferT> const *> input_tensors)
     {
         // assert(input_tensors.size() == 1);
         // assert(input_tensors[0]->size() is correct);
@@ -145,22 +141,24 @@ public:
 
         size_t layer_num = 0;  // skip input layer
         // Conv2D + ReLU
-        this->m_layers[layer_num++]->compute_output(input_tensors, m_buffers_0);
+        this->m_layers[layer_num++]->compute_output(input_tensors,
+                                                    {m_buffer_0});
 
         while (layer_num < this->m_layers.size())
         {
             // Conv2D + ReLU
-            this->m_layers[layer_num++]->compute_output(m_buffers_0, m_buffers_1);
+            this->m_layers[layer_num++]->compute_output({m_buffer_0},
+                                                        {m_buffer_1});
 
-            m_buffers_0.swap(m_buffers_1);
+            m_buffer_0->swap(*m_buffer_1);
         }
 
-        output_tensors = m_buffers_0;
+        return {m_buffer_0};
     }
 
 private:
-    std::vector<Tensor<BufferT>*> m_buffers_0;
-    std::vector<Tensor<BufferT>*> m_buffers_1;
+    Tensor<BufferT> *m_buffer_0;
+    Tensor<BufferT> *m_buffer_1;
 
     void create_model_and_buffers(
         size_t                       dimension_reduction,
@@ -190,12 +188,12 @@ private:
             else
                 output_channels = 128;
 
-            prev = new small::Conv2DLayer<BufferT>(prev_shape,
-                                                   kernel_size, kernel_size,
-                                                   stride, small::PADDING_V,
-                                                   output_channels,
-                                                   *filters[ix], filters_are_packed,
-                                                   RELU);
+            prev = new Conv2DLayer<BufferT>(prev_shape,
+                                            kernel_size, kernel_size,
+                                            stride, PADDING_V,
+                                            output_channels,
+                                            *filters[ix], filters_are_packed,
+                                            RELU);
             this->m_layers.push_back(prev);
             prev_shape = prev->output_shape(0);
 
@@ -210,8 +208,8 @@ private:
             }
         }
 
-        m_buffers_0.push_back(new Tensor<BufferT>(max_elt_0));
-        m_buffers_1.push_back(new Tensor<BufferT>(max_elt_1));
+        m_buffer_0 = new Tensor<BufferT>(max_elt_0);
+        m_buffer_1 = new Tensor<BufferT>(max_elt_1);
     }
 };
 

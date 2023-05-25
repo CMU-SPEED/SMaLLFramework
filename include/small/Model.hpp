@@ -60,10 +60,14 @@ public:
         }
     }
 
+    shape_type const &get_input_shape() const { return m_input_shape; }
+
     // Models can have multiple input and output buffers
-    /// @todo consider a weak_ptr to the output buffers.
-    virtual void inference(std::vector<Tensor<BufferT>*> const &input,
-                           std::vector<Tensor<BufferT>*>       &output) = 0;
+    /// @note Ownership of output buffers is NOT transferred to the caller.
+    /// @todo Consider returning a vector of smart pointers (weak_ptr?) to the
+    ///       output buffers.
+    virtual std::vector<Tensor<BufferT>*>
+        inference(std::vector<Tensor<BufferT> const *> input) = 0;
 
 protected:
     shape_type const             m_input_shape;

@@ -28,7 +28,7 @@ public:
 
     LeakyReLULayer(shape_type const &input_shape,
                    float negative_slope = 0.01f)  /// @todo use value_type?
-        : Layer<BufferT>({input_shape})           // input_shape == output_shape
+        : Layer<BufferT>({input_shape}),          // input_shape == output_shape
           m_negative_slope(negative_slope)
     {
 #if defined(DEBUG_LAYERS)
@@ -45,8 +45,8 @@ public:
     virtual ~LeakyReLULayer() {}
 
     virtual void compute_output(
-        std::vector<Tensor<BufferT>*> const &input,
-        std::vector<Tensor<BufferT>*>       &output) const
+        std::vector<Tensor<BufferT> const *> input,
+        std::vector<Tensor<BufferT>*>        output) const
     {
         if ((input.size() != 1) || (input[0]->shape() != this->output_shape(0)))
         {
@@ -70,11 +70,11 @@ public:
                                    input[0]->buffer(),
                                    output[0]->buffer());
 
-        output.set_shape(output_shape);
+        output[0]->set_shape(output_shape);
     }
 
 private:
-    float      const m_negative_slope;  /// @todo should this be value_type?
+    float const m_negative_slope;  /// @todo should this be value_type?
 };
 
 }

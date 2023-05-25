@@ -186,14 +186,8 @@ bool run_maxpool_layer_config(LayerParams const &params)
     small::Tensor<BufferT> packed_output_tensor(output_shape,
                                                 std::move(packed_output_dc));
 
-    /// @todo work on the interface to be able to more easily accept single buffers
-    std::vector<small::Tensor<BufferT>*> inputs;
-    inputs.push_back(&packed_input_tensor);
-    std::vector<small::Tensor<BufferT>*> outputs;
-    outputs.push_back(&packed_output_tensor);
-
     // Compute layer
-    maxpool_layer.compute_output(inputs, outputs);
+    maxpool_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
 
     // Check answer
     bool passing = true;
@@ -414,12 +408,12 @@ void measure_maxpool_performance(void)
             double max_t = 0.;
 
             // Warm up
-            maxpool_layer.compute_output(inputs, outputs);
+            maxpool_layer.compute_output({&input_dc}, {&output_dc});
 
             for (size_t iy = 0; iy < num_runs; ++iy)
             {
                 t.start();
-                maxpool_layer.compute_output(inputs, outputs);
+                maxpool_layer.compute_output({&input_dc}, {&output_dc});
                 t.stop();
                 double ts = t.elapsed();
                 tx += ts;

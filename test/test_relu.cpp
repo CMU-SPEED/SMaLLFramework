@@ -288,13 +288,8 @@ bool run_relu_layer_config(LayerParams const &params)
     small::Tensor<BufferT> packed_output_tensor(output_shape,
                                                 std::move(packed_output_dc));
 
-    std::vector<small::Tensor<BufferT>*> inputs;
-    inputs.push_back(&packed_input_tensor);
-    std::vector<small::Tensor<BufferT>*> outputs;
-    outputs.push_back(&packed_output_tensor);
-
     // Compute layer
-    relu_layer.compute_output(inputs, outputs);
+    relu_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
 
     // Check answer
     bool passing = true;
@@ -458,7 +453,7 @@ void measure_relu_performance(void)
         small::Tensor<Buffer> input_dc(input_shape);
         small::init(input_dc.buffer(), num_input_elts);
         std::vector<small::Tensor<Buffer>*> inputs;
-        inputs.push_back(&input_dc)
+        inputs.push_back(&input_dc);
 
         small::Tensor<Buffer> output_dc(num_output_elts);
         std::vector<small::Tensor<Buffer>*> outputs;
@@ -477,12 +472,12 @@ void measure_relu_performance(void)
             double max_t = 0.;
 
             // Warm up
-            relu_layer.compute_output(inputs, outputs);
+            relu_layer.compute_output({&input_dc}, {&output_dc});
 
             for (size_t iy = 0; iy < num_runs; ++iy)
             {
                 t.start();
-                relu_layer.compute_output(inputs, outputs);
+                relu_layer.compute_output({&input_dc}, {&output_dc});
                 t.stop();
                 double ts = t.elapsed();
                 tx += ts;

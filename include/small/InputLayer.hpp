@@ -40,8 +40,8 @@ public:
     virtual ~InputLayer() {}
 
     virtual void compute_output(
-        std::vector<Tensor<BufferT>*> const &input,
-        std::vector<Tensor<BufferT>*>       &output) const
+        std::vector<Tensor<BufferT> const *> input,
+        std::vector<Tensor<BufferT>*>        output) const
     {
         ///@todo Do nothing or throw? or pack the input into the output?
     }

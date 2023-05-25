@@ -320,11 +320,11 @@ void test_autoencoder(void)
               << max_numel_inter_1 << std::endl;
 #endif
 
-    std::vector<small::Tensor<BufferT>*> input_tensors, output_tensors;
+    std::vector<small::Tensor<BufferT>*> input_tensors;
     input_tensors.push_back(&input_tensor);
 
     //***********
-    model.inference(input_tensors, output_tensors);
+    auto output_tensors = model.inference({&input_tensor});
     //***********
 
     TEST_CHECK(1 == output_tensors.size());
@@ -357,7 +357,7 @@ void test_autoencoder(void)
         my_timer.start();
 
         //***********
-        model.inference(input_tensors, output_tensors);
+        model.inference({&input_tensor});
         //***********
 
         my_timer.stop();

@@ -107,8 +107,8 @@ public:
     virtual ~DepthwiseConv2DLayer() {}
 
     virtual void compute_output(
-        std::vector<Tensor<BufferT>*> const &input,
-        std::vector<Tensor<BufferT>*>       &output) const
+        std::vector<Tensor<BufferT> const *> input,
+        std::vector<Tensor<BufferT>*>        output) const
     {
         if ((input.size() != 1) || (input[0]->shape() != m_input_shape))
         {

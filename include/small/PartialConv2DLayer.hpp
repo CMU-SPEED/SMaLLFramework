@@ -112,17 +112,17 @@ public:
     virtual ~PartialConv2DLayer() {}
 
     virtual void compute_output(
-        std::vector<Tensor<BufferT>*> const &input,
-        std::vector<Tensor<BufferT>*>       &output) const
+        std::vector<Tensor<BufferT> const *> input,
+        std::vector<Tensor<BufferT>*>        output) const
     {
-        if (input.shape() != m_input_shape)
+        if ((input.size() != 1) || (input[0]->shape() != m_input_shape))
         {
             throw std::invalid_argument(
                 "PartialConv2DLayer::compute_output() ERROR: "
                 "incorrect input buffer shape.");
         }
 
-        if (output.capacity() < this->output_size())
+        if ((output.size() != 1) || (output[0]->capacity() < this->output_size(0)))
         {
             throw std::invalid_argument(
                 "PartialConv2DLayer::compute_output() ERROR: "
@@ -140,6 +140,7 @@ public:
                       input[0]->buffer(),
                       m_packed_filters,
                       output[0]->buffer());
+
         output[0]->set_shape(output_shape);
     }
 

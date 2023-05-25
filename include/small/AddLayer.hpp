@@ -50,8 +50,9 @@ public:
 
     virtual ~AddLayer() {}
 
-    virtual void compute_output(Tensor<BufferT> const &input,
-                                Tensor<BufferT>       &output) const
+    virtual void compute_output(
+        std::vector<Tensor<BufferT> const *> input,
+        std::vector<Tensor<BufferT>*>        output) const
     {
         auto const &output_shape(this->output_shape());
 

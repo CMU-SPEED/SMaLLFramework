@@ -34,28 +34,44 @@ class Layer
 {
 public:
     Layer() {}
+
+    Layer(shape_type const &output_shape)
+    {
+        set_output_shapes({output_shape});
+    }
+
+
     Layer(std::vector<shape_type> const &output_shapes)
     {
+        if (output_shapes.size() == 0)
+        {
+            throw std::invalid_argument(
+                "Layer::ctor ERROR: output_shapes empty.");
+        }
+
         set_output_shapes(output_shapes);
     }
 
     virtual ~Layer() {}
 
-    inline size_t get_num_outputs()         const { return m_output_sizes.size(); }
+    inline size_t get_num_outputs() const { return m_output_sizes.size(); }
 
-    inline size_t output_size(size_t idx) const
+    inline size_t output_size(size_t idx = 0) const
     {
         return m_output_sizes[idx];
     }
 
-    inline shape_type const &output_shape(size_t idx) const
+    inline shape_type const &output_shape(size_t idx = 0) const
     {
         return m_output_shapes[idx];
     }
 
+    /// @todo Revisit this interface, recently switched to taking copies
+    ///       so that I could call with initializer lists; i.e.,
+    ///          compute_output({&input_tensor}, {&output_tensor});
     virtual void compute_output(
-        std::vector<Tensor<BufferT>*> const &input,
-        std::vector<Tensor<BufferT>*>       &output) const = 0;
+        std::vector<Tensor<BufferT> const *> input,
+        std::vector<Tensor<BufferT>*>        output) const = 0;
 
 protected:
     inline void set_output_shapes(std::vector<shape_type> const &output_shapes)
