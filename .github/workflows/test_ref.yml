@@ -9,8 +9,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - run: cmake -B ${{github.workspace}}/build -DCMAKE_UARCH=REF -j8
-      - run: cmake --build ${{github.workspace}}/build
+      - run: cmake -B ${{github.workspace}}/build -DCMAKE_UARCH=REF 
+      - run: cmake --build ${{github.workspace}}/build -j8
       - run: bash ${{github.workspace}}/run_tests.sh ${{github.workspace}}
 
     
