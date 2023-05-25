@@ -3,7 +3,7 @@ name: Test Reference Build
 on: [push, pull_request]
 
 jobs:
-  build-and-test:
+  buildandtest:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
