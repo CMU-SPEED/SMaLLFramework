@@ -43,7 +43,11 @@ public:
 
     virtual ~AutoencoderTiny()
     {
-        for (auto buffer : m_buffers)
+        for (auto buffer : m_buffers_0)
+        {
+            delete buffer;
+        }
+        for (auto buffer : m_buffers_1)
         {
             delete buffer;
         }
@@ -52,35 +56,31 @@ public:
     /// @todo consider returning a vector of weak pointers to internal buffers for
     ///       the outputs
     virtual void inference(std::vector<Tensor<BufferT>*> const &input_tensors,
-                           std::vector<Tensor<BufferT>*>       &output_tensors) const //weakptr?
+                           std::vector<Tensor<BufferT>*>       &output_tensors) //weakptr?
     {
         // assert(input_tensors.size() == 1);
         // assert(input_tensors[0]->size() is correct);
         // assert(output_tensors.size() == 0);
         // assert(m_buffers.size() == 2);
 
-        size_t layer_num = 1;  // skip input layer
-        // Conv2D
-        this->m_layers[layer_num++]->compute_output(*input_tensors[0], *m_buffers[0]);
-        // ReLU
-        this->m_layers[layer_num++]->compute_output(*m_buffers[0], *m_buffers[0]);
+        size_t layer_num = 0;  // skip input layer
+        // Conv2D + ReLU
+        this->m_layers[layer_num++]->compute_output(input_tensors, m_buffers_0);
 
-        while (layer_num < this->m_layers.size() - 1)
+        while (layer_num < this->m_layers.size())
         {
-            // Conv2D
-            this->m_layers[layer_num++]->compute_output(*m_buffers[0], *m_buffers[1]);
-            // ReLU
-            this->m_layers[layer_num++]->compute_output(*m_buffers[1], *m_buffers[1]);
+            // Conv2D + ReLU
+            this->m_layers[layer_num++]->compute_output(m_buffers_0, m_buffers_1);
 
-            m_buffers[0]->swap(*m_buffers[1]);
+            m_buffers_0.swap(m_buffers_1);
         }
 
-        output_tensors.clear();
-        output_tensors.push_back(m_buffers[0]);
+        output_tensors = m_buffers_0;
     }
 
 private:
-    std::vector<Tensor<BufferT>*> m_buffers;
+    std::vector<Tensor<BufferT>*> m_buffers_0;
+    std::vector<Tensor<BufferT>*> m_buffers_1;
 
     void create_model_and_buffers(
         size_t                       dimension_reduction,
@@ -91,7 +91,7 @@ private:
         uint32_t stride = 1;
         uint32_t output_channels = 128;
 
-        // assert dimension_reduction is a multiple of "16"
+        /// @todo assert dimension_reduction is a multiple of "16"
 
         //std::vector<shape_type> buffer_shapes;
         //buffer_shapes.push_back(this->get_input_shape());
@@ -99,43 +99,39 @@ private:
         size_t max_elt_0 = 0UL;
         size_t max_elt_1 = 0UL;
 
-        small::Layer<BufferT> *prev =
-            new small::InputLayer<BufferT>(this->m_input_shape);
-        this->m_layers.push_back(prev);
+        Layer<BufferT> *prev = nullptr;
+        shape_type prev_shape(this->m_input_shape);
 
         for (auto ix = 0U; ix < filters.size(); ++ix)
         {
-            output_channels = 128;
+            /// @todo Support "dimension_reduction == 8;"
+            if (ix == 4)
+                output_channels = dimension_reduction;
+            else
+                output_channels = 128;
 
-            /// @todo ix == 4
-            //if (ix + 1 == filters.size()) output_channels = dimension_reduction;
-
-            /// @todo Support "output_channels = 8;"
-            if (ix == 4) output_channels = dimension_reduction;
-
-            prev = new small::Conv2DLayer<BufferT>(*prev, //input_shapes,
+            prev = new small::Conv2DLayer<BufferT>(prev_shape,
                                                    kernel_size, kernel_size,
                                                    stride, small::PADDING_V,
                                                    output_channels,
-                                                   *filters[ix], filters_are_packed);
+                                                   *filters[ix], filters_are_packed,
+                                                   RELU);
             this->m_layers.push_back(prev);
-
-            prev = new small::ReLULayer<BufferT>(*prev);
-            this->m_layers.push_back(prev);
+            prev_shape = prev->output_shape(0);
 
             if (ix == 0)
             {
-                max_elt_0 = std::max<size_t>(max_elt_0, prev->output_size());
+                max_elt_0 = std::max<size_t>(max_elt_0, prev->output_size(0));
             }
             else
             {
-                max_elt_1 = std::max<size_t>(max_elt_1, prev->output_size());
+                max_elt_1 = std::max<size_t>(max_elt_1, prev->output_size(0));
                 max_elt_0 = std::max<size_t>(max_elt_0, max_elt_1);  // for the swap
             }
         }
 
-        m_buffers.push_back(new Tensor<BufferT>(max_elt_0));
-        m_buffers.push_back(new Tensor<BufferT>(max_elt_1));
+        m_buffers_0.push_back(new Tensor<BufferT>(max_elt_0));
+        m_buffers_1.push_back(new Tensor<BufferT>(max_elt_1));
     }
 };
 

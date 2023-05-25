@@ -136,7 +136,7 @@ void build_baseline_autoencoder(uint32_t C_i,         // 128, 1, 1, 16(8), ...
     intermediate_dims[layer_num][0] = O_WIDTH(layer_num);
     intermediate_dims[layer_num][1] = O_HEIGHT(layer_num);
 
-#if 1
+#if 0
     printf("Layer num total: %ld\n", layer_num_total);
     printf("Layer: Red_C(in_chan), Grp_C(out_chan), Grps, Red_HW(k), Stride(s)\n");
     for (uint32_t i = 0; i < layer_num_total; i++)

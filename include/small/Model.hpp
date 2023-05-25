@@ -47,7 +47,7 @@ public:
     // Models can have multiple input and output buffers
     /// @todo consider a weak_ptr to the output buffers.
     virtual void inference(std::vector<Tensor<BufferT>*> const &input,
-                           std::vector<Tensor<BufferT>*>       &output) const = 0;
+                           std::vector<Tensor<BufferT>*>       &output) = 0;
 
 protected:
     shape_type const             m_input_shape;
