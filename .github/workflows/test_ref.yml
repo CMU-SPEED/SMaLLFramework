@@ -3,7 +3,6 @@ name: Test Reference Build
 on: [push, pull_request]
 
 jobs:
-  runs-on: ubuntu-latest
   build:
     runs-on: ubuntu-latest
     steps:
