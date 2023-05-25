@@ -12,6 +12,7 @@ jobs:
       - name: Build
         run: cmake --build ${{github.workspace}}/build
   tests:
+    runs-on: ubuntu-latest
     needs: build
     steps:
     - name: Run all tests
