@@ -95,6 +95,26 @@ typedef small::FloatBuffer::value_type c_tile_t;
     }                                                                    \
   }
 
+// Upsampling loads (stride < 1)
+
+#define LOAD_TILE_C_upsample(O, stride, _C_ib, _W_ob, C_ob)   \
+    for (uint32_t kk = 0; kk < _W_ob; kk++)                           \
+    {                                                                 \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                        \
+        {                                                             \
+            c_tile[kk * C_ob + jj] = O[(kk / stride) * (_C_ib) + jj]; \
+        }                                                             \
+    }
+
+#define LOAD_END_C_upsample(O, stride, _C_ib, _W_ob, C_ob)            \
+    for (uint32_t kk = 0; kk < _W_ob; kk++)                           \
+    {                                                                 \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                        \
+        {                                                             \
+            c_tile[kk * C_ob + jj] = O[(kk / stride) * (_C_ib) + jj]; \
+        }                                                             \
+    }
+
 // Stores
 
 #define STORE_TILE_C(O, W_ob, C_ob)               \

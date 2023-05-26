@@ -357,22 +357,20 @@ void LeakyReLUActivation(int input_channels,
     }
 }
 
+//****************************************************************************
 // nearest neighbor
 template <typename BufferT>
-void UpSample2D(
-                int kernel_size,
+void UpSample2D(int scale_factor,
                 int input_channels,
                 int input_height, int input_width,
                 BufferT const &input_buf,
-                BufferT &output_buf,
-                int zero = 0)
+                BufferT &output_buf)
 {
-
-    if (kernel_size == 1)
+    if (scale_factor == 1)
     {
         output_buf = input_buf;
     }
-    else if (kernel_size == 2)
+    else if (scale_factor == 2)
     {
         detail::abstract_layer<BufferT, C_ob, 1, 1, W_ob, 2, 1, 'u', 0, 1>(
             input_channels, // Output Channel Grouping
@@ -385,8 +383,8 @@ void UpSample2D(
     }
     else
     {
-        // printf("This stride is unsupported, please change the interface.cpp file\n");
-        throw std::invalid_argument("Upsample ERROR: stride unsupported.");
+        throw std::invalid_argument(
+            "Upsample ERROR: scale factor unsupported (only 1 or 2).");
     }
 }
 
