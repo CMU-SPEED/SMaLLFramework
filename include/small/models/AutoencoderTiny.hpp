@@ -171,9 +171,6 @@ private:
 
         /// @todo assert dimension_reduction is a multiple of "16"
 
-        //std::vector<shape_type> buffer_shapes;
-        //buffer_shapes.push_back(this->get_input_shape());
-
         size_t max_elt_0 = 0UL;
         size_t max_elt_1 = 0UL;
 
