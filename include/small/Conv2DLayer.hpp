@@ -91,6 +91,7 @@ public:
         std::cerr << "Conv2D padding: "
                   << (int)m_t_pad << "," << (int)m_b_pad
                   << "," << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
+
         if (activation_type == RELU)
         {
             std::cerr << "ReLU(batches:" << output_shape[BATCH]

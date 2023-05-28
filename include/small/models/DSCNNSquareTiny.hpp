@@ -89,20 +89,14 @@ public:
 
         size_t layer_num = 0;
         this->m_layers[layer_num++]->compute_output(input_tensors,
-                                                    {m_buffer_0}); // Conv2D
-        this->m_layers[layer_num++]->compute_output({m_buffer_0},
-                                                    {m_buffer_0}); // ReLU
+                                                    {m_buffer_0}); // Conv2D+ReLU
 
         for (auto ix = 0U; ix < 4; ++ix)
         {
             this->m_layers[layer_num++]->compute_output({m_buffer_0},
-                                                        {m_buffer_1}); // DWConv
+                                                        {m_buffer_1}); // DWConv+ReLU
             this->m_layers[layer_num++]->compute_output({m_buffer_1},
-                                                        {m_buffer_1}); // ReLU
-            this->m_layers[layer_num++]->compute_output({m_buffer_1},
-                                                        {m_buffer_0}); // Conv2D
-            this->m_layers[layer_num++]->compute_output({m_buffer_0},
-                                                        {m_buffer_0}); // ReLU
+                                                        {m_buffer_0}); // Conv2D+ReLU
         }
 
         this->m_layers[layer_num++]->compute_output({m_buffer_0},
@@ -139,12 +133,11 @@ private:
                                             kernel_size, kernel_size,
                                             stride, small::PADDING_F,
                                             output_channels,
-                                            *filters[filter_num], true);
+                                            *filters[filter_num],
+                                            filters_are_packed,
+                                            RELU);
         this->m_layers.push_back(prev);
         max_elt_0 = std::max<size_t>(max_elt_0, prev->output_size(0));
-
-        prev = new small::ReLULayer<BufferT>(prev->output_shape());
-        this->m_layers.push_back(prev);
 
         stride = 1;
         uint32_t num_channels = 64;
@@ -157,12 +150,10 @@ private:
             prev = new small::DepthwiseConv2DLayer<BufferT>(
                 prev->output_shape(),
                 kernel_size, stride, small::PADDING_F,
-                *filters[filter_num], true);
+                *filters[filter_num], filters_are_packed,
+                RELU);
             this->m_layers.push_back(prev);
             max_elt_1 = std::max<size_t>(max_elt_1, prev->output_size(0));
-
-            prev = new small::ReLULayer<BufferT>(prev->output_shape());
-            this->m_layers.push_back(prev);
 
             ++filter_num;
             kernel_size = 1;
@@ -170,12 +161,11 @@ private:
                                                    kernel_size, kernel_size,
                                                    stride, small::PADDING_V,
                                                    num_channels,
-                                                   *filters[filter_num], true);
+                                                   *filters[filter_num],
+                                                   filters_are_packed,
+                                                   RELU);
             this->m_layers.push_back(prev);
             max_elt_0 = std::max<size_t>(max_elt_0, prev->output_size(0));
-
-            prev = new small::ReLULayer<BufferT>(prev->output_shape());
-            this->m_layers.push_back(prev);
         }
 
         prev = new small::MaxPool2DLayer<BufferT>(prev->output_shape(),
@@ -193,7 +183,8 @@ private:
                                                kernel_size, kernel_size,
                                                stride, small::PADDING_V,
                                                output_channels,
-                                               *filters[filter_num], true);
+                                               *filters[filter_num],
+                                               filters_are_packed);
         this->m_layers.push_back(prev);
         max_elt_0 = std::max<size_t>(max_elt_0, prev->output_size(0));
 

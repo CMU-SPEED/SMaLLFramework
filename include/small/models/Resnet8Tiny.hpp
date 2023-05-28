@@ -271,33 +271,23 @@ public:
 
         size_t layer_num = 0;
         this->m_layers[layer_num++]->compute_output(input_tensors,
-                                                    {m_buffer_0}); // Conv2D
-        this->m_layers[layer_num++]->compute_output({m_buffer_0},
-                                                    {m_buffer_0}); // ReLU
+                                                    {m_buffer_0}); // Conv2D+ReLU
 
         this->m_layers[layer_num++]->compute_output({m_buffer_0},
-                                                    {m_buffer_1}); // Conv2D
+                                                    {m_buffer_1}); // Conv2D+ReLU
         this->m_layers[layer_num++]->compute_output({m_buffer_1},
-                                                    {m_buffer_1}); // ReLU
-        this->m_layers[layer_num++]->compute_output({m_buffer_1},
-                                                    {m_buffer_0}); // buf0+=Conv2D(buf1)
-        this->m_layers[layer_num++]->compute_output({m_buffer_0},
-                                                    {m_buffer_0}); // ReLU
+                                                    {m_buffer_0}); // buf0+=Conv2D(buf1) + ReLU
 
         for (auto ix = 0U; ix < 2; ++ix)
         {
             this->m_layers[layer_num++]->compute_output({m_buffer_0},
-                                                        {m_buffer_1}); // Conv2D
-            this->m_layers[layer_num++]->compute_output({m_buffer_1},
-                                                        {m_buffer_1}); // ReLU
+                                                        {m_buffer_1}); // Conv2DReLU
 
             this->m_layers[layer_num++]->compute_output({m_buffer_0},
                                                         {m_buffer_2}); // Conv2D
 
             this->m_layers[layer_num++]->compute_output({m_buffer_1},
-                                                        {m_buffer_2}); // buf2+=Conv2D(buf1)
-            this->m_layers[layer_num++]->compute_output({m_buffer_2},
-                                                        {m_buffer_2}); // ReLU
+                                                        {m_buffer_2}); // buf2+=Conv2D(buf1) + ReLU
 
             m_buffer_0->swap(*m_buffer_2);
         }
@@ -340,12 +330,11 @@ private:
                                             kernel_size, kernel_size,
                                             stride, small::PADDING_F,
                                             output_channels,
-                                            *filters[filter_num], true);
+                                            *filters[filter_num],
+                                            filters_are_packed,
+                                            RELU);
         this->m_layers.push_back(prev);
         max_elt_0 = std::max<size_t>(max_elt_0, prev->output_size(0));
-
-        prev = new small::ReLULayer<BufferT>(prev->output_shape());
-        this->m_layers.push_back(prev);
 
         // First Stack
         ++filter_num;
@@ -353,24 +342,22 @@ private:
                                                kernel_size, kernel_size,
                                                stride, small::PADDING_F,
                                                output_channels,
-                                               *filters[filter_num], true);
+                                               *filters[filter_num],
+                                               filters_are_packed,
+                                               RELU);
         this->m_layers.push_back(prev);
         max_elt_1 = std::max<size_t>(max_elt_1, prev->output_size(0));
-
-        prev =  new small::ReLULayer<BufferT>(prev->output_shape());
-        this->m_layers.push_back(prev);
 
         ++filter_num;
         prev = new small::PartialConv2DLayer<BufferT>(prev->output_shape(),
                                                       kernel_size,
                                                       stride, small::PADDING_F,
                                                       output_channels,
-                                                      *filters[filter_num], true);
+                                                      *filters[filter_num],
+                                                      filters_are_packed,
+                                                      RELU);
         this->m_layers.push_back(prev);
         max_elt_0 = std::max<size_t>(max_elt_0, prev->output_size(0));
-
-        prev =  new small::ReLULayer<BufferT>(prev->output_shape());
-        this->m_layers.push_back(prev);
 
         // Second and Third Stacks
         for (auto ix = 0; ix < 2; ++ix)
@@ -386,12 +373,11 @@ private:
                                                    kernel_size, kernel_size,
                                                    stride, small::PADDING_F,
                                                    output_channels,
-                                                   *filters[filter_num], true);
+                                                   *filters[filter_num],
+                                                   filters_are_packed,
+                                                   RELU);
             this->m_layers.push_back(prev);
             max_elt_1 = std::max<size_t>(max_elt_1, prev->output_size(0));
-
-            prev = new small::ReLULayer<BufferT>(prev->output_shape());
-            this->m_layers.push_back(prev);
 
             //==================
             ++filter_num;  ///@note out of order filter access here/next
@@ -400,7 +386,8 @@ private:
                                                    1U, 1U,
                                                    stride, small::PADDING_V,
                                                    output_channels,
-                                                   *filters[filter_num+1], true);
+                                                   *filters[filter_num+1],
+                                                   filters_are_packed);
             this->m_layers.push_back(prev);
             max_elt_2 = std::max<size_t>(max_elt_2, prev->output_size(0));
 
@@ -409,13 +396,12 @@ private:
                                                           kernel_size,
                                                           stride, small::PADDING_F,
                                                           output_channels,
-                                                          *filters[filter_num], true);
+                                                          *filters[filter_num],
+                                                          filters_are_packed,
+                                                          RELU);
             this->m_layers.push_back(prev);
             max_elt_2 = std::max<size_t>(max_elt_2, prev->output_size(0));
             ++filter_num;  /// @note 1x1 filter order swapped
-
-            prev = new small::ReLULayer<BufferT>(prev->output_shape());
-            this->m_layers.push_back(prev);
 
             // 0 swaps with 2 (CONSERVATIVE ESTIMATES)
             max_elt_2 = std::max<size_t>(max_elt_2, max_elt_0);
@@ -439,7 +425,8 @@ private:
                                                kernel_size, kernel_size,
                                                stride, small::PADDING_V,
                                                num_classes,
-                                               *filters[filter_num], true);
+                                               *filters[filter_num],
+                                               filters_are_packed);
         this->m_layers.push_back(prev);
         max_elt_0 = std::max<size_t>(max_elt_0, prev->output_size(0));
 

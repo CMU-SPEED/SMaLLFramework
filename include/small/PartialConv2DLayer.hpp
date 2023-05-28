@@ -38,11 +38,15 @@ public:
                        PaddingEnum      padding_type,
                        uint32_t         num_output_channels,
                        BufferT   const &filters,
-                       bool             filters_are_packed = true)
+                       bool             filters_are_packed = true,
+                       ActivationType    activation_type = NONE,
+                       float             leaky_slope = 1.e-2)
         : Layer<BufferT>(),
           m_input_shape(input_shape),
           m_kernel_size(kernel_size),
           m_stride(stride),
+          m_activation_type(activation_type),
+          m_leaky_slope(leaky_slope),
           m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0)
     {
 #if defined(DEBUG_LAYERS)
@@ -84,6 +88,24 @@ public:
         std::cerr << "PartialConv2D padding: "
                   << (int)m_t_pad << "," << (int)m_b_pad
                   << "," << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
+
+        if (activation_type == RELU)
+        {
+            std::cerr << "ReLU(batches:" << output_shape[BATCH]
+                      << ",chans:" << output_shape[CHANNEL]
+                      << ",img:" << output_shape[HEIGHT]
+                      << "x" << output_shape[WIDTH]
+                      << ")" << std::endl;
+        }
+        else if (activation_type == LEAKY)
+        {
+            std::cerr << "LeakyReLU(batches:" << output_shape[BATCH]
+                      << ",chans:" << output_shape[CHANNEL]
+                      << ",slope:" << m_leaky_slope
+                      << ",img:" << output_shape[HEIGHT]
+                      << "x" << output_shape[WIDTH]
+                      << ")" << std::endl;
+        }
 #endif
 
         this->set_output_shapes({output_shape});
@@ -142,6 +164,21 @@ public:
                       output[0]->buffer());
 
         output[0]->set_shape(output_shape);
+        if (m_activation_type == RELU)
+        {
+            small::ReLUActivation(output_shape[CHANNEL],
+                                  output_shape[HEIGHT], output_shape[WIDTH],
+                                  output[0]->buffer(),
+                                  output[0]->buffer());
+        }
+        else if (m_activation_type == LEAKY)
+        {
+            small::LeakyReLUActivation(output_shape[CHANNEL],
+                                       output_shape[HEIGHT], output_shape[WIDTH],
+                                       m_leaky_slope,
+                                       output[0]->buffer(),
+                                       output[0]->buffer());
+        }
     }
 
 private:
@@ -149,6 +186,9 @@ private:
 
     uint32_t   const m_kernel_size;
     uint32_t   const m_stride;
+
+    ActivationType const m_activation_type;
+    float          const m_leaky_slope;
 
     /// @todo: how to make const?
     uint8_t          m_t_pad, m_b_pad, m_l_pad, m_r_pad;
