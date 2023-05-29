@@ -129,6 +129,8 @@ for (uint32_t kk = 0; kk < _W_ob; kk++)					\
   }
 #endif
 
+//@todo build and test this on arm platform
+
 //Upsample loads
 #define LOAD_TILE_C_upsample(O, stride, _C_ib, _W_ob, C_ob) \
   c_0_0 = vld1q_f32(O + (0/stride) * C_ob + 0 * SIMD);               \
@@ -156,6 +158,7 @@ for (uint32_t kk = 0; kk < _W_ob; kk++)					\
   c_5_2 = vld1q_f32(O + (5/stride) * C_ob + 2 * SIMD);               \
   c_5_3 = vld1q_f32(O + (5/stride) * C_ob + 3 * SIMD);
 
+#if SIMD_EPILOGUE == 1
 #define LOAD_END_C_upsample(O, stride, _C_ib, _W_ob, C_ob)      \
   for (uint32_t kk = 0; kk < _W_ob; kk++)                       \
   {                                                             \
@@ -164,6 +167,16 @@ for (uint32_t kk = 0; kk < _W_ob; kk++)					\
       c_tile[kk * C_ob + jj] = O[(kk / stride) * (_C_ib) + jj]; \
     }                                                           \
   }
+#else
+#define LOAD_END_C_upsample(O, stride, _C_ib, _W_ob, C_ob)                    \
+  for (uint32_t kk = 0; kk < _W_ob; kk++)                                     \
+  {                                                                           \
+    for (uint32_t jj = 0; jj < C_ob / SIMD; jj++)                             \
+    {                                                                         \
+      c_tile[kk * (C_ob / SIMD) + jj] = vld1q_f32(O + (kk / stride) *(_C_ib) + jj * SIMD); \
+    }                                                                         \
+  }
+#endif
 
 // === End Loads ==============================================================
 
@@ -377,6 +390,138 @@ for (uint32_t kk = 0; kk < _W_ob; kk++)					\
 #endif
 // === End Depthwise Convolution ==============================================
 
+// === Leaky ReLU Activation ==================================================
+//@todo implement neon intrinsics version
+#define COND_SCALE_TILE_C(step, a, b, _W_ob, _C_ob)          \
+  float32x4_t bv = vld1q_dup_f32(b);                         \
+  for (uint32_t kk = 0; kk < _W_ob; kk++)                   \
+  {                                                          \
+    for (uint32_t jj = 0; jj < _C_ob / SIMD; jj++)            \
+    {                                                        \
+      float32x4_t av = vld1q_f32(a + kk * step + jj * SIMD); \
+      float32x4_t cv = c_tile_v[kk * (C_ob / SIMD) + jj];       \
+      cv = vmaxq_f32(av, cv);                                \
+      float32x4_t mask = vcltq_f32(av, cv);                  \
+      av = vmulq_f32(av, bv);                                \
+      av = vandq_s32((int32x4_t)(av), (int32x4_t)(mask));    \
+      cv = vaddq_f32(av, cv);                                \
+      c_tile_v[kk * (C_ob / SIMD) + jj] = cv;                   \
+    }
+  
+
+#if SIMD_EPILOGUE == 1
+#define COND_SCALE_END_C(step, a, b, c_cur, W_last, C_ob)                                     \
+  dtype *c_pixel = c_cur;                                                                     \
+  dtype const *a_pixel = a;                                                                   \
+  dtype scale = b[0];                                                                         \
+  for (uint32_t kk = 0; kk < W_last; kk++)                                                    \
+  {                                                                                           \
+    dtype *c_channel = c_pixel;                                                               \
+    dtype const *a_channel = a_pixel;                                                         \
+    for (uint32_t jj = 0; jj < C_ob; jj++)                                                    \
+    {                                                                                         \
+      *(c_channel) = (*(a_channel) > *(c_channel)) ? *(a_channel) : (*(a_channel) * (scale)); \
+      c_channel++;                                                                            \
+      a_channel++;                                                                            \
+    }                                                                                         \
+    a_pixel += step;                                                                          \
+    c_pixel += C_ob;                                                                          \
+  }
+#else
+#define COND_SCALE_END_C(step, a, b, c_cur, W_last, C_ob)    \
+  float32x4_t bv = vld1q_dup_f32(b);                         \
+  for (uint32_t kk = 0; kk < W_last; kk++)                   \
+  {                                                          \
+    for (uint32_t jj = 0; jj < C_ob / SIMD; jj++)            \
+    {                                                        \
+      float32x4_t av = vld1q_f32(a + kk * step + jj * SIMD); \
+      float32x4_t cv = c_cur[kk * (C_ob / SIMD) + jj];\
+      cv = vmaxq_f32(av,cv);\
+      float32x4_t mask = vcltq_f32(av, cv);\
+      av = vmulq_f32(av, bv);\
+      av = vandq_s32((int32x4_t)(av), (int32x4_t)(mask));\
+      cv = vaddq_f32(av,cv);\
+      c_cur[kk * (C_ob / SIMD) + jj] = cv;\
+    }                                                        \
+  }
+#endif
+// === End Leaky ReLU Activation ==============================================
+
+// === Accumulation ==================================================
+#define ACCUM_TILE_C(step, a, W_ob, C_ob)    \
+  float32x4_t av;                          \
+  av = vld1q_f32(a + 0 * step + 0 * SIMD); \
+  c_0_0 = vadd_f32(c_0_0, av);            \
+  av = vld1q_f32(a + 0 * step + 1 * SIMD); \
+  c_0_1 = vadd_f32(c_0_1, av);            \
+  av = vld1q_f32(a + 0 * step + 2 * SIMD); \
+  c_0_2 = vadd_f32(c_0_2, av);            \
+  av = vld1q_f32(a + 0 * step + 3 * SIMD); \
+  c_0_3 = vadd_f32(c_0_3, av);            \
+  av = vld1q_f32(a + 1 * step + 0 * SIMD); \
+  c_1_0 = vadd_f32(c_1_0, av);            \
+  av = vld1q_f32(a + 1 * step + 1 * SIMD); \
+  c_1_1 = vadd_f32(c_1_1, av);            \
+  av = vld1q_f32(a + 1 * step + 2 * SIMD); \
+  c_1_2 = vadd_f32(c_1_2, av);            \
+  av = vld1q_f32(a + 1 * step + 3 * SIMD); \
+  c_1_3 = vadd_f32(c_1_3, av);            \
+  av = vld1q_f32(a + 2 * step + 0 * SIMD); \
+  c_2_0 = vadd_f32(c_2_0, av);            \
+  av = vld1q_f32(a + 2 * step + 1 * SIMD); \
+  c_2_1 = vadd_f32(c_2_1, av);            \
+  av = vld1q_f32(a + 2 * step + 2 * SIMD); \
+  c_2_2 = vadd_f32(c_2_2, av);            \
+  av = vld1q_f32(a + 2 * step + 3 * SIMD); \
+  c_2_3 = vadd_f32(c_2_3, av);            \
+  av = vld1q_f32(a + 3 * step + 0 * SIMD); \
+  c_3_0 = vadd_f32(c_3_0, av);            \
+  av = vld1q_f32(a + 3 * step + 1 * SIMD); \
+  c_3_1 = vadd_f32(c_3_1, av);            \
+  av = vld1q_f32(a + 3 * step + 2 * SIMD); \
+  c_3_2 = vadd_f32(c_3_2, av);            \
+  av = vld1q_f32(a + 3 * step + 3 * SIMD); \
+  c_3_3 = vadd_f32(c_3_3, av);            \
+  av = vld1q_f32(a + 4 * step + 0 * SIMD); \
+  c_4_0 = vadd_f32(c_4_0, av);            \
+  av = vld1q_f32(a + 4 * step + 1 * SIMD); \
+  c_4_1 = vadd_f32(c_4_1, av);            \
+  av = vld1q_f32(a + 4 * step + 2 * SIMD); \
+  c_4_2 = vadd_f32(c_4_2, av);            \
+  av = vld1q_f32(a + 4 * step + 3 * SIMD); \
+  c_4_3 = vadd_f32(c_4_3, av);            \
+  av = vld1q_f32(a + 5 * step + 0 * SIMD); \
+  c_5_0 = vadd_f32(c_5_0, av);            \
+  av = vld1q_f32(a + 5 * step + 1 * SIMD); \
+  c_5_1 = vadd_f32(c_5_1, av);            \
+  av = vld1q_f32(a + 5 * step + 2 * SIMD); \
+  c_5_2 = vadd_f32(c_5_2, av);            \
+  av = vld1q_f32(a + 5 * step + 3 * SIMD); \
+  c_5_3 = vadd_f32(c_5_3, av);
+
+#if SIMD_EPILOGUE == 1
+#define ACCUM_END_C(step, a, c_cur, W_last, C_ob)                                                  \
+  for (uint32_t kk = 0; kk < W_last; kk++)                                                       \
+  {                                                                                              \
+    for (uint32_t jj = 0; jj < C_ob; jj++)                                                       \
+    {                                                                                            \
+      c_cur[kk * C_ob + jj] += a[kk * step + jj]; \
+    }                                                                                            \
+  }
+#else
+#define ACCUM_END_C(step, a, c_cur, W_last, C_ob)              \
+  for (uint32_t kk = 0; kk < W_last; kk++)                   \
+  {                                                          \
+    for (uint32_t jj = 0; jj < C_ob / SIMD; jj++)            \
+    {                                                        \
+      float32x4_t av = vld1q_f32(a + kk * step + jj * SIMD); \
+      c_cur[(kk) * (C_ob / SIMD) + jj] =                     \
+          vadd_f32(av, c_cur[(kk) * (C_ob / SIMD) + jj]);   \
+    }                                                        \
+  }
+#endif
+
+// === End Accumulation ==============================================
 // TODO: is this tested?
 // AVG Pooling
 #define ADD_TILE_C_G(I, W_ob_g, C_ob)              \

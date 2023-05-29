@@ -51,6 +51,14 @@ namespace small
     else if (op_type == 'a' || op_type == 'p')                           \
     {                                                                    \
         MAX_TILE_C(step, a_cur, _O_wb, _C_ob);                           \
+    }                                                                    \
+    else if (op_type == 'l')                                             \
+    {                                                                    \
+        COND_SCALE_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob);             \
+    }                                                                    \
+    else if (op_type == 'd')                                             \
+    {                                                                    \
+        ACCUM_TILE_C(step, a_cur, _O_wb, _C_ob);             \
     }
 
 //****************************************************************************
@@ -70,6 +78,14 @@ namespace small
     else if (op_type == 'a' || op_type == 'p')                                      \
     {                                                                               \
         MAX_END_C(step, a_cur, c_cur, W_elements, _C_ob);                           \
+    }                                                                               \
+    else if (op_type == 'l')                                                        \
+    {                                                                               \
+        COND_SCALE_END_C(step, a_cur, b_cur, c_cur, W_elements, _C_ob);             \
+    }                                                                               \
+    else if (op_type == 'd')                                      \
+    {                                                                               \
+        ACCUM_END_C(step, a_cur, c_cur, W_elements, _C_ob);                           \
     }
 
         //****************************************************************************
@@ -733,9 +749,9 @@ namespace small
                   dim_t _O_wb,
                   dim_t _stride,
                   dim_t _UNROLL,
-                  char op_type,        // 'c' (conv,dense), 'p' (pool), or 'a' (activation)
-                  int8_t op_class,     //  2  (conv),  1  (dense,pool), or '0' (activation)
-                  bool rewrite_output> // 0 (partial conv), 1 (otherwise)
+                  char op_type,        // 'c' (conv,dense), 'p' (pool), 'u' (upsample), a' (relu activation), 'l' (leaky relu activation), or 'd' (accumulate)
+                  int8_t op_class,     //  2  (conv),  1  (dense,pool), or '0' (activation, upsample)
+                  bool rewrite_output> // 0 (partial conv, accum), 1 (otherwise)
         void abstract_layer(
             dim_t G,   // Output Channel Grouping
             dim_t K,   // Output Channels per group
@@ -766,7 +782,7 @@ namespace small
 
             ScalarT const *F_buf = nullptr;
             AccumT F_offset(0);
-            if constexpr (op_type == 'c') // if (F != nullptr)
+            if constexpr (op_type == 'c' ||  op_type == 'l') // if (F != nullptr)
             {
                 F_buf = F->data();
                 F_offset = F->zero();
@@ -905,8 +921,18 @@ namespace small
                 for (index_t g = group_tid; g < G / _G_b; g += T_group)
                 {
                     ScalarT const *I_group = I_buf + g * (F_c * I_h * I_w * _G_b);
-                    ScalarT const *F_group = F_buf + g * (K * F_c * F_h * F_w * _G_b);
                     ScalarT *O_group = O_buf + g * (K * O_hxO_w * _G_b);
+                    //if leaky relu, the weight pointer does not change with the group id
+
+                    ScalarT const *F_group ;
+                    if(op_type == 'l')
+                    {
+                        F_group = F_buf;
+                    }
+                    else
+                    {
+                        F_group = F_buf + g * (K * F_c * F_h * F_w * _G_b);
+                    }
 
                     // resuse O_group as a uint32_t array
                     for (index_t k = channel_tid; k < K / _K_b; k += T_channel)
@@ -971,6 +997,8 @@ namespace small
                             for (index_t j = height_tid; j < O_h; j += T_height)
                             {
                                 ScalarT const *I_row;
+                                // @todo cast index calculation as int and make stride a float value.
+                                //I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
                                 if constexpr (op_type == 'u')
                                 {
                                     I_row =
@@ -1009,6 +1037,8 @@ namespace small
                                 for (index_t l = 0; l < O_w_full; l += _O_wb)
                                 {
                                     ScalarT const *I_col;
+                                    // @todo cast index calculation as int and make stride a float value.
+                                    //I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
                                     if constexpr (op_type == 'u')
                                     {
                                         I_col =
@@ -1066,6 +1096,8 @@ namespace small
                             }
                             // Epilogue with bottom padding
                             ScalarT const *I_row_bot;
+                            // @todo cast index calculation as int and make stride a float value.
+                            //I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
                             if constexpr (op_type == 'u')
                             {
                                 I_row_bot =
@@ -1182,6 +1214,8 @@ namespace small
                             for (index_t j = height_tid; j < O_h; j += T_height)
                             {
                                 ScalarT const *I_row;
+                                // @todo cast index calculation as int and make stride a float value.
+                                //I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
                                 if constexpr (op_type == 'u')
                                 {
                                     I_row =
@@ -1222,6 +1256,8 @@ namespace small
                                 for (index_t l = 0; l < O_w_full; l += _O_wb)
                                 {
                                     ScalarT const *I_col;
+                                    // @todo cast index calculation as int and make stride a float value.
+                                    //I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
                                     if constexpr (op_type == 'u')
                                     {
                                         I_col =
@@ -1280,6 +1316,8 @@ namespace small
                             }
                             // Epilogue with bottom padding
                             ScalarT const *I_row_bot;
+                            // @todo cast index calculation as int and make stride a float value.
+                            //I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
                             if constexpr (op_type == 'u')
                             {
                                 I_row_bot =

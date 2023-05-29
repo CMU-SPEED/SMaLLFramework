@@ -250,6 +250,7 @@ __m256 a_reg, b0, b1, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13
     a_channel += step;                                   \
   }
 
+
 //Pooling
 //  Max pooling
 
@@ -350,6 +351,156 @@ a_channel++;                                   \
 //ReLU Activation
 // Same kernel as Pooling, set to zero to start.
 
+//LeakyReLU Activation
+#define COND_SCALE_TILE_C(step, a, b, W_ob, C_ob) \
+    c12 = _mm256_broadcast_ss(b);                 \
+    b0 = _mm256_load_ps(a + (0 * step));          \
+    c0 = _mm256_max_ps(b0, c0);                   \
+    a_reg = _mm256_cmp_ps(b0, c0, _CMP_LT_OS);    \
+    b0 = _mm256_mul_ps(b0, c12);                  \
+    b0 = _mm256_and_ps(a_reg, b0);                \
+    c0 = _mm256_add_ps(b0, c0);                   \
+    /**/                                          \
+    b1 = _mm256_load_ps(a + (0 * step) + SIMD);   \
+    c1 = _mm256_max_ps(b1, c1);                   \
+    a_reg = _mm256_cmp_ps(b1, c1, _CMP_LT_OS);    \
+    b1 = _mm256_mul_ps(b1, c12);                  \
+    b1 = _mm256_and_ps(a_reg, b1);                \
+    c1 = _mm256_add_ps(b1, c1);                   \
+    /**/                                          \
+    b0 = _mm256_load_ps(a + (1 * step));          \
+    c2 = _mm256_max_ps(b0, c2);                   \
+    a_reg = _mm256_cmp_ps(b0, c2, _CMP_LT_OS);    \
+    b0 = _mm256_mul_ps(b0, c12);                  \
+    b0 = _mm256_and_ps(a_reg, b0);                \
+    c2 = _mm256_add_ps(b0, c2);                   \
+    /**/                                          \
+    b1 = _mm256_load_ps(a + (1 * step) + SIMD);   \
+    c3 = _mm256_max_ps(b1, c3);                   \
+    a_reg = _mm256_cmp_ps(b1, c3, _CMP_LT_OS);    \
+    b1 = _mm256_mul_ps(b1, c12);                  \
+    b1 = _mm256_and_ps(a_reg, b1);                \
+    c3 = _mm256_add_ps(b1, c3);                   \
+    /**/                                          \
+    b0 = _mm256_load_ps(a + (2 * step));          \
+    c4 = _mm256_max_ps(b0, c4);                   \
+    a_reg = _mm256_cmp_ps(b0, c4, _CMP_LT_OS);    \
+    b0 = _mm256_mul_ps(b0, c12);                  \
+    b0 = _mm256_and_ps(a_reg, b0);                \
+    c4 = _mm256_add_ps(b0, c4);                   \
+    /**/                                          \
+    b1 = _mm256_load_ps(a + (2 * step) + SIMD);   \
+    c5 = _mm256_max_ps(b1, c5);                   \
+    a_reg = _mm256_cmp_ps(b1, c5, _CMP_LT_OS);    \
+    b1 = _mm256_mul_ps(b1, c12);                  \
+    b1 = _mm256_and_ps(a_reg, b1);                \
+    c5 = _mm256_add_ps(b1, c5);                   \
+    /**/                                          \
+    b0 = _mm256_load_ps(a + (3 * step));          \
+    c6 = _mm256_max_ps(b0, c6);                   \
+    a_reg = _mm256_cmp_ps(b0, c6, _CMP_LT_OS);    \
+    b0 = _mm256_mul_ps(b0, c12);                  \
+    b0 = _mm256_and_ps(a_reg, b0);                \
+    c6 = _mm256_add_ps(b0, c6);                   \
+    /**/                                          \
+    b1 = _mm256_load_ps(a + (3 * step) + SIMD);   \
+    c7 = _mm256_max_ps(b1, c7);                   \
+    a_reg = _mm256_cmp_ps(b1, c7, _CMP_LT_OS);    \
+    b1 = _mm256_mul_ps(b1, c12);                  \
+    b1 = _mm256_and_ps(a_reg, b1);                \
+    c7 = _mm256_add_ps(b1, c7);                   \
+    /**/                                          \
+    b0 = _mm256_load_ps(a + (4 * step));          \
+    c8 = _mm256_max_ps(b0, c8);                   \
+    a_reg = _mm256_cmp_ps(b0, c8, _CMP_LT_OS);    \
+    b0 = _mm256_mul_ps(b0, c12);                  \
+    b0 = _mm256_and_ps(a_reg, b0);                \
+    c8 = _mm256_add_ps(b0, c8);                   \
+    /**/                                          \
+    b1 = _mm256_load_ps(a + (4 * step) + SIMD);   \
+    c9 = _mm256_max_ps(b1, c9);                   \
+    a_reg = _mm256_cmp_ps(b1, c9, _CMP_LT_OS);    \
+    b1 = _mm256_mul_ps(b1, c12);                  \
+    b1 = _mm256_and_ps(a_reg, b1);                \
+    c9 = _mm256_add_ps(b1, c9);                   \
+    /**/\         
+    b0 = _mm256_load_ps(a + (5 * step));          \
+    c10 = _mm256_max_ps(b0, c10);                 \
+    a_reg = _mm256_cmp_ps(b0, c10, _CMP_LT_OS);   \
+    b0 = _mm256_mul_ps(b0, c12);                  \
+    b0 = _mm256_and_ps(a_reg, b0);                \
+    c10 = _mm256_add_ps(b0, c10);                 \
+    /**/                                          \
+    b1 = _mm256_load_ps(a + (5 * step) + SIMD);   \
+    c11 = _mm256_max_ps(b1, c11);                 \
+    a_reg = _mm256_cmp_ps(b1, c11, _CMP_LT_OS);   \
+    b1 = _mm256_mul_ps(b1, c12);                  \
+    b1 = _mm256_and_ps(a_reg, b1);                \
+    c11 = _mm256_add_ps(b1, c11);
+
+#define COND_SCALE_END_C(step, a, b, c_cur, W_last, C_ob)                                 \
+    float *c_pixel = c_cur;                                                             \
+    float const *a_pixel = a;                                                           \
+    float scale = b[0];\
+    for (uint32_t kk = 0; kk < W_last; kk++)                                            \
+    {                                                                                   \
+        float *c_channel = c_pixel;                                                     \
+        float const *a_channel = a_pixel;                                               \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                                          \
+        {                                                                               \
+            *(c_channel) = (*(a_channel) > *(c_channel)) ? *(a_channel) : (*(a_channel) * (scale)); \
+            c_channel++;                                                                \
+            a_channel++;                                                                \
+        }                                                                               \
+        a_pixel += step;                                                                \
+        c_pixel += C_ob;                                                                \
+    }
+
+
+
+//Accumulation kernels
+#define ACCUM_TILE_C(step, a, W_ob, C_ob)        \
+    b0 = _mm256_load_ps(a + (0 * step));         \
+    b1 = _mm256_load_ps(a + (0 * step) + SIMD);  \
+    c0 = _mm256_add_ps(b0, c0);                  \
+    c1 = _mm256_add_ps(b1, c1);                  \
+    a_reg = _mm256_load_ps(a + (1 * step));      \
+    c12 = _mm256_load_ps(a + (1 * step) + SIMD); \
+    c2 = _mm256_add_ps(a_reg, c2);               \
+    c3 = _mm256_add_ps(c12, c3);                 \
+    b0 = _mm256_load_ps(a + (2 * step));         \
+    b1 = _mm256_load_ps(a + (2 * step) + SIMD);  \
+    c4 = _mm256_add_ps(b0, c4);                  \
+    c5 = _mm256_add_ps(b1, c5);                  \
+    a_reg = _mm256_load_ps(a + (3 * step));      \
+    c12 = _mm256_load_ps(a + (3 * step) + SIMD); \
+    c6 = _mm256_add_ps(a_reg, c6);               \
+    c7 = _mm256_add_ps(c12, c7);                 \
+    b0 = _mm256_load_ps(a + (4 * step));         \
+    b1 = _mm256_load_ps(a + (4 * step) + SIMD);  \
+    c8 = _mm256_add_ps(b0, c8);                  \
+    c9 = _mm256_add_ps(b1, c9);                  \
+    a_reg = _mm256_load_ps(a + (5 * step));      \
+    c12 = _mm256_load_ps(a + (5 * step) + SIMD); \
+    c10 = _mm256_add_ps(a_reg, c10);             \
+    c11 = _mm256_add_ps(c12, c11);
+
+#define ACCUM_END_C(step, a, c_cur, W_last, C_ob)                                         \
+    float *c_pixel = c_cur;                                                             \
+    float const *a_pixel = a;                                                           \
+    for (uint32_t kk = 0; kk < W_last; kk++)                                            \
+    {                                                                                   \
+        float *c_channel = c_pixel;                                                     \
+        float const *a_channel = a_pixel;                                               \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                                          \
+        {                                                                               \
+            *(c_channel) += *(a_channel); \
+            c_channel++;                                                                \
+            a_channel++;                                                                \
+        }                                                                               \
+        a_pixel += step;                                                                \
+        c_pixel += C_ob;                                                                \
+    }
 
 //****************************************************************************
 // Fusion Kernels

@@ -41,6 +41,10 @@ public:
                   << "x" << output_shape[WIDTH]
                   << ")" << std::endl;
 #endif
+
+    BufferT packed_filters(1);
+    packed_filters.data()[0] = negative_slope;
+    m_packed_filters = std::move(packed_filters);
     }
 
     virtual ~LeakyReLULayer() {}
@@ -67,14 +71,17 @@ public:
         /// @todo placeholder for the leaky function
         small::LeakyReLUActivation(output_shape[CHANNEL],
                                    output_shape[HEIGHT], output_shape[WIDTH],
-                                   m_negative_slope,
                                    input.buffer(),
+                                   m_packed_filters,
                                    output.buffer());
         output.set_shape(Layer<BufferT>::output_shape());
     }
 
 private:
+                                        // This should be BufferT, it is a filter
     float      const m_negative_slope;  /// @todo should this be value_type?
+    BufferT    m_packed_filters;
+
 };
 
 }

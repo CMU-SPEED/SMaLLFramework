@@ -95,6 +95,25 @@ typedef small::FloatBuffer::value_type c_tile_t;
     }                                                                    \
   }
 
+// Upsampling loads (stride < 1)
+
+#define LOAD_TILE_C_upsample(O, stride, _C_ib, _W_ob, C_ob)     \
+  for (uint32_t kk = 0; kk < _W_ob; kk++)                       \
+  {                                                             \
+    for (uint32_t jj = 0; jj < C_ob; jj++)                      \
+    {                                                           \
+      c_tile[kk * C_ob + jj] = O[(kk / stride) * (_C_ib) + jj]; \
+    }                                                           \
+  }
+
+#define LOAD_END_C_upsample(O, stride, _C_ib, _W_ob, C_ob)      \
+  for (uint32_t kk = 0; kk < _W_ob; kk++)                       \
+  {                                                             \
+    for (uint32_t jj = 0; jj < C_ob; jj++)                      \
+    {                                                           \
+      c_tile[kk * C_ob + jj] = O[(kk / stride) * (_C_ib) + jj]; \
+    }                                                           \
+  }
 // Stores
 
 #define STORE_TILE_C(O, W_ob, C_ob)               \
@@ -229,41 +248,76 @@ typedef small::FloatBuffer::value_type c_tile_t;
     }                                                  \
   }
 
-
-
-// AVG Pooling
-#define ADD_TILE_C_G(I, W_ob_g, C_ob)      \
-  dtype const *i_pixel = I;                \
-  dtype *c_pixel = c_tile;                 \
-  for (uint32_t mm = 0; mm < W_ob_g; mm++) \
-  {                                        \
-    dtype *c_channel = c_pixel;            \
-    dtype const *i_channel = i_pixel;      \
-    for (uint32_t kk = 0; kk < C_ob; kk++) \
-    {                                      \
-      *c_channel += *i_channel;            \
-      c_channel++;                         \
-      i_channel++;                         \
-    }                                      \
-    c_pixel += C_ob;                       \
-    i_pixel += C_ob;                       \
+//Leaky ReLU activation
+#define COND_SCALE_TILE_C(step, a, b, W_ob, C_ob)                                             \
+  dtype *c_pixel = c_tile;                                                                     \
+  dtype const *a_pixel = a;                                                                   \
+  dtype scale = b[0];                                                                         \
+  for (uint32_t kk = 0; kk < W_ob; kk++)                                                    \
+  {                                                                                           \
+    dtype *c_channel = c_pixel;                                                               \
+    dtype const *a_channel = a_pixel;                                                         \
+    for (uint32_t jj = 0; jj < C_ob; jj++)                                                    \
+    {                                                                                         \
+      *(c_channel) = (*(a_channel) > *(c_channel)) ? *(a_channel) : (*(a_channel) * (scale)); \
+      c_channel++;                                                                            \
+      a_channel++;                                                                            \
+    }                                                                                         \
+    a_pixel += step;                                                                          \
+    c_pixel += C_ob;                                                                          \
   }
 
-#define ADD_LAST_C_G(I, W_last, C_ob)      \
-  dtype const *i_pixel = I;                \
-  dtype *c_pixel = c_tile;                 \
-  for (uint32_t mm = 0; mm < W_last; mm++) \
-  {                                        \
-    dtype *c_channel = c_pixel;            \
-    dtype const *i_channel = i_pixel;      \
-    for (uint32_t kk = 0; kk < C_ob; kk++) \
-    {                                      \
-      *c_channel += *i_channel;            \
-      c_channel++;                         \
-      i_channel++;                         \
-    }                                      \
-    c_pixel += C_ob;                       \
-    i_pixel += C_ob;                       \
+#define COND_SCALE_END_C(step, a, b, c_cur, W_last, C_ob)                                     \
+  dtype *c_pixel = c_cur;                                                                     \
+  dtype const *a_pixel = a;                                                                   \
+  dtype scale = b[0];                                                                         \
+  for (uint32_t kk = 0; kk < W_last; kk++)                                                    \
+  {                                                                                           \
+    dtype *c_channel = c_pixel;                                                               \
+    dtype const *a_channel = a_pixel;                                                         \
+    for (uint32_t jj = 0; jj < C_ob; jj++)                                                    \
+    {                                                                                         \
+      *(c_channel) = (*(a_channel) > *(c_channel)) ? *(a_channel) : (*(a_channel) * (scale)); \
+      c_channel++;                                                                            \
+      a_channel++;                                                                            \
+    }                                                                                         \
+    a_pixel += step;                                                                          \
+    c_pixel += C_ob;                                                                          \
+  }
+
+// Accumulation kernels
+#define ACCUM_TILE_C(step, a, W_ob, C_ob)         \
+  float *c_pixel = c_tile;                         \
+  float const *a_pixel = a;                       \
+  for (uint32_t kk = 0; kk < W_ob; kk++)        \
+  {                                               \
+    float *c_channel = c_pixel;                   \
+    float const *a_channel = a_pixel;             \
+    for (uint32_t jj = 0; jj < C_ob; jj++)        \
+    {                                             \
+      *(c_channel) += *(a_channel); \
+      c_channel++;                                \
+      a_channel++;                                \
+    }                                             \
+    a_pixel += step;                              \
+    c_pixel += C_ob;                              \
+  }
+
+#define ACCUM_END_C(step, a, c_cur, W_last, C_ob) \
+  float *c_pixel = c_cur;                         \
+  float const *a_pixel = a;                       \
+  for (uint32_t kk = 0; kk < W_last; kk++)        \
+  {                                               \
+    float *c_channel = c_pixel;                   \
+    float const *a_channel = a_pixel;             \
+    for (uint32_t jj = 0; jj < C_ob; jj++)        \
+    {                                             \
+      *(c_channel) += *(a_channel); \
+      c_channel++;                                \
+      a_channel++;                                \
+    }                                             \
+    a_pixel += step;                              \
+    c_pixel += C_ob;                              \
   }
 
 #define REDUCE_div_C(O, d, W_ob_g, C_ob)     \
