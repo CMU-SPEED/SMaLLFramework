@@ -125,13 +125,39 @@ __m256 a_reg, b0, b1, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13
     c10 = _mm256_load_ps(O + ((5 / stride) * (_C_ib)));       \
     c11 = _mm256_load_ps(O + ((5 / stride) * (_C_ib) + SIMD));
 
-#define LOAD_END_C_upsample(O, stride, _C_ib, _W_ob, C_ob)            \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)                           \
-    {                                                                 \
-        for (uint32_t jj = 0; jj < C_ob; jj++)                        \
-        {                                                             \
-            c_tile[kk * C_ob + jj] = O[(kk / stride) * (_C_ib) + jj]; \
+#define LOAD_END_C_upsample(O, stride, _C_ib, W_elements, C_ob)      \
+    for (uint32_t kk = 0; kk < W_elements; kk++)                     \
+    {                                                                \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                       \
+        {                                                            \
+            c_tile[kk * C_ob + jj] = O[(kk / stride) * (C_ob) + jj]; \
         }                                                             \
+    }
+
+// Bias Add
+#define BIAS_TILE_C(b, W_ob, C_ob)                            \
+    b0 = _mm256_load_ps(b);                              \
+    b1 = _mm256_load_ps(b + SIMD);                            \
+    c0 = b0;\
+    c1 = b1; \
+    c2 = b0;       \
+    c3 = b1; \
+    c4 = b0;       \
+    c5 = b1; \
+    c6 = b0;       \
+    c7 = b1; \
+    c8 = b0;       \
+    c9 = b1; \
+    c10 = b0;      \
+    c11 = b1;
+
+#define BIAS_END_C(b, _W_ob, C_ob)             \
+    for (uint32_t kk = 0; kk < _W_ob; kk++)    \
+    {                                          \
+        for (uint32_t jj = 0; jj < C_ob; jj++) \
+        {                                      \
+            c_tile[kk * C_ob + jj] = b[jj];    \
+        }                                      \
     }
 
 //Stores
