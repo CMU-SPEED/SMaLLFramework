@@ -427,15 +427,6 @@ void test_dscnn(void)
                                     filter_buf_ptrs, true);
 
     small::Tensor<BufferT> input_tensor({1, C_i, N, M}, input_dc);
-#if defined(QUANTIZED)
-    small::Tensor<BufferT> inter_0_tensor(max_numel_inter_0*4);
-    small::Tensor<BufferT> inter_1_tensor(max_numel_inter_1*4);
-#else
-    small::Tensor<BufferT> inter_0_tensor(max_numel_inter_0);
-    small::Tensor<BufferT> inter_1_tensor(max_numel_inter_1);
-    std::cout << "buffer sizes: " << max_numel_inter_0 << ", "
-              << max_numel_inter_1 << std::endl;
-#endif
 
     //***********
     auto output_tensors = model.inference({&input_tensor});

@@ -412,85 +412,6 @@ model_inference(uint32_t layer_num_total,
 }
 
 //****************************************************************************
-template <class BufferT>
-BufferT &model_inference(
-    size_t          layer_num_total,
-    uint16_t        layer_params[30][10],
-    uint32_t        intermediate_dims[30][2],
-    std::vector<BufferT *> const &filter_buf_ptrs,
-    BufferT  const &input_dc,
-    BufferT        &inter_0_dc,
-    BufferT        &inter_1_dc,
-    BufferT        &inter_2_dc)
-{
-    auto layer_num = 0;
-    small::Conv2D(REDUCTION_HW(layer_num),
-                  STRIDE(layer_num), PADDING(layer_num),
-                  GROUP_C(layer_num), REDUCTION_C(layer_num),
-                  I_HEIGHT(layer_num), I_WIDTH(layer_num),
-                  input_dc,
-                  *filter_buf_ptrs[layer_num],
-                  inter_0_dc);
-
-    layer_num++;
-    small::ReLUActivation(GROUP_C(0),
-                          I_HEIGHT(layer_num), I_WIDTH(layer_num),
-                          inter_0_dc,
-                          inter_0_dc);
-
-    resnet_block(intermediate_dims[layer_num], REDUCTION_C(layer_num), // Input dimensions
-                 REDUCTION_HW(layer_num),
-                 STRIDE(layer_num),
-                 GROUP_C(layer_num),
-                 PADDING(layer_num),
-                 PADDING(layer_num + 1),
-                 inter_0_dc,
-                 *filter_buf_ptrs[layer_num],
-                 *filter_buf_ptrs[layer_num + 1],
-                 inter_1_dc,
-                 inter_0_dc);
-
-    layer_num += 2;
-    auto resnet_blocks = 3;
-    auto num_filters = layer_num_total - 1;
-    for (int ds_layer = 1; ds_layer < resnet_blocks; ds_layer++)
-    {
-        resnet_block(intermediate_dims[layer_num], REDUCTION_C(layer_num),
-                     REDUCTION_HW(layer_num),
-                     STRIDE(layer_num),
-                     GROUP_C(layer_num),
-                     PADDING(layer_num),
-                     PADDING(layer_num + 1),
-                     inter_0_dc,
-                     *filter_buf_ptrs[layer_num],
-                     *filter_buf_ptrs[layer_num + 1],
-                     *filter_buf_ptrs[layer_num + 2],
-                     inter_1_dc,
-                     inter_2_dc);
-
-        layer_num += 3;
-        // Since channels were scaled, switch the pointers between inter_2 and inter_0
-        inter_0_dc.swap(inter_2_dc);
-    }
-
-    small::MaxPool2D(REDUCTION_HW(layer_num), STRIDE(layer_num),
-                     PADDING(layer_num),
-                     GROUPS(layer_num),
-                     I_HEIGHT(layer_num), I_WIDTH(layer_num),
-                     inter_0_dc,
-                     inter_1_dc);
-    small::Conv2D(1, 1,
-                  0, 0, 0, 0,
-                  GROUP_C(layer_num_total - 1), REDUCTION_C(layer_num_total - 1),
-                  1, 1,
-                  inter_1_dc,
-                  *filter_buf_ptrs[num_filters - 1],
-                  inter_0_dc);
-
-    return inter_0_dc;
-}
-
-//****************************************************************************
 //****************************************************************************
 void test_resnet8(void)
 {
@@ -599,15 +520,6 @@ void test_resnet8(void)
                                       filter_buf_ptrs, true);
 
     small::Tensor<BufferT> input_tensor({1, C_i, N, M}, input_dc);
-#if defined(QUANTIZED)
-    small::Tensor<BufferT> inter_0_tensor(max_numel_inter_0*4);
-    small::Tensor<BufferT> inter_1_tensor(max_numel_inter_1*4);
-#else
-    small::Tensor<BufferT> inter_0_tensor(max_numel_inter_0);
-    small::Tensor<BufferT> inter_1_tensor(max_numel_inter_1);
-    std::cout << "buffer sizes: " << max_numel_inter_0 << ", "
-              << max_numel_inter_1 << std::endl;
-#endif
 
     //***********
     auto output_tensors = model.inference({&input_tensor});

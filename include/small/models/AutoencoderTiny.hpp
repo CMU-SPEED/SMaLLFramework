@@ -15,7 +15,6 @@
 #include <vector>
 #include <small.h>
 #include <small/Model.hpp>
-#include <small/InputLayer.hpp>
 #include <small/Conv2DLayer.hpp>
 #include <small/ReLULayer.hpp>
 
