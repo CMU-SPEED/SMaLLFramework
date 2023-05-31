@@ -400,21 +400,6 @@ for (uint32_t kk = 0; kk < _W_ob; kk++)					\
   av = (float32x4_t) vandq_s32((int32x4_t)(av), (int32x4_t)(mask)); \
   c_x_x = vaddq_f32(av, c_x_x);
 
-// #define COND_SCALE_TILE_C(step, a, b, _W_ob, _C_ob)          \
-//   float32x4_t bv = vld1q_dup_f32(b);                         \
-//   for (uint32_t kk = 0; kk < _W_ob; kk++)                   \
-//   {                                                          \
-//     for (uint32_t jj = 0; jj < _C_ob / SIMD; jj++)            \
-//     {                                                        \
-//       float32x4_t av = vld1q_f32(a + kk * step + jj * SIMD); \
-//       float32x4_t cv = c_tile_v[kk * (C_ob / SIMD) + jj];       \
-//       cv = vmaxq_f32(av, cv);                                \
-//       float32x4_t mask = vcltq_f32(av, cv);                  \
-//       av = vmulq_f32(av, bv);                                \
-//       av = vandq_s32((int32x4_t)(av), (int32x4_t)(mask));    \
-//       cv = vaddq_f32(av, cv);                                \
-//       c_tile_v[kk * (C_ob / SIMD) + jj] = cv;                   \
-//     }
 #define COND_SCALE_TILE_C(step, a, b, _W_ob, _C_ob)    \
   float32x4_t bv = vld1q_dup_f32(b);                   \
   float32x4_t av;\
