@@ -1,4 +1,4 @@
-name: Test Reference Build
+name: Test ARM Build
 
 on: [push, pull_request]
 
@@ -10,11 +10,13 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: pguyot/arm-runner-action@v2
-      - run: lscpu | grep "Architecture"
-      - run: cmake -B ${{github.workspace}}/build -DCMAKE_UARCH=REF 
-      - run: cmake --build ${{github.workspace}}/build -j8
-      # - run: bash ${{github.workspace}}/run_tests.sh ${{github.workspace}}
-      - run: cd ${{github.workspace}}/build && make test
+        with:
+          commands:
+            test `uname -m` = 'aarch64'
+            lscpu | grep "Architecture"
+            cmake -B ${{github.workspace}}/build -DCMAKE_UARCH=ARM 
+            cmake --build ${{github.workspace}}/build -j8
+            cd ${{github.workspace}}/build && make test
 
     
       
