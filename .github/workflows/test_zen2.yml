@@ -1,4 +1,4 @@
-name: Test Reference Build
+name: Test Zen2 Build
 
 on: [push, pull_request]
 
@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - run: lscpu | grep "Architecture"
-      - run: cmake -B ${{github.workspace}}/build -DCMAKE_UARCH=REF 
+      - run: cmake -B ${{github.workspace}}/build -DCMAKE_UARCH=ZEN2 
       - run: cmake --build ${{github.workspace}}/build -j
       # - run: bash ${{github.workspace}}/run_tests.sh ${{github.workspace}}
       - run: cd ${{github.workspace}}/build && make test
