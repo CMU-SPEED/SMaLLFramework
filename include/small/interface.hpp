@@ -213,6 +213,29 @@ void MaxPool2D_rect(int kernel_size_h, int kernel_size_w, int stride,
 
 //****************************************************************************
 /**
+ * Perform the nearest neighbor upsampling to increase image sizes
+ *
+ * @param[in]  scale_factor    Multiplying factor in both width and height;
+ *                             only values 1 and 2 currently supported.
+ * @param[in]  input_channels  Number of channels associated with input image
+ * @param[in]  input_height    Height of input image in pixels
+ * @param[in]  input_width     Width of input image in pixels
+ * @param[in]  input_buf       Buffer of input (image x channels) data
+ *                             size = Ci x iH x iW
+ * @param[out] output_buf      Buffer of output data computed for layer
+ *                             size = oH x oW x Co where the output image size
+ *                             depends on input image size, kernel, padding
+ *                             and stride parameters.
+ */
+template <typename BufferT>
+void UpSample2D(int scale_factor,
+                int input_channels,
+                int input_height, int input_width,
+                BufferT const &input_buf,
+                BufferT       &output_buf);
+
+//****************************************************************************
+/**
  * Perform the computation for a rectified linear unit (ReLU) layer.
  *
  * @param[in]  input_channels  Number of channels associated with input image

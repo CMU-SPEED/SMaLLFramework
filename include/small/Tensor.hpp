@@ -19,12 +19,20 @@
 namespace small
 {
 
+typedef std::array<size_t, 4UL> shape_type; //{batch_size, num_channels, H, W}
+
 enum ShapeFields {
     BATCH   = 0,
     CHANNEL = 1,
     HEIGHT  = 2,
     WIDTH   = 3
 };
+
+inline size_t compute_size(shape_type const &shape)
+{
+    return shape[0]*shape[1]*shape[2]*shape[3];
+}
+
 
 //****************************************************************************
 // Wraps a buffer and defines a set of dimensions of dense data that can be
@@ -43,7 +51,6 @@ class Tensor
 {
 public:
     typedef typename BufferT::value_type value_type;
-    typedef std::array<size_t, 4UL>      shape_type; //{#batch, #chan, H, W}
 
     Tensor() = delete;
 
@@ -115,18 +122,6 @@ public:
             m_shape.swap(other.m_shape);
             m_buffer.swap(other.m_buffer);
         }
-    }
-
-    static size_t compute_size(shape_type const &shape)
-    {
-        return shape[0]*shape[1]*shape[2]*shape[3];
-
-        // size_t sz = 1;
-        // for (auto dim : shape)
-        // {
-        //     sz *= dim;
-        // }
-        // return sz;
     }
 
 private:

@@ -25,7 +25,6 @@ class Conv2DLayer : public Layer<BufferT>
 {
 public:
     typedef typename BufferT::value_type value_type;
-    typedef typename Tensor<BufferT>::shape_type shape_type;
 
     //Conv2DLayer () delete;
 
@@ -33,19 +32,23 @@ public:
     ///                     in the following order:
     ///                     {in_chans, out_chans, kern_h, kern_w}
     ///
-    Conv2DLayer(Layer<BufferT> const &predecessor,
-                uint32_t       kernel_height,
-                uint32_t       kernel_width,
-                uint32_t       stride,
-                PaddingEnum    padding_type,
-                uint32_t       num_output_channels,
-                BufferT const &filters,
-                bool           filters_are_packed = true)
+    Conv2DLayer(shape_type const &input_shape,    //pred.output_shape()
+                uint32_t          kernel_height,
+                uint32_t          kernel_width,
+                uint32_t          stride,
+                PaddingEnum       padding_type,
+                uint32_t          num_output_channels,
+                BufferT    const &filters,
+                bool              filters_are_packed = true,
+                ActivationType    activation_type = NONE,
+                float             leaky_slope = 1.e-2)
         : Layer<BufferT>(),
-          m_input_shape(predecessor.output_shape()),
+          m_input_shape(input_shape),
           m_kernel_height(kernel_height),
           m_kernel_width(kernel_width),
           m_stride(stride),
+          m_activation_type(activation_type),
+          m_leaky_slope(leaky_slope),
           m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0)
     {
 #if defined(DEBUG_LAYERS)
@@ -83,10 +86,32 @@ public:
                                           stride, padding_type,
                                           m_l_pad, m_r_pad,
                                           output_shape[WIDTH]);
-        // std::cerr << "Conv2D padding: " << (int)m_t_pad << "," << (int)m_b_pad
-        //           << "," << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
 
-        Layer<BufferT>::set_output_shape(output_shape);
+#if defined(DEBUG_LAYERS)
+        std::cerr << "Conv2D padding: "
+                  << (int)m_t_pad << "," << (int)m_b_pad
+                  << "," << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
+
+        if (activation_type == RELU)
+        {
+            std::cerr << "ReLU(batches:" << output_shape[BATCH]
+                      << ",chans:" << output_shape[CHANNEL]
+                      << ",img:" << output_shape[HEIGHT]
+                      << "x" << output_shape[WIDTH]
+                      << ")" << std::endl;
+        }
+        else if (activation_type == LEAKY)
+        {
+            std::cerr << "LeakyReLU(batches:" << output_shape[BATCH]
+                      << ",chans:" << output_shape[CHANNEL]
+                      << ",slope:" << m_leaky_slope
+                      << ",img:" << output_shape[HEIGHT]
+                      << "x" << output_shape[WIDTH]
+                      << ")" << std::endl;
+        }
+#endif
+
+        this->set_output_shapes({output_shape});
 
         BufferT packed_filters(output_shape[CHANNEL]*m_input_shape[CHANNEL]*
                                kernel_height*kernel_width);
@@ -111,49 +136,68 @@ public:
 
     virtual ~Conv2DLayer() {}
 
-    virtual void compute_output(Tensor<BufferT> const &input,
-                                Tensor<BufferT>       &output) const
+    virtual void compute_output(
+        std::vector<Tensor<BufferT> const *> input,
+        std::vector<Tensor<BufferT>*>        output) const
     {
-        if (input.shape() != m_input_shape)
+        if ((input.size() != 1) || (input[0]->shape() != m_input_shape))
         {
             throw std::invalid_argument(
                 "Conv2DLayer::compute_output() ERROR: "
                 "incorrect input buffer shape.");
         }
 
-        if (output.capacity() < Layer<BufferT>::output_size())
+        if ((output.size() != 1) || (output[0]->capacity() < this->output_size(0)))
         {
             throw std::invalid_argument(
                 "Conv2DLayer::compute_output() ERROR: "
                 "insufficient output buffer space.");
         }
 
-        auto output_channels(Layer<BufferT>::output_shape()[CHANNEL]);
+        auto& output_shape(this->output_shape(0));
 
         if (m_kernel_width == m_kernel_height)
         {
             Conv2D(m_kernel_width, m_stride,
                    m_t_pad, m_b_pad, m_l_pad, m_r_pad,
-                   output_channels,
+                   output_shape[CHANNEL],
                    m_input_shape[CHANNEL],
                    m_input_shape[HEIGHT], m_input_shape[WIDTH],
-                   input.buffer(),
+                   input[0]->buffer(),
                    m_packed_filters,
-                   output.buffer());
+                   output[0]->buffer());
         }
         else
         {
             Conv2D_rect(m_kernel_height, m_kernel_width, m_stride,
                         m_t_pad, m_b_pad, m_l_pad, m_r_pad,
-                        output_channels,
+                        output_shape[CHANNEL],
                         m_input_shape[CHANNEL],
                         m_input_shape[HEIGHT], m_input_shape[WIDTH],
-                        input.buffer(),
+                        input[0]->buffer(),
                         m_packed_filters,
-                        output.buffer());
+                        output[0]->buffer());
         }
 
-        output.set_shape(Layer<BufferT>::output_shape());
+        output[0]->set_shape(output_shape);
+
+        if (m_activation_type == RELU)
+        {
+            small::ReLUActivation(output_shape[CHANNEL],
+                                  output_shape[HEIGHT], output_shape[WIDTH],
+                                  output[0]->buffer(),
+                                  output[0]->buffer());
+        }
+        else if (m_activation_type == LEAKY)
+        {
+            BufferT neg_slope(1);
+            neg_slope[0] = m_leaky_slope;
+            small::LeakyReLUActivation(output_shape[CHANNEL],
+                                       output_shape[HEIGHT], output_shape[WIDTH],
+                                       output[0]->buffer(),
+                                       neg_slope,
+                                       output[0]->buffer());
+        }
     }
 
 private:
@@ -161,6 +205,9 @@ private:
 
     uint32_t   const m_kernel_height, m_kernel_width;
     uint32_t   const m_stride;
+
+    ActivationType const m_activation_type;
+    float          const m_leaky_slope;
 
     /// @todo: how to make const?
     uint8_t          m_t_pad, m_b_pad, m_l_pad, m_r_pad;

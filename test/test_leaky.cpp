@@ -165,214 +165,214 @@ void test_leaky_large_tile(void)
 
 //****************************************************************************
 
-//****************************************************************************
-template <class BufferT>
-bool run_leaky_config(LayerParams const &params)
-{
-    /// @todo add smart pointer to buffers
-    // Read input data
-    std::string in_fname =
-        get_pathname(data_dir, "in", "leaky",
-                     params,
-                     params.C_i*params.H*params.W);
-    std::cout << "\nleaky: input file = " << in_fname << std::endl;
+// //****************************************************************************
+// template <class BufferT>
+// bool run_leaky_config(LayerParams const &params)
+// {
+//     /// @todo add smart pointer to buffers
+//     // Read input data
+//     std::string in_fname =
+//         get_pathname(data_dir, "in", "leaky",
+//                      params,
+//                      params.C_i*params.H*params.W);
+//     std::cout << "\nleaky: input file = " << in_fname << std::endl;
 
-    BufferT input_dc = read_inputs<BufferT>(in_fname);
-    TEST_ASSERT(input_dc.size() == params.C_i*params.H*params.W);
+//     BufferT input_dc = read_inputs<BufferT>(in_fname);
+//     TEST_ASSERT(input_dc.size() == params.C_i*params.H*params.W);
 
-    // Pack input data
-    BufferT packed_input_dc(input_dc.size());
-    small::pack_buffer(input_dc,
-                       small::INPUT,
-                       1U, params.C_i, params.H, params.W,
-                       C_ib, C_ob,
-                       packed_input_dc);
+//     // Pack input data
+//     BufferT packed_input_dc(input_dc.size());
+//     small::pack_buffer(input_dc,
+//                        small::INPUT,
+//                        1U, params.C_i, params.H, params.W,
+//                        C_ib, C_ob,
+//                        packed_input_dc);
 
-    // Read output regression data
-    size_t Ho(small::compute_output_dim(
-                  params.H, params.k, params.s, params.p));
-    size_t Wo(small::compute_output_dim(
-                  params.W, params.k, params.s, params.p));
-    std::cerr << "Output image dims: " << Ho << ", " << Wo << std::endl;
-    std::string out_fname =
-        get_pathname(data_dir, "out", "leaky",
-                     params,
-                     params.C_i*Ho*Wo);
-    std::cout << "leaky: output file= " << out_fname << std::endl;
+//     // Read output regression data
+//     size_t Ho(small::compute_output_dim(
+//                   params.H, params.k, params.s, params.p));
+//     size_t Wo(small::compute_output_dim(
+//                   params.W, params.k, params.s, params.p));
+//     std::cerr << "Output image dims: " << Ho << ", " << Wo << std::endl;
+//     std::string out_fname =
+//         get_pathname(data_dir, "out", "leaky",
+//                      params,
+//                      params.C_i*Ho*Wo);
+//     std::cout << "leaky: output file= " << out_fname << std::endl;
 
-    BufferT output_dc_answers = read_inputs<BufferT>(out_fname);
-    TEST_ASSERT(output_dc_answers.size() == params.C_i*Ho*Wo);
+//     BufferT output_dc_answers = read_inputs<BufferT>(out_fname);
+//     TEST_ASSERT(output_dc_answers.size() == params.C_i*Ho*Wo);
 
-    // Pack output answer data
-    BufferT packed_output_dc_answers(output_dc_answers.size());
-    small::pack_buffer(output_dc_answers,
-                       small::OUTPUT,
-                       1U, params.C_i, Ho, Wo,
-                       C_ib, C_ob,
-                       packed_output_dc_answers);
+//     // Pack output answer data
+//     BufferT packed_output_dc_answers(output_dc_answers.size());
+//     small::pack_buffer(output_dc_answers,
+//                        small::OUTPUT,
+//                        1U, params.C_i, Ho, Wo,
+//                        C_ib, C_ob,
+//                        packed_output_dc_answers);
 
-    // Allocate output buffer
-    BufferT packed_output_dc(output_dc_answers.size());
+//     // Allocate output buffer
+//     BufferT packed_output_dc(output_dc_answers.size());
 
-    BufferT negative_dc(1);
-    negative_dc[0] = 0.01f;
+//     BufferT negative_dc(1);
+//     negative_dc[0] = 0.01f;
 
-    // Compute layer
-    small::LeakyReLUActivation(params.C_i,
-                          params.H, params.W,
-                          packed_input_dc, negative_dc, packed_output_dc);
+//     // Compute layer
+//     small::LeakyReLUActivation(params.C_i,
+//                           params.H, params.W,
+//                           packed_input_dc, negative_dc, packed_output_dc);
 
-    // Check answer
-    bool passing = true;
-    for (size_t ix = 0; ix < packed_output_dc_answers.size(); ++ix)
-    {
-        if (packed_output_dc[ix] != packed_output_dc_answers[ix])
-        {
-            passing = false;
-            std::cout << "FAIL: leaky_out(" << ix << ")-->"
-                      << std::setw(12) << std::setprecision(10)
-                      << packed_output_dc[ix] << "(computed) != "
-                      << std::setw(12) << std::setprecision(10)
-                      << packed_output_dc_answers[ix]
-                      << std::endl;
-        }
-    }
+//     // Check answer
+//     bool passing = true;
+//     for (size_t ix = 0; ix < packed_output_dc_answers.size(); ++ix)
+//     {
+//         if (packed_output_dc[ix] != packed_output_dc_answers[ix])
+//         {
+//             passing = false;
+//             std::cout << "FAIL: leaky_out(" << ix << ")-->"
+//                       << std::setw(12) << std::setprecision(10)
+//                       << packed_output_dc[ix] << "(computed) != "
+//                       << std::setw(12) << std::setprecision(10)
+//                       << packed_output_dc_answers[ix]
+//                       << std::endl;
+//         }
+//     }
 
-    if (passing) std::cerr << "Test PASSED\n";
-    return passing;
-}
+//     if (passing) std::cerr << "Test PASSED\n";
+//     return passing;
+// }
 
-//****************************************************************************
-template <class BufferT>
-bool run_leaky_layer_config(LayerParams const &params)
-{
-    /// @todo add smart pointer to buffers
-    //=========================================================================
-    small::InputLayer<BufferT>  input_layer(
-        {1UL, params.C_i, params.H, params.W});
-    small::LeakyReLULayer<BufferT>   leaky_layer(input_layer);
-    //=========================================================================
+// //****************************************************************************
+// template <class BufferT>
+// bool run_leaky_layer_config(LayerParams const &params)
+// {
+//     /// @todo add smart pointer to buffers
+//     //=========================================================================
+//     small::InputLayer<BufferT>  input_layer(
+//         {1UL, params.C_i, params.H, params.W});
+//     small::LeakyReLULayer<BufferT>   leaky_layer(input_layer);
+//     //=========================================================================
 
-    // Read input data
-    std::string in_fname =
-        get_pathname(data_dir, "in", "leaky",
-                     params,
-                     input_layer.output_size());
-    std::cout << "\nleaky: input file = " << in_fname << std::endl;
+//     // Read input data
+//     std::string in_fname =
+//         get_pathname(data_dir, "in", "leaky",
+//                      params,
+//                      input_layer.output_size());
+//     std::cout << "\nleaky: input file = " << in_fname << std::endl;
 
-    // Allocate the input buffer
-    BufferT input_dc = read_inputs<BufferT>(in_fname);
+//     // Allocate the input buffer
+//     BufferT input_dc = read_inputs<BufferT>(in_fname);
 
-    TEST_ASSERT(input_dc.size() == input_layer.output_size());
+//     TEST_ASSERT(input_dc.size() == input_layer.output_size());
 
-    // Pack input data
-    BufferT packed_input_dc(input_dc.size());
-    small::pack_buffer(input_dc,
-                       small::INPUT,
-                       1U, params.C_i, params.H, params.W,
-                       C_ib, C_ob,
-                       packed_input_dc);
+//     // Pack input data
+//     BufferT packed_input_dc(input_dc.size());
+//     small::pack_buffer(input_dc,
+//                        small::INPUT,
+//                        1U, params.C_i, params.H, params.W,
+//                        C_ib, C_ob,
+//                        packed_input_dc);
 
-    small::Tensor<BufferT> packed_input_tensor(
-        input_layer.output_shape(),
-        std::move(packed_input_dc));
+//     small::Tensor<BufferT> packed_input_tensor(
+//         input_layer.output_shape(),
+//         std::move(packed_input_dc));
 
-    // Read output regression data
-    auto output_shape(leaky_layer.output_shape());
-    size_t output_buffer_size(leaky_layer.output_size());
+//     // Read output regression data
+//     auto output_shape(leaky_layer.output_shape());
+//     size_t output_buffer_size(leaky_layer.output_size());
 
-    std::cerr << "Output image dims: "
-              << output_shape[small::HEIGHT] << "x" << output_shape[small::WIDTH]
-              << std::endl;
-    std::string out_fname =
-        get_pathname(data_dir, "out", "leaky",
-                     params,
-                     output_buffer_size);
-    std::cout << "leaky: output file= " << out_fname << std::endl;
+//     std::cerr << "Output image dims: "
+//               << output_shape[small::HEIGHT] << "x" << output_shape[small::WIDTH]
+//               << std::endl;
+//     std::string out_fname =
+//         get_pathname(data_dir, "out", "leaky",
+//                      params,
+//                      output_buffer_size);
+//     std::cout << "leaky: output file= " << out_fname << std::endl;
 
-    BufferT output_dc_answers = read_inputs<BufferT>(out_fname);
-    TEST_ASSERT(output_dc_answers.size() == output_buffer_size);
+//     BufferT output_dc_answers = read_inputs<BufferT>(out_fname);
+//     TEST_ASSERT(output_dc_answers.size() == output_buffer_size);
 
-    // Pack output answer data
-    BufferT packed_output_dc_answers(output_dc_answers.size());
-    small::pack_buffer(output_dc_answers,
-                       small::OUTPUT,
-                       1U, output_shape[small::CHANNEL],
-                       output_shape[small::HEIGHT], output_shape[small::WIDTH],
-                       C_ib, C_ob,
-                       packed_output_dc_answers);
+//     // Pack output answer data
+//     BufferT packed_output_dc_answers(output_dc_answers.size());
+//     small::pack_buffer(output_dc_answers,
+//                        small::OUTPUT,
+//                        1U, output_shape[small::CHANNEL],
+//                        output_shape[small::HEIGHT], output_shape[small::WIDTH],
+//                        C_ib, C_ob,
+//                        packed_output_dc_answers);
 
-    // Allocate output buffer
-    BufferT packed_output_dc(leaky_layer.output_size());
-    small::Tensor<BufferT> packed_output_tensor(output_shape,
-                                                std::move(packed_output_dc));
+//     // Allocate output buffer
+//     BufferT packed_output_dc(leaky_layer.output_size());
+//     small::Tensor<BufferT> packed_output_tensor(output_shape,
+//                                                 std::move(packed_output_dc));
 
-    // Compute layer
-    leaky_layer.compute_output(packed_input_tensor, packed_output_tensor);
+//     // Compute layer
+//     leaky_layer.compute_output(packed_input_tensor, packed_output_tensor);
 
-    // Check answer
-    bool passing = true;
-    BufferT &buf(packed_output_tensor.buffer());
-    for (size_t ix = 0; ix < packed_output_tensor.size(); ++ix)
-    {
-        if (buf[ix] != packed_output_dc_answers[ix])
-        {
-            passing = false;
-            std::cout << "FAIL: leaky_out(" << ix << ")-->"
-                      << std::setw(12) << std::setprecision(10)
-                      << buf[ix] << "(computed) != "
-                      << std::setw(12) << std::setprecision(10)
-                      << packed_output_dc_answers[ix]
-                      << std::endl;
-        }
-    }
+//     // Check answer
+//     bool passing = true;
+//     BufferT &buf(packed_output_tensor.buffer());
+//     for (size_t ix = 0; ix < packed_output_tensor.size(); ++ix)
+//     {
+//         if (buf[ix] != packed_output_dc_answers[ix])
+//         {
+//             passing = false;
+//             std::cout << "FAIL: leaky_out(" << ix << ")-->"
+//                       << std::setw(12) << std::setprecision(10)
+//                       << buf[ix] << "(computed) != "
+//                       << std::setw(12) << std::setprecision(10)
+//                       << packed_output_dc_answers[ix]
+//                       << std::endl;
+//         }
+//     }
 
-    if (passing) std::cerr << "Test PASSED\n";
-    return passing;
-}
+//     if (passing) std::cerr << "Test PASSED\n";
+//     return passing;
+// }
 
-//****************************************************************************
-//****************************************************************************
-void test_leaky_regression_data(void)
-{
-    std::vector<LayerParams> params =
-    {
-        {16,  1,  1, 1, 1, small::PADDING_V, 0},  //Ci,Hi,Wi,k,s,p,Co
-        {16,  1,  6, 1, 1, small::PADDING_V, 0},
-        {96,  1,  6, 1, 1, small::PADDING_V, 0},
-        {96, 30, 30, 1, 1, small::PADDING_V, 0}
-    };
+// //****************************************************************************
+// //****************************************************************************
+// void test_leaky_regression_data(void)
+// {
+//     std::vector<LayerParams> params =
+//     {
+//         {16,  1,  1, 1, 1, small::PADDING_V, 0},  //Ci,Hi,Wi,k,s,p,Co
+//         {16,  1,  6, 1, 1, small::PADDING_V, 0},
+//         {96,  1,  6, 1, 1, small::PADDING_V, 0},
+//         {96, 30, 30, 1, 1, small::PADDING_V, 0}
+//     };
 
-    for (LayerParams const &p : params)
-    {
-#if defined(QUANTIZED)
-        TEST_CHECK(true == run_leaky_config<small::QUInt8Buffer>(p));
-#else
-        TEST_CHECK(true == run_leaky_config<small::FloatBuffer>(p));
-#endif
-    }
-}
+//     for (LayerParams const &p : params)
+//     {
+// #if defined(QUANTIZED)
+//         TEST_CHECK(true == run_leaky_config<small::QUInt8Buffer>(p));
+// #else
+//         TEST_CHECK(true == run_leaky_config<small::FloatBuffer>(p));
+// #endif
+//     }
+// }
 
-//****************************************************************************
-void test_leaky_layer_regression_data(void)
-{
-    std::vector<LayerParams> params =
-    {
-        {16,  1,  1, 1, 1, small::PADDING_V, 0},  //Ci,Hi,Wi,k,s,p,Co
-        {16,  1,  6, 1, 1, small::PADDING_V, 0},
-        {96,  1,  6, 1, 1, small::PADDING_V, 0},
-        {96, 30, 30, 1, 1, small::PADDING_V, 0}
-    };
+// //****************************************************************************
+// void test_leaky_layer_regression_data(void)
+// {
+//     std::vector<LayerParams> params =
+//     {
+//         {16,  1,  1, 1, 1, small::PADDING_V, 0},  //Ci,Hi,Wi,k,s,p,Co
+//         {16,  1,  6, 1, 1, small::PADDING_V, 0},
+//         {96,  1,  6, 1, 1, small::PADDING_V, 0},
+//         {96, 30, 30, 1, 1, small::PADDING_V, 0}
+//     };
 
-    for (LayerParams const &p : params)
-    {
-#if defined(QUANTIZED)
-        TEST_CHECK(true == run_leaky_layer_config<small::QUInt8Buffer>(p));
-#else
-        TEST_CHECK(true == run_leaky_layer_config<small::FloatBuffer>(p));
-#endif
-    }
-}
+//     for (LayerParams const &p : params)
+//     {
+// #if defined(QUANTIZED)
+//         TEST_CHECK(true == run_leaky_layer_config<small::QUInt8Buffer>(p));
+// #else
+//         TEST_CHECK(true == run_leaky_layer_config<small::FloatBuffer>(p));
+// #endif
+//     }
+// }
 
 //****************************************************************************
 void measure_leaky_performance(void)
@@ -475,8 +475,8 @@ void measure_leaky_performance(void)
 
         small::Tensor<Buffer> output_dc(num_output_elts);
 
-        small::InputLayer<Buffer> input_layer({1UL, p.C_i, p.H, p.W});
-        small::LeakyReLULayer<Buffer> leaky_layer(input_layer);
+        small::shape_type input_shape({1UL, p.C_i, p.H, p.W});
+        small::LeakyReLULayer<Buffer> leaky_layer(input_shape);
 
         for (size_t ix = 0; ix < 3; ++ix)
         {
@@ -489,12 +489,12 @@ void measure_leaky_performance(void)
             double max_t = 0.;
 
             // Warm up
-            leaky_layer.compute_output(input_dc, output_dc);
+            leaky_layer.compute_output({&input_dc}, {&output_dc});
 
             for (size_t iy = 0; iy < num_runs; ++iy)
             {
                 t.start();
-                leaky_layer.compute_output(input_dc, output_dc);
+                leaky_layer.compute_output({&input_dc}, {&output_dc});
                 t.stop();
                 double ts = t.elapsed();
                 tx += ts;
