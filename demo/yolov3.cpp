@@ -447,7 +447,7 @@ random=1
 //****************************************************************************
 template <class BufferT>
 void create_conv_block(
-    typename small::Tensor<BufferT>::shape_type const &input_shape,
+    small::shape_type const &input_shape,
     uint32_t kernel_size,
     uint32_t stride,
     uint32_t output_channels,
@@ -474,7 +474,7 @@ void create_conv_block(
     // ---------- TEMPORARY CODE --------------
 
     layers.push_back(
-        new small::Conv2DLayer<BufferT>(*layers.back(),
+        new small::Conv2DLayer<BufferT>(input_shape,
                                         kernel_size, kernel_size,
                                         stride, small::PADDING_F,
                                         output_channels,
@@ -483,7 +483,8 @@ void create_conv_block(
                                         *filter, false));
 
     layers.push_back(
-        new small::LeakyReLULayer<BufferT>(*layers.back(), 1.0e-2));
+        new small::LeakyReLULayer<BufferT>(layers.back()->output_shape(),
+                                           1.0e-2));
 
     std::cerr << "out(chans:" << output_channels
               << ",img:" << input_height << "x" << input_width
@@ -511,9 +512,7 @@ std::vector<small::Layer<BufferT>*> create_model(
     uint32_t output_channels = 32U;
 
     /// @todo remove need for InputLayer (get input shape from Model)
-    layers.push_back(new small::InputLayer<BufferT>(
-                         {1UL, input_channels, image_height, image_width}));
-    typename small::Tensor<BufferT>::shape_type input_shape(
+    small::shape_type input_shape(
         {1UL, input_channels, image_height, image_width});
 
     // first conv block
@@ -583,7 +582,8 @@ std::vector<small::Layer<BufferT>*> create_model(
 
             /// @todo for adding two tensors
             layers.push_back(
-                new small::AddLayer(*(layers.back()), *skip_layer));
+                new small::AddLayer<BufferT>(layers.back()->output_shape(),
+                                             skip_layer->output_shape()));
             std::cerr << "skip_connection(this, -4)\n";
             // ================== End Residual Block ==================
             std::cerr << "====== End Residual Block ======\n";
@@ -606,7 +606,7 @@ void compute_buffer_sizes(
     size_t                                    &max_numel_1,
     size_t                                    &max_numel_2)
 {
-    size_t layer_num = 1; // skip input layer
+    size_t layer_num = 0;
 
     //layers[layer_num++]->compute_output(input_dc, inter_1_dc);   // conv 3x3/1
     //layers[layer_num++]->compute_output(inter_1_dc, inter_1_dc); // ReLU
@@ -647,10 +647,10 @@ void compute_buffer_sizes(
             std::cerr << "should be the same: " << max_numel_0 << "?="
                       << max_numel_2 << std::endl;
             layer_num++;
-            //max_numel_0 = std::max<size_t>(max_numel_0, max_numel_2); // NOT OPTIMAL
+            //max_numel_0 = std::max<size_t>(max_numel_0, max_numel_2); // NOT OPTIMAL (maybe)
         }
         //inter_1_dc.swap(inter_0_dc)
-        max_numel_1 = std::max<size_t>(max_numel_1, max_numel_0); // NOT OPTIMAL
+        max_numel_1 = std::max<size_t>(max_numel_1, max_numel_0); // NOT OPTIMAL (maybe)
     }
 
     std::cerr << "Max num elements: " << max_numel_0 << ", " << max_numel_1
@@ -666,29 +666,29 @@ small::Tensor<BufferT> &model_inference(
     small::Tensor<BufferT>                    &inter_1_dc,
     small::Tensor<BufferT>                    &inter_2_dc)
 {
-    size_t layer_num = 1; // skip input layer
+    size_t layer_num = 0;
 
     // yolo_block = 0
-    layers[layer_num++]->compute_output(input_dc, inter_1_dc);   // conv 3x3/1
-    layers[layer_num++]->compute_output(inter_1_dc, inter_1_dc); // ReLU
+    layers[layer_num++]->compute_output({&input_dc}, {&inter_1_dc});   // conv 3x3/1
+    layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_1_dc}); // ReLU
 
     uint32_t residual_blocks[] = {1,2,8,8,4};
     for (size_t stage_num = 0; stage_num < 5; ++stage_num)
     {
-        layers[layer_num++]->compute_output(inter_1_dc, inter_0_dc); //conv 3x3/2
-        layers[layer_num++]->compute_output(inter_0_dc, inter_0_dc); //relu
+        layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_0_dc}); //conv 3x3/2
+        layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_0_dc}); //relu
 
         for (size_t block_num = 0; block_num < residual_blocks[stage_num];
              ++block_num)
         {
-            layers[layer_num++]->compute_output(inter_0_dc, inter_1_dc); //conv 1x1/1
-            layers[layer_num++]->compute_output(inter_1_dc, inter_1_dc); //relu
+            layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_1_dc}); //conv 1x1/1
+            layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_1_dc}); //relu
 
-            layers[layer_num++]->compute_output(inter_1_dc, inter_2_dc); //conv 3x3/1
-            layers[layer_num++]->compute_output(inter_2_dc, inter_2_dc); //relu
+            layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_2_dc}); //conv 3x3/1
+            layers[layer_num++]->compute_output({&inter_2_dc}, {&inter_2_dc}); //relu
 
             // add inter_2 to inter_0 to complete residual layer
-            layers[layer_num++]->compute_output(inter_2_dc, inter_0_dc); //accum
+            layers[layer_num++]->compute_output({&inter_2_dc}, {&inter_0_dc}); //accum
         }
         inter_1_dc.swap(inter_0_dc);
     }

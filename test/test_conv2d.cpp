@@ -22,7 +22,6 @@
 
 #include <small.h>
 #include <small/utils/Timer.hpp>
-#include <small/InputLayer.hpp>
 #include <small/Conv2DLayer.hpp>
 
 #include "test_utils.hpp"
@@ -155,9 +154,9 @@ bool run_conv2d_layer_config(LayerParams const &params)
     TEST_ASSERT(filter_dc.size() == params.C_i*params.k*params.k*params.C_o);
 
     //=========================================================================
-    small::InputLayer<BufferT>  input_layer(
-        {1UL, params.C_i, params.H, params.W});
-    small::Conv2DLayer<BufferT> conv2d_layer(input_layer,
+    small::shape_type input_shape({1UL, params.C_i, params.H, params.W});
+    size_t input_size = params.C_i*params.H*params.W;
+    small::Conv2DLayer<BufferT> conv2d_layer(input_shape,
                                              params.k, params.k,
                                              params.s, params.p,
                                              params.C_o,
@@ -168,13 +167,13 @@ bool run_conv2d_layer_config(LayerParams const &params)
     std::string in_fname =
         get_pathname(data_dir, "in", "conv2d",
                      params,
-                     input_layer.output_size());
+                     input_size);
     std::cout << "\nConv2D: input file = " << in_fname << std::endl;
 
     // Allocate the input buffer
     BufferT input_dc(read_inputs<BufferT>(in_fname));
 
-    TEST_ASSERT(input_dc.size() == input_layer.output_size());
+    TEST_ASSERT(input_dc.size() == input_size);
 
     // Pack input data
     BufferT packed_input_dc(input_dc.size());
@@ -185,12 +184,12 @@ bool run_conv2d_layer_config(LayerParams const &params)
                        packed_input_dc);
 
     small::Tensor<BufferT> packed_input_tensor(
-        input_layer.output_shape(),
+        input_shape,
         std::move(packed_input_dc));
 
     // Read output regression data
-    auto output_shape(conv2d_layer.output_shape());
-    size_t output_buffer_size(conv2d_layer.output_size());
+    auto output_shape(conv2d_layer.output_shape(0));
+    size_t output_buffer_size(conv2d_layer.output_size(0));
 
     std::cerr << "Output image dims: "
               << output_shape[small::HEIGHT] << "x" << output_shape[small::WIDTH]
@@ -223,8 +222,8 @@ bool run_conv2d_layer_config(LayerParams const &params)
                                                 std::move(packed_output_dc));
 
     // Compute layer
-    conv2d_layer.compute_output(packed_input_tensor, packed_output_tensor);
-    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
+    conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
+    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size(0));
 
     // Check answer
     bool passing = true;
@@ -464,18 +463,18 @@ void measure_conv2d_performance(void)
         size_t num_input_elts(p.C_i*p.H*p.W);
         size_t num_filter_elts(p.C_i*p.k*p.k*p.C_o);
         size_t num_output_elts(p.C_o*Ho*Wo);
+        small::shape_type input_shape({1UL, p.C_i, p.H, p.W});
 
         Buffer filter_dc(num_filter_elts);
         small::init(filter_dc, num_filter_elts);
 
-        small::Tensor<Buffer> input_dc({1UL, p.C_i, p.H, p.W});
+        small::Tensor<Buffer> input_dc(input_shape);
         small::init(input_dc.buffer(), num_input_elts);
 
         small::Tensor<Buffer> output_dc(num_output_elts);
 
-        small::InputLayer<Buffer> input_layer({1UL, p.C_i, p.H, p.W});
         small::Conv2DLayer<Buffer>
-            conv2d_layer(input_layer, p.k, p.k, p.s, p.p,
+            conv2d_layer(input_shape, p.k, p.k, p.s, p.p,
                          p.C_o, filter_dc, true);
 
         for (size_t ix = 0; ix < 3; ++ix)
@@ -489,12 +488,12 @@ void measure_conv2d_performance(void)
             double max_t = 0.;
 
             // Warm up
-            conv2d_layer.compute_output(input_dc, output_dc);
+            conv2d_layer.compute_output({&input_dc}, {&output_dc});
 
             for (size_t iy = 0; iy < num_runs; ++iy)
             {
                 t.start();
-                conv2d_layer.compute_output(input_dc, output_dc);
+                conv2d_layer.compute_output({&input_dc}, {&output_dc});
                 t.stop();
                 double ts = t.elapsed();
                 tx += ts;

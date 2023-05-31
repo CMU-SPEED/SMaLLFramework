@@ -106,7 +106,6 @@ ReLUActivation(chans:128,img:1x1,I,O)
 */
 
 #include<small/Layer.hpp>
-#include<small/InputLayer.hpp>
 #include<small/Conv2DLayer.hpp>
 #include<small/ReLULayer.hpp>
 
@@ -121,24 +120,25 @@ std::vector<small::Layer<BufferT>*> create_model(
     uint32_t input_height = 1, input_width = 1;
     uint32_t input_channels = 128, output_channels = 128;
 
-    small::Layer<BufferT> *prev =
-        new small::InputLayer<BufferT>(
-            {1UL, input_channels, input_height, input_width});
-    layers.push_back(prev);
+    small::shape_type input_shape(
+        {1UL, input_channels, input_height, input_width});
 
     for (auto ix = 0U; ix < filters.size(); ++ix)
     {
         output_channels = 128;
         if (ix + 1 == filters.size()) output_channels = 16;  /// @todo ix == 4
 
-        prev = new small::Conv2DLayer<BufferT>(*prev,
-                                               kernel_size, kernel_size,
-                                               stride, small::PADDING_V,
-                                               output_channels,
-                                               *filters[ix], true);
+        small::Layer<BufferT> *prev =
+            new small::Conv2DLayer<BufferT>(input_shape,
+                                            kernel_size, kernel_size,
+                                            stride, small::PADDING_V,
+                                            output_channels,
+                                            *filters[ix], true);
         layers.push_back(prev);
 
-        prev = new small::ReLULayer<BufferT>(*prev);
+        input_shape = prev->output_shape();
+
+        prev = new small::ReLULayer<BufferT>(input_shape);
         layers.push_back(prev);
     }
 
@@ -153,14 +153,14 @@ small::Tensor<BufferT> &model_inference(
     small::Tensor<BufferT>                                   &inter_0_dc,
     small::Tensor<BufferT>                                   &inter_1_dc)
 {
-    size_t layer_num = 1; // skip InputLayer
-    layers[layer_num++]->compute_output(input_dc, inter_0_dc);   // Conv2D
-    layers[layer_num++]->compute_output(inter_0_dc, inter_0_dc); // ReLU
+    size_t layer_num = 0;
+    layers[layer_num++]->compute_output({&input_dc}, {&inter_0_dc});   // Conv2D
+    layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_0_dc}); // ReLU
 
     while (layer_num < layers.size() - 1)
     {
-        layers[layer_num]->compute_output(inter_0_dc, inter_1_dc);
-        layers[layer_num + 1]->compute_output(inter_1_dc, inter_1_dc);
+        layers[layer_num]->compute_output({&inter_0_dc}, {&inter_1_dc});
+        layers[layer_num + 1]->compute_output({&inter_1_dc}, {&inter_1_dc});
         layer_num += 2;
 
         inter_0_dc.swap(inter_1_dc);

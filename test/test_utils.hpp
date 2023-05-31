@@ -19,6 +19,7 @@
 #include <fstream>
 #include <random>
 #include <exception>
+#include <algorithm> // std::min_element
 
 #include <stdlib.h>
 #include <arpa/inet.h>
@@ -199,3 +200,24 @@ uint32_t read_float_inputs(std::string const &input_data_fname, float **in_buf)
     return num_elts;
 }
 #endif
+
+//****************************************************************************
+//logging
+//****************************************************************************
+
+template <class T>
+void print_stats(std::vector<T> v, const char *benchmark)
+{
+    if (v.size() != 0)
+    {
+        T sum = std::reduce(v.begin(), v.end());
+        double mean = sum / (double)v.size();
+        T min_elem = *min_element(v.begin(), v.end());
+        T max_elem = *max_element(v.begin(), v.end());
+        std::cout << benchmark << ": #runs = " << v.size()
+                  << ", Min = " << min_elem
+                  << ", Max = " << max_elem
+                  << ", Avg = " << mean
+                  << std::endl;
+    }
+}

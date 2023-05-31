@@ -25,41 +25,42 @@ class AddLayer : public Layer<BufferT>
 {
 public:
     typedef typename BufferT::value_type value_type;
-    typedef typename Tensor<BufferT>::shape_type shape_type;
 
-    AddLayer(Layer<BufferT> const &pred1,
-             Layer<BufferT> const &pred2)
-        : Layer<BufferT>(pred1.output_shape())
+    AddLayer(shape_type const &input1_shape,
+             shape_type const &input2_shape)
+        : Layer<BufferT>()
     {
 #if defined(DEBUG_LAYERS)
-        auto const &output_shape(Layer<BufferT>::output_shape());
-        std::cerr << "Add(batches:" << output_shape[BATCH]
-                  << ",chans:" << output_shape[CHANNEL]
-                  << ",img:" << output_shape[HEIGHT]
-                  << "x" << output_shape[WIDTH]
+        std::cerr << "Add(batches:" << input1_shape[BATCH]
+                  << ",chans:" << input1_shape[CHANNEL]
+                  << ",img:" << input1_shape[HEIGHT]
+                  << "x" << input1_shape[WIDTH]
                   << ")" << std::endl;
 #endif
 
-        if (pred1.output_shape() != pred2.output_shape())
+        if (input1_shape != input2_shape)
         {
             throw std::invalid_argument(
                 "AddLayer ctor ERROR: "
                 "predecessors do not have same output shape.");
         }
+
+        this->set_output_shapes({input1_shape});
     }
 
     virtual ~AddLayer() {}
 
-    virtual void compute_output(Tensor<BufferT> const &input,
-                                Tensor<BufferT>       &output) const
+    virtual void compute_output(
+        std::vector<Tensor<BufferT> const *> input,
+        std::vector<Tensor<BufferT>*>        output) const
     {
-        auto const &output_shape(Layer<BufferT>::output_shape());
+        auto const &output_shape(this->output_shape());
 
         // AddLayer is a special case where the output buffer
         // must have the correct shape when this function is called.
         // No need to check capacity directly or set shape at end.
-        if ((input.shape()  != output_shape) ||
-            (output.shape() != output_shape))
+        if ((input.size()  != 1) || (input[0]->shape()  != output_shape) ||
+            (output.size() != 1) || (output[0]->shape() != output_shape))
         {
             throw std::invalid_argument(
                 "DepthwiseConv2DLayer::compute_output() ERROR: "
@@ -69,11 +70,11 @@ public:
         /// out += in
         small::Accum(output_shape[CHANNEL],
                      output_shape[HEIGHT], output_shape[WIDTH],
-                     input.buffer(),
-                     output.buffer());
+                     input[0]->buffer(),
+                     output[0]->buffer());
 
         // No need to reset the shape of the output buffer.
-        //output.set_shape(Layer<BufferT>::output_shape());
+        //output.set_shape(this->output_shape());
     }
 };
 

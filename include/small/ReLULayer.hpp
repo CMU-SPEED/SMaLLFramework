@@ -25,13 +25,12 @@ class ReLULayer : public Layer<BufferT>
 {
 public:
     typedef typename BufferT::value_type value_type;
-    typedef typename Tensor<BufferT>::shape_type shape_type;
 
-    ReLULayer(Layer<BufferT> const &predecessor)
-        : Layer<BufferT>(predecessor.output_shape())
+    ReLULayer(shape_type const &input_shape)
+        : Layer<BufferT>(input_shape)       // input_shape == output_shape
     {
 #if defined(DEBUG_LAYERS)
-        auto const &output_shape(Layer<BufferT>::output_shape());
+        auto const &output_shape(this->output_shape());
         std::cerr << "ReLU(batches:" << output_shape[BATCH]
                   << ",chans:" << output_shape[CHANNEL]
                   << ",img:" << output_shape[HEIGHT]
@@ -42,30 +41,32 @@ public:
 
     virtual ~ReLULayer() {}
 
-    virtual void compute_output(Tensor<BufferT> const &input,
-                                Tensor<BufferT>       &output) const
+    virtual void compute_output(
+        std::vector<Tensor<BufferT> const *> input,
+        std::vector<Tensor<BufferT>*>        output) const
     {
-        auto const &output_shape(Layer<BufferT>::output_shape());
-
-        if (input.shape() != output_shape)
+        if ((input.size() != 1) || (input[0]->shape() != this->output_shape(0)))
         {
             throw std::invalid_argument(
                 "ReLULayer::compute_output() ERROR: "
                 "incorrect input buffer shape.");
         }
 
-        if (output.capacity() < Layer<BufferT>::output_size())
+        if ((output.size() != 1) || (output[0]->capacity() < this->output_size(0)))
         {
             throw std::invalid_argument(
                 "ReLULayer::compute_output() ERROR: "
                 "insufficient output buffer space.");
         }
 
+        auto const &output_shape(this->output_shape(0));
+
         small::ReLUActivation(output_shape[CHANNEL],
                               output_shape[HEIGHT], output_shape[WIDTH],
-                              input.buffer(),
-                              output.buffer());
-        output.set_shape(Layer<BufferT>::output_shape());
+                              input[0]->buffer(),
+                              output[0]->buffer());
+
+        output[0]->set_shape(output_shape);
     }
 };
 
