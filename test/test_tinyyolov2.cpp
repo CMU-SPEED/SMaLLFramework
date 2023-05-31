@@ -10,25 +10,23 @@
 // DM23-0126
 //****************************************************************************
 
-#include <math.h>
-#include <assert.h>
-#include <stdio.h>
+#define PARALLEL 1
+
+#include <acutest.h>
 #include <stdlib.h>
-#include <stdint.h>
-#include <climits>
-#include <vector>
+
+#include <fstream>
+#include <iostream>
+#include <iomanip>
+#include <random>
 
 #include <small.h>
+#include <small/models/TinyYoloV2.hpp>
 #include <small/utils/Timer.hpp>
-#include "utils.h"
 
-/// @todo Which of these defines are needed?
-#ifndef RUNS
-#define RUNS 2
-#endif
-#ifndef PARALLEL
-#define PARALLEL 0
-#endif
+#include "test_utils.hpp"
+
+#define RUNS 10
 
 //****************************************************************************
 /* This is the runtime recording (for check_blocks==6):
@@ -69,145 +67,7 @@
  */
 
 //****************************************************************************
-
-#include<small/Layer.hpp>
-#include<small/Conv2DLayer.hpp>
-#include<small/MaxPool2DLayer.hpp>
-#include<small/ReLULayer.hpp>
-
-template <class BufferT>
-std::vector<small::Layer<BufferT>*> create_model(
-    uint32_t input_height,
-    uint32_t input_width,
-    uint32_t model_input_channels,
-    uint32_t model_output_channels,
-    uint32_t check_blocks,
-    std::vector<BufferT*> const &filters)
-{
-    std::vector<small::Layer<BufferT>*> layers;
-
-    small::shape_type input_shape(
-        {1UL, model_input_channels, input_height, input_width});
-
-    // settings for first layer
-    uint32_t kernel_size = 3U;
-    uint32_t stride = 1U;
-    uint32_t output_channels = 16U;
-
-    size_t filter_num = 0U;
-    uint32_t num_yolo_blocks = ((check_blocks < 6U) ? check_blocks : 6U);
-    uint32_t layer_strides[] = {2,2,2,2,2,1};
-
-    for (size_t yolo_block = 0; yolo_block < num_yolo_blocks; ++yolo_block)
-    {
-        kernel_size = 3;
-        stride = 1;
-
-        layers.push_back(
-            new small::Conv2DLayer<BufferT>(input_shape,
-                                            kernel_size, kernel_size,
-                                            stride, small::PADDING_F,
-                                            output_channels,
-                                            *filters[filter_num], true));
-        ++filter_num;
-
-        layers.push_back(
-            new small::ReLULayer<BufferT>(layers.back()->output_shape()));
-
-        kernel_size = 2;
-        stride = layer_strides[yolo_block];
-        layers.push_back(
-            new small::MaxPool2DLayer<BufferT>(layers.back()->output_shape(),
-                                               kernel_size, kernel_size,
-                                               stride,
-                                               small::PADDING_F)); /// @todo check
-
-        input_shape = layers.back()->output_shape();
-        output_channels = 2*output_channels;
-    }
-
-    // Final convolution layers
-    //=====================================
-    kernel_size = 3;
-    stride = 1;
-
-    layers.push_back(
-        new small::Conv2DLayer<BufferT>(layers.back()->output_shape(),
-                                        kernel_size, kernel_size,
-                                        stride, small::PADDING_F,
-                                        output_channels,
-                                        *filters[filter_num], true));
-    ++filter_num;
-
-    layers.push_back(
-        new small::ReLULayer<BufferT>(layers.back()->output_shape()));
-
-    //=====================================
-
-    layers.push_back(
-        new small::Conv2DLayer<BufferT>(layers.back()->output_shape(),
-                                        kernel_size, kernel_size,
-                                        stride, small::PADDING_F,
-                                        output_channels,
-                                        *filters[filter_num], true));
-    ++filter_num;
-
-    layers.push_back(
-        new small::ReLULayer<BufferT>(layers.back()->output_shape()));
-
-    //=====================================
-    kernel_size = 1;
-    output_channels = model_output_channels;
-
-    layers.push_back(
-        new small::Conv2DLayer<BufferT>(layers.back()->output_shape(),
-                                        kernel_size, kernel_size,
-                                        stride, small::PADDING_F,
-                                        output_channels,
-                                        *filters[filter_num], true));
-    ++filter_num;
-
-    layers.push_back(
-        new small::ReLULayer<BufferT>(layers.back()->output_shape()));
-
-    return layers;
-}
-
-//****************************************************************************
-template <class BufferT>
-small::Tensor<BufferT> &model_inference(
-    std::vector<small::Layer<BufferT>*> const &layers,
-    uint32_t                                   check_blocks,
-    small::Tensor<BufferT>              const &input_dc,
-    small::Tensor<BufferT>                    &inter_0_dc,
-    small::Tensor<BufferT>                    &inter_1_dc)
-{
-    size_t layer_num = 0;
-
-    uint32_t num_yolo_blocks = ((check_blocks < 6U) ? check_blocks : 6U);
-
-    // yolo_block = 0
-    layers[layer_num++]->compute_output({&input_dc},   {&inter_1_dc}); // Conv2D
-    layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_1_dc}); // ReLU
-    layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_0_dc}); // MaxPool2D
-
-    for (size_t yolo_block = 1; yolo_block < num_yolo_blocks; ++yolo_block)
-    {
-        layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_1_dc});
-        layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_1_dc});
-        layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_0_dc});
-    }
-
-    for (size_t conv_block = 0; conv_block < 3; ++conv_block)
-    {
-        layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_1_dc}); // Conv2D
-        layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_1_dc}); // ReLU
-        inter_0_dc.swap(inter_1_dc);
-    }
-
-    return inter_0_dc;
-}
-
+// Function call implementation of tinyyolov2
 //****************************************************************************
 
 #define REDUCTION_C(layer_num) layer_params[layer_num][0]
@@ -274,6 +134,12 @@ inline void yolo_block(
     small::ReLUActivation(output_channels,   /// @todo should this be input_channels?
                           o_h, o_w,
                           O_intermediate, O_intermediate);
+    // std::cout << "ReLU(Y): " << O_intermediate[0]
+    //           << "\t" << O_intermediate[1]
+    //           << "\t" << O_intermediate[2]
+    //           << "\t" << O_intermediate[3]
+    //           << std::endl;
+
     small::MaxPool2D(kernel_size_pool, stride_pool,
                      t_pad_pool, b_pad_pool, l_pad_pool, r_pad_pool,
                      output_channels,
@@ -311,14 +177,17 @@ inline void conv_block(
     small::ReLUActivation(output_channels,
                           o_h, o_w,
                           O_intermediate, O_intermediate);
+    // std::cout << "ReLU(C): " << O_intermediate[0]
+    //           << "\t" << O_intermediate[1]
+    //           << "\t" << O_intermediate[2]
+    //           << "\t" << O_intermediate[3]
+    //           << std::endl;
 }
 
 //****************************************************************************
-//****************************************************************************
 template <class BufferT>
 BufferT &
-model_inference(uint32_t ds_blocks,
-                uint32_t layer_num_total,
+model_inference(uint32_t layer_num_total,
                 uint16_t layer_params[30][10],
                 std::vector<std::array<uint32_t, 2>> intermediate_dims,
                 std::vector<BufferT *> const &filter_buf_ptrs,
@@ -326,6 +195,8 @@ model_inference(uint32_t ds_blocks,
                 BufferT       &inter_0_dc,
                 BufferT       &inter_1_dc)
 {
+    uint32_t ds_blocks(6U);
+
     auto layer_num = 0;
     yolo_block(intermediate_dims[layer_num],
                REDUCTION_C(layer_num), // Input dimensions
@@ -383,46 +254,35 @@ model_inference(uint32_t ds_blocks,
         //inter_0_dc = inter_1_dc;
         //inter_1_dc = tmp;
     }
+
     return inter_0_dc;
 }
 
 //****************************************************************************
 //****************************************************************************
 template <class BufferT>
-void inference(uint32_t C_i,
-               uint32_t N,   // I_h
-               uint32_t M,   // I_w
-               uint32_t num_classes,
-               uint32_t check_blocks)
+void build_baseline_tinyyolov2(
+    uint32_t C_i,         // 128, 1, 1, 16(8), ...
+    uint32_t N, // I_h
+    uint32_t M, // I_w
+    uint32_t num_classes,
+    uint32_t check_blocks,
+    size_t&  layer_num_total,
+    uint16_t layer_params[30][10],
+    std::vector<std::array<uint,2>> &intermediate_dims,
+    std::vector<BufferT *>& filter_buf_ptrs,
+    size_t& max_numel_inter_0,
+    size_t& max_numel_inter_1,
+    size_t& num_outputs)
 {
-    //uint32_t C_i = 3;
-    //uint32_t N = 32;
-    //uint32_t M = 32;
-    //uint32_t num_classes = 16;
-    //uint32_t check_blocks = 6;
-
-    //int C_o = 32;
-    //int padding_elements = 0;
-    //int kernel_size = 3;
-    //int stride = 1;
-
-    // Create and Initialize Input tensors
-    uint32_t input_dimensions = C_i * N * M;
-    BufferT input_dc(input_dimensions);
-    init(input_dc, input_dimensions);
-
-    // ================================================
-
-    std::vector<std::vector<uint64_t>> implementations;
-
-    uint16_t layer_params[30][10] = {1};
-    std::vector<std::array<uint32_t, 2>> intermediate_dims;
-
     uint8_t t_pad, b_pad, r_pad, l_pad;
 
+    // Set up model parameters
     int layer_num = 0;
     int pool_layer_num = 0, conv_layer_num = 0;
-    uint32_t max_numel_inter_0 = 0, max_numel_inter_1 = 0;
+
+    max_numel_inter_0 = 0;
+    max_numel_inter_1 = 0;
     uint32_t inter_dim = 0;
 
     intermediate_dims.push_back(std::array<uint, 2>({N, M}));  //(height, width)
@@ -577,12 +437,13 @@ void inference(uint32_t C_i,
         (inter_dim > max_numel_inter_1) ? inter_dim : max_numel_inter_1;
     intermediate_dims.push_back(std::array<uint, 2>(OUTPUT_DIMS(layer_num)));
 
-    auto layer_num_total = layer_num;
+    layer_num_total = layer_num;
+#if SUMMARY == 1
     //__________Summarize Network____________________________________
     printf("layer num, H_in, W_in, F_c, K, G, F_h, stride, t_pad, b_pad, l_pad, r_pad\n");
-    for (auto i = 0; i < layer_num_total; i++)
+    for (auto i = 0UL; i < layer_num_total; i++)
     {
-        printf("%d, ", i);
+        printf("%ld, ", i);
         printf("HxW: %d, %d, layer_params: ", I_HEIGHT(i), I_WIDTH(i));
         for (auto j = 0; j < 10; j++)
         {
@@ -593,18 +454,11 @@ void inference(uint32_t C_i,
         printf("\n");
     }
 
-    printf("set up %d pool layers, %d conv layers, total: %d\n",
+    printf("set up %d pool layers, %d conv layers, total: %ld\n",
            pool_layer_num, conv_layer_num, layer_num_total);
+#endif
 
-
-    //====================================SMaLL===================================
-
-    //_____________________setup______________________________________________
-
-    //  Copy layer weights to temporaries
-    std::vector<BufferT *> filter_buf_ptrs;
-
-    for (int l = 0; l < layer_num_total; ++l) //conv_layer_num; l++)
+    for (size_t l = 0; l < layer_num_total; ++l) //conv_layer_num; l++)
     {
         if (1 == TYPE(l))
         {
@@ -618,16 +472,70 @@ void inference(uint32_t C_i,
             //filter_ptr = alloc(filter_dimensions);
             init(*filter_buf_ptr, filter_dimensions);
             filter_buf_ptrs.push_back(filter_buf_ptr);
+#if SUMMARY == 1
+            std::cout << l << ": init filter buf, size = " << filter_dimensions
+                      << "\t" << (*filter_buf_ptr)[0]
+                      << "\t" << (*filter_buf_ptr)[1]
+                      << "\t" << (*filter_buf_ptr)[2]
+                      << "..." << std::endl;
+#endif
         }
     }
     printf("\n");
 
-    //_______________________________________inference_________________________
-    std::cerr << "\nWarm up run (ORIG)\n";
+    /// @todo assert(filter_buf_ptrs.size() == num_filters)
+    num_outputs =
+        num_classes*intermediate_dims.back()[0]*intermediate_dims.back()[1];
+}
 
-    // allocate space for intermediate outputs (use the max sizes calculated previously)
-    printf("Size of intermediate buffers: %d %d\n", max_numel_inter_0, max_numel_inter_1);
-#if defined(QUANTIZED)
+//****************************************************************************
+//****************************************************************************
+void test_tinyyolov2(void)
+{
+#if defined QUANTIZED
+    using BufferT = small::QUInt8Buffer;
+#else
+    using BufferT = small::FloatBuffer;
+#endif
+
+    // input parameters
+    uint32_t C_i = 3;
+    uint32_t N = 416; // 608
+    uint32_t M = 416; // 608
+    uint32_t num_classes = 16;
+    uint32_t check_blocks = 6;
+
+    // ================================================
+
+    //************************************************************************
+    // Baseline (function call) model
+    //************************************************************************
+
+    // "model" params
+    size_t   layer_num_total = 0;
+    uint16_t layer_params[30][10] = {1};
+    std::vector<std::array<uint32_t, 2>> intermediate_dims;
+    size_t   max_numel_inter_0 = 0;
+    size_t   max_numel_inter_1 = 0;
+    std::vector<BufferT*> filter_buf_ptrs;
+    size_t   num_outputs = 0;
+
+    build_baseline_tinyyolov2(C_i, N, M, num_classes, check_blocks,
+                              layer_num_total,
+                              layer_params,
+                              intermediate_dims,
+                              filter_buf_ptrs,
+                              max_numel_inter_0,
+                              max_numel_inter_1,
+                              num_outputs);
+
+    // ================================================
+
+    std::cerr << "Intermediate buffer sizes: "
+              << max_numel_inter_0 << ", " << max_numel_inter_1
+              << std::endl;
+
+#if defined QUANTIZED
     BufferT inter_0_dc(max_numel_inter_0*2);  /// @todo HACK need to determine correct size
     BufferT inter_1_dc(max_numel_inter_1*2);  /// @todo HACK need to determine correct size
 #else
@@ -635,7 +543,12 @@ void inference(uint32_t C_i,
     BufferT inter_1_dc(max_numel_inter_1);
 #endif
 
-#if 0
+    // Create input tensor
+    uint32_t input_dimensions = C_i * N * M;
+    BufferT input_dc(input_dimensions);
+    init(input_dc, input_dimensions);
+
+#if VERBOSE == 1
     std::cout << "\nInput buffer:\n";
     for (size_t ix = 0; ix < N*M; ++ix)
     {
@@ -648,23 +561,27 @@ void inference(uint32_t C_i,
     }
 #endif
 
-    // ============================= model_inference =============================
+    //======================================================
     small::Timer my_timer;
 
     std::cerr << "\nWarm up run (ORIG)" << std::endl;
+
+    // HACK: due to odd buffer swaps
+    if (inter_0_dc.size() != max_numel_inter_0)
+        inter_0_dc.swap(inter_1_dc);
+
     my_timer.start();
-    //uint32_t inter_h, inter_w;
     auto &output_tmp =
-        model_inference(ds_blocks,
-                        layer_num_total,
-                        layer_params,
+        model_inference(layer_num_total, layer_params,
                         intermediate_dims,
                         filter_buf_ptrs,
                         input_dc,
                         inter_0_dc,
                         inter_1_dc);
     my_timer.stop();
-    BufferT output_dc(output_tmp);
+
+    // copy the output for comparison in subsequent runs.
+    BufferT output_answers(output_tmp);
     printf("\nElapsed time: %lf ns.\n", my_timer.elapsed());
 
     //======================================================
@@ -674,145 +591,144 @@ void inference(uint32_t C_i,
 
     for (int r = 0; r < RUNS; r++)
     {
+        std::cout << "Baseline run: " << r;
+        // HACK: due to odd buffer swaps
+        if (inter_0_dc.size() != max_numel_inter_0)
+            inter_0_dc.swap(inter_1_dc);
+
         my_timer.start();
 
-        auto &output_tmp =
-        model_inference(ds_blocks,
-                        layer_num_total, layer_params,
-                        intermediate_dims,
-                        filter_buf_ptrs,
-                        input_dc,
-                        inter_0_dc,
-                        inter_1_dc);
+        auto &output_dc =
+            model_inference(layer_num_total, layer_params,
+                            intermediate_dims,
+                            filter_buf_ptrs,
+                            input_dc,
+                            inter_0_dc,
+                            inter_1_dc);
 
         my_timer.stop();
-        output_dc = output_tmp;
         auto diff = my_timer.elapsed();
         small_timing.push_back(diff);
+        std::cout << ": " << diff << " ns.\n";
+
+        // Test that the answer stays the same through multiple invocations
+        bool passed = true;
+        for (size_t ix = 0; ix < num_outputs; ++ix)
+        {
+            bool same_value = (output_answers[ix] == output_dc[ix]);
+
+#if SUMMARY == 1
+            std::cout << (same_value ? "pass: " : "FAIL: ")
+                      << "baseline (first run), baseline output " << ix
+                      << ": " << (float)output_answers[ix]
+                      << " ?= " << (float)output_dc[ix]
+                      << std::endl;
+#endif
+            passed &= same_value;
+        }
+        TEST_CHECK(passed);
     }
 
-    //======================================================
+    //************************************************************************
+    // Model class
+    //************************************************************************
 
-    auto layers(create_model<BufferT>(N, M,
-                                      C_i, num_classes,
-                                      check_blocks,
-                                      filter_buf_ptrs));
+    small::shape_type input_shape({1UL, C_i, N, M});
 
-    small::Tensor<BufferT> input_tensor({1, C_i, N, M}, input_dc);
-#if defined(QUANTIZED)
-    small::Tensor<BufferT> inter_0_tensor(max_numel_inter_0*2);  /// @todo HACK need to determine correct size
-    small::Tensor<BufferT> inter_1_tensor(max_numel_inter_1*2);  /// @todo HACK need to determine correct size
-#else
-    small::Tensor<BufferT> inter_0_tensor(max_numel_inter_0);
-    small::Tensor<BufferT> inter_1_tensor(max_numel_inter_1);
-#endif
+    small::TinyYoloV2<BufferT> model(input_shape, filter_buf_ptrs, true);
 
+    small::Tensor<BufferT> input_tensor(input_shape, input_dc);
+
+    //***********
     std::cerr << "Warm up run (LAYERS)" << std::endl;
-    my_timer.start();
-    auto &output_tensor =
-        model_inference(layers, check_blocks,
-                        input_tensor, inter_0_tensor, inter_1_tensor);
-    my_timer.stop();
-    printf("\nElapsed time: %lf ns.\n", my_timer.elapsed());
+    auto output_tensors = model.inference({&input_tensor});
+    BufferT output_buffer = output_tensors[0]->buffer();
+    //***********
 
-    // Compare the results
-    size_t num_outputs = layers.back()->output_size();
+    TEST_CHECK(1 == output_tensors.size());
+    std::cerr << "Output sizes: " << num_outputs << " ?= "
+              <<  output_tensors[0]->size() << std::endl;
+    TEST_CHECK(num_outputs == output_tensors[0]->size());
+
+    // Compare outputs
+    bool passed = true;
     std::cout << "\nCHECK RESULTS: Num output elements: "
               << num_outputs << std::endl;
+
     for (size_t ix = 0; ix < num_outputs; ++ix)
     {
-        std::cout << ((output_dc[ix] == output_tensor.buffer()[ix]) ? "pass" : "fail")
-                  << ": baseline, Model output " << ix
-                  << ": " << (float)output_dc[ix]
-                  << " ?= " << (float)output_tensor.buffer()[ix]
+        bool same_value = (output_answers[ix] == output_tensors[0]->buffer()[ix]);
+
+#if SUMMARY == 1
+        std::cout << (same_value ? "pass: " : "FAIL: ")
+                  << "baseline, Model output " << ix
+                  << ": " << (float)output_answers[ix]
+                  << " ?= " << (float)output_tensors[0]->buffer()[ix]
                   << std::endl;
+#endif
+        passed &= same_value;
     }
+    TEST_CHECK(passed);
 
-    // clean up model (move to model class destructor when built
-    for (auto layer : layers) delete layer;
     //======================================================
+    // Timing runs
+    //======================================================
+    std::vector<double> layer_timing;
 
-    //__________________________________end inference_________________________
-
-    // Free allocated weight buffers
-
-    for (size_t l = 0; l < filter_buf_ptrs.size(); l++)
+    for (int r = 0; r < RUNS; r++)
     {
-        small::free_buffer(filter_buf_ptrs[l]);
+        std::cout << "Model run: " << r;
+        my_timer.start();
+
+        //***********
+        model.inference({&input_tensor});
+        //***********
+
+        my_timer.stop();
+        auto diff = my_timer.elapsed();
+        layer_timing.push_back(diff);
+        std::cout << ": " << diff << " ns.\n";
+
+        // Test that the answer stays the same through multiple invocations
+        bool passed = true;
+        for (size_t ix = 0; ix < num_outputs; ++ix)
+        {
+            bool same_value = (output_answers[ix] == output_tensors[0]->buffer()[ix]);
+
+#if SUMMARY == 1
+            std::cout << (same_value ? "pass: " : "FAIL: ")
+                      << "baseline (first run), Model output " << ix
+                      << ": " << (float)output_answers[ix]
+                      << " ?= " << (float)output_tensors[0]->buffer()[ix]
+                      << std::endl;
+#endif
+            passed &= same_value;
+        }
+        TEST_CHECK(passed);
     }
 
-    //===============================End SMaLL================================
+    int num_th = 1;
+#if PARALLEL == 1
+    char const *env_nt(std::getenv("OMP_NUM_THREADS"));
+    if (nullptr != env_nt)
+    {
+        num_th = atoi(std::getenv("OMP_NUM_THREADS"));
+    }
+#endif
+    std::cout << "Num Threads: " << num_th << std::endl;
+    print_stats(small_timing, "\nSMaLL:tinyyolov2 Baseline");
+    print_stats(layer_timing, "\nSMaLL:tinyyolov2 Layers  ");
 
-    //___________________________Correctness check____________________________
-    // bool check = 1;
-    // std::vector<uint32_t>
-    //     inter_0_dims, inter_1_dims;
-    // for (int tens_dim_i = 0; tens_dim_i < inter_1.dim(); tens_dim_i++)
-    // {
-    //     inter_1_dims.push_back(inter_1.size(tens_dim_i));
-    // }
-    // check = check_eqivalence<C_ob, C_ib>(inter_1, 'o', inter_1_dims, inter_1_dc, LIMIT);
-    // std::cout << inter_1_dims << std::endl;
-
-    // assert(check == 1);
-
-    // inter_0_dims.clear();
-    // for (int tens_dim_i = 0; tens_dim_i < inter_0.dim(); tens_dim_i++)
-    // {
-    //     inter_0_dims.push_back(inter_0.size(tens_dim_i));
-    // }
-    // check = check_eqivalence<C_ob, C_ib>(inter_0, 'o', inter_0_dims, inter_0_dc, LIMIT);
-    // std::cout << inter_0_dims << std::endl;
-
-    // assert(check == 1);
-
-    // Free input and output buffers
-    //free(input_dc);
-    //free(inter_0_dc);
-    //free(inter_1_dc);
+    //clean up
+    for (auto filter : filter_buf_ptrs)
+    {
+        delete filter;
+    }
 }
 
 //****************************************************************************
-// For non-arduino platforms.  ... move to driver.cpp?
 //****************************************************************************
-#ifndef NANO33BLE
-int main(int argc, char **argv)
-{
-    uint32_t C_i = 3;
-    uint32_t I_h = 416;
-    uint32_t I_w = 416;
-    uint32_t num_classes = 16;
-    uint32_t check_blocks = 16;
-
-    if (argc == 6)
-    {
-        C_i = atoi(argv[1]);
-        I_h = atol(argv[2]);  //N
-        I_w = atol(argv[3]);  //M
-        num_classes  = atol(argv[4]);
-        check_blocks = atol(argv[5]);
-    }
-    else if (argc != 1)
-    {
-        printf("\nUsage ERROR: %s "
-               "[<Input Channels> <Input H> <Input W> <Output Classes> <# check blocks>]\n",
-               argv[0]);
-        printf("Default: %s 3 416 416 16 6\n", argv[0]);
-        return 0;
-    }
-
-    // printf("layer %d %d %d \n", LAYER, uarch, W_ob);
-    if (num_classes % 16 != 0)
-    {
-        printf("Number of output classes must be a multiple of 16\n");
-        exit(-1);
-    }
-
-#if defined(QUANTIZED)
-    inference<small::QUInt8Buffer>(C_i, I_h, I_w, num_classes, check_blocks);
-#else
-    inference<small::FloatBuffer>(C_i, I_h, I_w, num_classes, check_blocks);
-#endif
-    return 0;
-}
-#endif
+TEST_LIST = {
+    {"tinyyolov2_data_performance", test_tinyyolov2},
+    {NULL, NULL}
+};

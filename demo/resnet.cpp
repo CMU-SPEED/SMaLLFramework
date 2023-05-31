@@ -240,7 +240,6 @@ def resnet_v1_eembc():
  */
 
 #include<small/Layer.hpp>
-#include<small/InputLayer.hpp>
 #include<small/PartialConv2DLayer.hpp>
 #include<small/Conv2DLayer.hpp>
 #include<small/MaxPool2DLayer.hpp>
@@ -261,42 +260,41 @@ std::vector<small::Layer<BufferT>*> create_model(
     uint32_t num_classes = 16;  /// @todo should be 10
     size_t   filter_num = 0;
 
+    small::shape_type input_shape(
+        {1UL, input_channels, image_size, image_size});
+
     small::Layer<BufferT> *prev =
-        new small::InputLayer<BufferT>(
-            {1UL, input_channels, image_size, image_size});
+        new small::Conv2DLayer<BufferT>(input_shape,
+                                        kernel_size, kernel_size,
+                                        stride, small::PADDING_F,
+                                        output_channels,
+                                        *filters[filter_num], true);
     layers.push_back(prev);
 
-    prev = new small::Conv2DLayer<BufferT>(*prev,
-                                           kernel_size, kernel_size,
-                                           stride, small::PADDING_F,
-                                           output_channels,
-                                           *filters[filter_num], true);
-    layers.push_back(prev);
-
-    prev = new small::ReLULayer<BufferT>(*prev);
+    prev = new small::ReLULayer<BufferT>(prev->output_shape());
     layers.push_back(prev);
 
     // First Stack
     ++filter_num;
-    prev = new small::Conv2DLayer<BufferT>(*prev,
+    prev = new small::Conv2DLayer<BufferT>(prev->output_shape(),
                                            kernel_size, kernel_size,
                                            stride, small::PADDING_F,
                                            output_channels,
                                            *filters[filter_num], true);
     layers.push_back(prev);
 
-    prev =  new small::ReLULayer<BufferT>(*prev);
+    prev =  new small::ReLULayer<BufferT>(prev->output_shape());
     layers.push_back(prev);
 
     ++filter_num;
-    prev = new small::PartialConv2DLayer<BufferT>(*prev,
+    prev = new small::PartialConv2DLayer<BufferT>(prev->output_shape(),
                                                   kernel_size,
                                                   stride, small::PADDING_F,
                                                   output_channels,
                                                   *filters[filter_num], true);
     layers.push_back(prev);
 
-    prev =  new small::ReLULayer<BufferT>(*prev);
+    prev =  new small::ReLULayer<BufferT>(prev->output_shape());
     layers.push_back(prev);
 
     // Second and Third Stacks
@@ -309,20 +307,20 @@ std::vector<small::Layer<BufferT>*> create_model(
 
         output_channels = 2*output_channels;
         stride = 2;
-        prev = new small::Conv2DLayer<BufferT>(*block_prev,
+        prev = new small::Conv2DLayer<BufferT>(block_prev->output_shape(),
                                                kernel_size, kernel_size,
                                                stride, small::PADDING_F,
                                                output_channels,
                                                *filters[filter_num], true);
         layers.push_back(prev);
 
-        prev = new small::ReLULayer<BufferT>(*prev);
+        prev = new small::ReLULayer<BufferT>(prev->output_shape());
         layers.push_back(prev);
 
         //==================
         ++filter_num;  ///@note out of order filter access here/next
 
-        prev = new small::Conv2DLayer<BufferT>(*block_prev,
+        prev = new small::Conv2DLayer<BufferT>(block_prev->output_shape(),
                                                1U, 1U,
                                                stride, small::PADDING_V,
                                                output_channels,
@@ -330,7 +328,7 @@ std::vector<small::Layer<BufferT>*> create_model(
         layers.push_back(prev);
 
         stride = 1;
-        prev = new small::PartialConv2DLayer<BufferT>(*prev,
+        prev = new small::PartialConv2DLayer<BufferT>(prev->output_shape(),
                                                       kernel_size,
                                                       stride, small::PADDING_F,
                                                       output_channels,
@@ -338,14 +336,14 @@ std::vector<small::Layer<BufferT>*> create_model(
         layers.push_back(prev);
         ++filter_num;  /// @note 1x1 filter order swapped
 
-        prev = new small::ReLULayer<BufferT>(*prev);
+        prev = new small::ReLULayer<BufferT>(prev->output_shape());
         layers.push_back(prev);
     }
 
     kernel_size = layers.back()->output_shape()[small::HEIGHT]; //image_size;
     stride = 1;
     /// @todo should be AveragePooling2D
-    prev = new small::MaxPool2DLayer<BufferT>(*prev,
+    prev = new small::MaxPool2DLayer<BufferT>(prev->output_shape(),
                                               kernel_size, kernel_size,
                                               stride, small::PADDING_V);
     layers.push_back(prev);
@@ -353,7 +351,7 @@ std::vector<small::Layer<BufferT>*> create_model(
     kernel_size = 1;
 
     ++filter_num;
-    prev = new small::Conv2DLayer<BufferT>(*prev,
+    prev = new small::Conv2DLayer<BufferT>(prev->output_shape(),
                                            kernel_size, kernel_size,
                                            stride, small::PADDING_V,
                                            num_classes,
@@ -375,30 +373,30 @@ small::Tensor<BufferT> &model_inference(
     small::Tensor<BufferT>                                   &inter_1_dc,
     small::Tensor<BufferT>                                   &inter_2_dc)
 {
-    size_t layer_num = 1; // skip InputLayer
-    layers[layer_num++]->compute_output(input_dc, inter_0_dc);   //Conv2D
-    layers[layer_num++]->compute_output(inter_0_dc, inter_0_dc); //ReLU
+    size_t layer_num = 0;
+    layers[layer_num++]->compute_output({&input_dc}, {&inter_0_dc});   //Conv2D
+    layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_0_dc}); //ReLU
 
-    layers[layer_num++]->compute_output(inter_0_dc, inter_1_dc); // Conv2D
-    layers[layer_num++]->compute_output(inter_1_dc, inter_1_dc); // ReLU
-    layers[layer_num++]->compute_output(inter_1_dc, inter_0_dc); // buf0+=Conv2D(buf1)
-    layers[layer_num++]->compute_output(inter_0_dc, inter_0_dc); // ReLU
+    layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_1_dc}); // Conv2D
+    layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_1_dc}); // ReLU
+    layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_0_dc}); // buf0+=Conv2D(buf1)
+    layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_0_dc}); // ReLU
 
     for (auto ix = 0U; ix < 2; ++ix)
     {
-        layers[layer_num++]->compute_output(inter_0_dc, inter_1_dc); // Conv2D
-        layers[layer_num++]->compute_output(inter_1_dc, inter_1_dc); // ReLU
+        layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_1_dc}); // Conv2D
+        layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_1_dc}); // ReLU
 
-        layers[layer_num++]->compute_output(inter_0_dc, inter_2_dc); // Conv2D
+        layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_2_dc}); // Conv2D
 
-        layers[layer_num++]->compute_output(inter_1_dc, inter_2_dc); // buf2+=Conv2D(buf1)
-        layers[layer_num++]->compute_output(inter_2_dc, inter_2_dc); // ReLU
+        layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_2_dc}); // buf2+=Conv2D(buf1)
+        layers[layer_num++]->compute_output({&inter_2_dc}, {&inter_2_dc}); // ReLU
 
         inter_0_dc.swap(inter_2_dc);
     }
 
-    layers[layer_num++]->compute_output(inter_0_dc, inter_1_dc);
-    layers[layer_num++]->compute_output(inter_1_dc, inter_0_dc);
+    layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_1_dc});
+    layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_0_dc});
 
     return inter_0_dc;
 }

@@ -60,7 +60,6 @@
  */
 
 #include<small/Layer.hpp>
-#include<small/InputLayer.hpp>
 #include<small/DepthwiseConv2DLayer.hpp>
 #include<small/Conv2DLayer.hpp>
 #include<small/MaxPool2DLayer.hpp>
@@ -79,22 +78,21 @@ std::vector<small::Layer<BufferT>*> create_model(
     uint32_t input_channels = 3, output_channels = 64;
     size_t   filter_num = 0;
 
-    small::Layer<BufferT> *prev =
-        new small::InputLayer<BufferT>(
-            {1UL, input_channels, input_height, input_width});
-    layers.push_back(prev);
+    small::shape_type input_shape(
+        {1UL, input_channels, input_height, input_width});
 
-    prev = new small::Conv2DLayer<BufferT>(*prev,
-                                           kernel_size, kernel_size,
-                                           stride, small::PADDING_F,
-                                           output_channels,
-                                           *filters[filter_num], true);
+    small::Layer<BufferT> *prev =
+        new small::Conv2DLayer<BufferT>(input_shape,
+                                        kernel_size, kernel_size,
+                                        stride, small::PADDING_F,
+                                        output_channels,
+                                        *filters[filter_num], true);
     layers.push_back(prev);
 
     input_height = 25;
     input_width  = 5;
 
-    prev = new small::ReLULayer<BufferT>(*prev);
+    prev = new small::ReLULayer<BufferT>(prev->output_shape());
     layers.push_back(prev);
 
     stride = 1;
@@ -106,28 +104,28 @@ std::vector<small::Layer<BufferT>*> create_model(
         ++filter_num;
         kernel_size = 3;
         prev = new small::DepthwiseConv2DLayer<BufferT>(
-            *prev,
+            prev->output_shape(),
             kernel_size, stride, small::PADDING_F,
             *filters[filter_num], true);
         layers.push_back(prev);
 
-        prev = new small::ReLULayer<BufferT>(*prev);
+        prev = new small::ReLULayer<BufferT>(prev->output_shape());
         layers.push_back(prev);
 
         ++filter_num;
         kernel_size = 1;
-        prev = new small::Conv2DLayer<BufferT>(*prev,
+        prev = new small::Conv2DLayer<BufferT>(prev->output_shape(),
                                                kernel_size, kernel_size,
                                                stride, small::PADDING_V,
                                                num_channels,
                                                *filters[filter_num], true);
         layers.push_back(prev);
 
-        prev = new small::ReLULayer<BufferT>(*prev);
+        prev = new small::ReLULayer<BufferT>(prev->output_shape());
         layers.push_back(prev);
     }
 
-    prev = new small::MaxPool2DLayer<BufferT>(*prev,
+    prev = new small::MaxPool2DLayer<BufferT>(prev->output_shape(),
                                               input_height, input_width,
                                               stride, small::PADDING_V);
     layers.push_back(prev);
@@ -139,7 +137,7 @@ std::vector<small::Layer<BufferT>*> create_model(
 
     input_height = 1;
     input_width  = 1;
-    prev = new small::Conv2DLayer<BufferT>(*prev,
+    prev = new small::Conv2DLayer<BufferT>(prev->output_shape(),
                                            kernel_size, kernel_size,
                                            stride, small::PADDING_V,
                                            output_channels,
@@ -156,20 +154,20 @@ small::Tensor<BufferT> &model_inference(
     small::Tensor<BufferT>                                   &inter_0_dc,
     small::Tensor<BufferT>                                   &inter_1_dc)
 {
-    size_t layer_num = 1; // skip InputLayer
-    layers[layer_num++]->compute_output(input_dc, inter_0_dc);   // Conv2D
-    layers[layer_num++]->compute_output(inter_0_dc, inter_0_dc); // ReLU
+    size_t layer_num = 0;
+    layers[layer_num++]->compute_output({&input_dc}, {&inter_0_dc});   // Conv2D
+    layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_0_dc}); // ReLU
 
     for (auto ix = 0U; ix < 4; ++ix)
     {
-        layers[layer_num++]->compute_output(inter_0_dc, inter_1_dc); // DWConv
-        layers[layer_num++]->compute_output(inter_1_dc, inter_1_dc); // ReLU
-        layers[layer_num++]->compute_output(inter_1_dc, inter_0_dc); // Conv2D
-        layers[layer_num++]->compute_output(inter_0_dc, inter_0_dc); // ReLU
+        layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_1_dc}); // DWConv
+        layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_1_dc}); // ReLU
+        layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_0_dc}); // Conv2D
+        layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_0_dc}); // ReLU
     }
 
-    layers[layer_num++]->compute_output(inter_0_dc, inter_1_dc); // MaxPool2D
-    layers[layer_num++]->compute_output(inter_1_dc, inter_0_dc); // Conv2D
+    layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_1_dc}); // MaxPool2D
+    layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_0_dc}); // Conv2D
     return inter_0_dc;
 }
 
@@ -498,6 +496,7 @@ void inference()
     double min_small = std::numeric_limits<double>::max();
     std::vector<double> small_timing;
 
+    std::cout << "Performing timing runs...\n";
     for (int r = 0; r < RUNS; r++)
     {
         my_timer.start();

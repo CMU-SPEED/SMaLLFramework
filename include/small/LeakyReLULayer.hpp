@@ -25,15 +25,14 @@ class LeakyReLULayer : public Layer<BufferT>
 {
 public:
     typedef typename BufferT::value_type value_type;
-    typedef typename Tensor<BufferT>::shape_type shape_type;
 
-    LeakyReLULayer(Layer<BufferT> const &predecessor,
+    LeakyReLULayer(shape_type const &input_shape,
                    float negative_slope = 0.01f)  /// @todo use value_type?
-        : Layer<BufferT>(predecessor.output_shape()),
+        : Layer<BufferT>({input_shape}),          // input_shape == output_shape
           m_negative_slope(negative_slope)
     {
 #if defined(DEBUG_LAYERS)
-        auto const &output_shape(Layer<BufferT>::output_shape());
+        auto const &output_shape(this->output_shape(0));
         std::cerr << "LeakyReLU(batches:" << output_shape[BATCH]
                   << ",chans:" << output_shape[CHANNEL]
                   << ",negative_slope:" << m_negative_slope
@@ -45,36 +44,37 @@ public:
 
     virtual ~LeakyReLULayer() {}
 
-    virtual void compute_output(Tensor<BufferT> const &input,
-                                Tensor<BufferT>       &output) const
+    virtual void compute_output(
+        std::vector<Tensor<BufferT> const *> input,
+        std::vector<Tensor<BufferT>*>        output) const
     {
-        auto const &output_shape(Layer<BufferT>::output_shape());
-
-        if (input.shape() != output_shape)
+        if ((input.size() != 1) || (input[0]->shape() != this->output_shape(0)))
         {
             throw std::invalid_argument(
                 "LeakyReLULayer::compute_output() ERROR: "
                 "incorrect input buffer shape.");
         }
 
-        if (output.capacity() < Layer<BufferT>::output_size())
+        if ((output.size() != 1) || (output[0]->capacity() < this->output_size(0)))
         {
             throw std::invalid_argument(
                 "LeakyReLULayer::compute_output() ERROR: "
                 "insufficient output buffer space.");
         }
 
-        /// @todo placeholder for the leaky function
+        auto const &output_shape(this->output_shape(0));
+
         small::LeakyReLUActivation(output_shape[CHANNEL],
                                    output_shape[HEIGHT], output_shape[WIDTH],
                                    m_negative_slope,
-                                   input.buffer(),
-                                   output.buffer());
-        output.set_shape(Layer<BufferT>::output_shape());
+                                   input[0]->buffer(),
+                                   output[0]->buffer());
+
+        output[0]->set_shape(output_shape);
     }
 
 private:
-    float      const m_negative_slope;  /// @todo should this be value_type?
+    float const m_negative_slope;  /// @todo should this be value_type?
 };
 
 }
