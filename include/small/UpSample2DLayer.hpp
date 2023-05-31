@@ -21,101 +21,78 @@ namespace small
 
     //****************************************************************************
     template <typename BufferT>
-    class MaxPool2DLayer : public Layer<BufferT>
+    class UpSample2DLayer : public Layer<BufferT>
     {
     public:
         typedef typename BufferT::value_type value_type;
         typedef typename Tensor<BufferT>::shape_type shape_type;
 
-        MaxPool2DLayer(Layer<BufferT> const &predecessor,
-                       uint32_t kernel_height,
-                       uint32_t kernel_width,
-                       uint32_t stride,
-                       PaddingEnum padding_type) // @todo remove? padding must be 'v'.
+        UpSample2DLayer(shape_type const &input_shape,
+                        uint32_t scale_factor)
             : Layer<BufferT>(),
-              m_input_shape(predecessor.output_shape()),
-              m_kernel_height(kernel_height),
-              m_kernel_width(kernel_width),
-              m_stride(stride),
-              m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0)
+              m_input_shape(input_shape),
+              m_scale_factor(scale_factor)
         {
 #if defined(DEBUG_LAYERS)
             std::cerr << "UpSample2D(batches:" << m_input_shape[BATCH]
-                      << ",k:" << kernel_height << "x" << kernel_width
-                      << ",s:" << stride
-                      << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
+                      << ",scale:" << scale_factor
                       << ",chans:" << m_input_shape[CHANNEL]
                       << ",img:" << m_input_shape[HEIGHT]
                       << "x" << m_input_shape[WIDTH]
                       << std::endl;
 #endif
 
+            if ((scale_factor != 1) && (scale_factor != 2))
+            {
+                throw std::invalid_argument(
+                    "UpSample2DLayer ERROR: unsupported scale factor.");
+            }
+
             /// @todo is there a clean way to make these const members, or
             ///       will image size get moved to compute_output() and all of
             ///       this moves to compute_output()?
-            shape_type output_shape;
-            output_shape[BATCH] = m_input_shape[BATCH];
-            output_shape[CHANNEL] = m_input_shape[CHANNEL];
-            small::compute_padding_output_dim(m_input_shape[HEIGHT], kernel_height,
-                                              stride, padding_type,
-                                              m_t_pad, m_b_pad,
-                                              output_shape[HEIGHT]);
-            small::compute_padding_output_dim(m_input_shape[WIDTH], kernel_width,
-                                              stride, padding_type,
-                                              m_l_pad, m_r_pad,
-                                              output_shape[WIDTH]);
-            // std::cerr << "UpSample2D padding: "
-            //           << (int)m_t_pad << "," << (int)m_b_pad
-            //          << "," << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
 
-            this->set_output_shape(output_shape);
+            this->set_output_shape(
+                {m_input_shape[BATCH],
+                 m_input_shape[CHANNEL],
+                 m_input_shape[HEIGHT] * scale_factor,
+                 m_input_shape[WIDTH] * scale_factor});
         }
 
         virtual ~UpSample2DLayer() {}
 
-        virtual void compute_output(Tensor<BufferT> const &input,
-                                    Tensor<BufferT> &output) const
+        virtual void compute_output(
+            std::vector<Tensor<BufferT> const *> input,
+            std::vector<Tensor<BufferT> *> output) const
         {
-            if (input.shape() != m_input_shape)
+            if ((input.size() != 1) || (input[0]->shape() != m_input_shape))
             {
                 throw std::invalid_argument(
                     "UpSample2DLayer::compute_output() ERROR: "
                     "incorrect input buffer shape.");
             }
 
-            if (output.capacity() < Layer<BufferT>::output_size())
+            if ((output.size() != 1) || (output[0]->capacity() < this->output_size(0)))
             {
                 throw std::invalid_argument(
                     "UpSample2DLayer::compute_output ERROR: "
                     "insufficient output buffer space.");
             }
 
-            if (m_kernel_width == m_kernel_height)
-            {
-                UpSample2D(m_kernel_width,
-                          m_stride,
-                          m_input_shape[CHANNEL],
-                          m_input_shape[HEIGHT], m_input_shape[WIDTH],
-                          input.buffer(),
-                          output.buffer());
-            }
-            else
-            {
-                throw std::invalid_argument(
-                    "UpSample2DLayer::compute_output ERROR: "
-                    "kernel must be square, i.e., height==width ");
-            }
-            output.set_shape(Layer<BufferT>::output_shape());
+            UpSample2D(m_scale_factor,
+                       m_input_shape[CHANNEL],
+                       m_input_shape[HEIGHT], m_input_shape[WIDTH],
+                       input.buffer(),
+                       output.buffer());
+
+            output[0]->set_shape(this->output_shape(0));
         }
 
     private:
         shape_type const m_input_shape;
 
-        uint32_t const m_kernel_height, m_kernel_width;
-        uint32_t const m_stride;
-
-        /// @todo: how to make const?
-        uint8_t m_t_pad, m_b_pad, m_l_pad, m_r_pad;
+        /// @todo support separate x,y scale factors
+        uint32_t const m_scale_factor;
     };
 
 }

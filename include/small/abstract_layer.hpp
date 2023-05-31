@@ -750,8 +750,8 @@ namespace small
                   dim_t _UNROLL,
                   char op_type,        // 'c' (conv,dense), 'p' (pool), 'u' (upsample), a' (relu activation), 'l' (leaky relu activation), or 'd' (accumulate)
                   int8_t op_class,     //  2  (conv),  1  (dense,pool), or '0' (activation, upsample)
-                  bool rewrite_output, // 0 (partial conv, accum), 1 (otherwise)
-                  bool bias = 0>
+                  bool rewrite_output // 0 (partial conv, accum), 1 (otherwise)
+                  >
         void abstract_layer(
             dim_t G,   // Output Channel Grouping
             dim_t K,   // Output Channels per group
@@ -782,17 +782,11 @@ namespace small
 
             ScalarT const *F_buf = nullptr;
             
-            //I'm assuming the bias value is ScalarT, @todo check what dtype it is when quantized.
-            ScalarT const * Bias_buf = nullptr;
             AccumT F_offset(0);
             if constexpr (op_type == 'c' ||  op_type == 'l') // if (F != nullptr)
             {
                 F_buf = F->data();
                 F_offset = F->zero();
-                if constexpr(bias == 1)
-                {
-                    Bias_buf = F_buf + (F_h*F_w*F_c*K*G);
-                }
             }
 
             ScalarT *O_buf = O->data(); //__restrict__ ?
