@@ -9,6 +9,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+      - uses: pguyot/arm-runner-action@v2
       - run: lscpu | grep "Architecture"
       - run: cmake -B ${{github.workspace}}/build -DCMAKE_UARCH=REF 
       - run: cmake --build ${{github.workspace}}/build -j8
