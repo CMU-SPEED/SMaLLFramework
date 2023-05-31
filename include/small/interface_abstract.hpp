@@ -341,8 +341,8 @@ void LeakyReLUActivation(int input_channels,
                          BufferT const &filter_buf,
                          BufferT &output_buf)
 {
-        float negative_slope = filter_buf.data()[0];
 #if defined(RECORD_CALLS)
+    float negative_slope = filter_buf.data()[0];
     std::cout << "LeakyReLUActivation(chans:" << input_channels
               << ",img:" << input_height << "x" << input_width
               << ",slope:" << negative_slope
