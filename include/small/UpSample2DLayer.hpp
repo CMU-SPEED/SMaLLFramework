@@ -25,7 +25,6 @@ class UpSample2DLayer : public Layer<BufferT>
 {
 public:
     typedef typename BufferT::value_type value_type;
-    typedef typename Tensor<BufferT>::shape_type shape_type;
 
     UpSample2DLayer(shape_type const &input_shape,
                     uint32_t scale_factor)
@@ -52,11 +51,11 @@ public:
         ///       will image size get moved to compute_output() and all of
         ///       this moves to compute_output()?
 
-        this->set_output_shape(
+        this->set_output_shapes({
             {m_input_shape[BATCH],
              m_input_shape[CHANNEL],
              m_input_shape[HEIGHT]*scale_factor,
-             m_input_shape[WIDTH]*scale_factor});
+             m_input_shape[WIDTH]*scale_factor}});
     }
 
     virtual ~UpSample2DLayer() {}
@@ -82,8 +81,8 @@ public:
         UpSample2D(m_scale_factor,
                    m_input_shape[CHANNEL],
                    m_input_shape[HEIGHT], m_input_shape[WIDTH],
-                   input.buffer(),
-                   output.buffer());
+                   input[0]->buffer(),
+                   output[0]->buffer());
 
         output[0]->set_shape(this->output_shape(0));
     }
