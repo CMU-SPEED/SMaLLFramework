@@ -48,8 +48,10 @@ public:
           m_kernel_width(kernel_width),
           m_stride(stride),
           m_activation_type(activation_type),
-          m_leaky_slope(leaky_slope),
-          m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0)
+          m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0),
+          m_leaky_slope(1),
+          m_packed_filters(num_output_channels*input_shape[CHANNEL]*
+                           kernel_height*kernel_width)
     {
 #if defined(DEBUG_LAYERS)
         std::cerr << "Conv2D(batches:" << m_input_shape[BATCH]
@@ -104,7 +106,7 @@ public:
         {
             std::cerr << "LeakyReLU(batches:" << output_shape[BATCH]
                       << ",chans:" << output_shape[CHANNEL]
-                      << ",slope:" << m_leaky_slope
+                      << ",slope:" << leaky_slope
                       << ",img:" << output_shape[HEIGHT]
                       << "x" << output_shape[WIDTH]
                       << ")" << std::endl;
@@ -113,8 +115,7 @@ public:
 
         this->set_output_shapes({output_shape});
 
-        BufferT packed_filters(output_shape[CHANNEL]*m_input_shape[CHANNEL]*
-                               kernel_height*kernel_width);
+        m_leaky_slope[0] = leaky_slope;
         if (!filters_are_packed)
         {
             // Pack the filter buffers for SMaLL use
@@ -123,15 +124,14 @@ public:
                                output_shape[CHANNEL], m_input_shape[CHANNEL],
                                m_kernel_height, m_kernel_width,
                                C_ib, C_ob,
-                               packed_filters);
+                               m_packed_filters);
         }
         else
         {
             std::copy(filters.data(),
-                      filters.data() + packed_filters.size(),
-                      packed_filters.data());
+                      filters.data() + m_packed_filters.size(),
+                      m_packed_filters.data());
         }
-        m_packed_filters = std::move(packed_filters);
     }
 
     virtual ~Conv2DLayer() {}
@@ -190,12 +190,10 @@ public:
         }
         else if (m_activation_type == LEAKY)
         {
-            BufferT neg_slope(1);
-            neg_slope[0] = m_leaky_slope;
             small::LeakyReLUActivation(output_shape[CHANNEL],
                                        output_shape[HEIGHT], output_shape[WIDTH],
                                        output[0]->buffer(),
-                                       neg_slope,
+                                       m_leaky_slope,
                                        output[0]->buffer());
         }
     }
@@ -207,11 +205,11 @@ private:
     uint32_t   const m_stride;
 
     ActivationType const m_activation_type;
-    float          const m_leaky_slope;
 
     /// @todo: how to make const?
     uint8_t          m_t_pad, m_b_pad, m_l_pad, m_r_pad;
 
+    BufferT          m_leaky_slope;
     BufferT          m_packed_filters;
 };
 
