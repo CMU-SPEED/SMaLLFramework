@@ -26,7 +26,7 @@
 // #define O_wb   6
 // #define stride 1
 
-#define DEBUG 0
+#define DEBUG 1
 
 namespace small
 {
@@ -59,6 +59,10 @@ namespace small
     else if (op_type == 'd')                                             \
     {                                                                    \
         ACCUM_TILE_C(step, a_cur, _O_wb, _C_ob);             \
+    }\
+    else if (op_type == 'b')\
+    {\
+        BIAS_TILE_C(b_cur, _O_wb, _C_ob);\
     }
 
 //****************************************************************************
@@ -832,8 +836,16 @@ namespace small
             dim_t H_o_w_pad, W_o_w_pad;
             if constexpr (op_type == 'u')
             {
-                H_o_w_pad = I_h * _stride;
-                W_o_w_pad = I_w * _stride;
+                if constexpr(_stride == std::numeric_limits<dim_t>::max())
+                {
+                    H_o_w_pad = I_h;
+                    W_o_w_pad = I_w;
+                }
+                else
+                {
+                    H_o_w_pad = I_h * _stride;
+                    W_o_w_pad = I_w * _stride;
+                }
             }
             else
             {
@@ -855,8 +867,8 @@ namespace small
                 dim_t H_o, W_o_full;
                 if constexpr (op_type == 'u')
                 {
-                H_o = (I_h - H_full_index) * _stride;
-                W_o_full = (I_w - W_full_index) * _stride;
+                    H_o = H_o_w_pad;
+                    W_o_full = W_o_w_pad;
                 }
                 else
                 {
@@ -947,7 +959,15 @@ namespace small
                 // loops over output channels
                 for (index_t g = group_tid; g < G / _G_b; g += T_group)
                 {
-                    ScalarT const *I_group = I_buf + g * (F_c * I_h * I_w * _G_b);
+                    ScalarT const *I_group;
+                    if constexpr (op_type == 'u' && _stride == std::numeric_limits<dim_t>::max())
+                    {
+                        I_group = I_buf + g * (F_c * 1 * 1* _G_b);
+                    }
+                    else
+                    { 
+                        I_group = I_buf + g * (F_c * I_h * I_w * _G_b);
+                    }
                     ScalarT *O_group = O_buf + g * (K * O_hxO_w * _G_b);
                     //if leaky relu, the weight pointer does not change with the group id
 

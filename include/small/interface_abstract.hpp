@@ -427,8 +427,35 @@ void Accum(int input_channels,
         &input_buf, (BufferT *)NULL, &output_buf);
 }
 
+//init a buffer with bias values, 1 per channel
+template <class BufferT>
+void Bias(int input_channels,
+                         int output_height, int output_width,
+                         BufferT const &input_buf,
+                         BufferT &output_buf)
+{
+#if defined(RECORD_CALLS)
+    std::cout << "BiasAdd(chans:" << input_channels
+              << ",img:" << output_height << "x" << output_width
+              << ",slope:" << negative_slope
+              << ",I,O)\n";
+#endif
 
-
+    // for (auto ix = 0; ix < input_channels*output_height*output_width; ++ix)
+    // {
+    //     output_buf[ix] = ((input_buf[ix] < 0) ?
+    //                       (negative_slope*input_buf[ix]) :
+    //                       input_buf[ix]);
+    // }
+    detail::abstract_layer<BufferT, C_ob, 1, 1, W_ob, std::numeric_limits<dim_t>::max(), 1, 'u', 0, 1>(
+        input_channels, // Output Channel Grouping
+        1,              // Output Channels per group
+        1,
+        output_height, output_width,
+        1, 1,
+        0, 0, 0, 0,
+        &input_buf, (BufferT *)NULL, &output_buf);
+}
 
 //****************************************************************************
 template <class BufferT>
