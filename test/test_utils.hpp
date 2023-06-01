@@ -39,9 +39,14 @@ struct LayerParams
 
 //****************************************************************************
 template <class T>
-inline bool almost_equal(T v1, T v2, float tol = 1.0e-8)
+inline bool almost_equal(T v1, T v2, float rtol = 1e-05, float atol = 1e-08)
 {
-    return (1e-8 > fabs(v1 - v1));
+    float abs_diff = fabs((float)(v1) - (float)(v2));
+    float diff_tolerance = (atol + rtol * fabs(v2));
+    return (abs_diff <= diff_tolerance);
+
+    // original checker
+    // return (tol > fabs(v1-v2));
 }
 
 //****************************************************************************
