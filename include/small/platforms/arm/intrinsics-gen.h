@@ -295,11 +295,12 @@ __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_3_3) : "w"(b_1), "w"(a_3
 __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_4_2) : "w"(b_0), "w"(a_4));\
 __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_4_3) : "w"(b_1), "w"(a_4));\
 __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_5_2) : "w"(b_0), "w"(a_5));\
-__asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_5_3) : "w"(b_1), "w"(a_5));\
+__asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_5_3) : "w"(b_1), "w"(a_5));
+
 \
 \
-bb += 64;								\
-a += SIMD;								
+/*bb += 64;								\
+a += SIMD;*/								
 
 #ifdef MAX_TILE_C
 #undef MAX_TILE_C
