@@ -271,7 +271,7 @@ small::Layer<BufferT>* parse_conv(small::shape_type &input, block_info_t block_i
             /// @todo block_info.bn, // todo add batch norm
             /// @todo bias,
             filters, // todo replace with weights
-            true,
+            false,
             block_info.activation
         );
 
@@ -293,7 +293,7 @@ small::Layer<BufferT>* parse_max(small::shape_type &input, block_info_t block_in
         new small::MaxPool2DLayer<BufferT>(
             input,
             block_info.size, block_info.size,
-            block_info.stride, block_info.pad
+            block_info.stride, small::PADDING_F
         );
 
     return maxpool;
