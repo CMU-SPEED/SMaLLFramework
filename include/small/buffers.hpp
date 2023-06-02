@@ -28,6 +28,37 @@ enum BufferTypeEnum
 };
 
 //************************************************************************
+// Index a packed direct_convolution weights tensor for Conv2D layers
+inline size_t packed_weight_index(
+    // unpacked shape
+    uint32_t num_filters,      // num output channels
+    uint32_t num_channels,     // num input channels
+    uint32_t num_rows,         // kernel height
+    uint32_t num_cols,         // kernel width
+
+    // packing params (platform-specific)
+    uint32_t filter_blocking,  // pass C_ob
+    uint32_t channel_blocking, // pass C_ib
+
+    // unpacked location
+    size_t   filter_idx,       // output channel
+    size_t   channel_idx,      // input channel
+    size_t   height_idx,       // kernel height index
+    size_t   width_idx)        // kernel width index
+{
+    return (
+        (filter_idx/filter_blocking) * (
+            (num_channels/channel_blocking) *
+            num_rows * num_cols * channel_blocking * filter_blocking) +
+        (channel_idx/channel_blocking) * (
+            num_rows * num_cols * channel_blocking * filter_blocking) +
+        height_idx  * (num_cols * channel_blocking * filter_blocking) +
+        width_idx *              (channel_blocking * filter_blocking) +
+        (channel_idx % channel_blocking * filter_blocking) +
+        (filter_idx % filter_blocking));
+}
+
+//************************************************************************
 // Convert from NCHW Torch tensor format to Direct Convolution format
 // If input tensor
 //    [1, C, H, W] --> [1, (C/_C_ib), H, W, _C_ib]

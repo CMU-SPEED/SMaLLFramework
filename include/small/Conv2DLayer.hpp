@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <cmath>
 #include <small.h>
 #include <small/buffers.hpp>
 #include <small/Layer.hpp>
@@ -42,14 +43,16 @@ public:
                 bool              buffers_are_packed = true,
                 ActivationType    activation_type = NONE,
                 float             leaky_slope = 1.e-2)
-    : Layer<BufferT>(),
-      m_input_shape(input_shape),
-      m_kernel_height(kernel_height),
-      m_kernel_width(kernel_width),
-      m_stride(stride),
-      m_activation_type(activation_type),
-      m_leaky_slope(leaky_slope),
-      m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0)
+        : Layer<BufferT>(),
+          m_input_shape(input_shape),
+          m_kernel_height(kernel_height),
+          m_kernel_width(kernel_width),
+          m_stride(stride),
+          m_activation_type(activation_type),
+          m_leaky_slope(leaky_slope),
+          m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0),
+          m_packed_filters(num_output_channels*m_input_shape[CHANNEL]*
+                           kernel_height*kernel_width)
     {
 #if defined(DEBUG_LAYERS)
         std::cerr << "Conv2D(batches:" << m_input_shape[BATCH]
@@ -114,7 +117,9 @@ public:
           m_stride(stride),
           m_activation_type(activation_type),
           m_leaky_slope(leaky_slope),
-          m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0)
+          m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0),
+          m_packed_filters(num_output_channels*m_input_shape[CHANNEL]*
+                       kernel_height*kernel_width)
     {
 #if defined(DEBUG_LAYERS)
         std::cerr << "Conv2D(batches:" << m_input_shape[BATCH]
@@ -186,7 +191,9 @@ public:
           m_stride(stride),
           m_activation_type(activation_type),
           m_leaky_slope(leaky_slope),
-          m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0)
+          m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0),
+          m_packed_filters(num_output_channels*m_input_shape[CHANNEL]*
+                           kernel_height*kernel_width)
     {
 #if defined(DEBUG_LAYERS)
         std::cerr << "Conv2D(batches:" << m_input_shape[BATCH]
@@ -273,6 +280,7 @@ public:
 
 private:
 
+    //************************************************************************
     void compute_padding_output_shape(shape_type const &input_shape,
                                       uint32_t          kernel_height,
                                       uint32_t          kernel_width,
@@ -305,6 +313,7 @@ private:
         this->set_output_shapes({output_shape});
     }
 
+    //************************************************************************
     void initialize_buffers(uint32_t          num_output_channels,
                             BufferT    const &filters,
                             BufferT    const &bias,
@@ -318,32 +327,29 @@ private:
         // ============ Filter weights ===========
         if (filters.size() <
             num_output_channels*m_input_shape[CHANNEL]*
-            kernel_height*kernel_width)
+            m_kernel_height*m_kernel_width)
         {
             throw std::invalid_argument(
                 "Conv2DLayer::ctor ERROR: "
                 "filters buffer too small.");
         }
 
-        BufferT packed_filters(output_shape[CHANNEL]*m_input_shape[CHANNEL]*
-                               kernel_height*kernel_width);
         if (!buffers_are_packed)
         {
             // Pack the filter buffers for SMaLL use
             small::pack_buffer(filters,
                                FILTER_CONV,
-                               output_shape[CHANNEL], m_input_shape[CHANNEL],
+                               num_output_channels, m_input_shape[CHANNEL],
                                m_kernel_height, m_kernel_width,
                                C_ib, C_ob,
-                               packed_filters);
+                               m_packed_filters);
         }
         else
         {
             std::copy(filters.data(),
-                      filters.data() + packed_filters.size(),
-                      packed_filters.data());
+                      filters.data() + m_packed_filters.size(),
+                      m_packed_filters.data());
         }
-        m_packed_filters = std::move(packed_filters);
 
         // ============ Bias term ===========
         if (bias.size() > 0)
@@ -380,7 +386,6 @@ private:
                     "BN buffers incorrect size.");
             }
 
-
             // Fuse the BN parameters with packed filters and bias
             /* ----------------------------------------------------------------
              * From: https://nenadmarkus.com/p/fusing-batchnorm-and-conv/
@@ -404,21 +409,46 @@ private:
              *
              * fusedconv.bias.copy_( torch.matmul(w_bn, b_conv) + b_bn )
              */
-            std::vector<float> w_bn(num_output_channels);
-            std::vector<float> w_bn(num_output_channels);
-            for (size_t ochan = 0; ochan < num_output_channels; ++ochan)
+            bool no_bias = false;
+            if (m_packed_bias.size() == 0)
             {
-                w_bn[ochan] =
-                    bn_weight[ochan]/sqrt(bn_running_var[ochan] + bn_eps);
+                m_packed_bias = std::move(BufferT(num_output_channels));
+                no_bias = true;
             }
+
             for (size_t ochan = 0; ochan < num_output_channels; ++ochan)
             {
+                // compute scaling factor for filters of this output channel
+                float filter_scale =
+                    bn_weight[ochan]/std::sqrt(bn_running_variance[ochan] + bn_eps);
+
+                /// @todo REVISIT: this does not look like python code above
+                if (no_bias)
+                {
+                    m_packed_bias[ochan] =
+                        bn_bias[ochan] - bn_running_mean[ochan]*filter_scale;
+                }
+                else
+                {
+                    m_packed_bias[ochan] = filter_scale*m_packed_bias[ochan] +
+                        bn_bias[ochan] - bn_running_mean[ochan]*filter_scale;
+                }
+
                 for (size_t ichan = 0; ichan < m_input_shape[CHANNEL]; ++ichan)
                 {
                     for (size_t fh = 0; fh < m_kernel_height; ++fh)
                     {
                         for (size_t fw = 0; fw < m_kernel_width; ++fw)
                         {
+                            size_t packed_index =
+                                packed_weight_index(num_output_channels,
+                                                    m_input_shape[CHANNEL],
+                                                    m_kernel_height,
+                                                    m_kernel_width,
+                                                    C_ob,
+                                                    C_ib,
+                                                    ochan, ichan, fh, fw);
+                            m_packed_filters[packed_index] *= filter_scale;
                         }
                     }
                 }
