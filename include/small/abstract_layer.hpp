@@ -59,10 +59,6 @@ namespace small
     else if (op_type == 'd')                                             \
     {                                                                    \
         ACCUM_TILE_C(step, a_cur, _O_wb, _C_ob);             \
-    }\
-    else if (op_type == 'b')\
-    {\
-        BIAS_TILE_C(b_cur, _O_wb, _C_ob);\
     }
 
 //****************************************************************************

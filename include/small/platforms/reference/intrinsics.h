@@ -115,25 +115,6 @@ typedef small::FloatBuffer::value_type c_tile_t;
     }                                                           \
   }
 
-// Bias Add
-#define BIAS_TILE_C(b, W_ob, C_ob)         \
-  for (uint32_t kk = 0; kk < W_ob; kk++)   \
-  {                                        \
-    for (uint32_t jj = 0; jj < C_ob; jj++) \
-    {                                      \
-      c_tile[kk * C_ob + jj] = b[jj];      \
-    }                                      \
-  }
-
-#define BIAS_END_C(b,_W_ob, C_ob)            \
-  for (uint32_t kk = 0; kk < _W_ob; kk++)  \
-  {                                        \
-    for (uint32_t jj = 0; jj < C_ob; jj++) \
-    {                                      \
-      c_tile[kk * C_ob + jj] = b[jj];        \
-    }                                      \
-  }
-
 // Stores
 
 #define STORE_TILE_C(O, W_ob, C_ob)               \
