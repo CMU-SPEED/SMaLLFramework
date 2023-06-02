@@ -1,4 +1,4 @@
-name: Test Reference Build
+name: Test Zen2 Build
 
 on: [push, pull_request]
 
@@ -9,11 +9,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - run: cmake -B ${{github.workspace}}/build -DCMAKE_UARCH=REF 
+      - run: cmake -B ${{github.workspace}}/build -DCMAKE_UARCH=ZEN2 
       - run: cmake --build ${{github.workspace}}/build -j
       - run: cd ${{github.workspace}}/build
       - run: make test
-
 
     
       
