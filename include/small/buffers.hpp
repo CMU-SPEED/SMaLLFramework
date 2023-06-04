@@ -59,6 +59,29 @@ inline size_t packed_weight_index(
 }
 
 //************************************************************************
+// Index a packed input or output buffer (assuming NCHW = [1, C_i/o, H, W])
+inline size_t packed_buffer_index(
+    // unpacked shape
+    uint32_t num_channels,     // num input/output channels
+    uint32_t num_rows,         // image height
+    uint32_t num_cols,         // image width
+
+    // packing params (platform-specific)
+    uint32_t channel_blocking, // pass C_ib for input, C_ob for output buffers
+
+    // unpacked location
+    size_t   channel_idx,      // input/output channel
+    size_t   height_idx,       // kernel height index
+    size_t   width_idx)        // kernel width index
+{
+    return (
+        (channel_idx/channel_blocking) * (num_rows * num_cols * channel_blocking) +
+                            height_idx * (           num_cols * channel_blocking) +
+                             width_idx * (                      channel_blocking) +
+        (channel_idx % channel_blocking));
+}
+
+//************************************************************************
 // Convert from NCHW Torch tensor format to Direct Convolution format
 // If input tensor
 //    [1, C, H, W] --> [1, (C/_C_ib), H, W, _C_ib]

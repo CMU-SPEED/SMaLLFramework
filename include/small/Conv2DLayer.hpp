@@ -79,6 +79,7 @@ public:
 
 
 #if defined(DEBUG_LAYERS)
+        auto &output_shape = this->output_shape(0);
         if (activation_type == RELU)
         {
             std::cerr << "ReLU(batches:" << output_shape[BATCH]
@@ -148,6 +149,7 @@ public:
 
 
 #if defined(DEBUG_LAYERS)
+        auto &output_shape = this->output_shape(0);
         if (activation_type == RELU)
         {
             std::cerr << "ReLU(batches:" << output_shape[BATCH]
@@ -180,7 +182,7 @@ public:
                 BufferT    const &bn_bias,              // beta
                 BufferT    const &bn_running_mean,      // mu_hat
                 BufferT    const &bn_running_variance,  // sigma_hat^2
-                float      const &bn_eps,               // float?
+                float      const &bn_eps = 1.e-5,       // float?
                 bool              buffers_are_packed = true,
                 ActivationType    activation_type = NONE,
                 float             leaky_slope = 1.e-2)
@@ -205,11 +207,47 @@ public:
                   << ",img:" << m_input_shape[HEIGHT]
                   << "x" << m_input_shape[WIDTH]
                   << "), filters.size=" << filters.size()
-                  << ",bn.sizes(bias,eps,run_var,run_avg)=(" << bn_bias.size()
-                  << "," << bn_eps.size()
+                  << ",bn.sizes(weight,bias,run_var,run_avg)=("
+                  << bn_weight.size()
+                  << "," << bn_bias.size()
                   << "," << bn_running_variance.size()
                   << "," << bn_running_mean.size()
-                  << ")" << std::endl;
+                  << "),bn_eps:" << bn_eps << std::endl;
+#endif
+
+        compute_padding_output_shape(input_shape,
+                                     kernel_height, kernel_width,
+                                     stride,
+                                     padding_type,
+                                     num_output_channels);
+
+        initialize_buffers(num_output_channels,
+                           filters,
+                           BufferT(), // no bias
+                           bn_weight, bn_bias,
+                           bn_running_mean, bn_running_variance, bn_eps,
+                           buffers_are_packed);
+
+
+#if defined(DEBUG_LAYERS)
+        auto &output_shape = this->output_shape(0);
+        if (activation_type == RELU)
+        {
+            std::cerr << "ReLU(batches:" << output_shape[BATCH]
+                      << ",chans:" << output_shape[CHANNEL]
+                      << ",img:" << output_shape[HEIGHT]
+                      << "x" << output_shape[WIDTH]
+                      << ")" << std::endl;
+        }
+        else if (activation_type == LEAKY)
+        {
+            std::cerr << "LeakyReLU(batches:" << output_shape[BATCH]
+                      << ",chans:" << output_shape[CHANNEL]
+                      << ",slope:" << m_leaky_slope
+                      << ",img:" << output_shape[HEIGHT]
+                      << "x" << output_shape[WIDTH]
+                      << ")" << std::endl;
+        }
 #endif
 
     }
@@ -257,6 +295,26 @@ public:
                         input[0]->buffer(),
                         m_packed_filters,
                         output[0]->buffer());
+        }
+
+        // HACK: placeholder for bias term
+        if (m_packed_bias.size() == output_shape[CHANNEL])
+        {
+            for (size_t Co = 0; Co < output_shape[CHANNEL]; ++Co)
+            {
+                for (size_t h = 0; h < output_shape[HEIGHT]; ++h)
+                {
+                    for (size_t w = 0; w < output_shape[WIDTH]; ++w)
+                    {
+                        size_t idx = packed_buffer_index(output_shape[CHANNEL],
+                                                         output_shape[HEIGHT],
+                                                         output_shape[WIDTH],
+                                                         C_ob,
+                                                         Co, h, w);
+                        output[0]->buffer()[idx] += m_packed_bias[Co];
+                    }
+                }
+            }
         }
 
         output[0]->set_shape(output_shape);
@@ -448,14 +506,13 @@ private:
                                                     C_ob,
                                                     C_ib,
                                                     ochan, ichan, fh, fw);
+                            //std::cerr << "packed_index = " << packed_index << std::endl;
                             m_packed_filters[packed_index] *= filter_scale;
                         }
                     }
                 }
             }
         }
-
-
     }
 
 private:
