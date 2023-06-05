@@ -26,7 +26,7 @@
 // #define O_wb   6
 // #define stride 1
 
-#define DEBUG 1
+#define DEBUG 0
 
 namespace small
 {
