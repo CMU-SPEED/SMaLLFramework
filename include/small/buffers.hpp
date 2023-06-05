@@ -14,6 +14,7 @@
 
 #include <vector>
 #include <iostream>  // Temporary for debugging only
+#include <cassert>
 #include <exception>
 
 namespace small
@@ -26,6 +27,58 @@ enum BufferTypeEnum
     FILTER_CONV, // was 'f', for LAYER = CONV, PARTIAL_CONV
     FILTER_FC    // was 'l', for LAYER = FC
 };
+
+//************************************************************************
+// Index a packed direct_convolution weights tensor for Conv2D layers
+inline size_t packed_weight_index(
+    // unpacked shape
+    uint32_t num_filters,      // num output channels
+    uint32_t num_channels,     // num input channels
+    uint32_t num_rows,         // kernel height
+    uint32_t num_cols,         // kernel width
+
+    // packing params (platform-specific)
+    uint32_t filter_blocking,  // pass C_ob
+    uint32_t channel_blocking, // pass C_ib
+
+    // unpacked location
+    size_t   filter_idx,       // output channel
+    size_t   channel_idx,      // input channel
+    size_t   height_idx,       // kernel height index
+    size_t   width_idx)        // kernel width index
+{
+    return (
+        (filter_idx/filter_blocking) * (
+            (num_channels/channel_blocking) *
+            num_rows * num_cols * channel_blocking * filter_blocking) +
+        (channel_idx/channel_blocking) * (
+            num_rows * num_cols * channel_blocking * filter_blocking) +
+        height_idx  * (num_cols * channel_blocking * filter_blocking) +
+        width_idx *              (channel_blocking * filter_blocking) +
+        (channel_idx % channel_blocking * filter_blocking) +
+        (filter_idx % filter_blocking));
+}
+
+//************************************************************************
+// Index a packed input or output buffer (assuming NCHW = [1, C_i/o, H, W])
+inline size_t packed_buffer_index(
+    // unpacked shape
+    uint32_t num_channels,     // num input/output channels
+    uint32_t num_rows,         // image height
+    uint32_t num_cols,         // image width
+
+    // packing params (platform-specific)
+    uint32_t channel_blocking, // pass C_ib for input, C_ob for output buffers
+
+    // unpacked location
+    size_t   channel_idx,      // input/output channel
+    size_t   height_idx,       // kernel height index
+    size_t   width_idx)        // kernel width index
+{
+    return (channel_idx/channel_blocking) * (num_rows * num_cols * channel_blocking) +
+            height_idx * (           num_cols * channel_blocking) +
+            width_idx * (                       channel_blocking) + (channel_idx % channel_blocking);
+}
 
 //************************************************************************
 // Convert from NCHW Torch tensor format to Direct Convolution format
@@ -74,10 +127,12 @@ uint32_t convert_tensor2dc(ScalarT               const *flat_t,
         _C_ib = 1;
     }
 
-    if (type == FILTER_CONV)
+    if (type == FILTER_CONV || type == INPUT)
     {
+        
         if (C_i < _C_ib) //(dim1 < _C_ob)
         {
+            assert(C_i == 3);
             //std::cerr << "HERE: dim1, C_ob: " << H << ", " << _C_ob << std::endl;;
             _C_ib = 3;    /// @todo why is this a 3?
         }
@@ -139,6 +194,20 @@ uint32_t convert_tensor2dc(ScalarT               const *flat_t,
                             //              i_offset +
                             //              j_offset)
                             //          << std::endl;
+
+                            uint32_t offset_calc = 0;
+                            if(type == INPUT || type == OUTPUT) {
+                                offset_calc = packed_buffer_index(C_i, H, W, _C_ib, h+k, i, j);
+                            }
+                            else {
+                                offset_calc = packed_weight_index(C_o, C_i, H, W, _C_ob, _C_ib, g+l, h+k, i, j);
+                            }
+
+                            if(offset != offset_calc) {
+                                printf("ERROR: offset mismatch: %d != %d\n", offset, offset_calc);
+                                return 0;
+                            }
+
                             dc_array[offset++] =
                                 flat_t[g_offset + l_offset +
                                        h_offset + k_offset +
