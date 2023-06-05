@@ -17,8 +17,8 @@ jobs:
           commands:
             test `uname -m` = 'aarch64'
             lscpu | grep "Architecture"
-            mkdir /SMaLLFramework/build
-            cd /SMaLLFramework/build
+            mkdir SMaLLFramework/build
+            cd SMaLLFramework/build
             cmake .. -DCMAKE_UARCH=REF 
             cmake --build . -j
             make test
