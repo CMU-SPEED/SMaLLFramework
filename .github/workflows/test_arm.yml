@@ -15,13 +15,11 @@ jobs:
           cpu: cortex-a53
           copy_repository_path: /SMaLLFramework
           commands:
-            test `uname -m` = 'aarch64'
-            lscpu | grep "Architecture"
-            mkdir SMaLLFramework/build
-            cd SMaLLFramework/build
-            cmake .. -DCMAKE_UARCH=REF 
-            cmake --build . -j
-            make test
+            mkdir SMaLLFramework/build;
+            cd SMaLLFramework/build;
+            cmake .. -DCMAKE_UARCH=REF; 
+            cmake --build . -j;
+            make test;
 
     
       
