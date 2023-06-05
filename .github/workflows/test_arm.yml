@@ -15,8 +15,8 @@ jobs:
           cpu: cortex-a53
           copy_repository_path: /SMaLLFramework
           commands:
-            mkdir SMaLLFramework/build;
-            cd SMaLLFramework/build;
+            mkdir /SMaLLFramework/build;
+            cd /SMaLLFramework/build;
             cmake .. -DCMAKE_UARCH=REF; 
             cmake --build . -j;
             make test;
