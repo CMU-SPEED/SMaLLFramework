@@ -1,6 +1,6 @@
 name: Test Reference Build
 
-on: [push, pull_request]
+on: [push]
 
 jobs:
   build-and-test:
