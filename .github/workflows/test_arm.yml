@@ -1,0 +1,26 @@
+name: Test ARM Build
+
+on: [push, pull_request]
+
+jobs:
+  build-and-test:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: pguyot/arm-runner-action@HEAD
+        with:
+          base_image: https://dietpi.com/downloads/images/DietPi_RPi-ARMv8-Bullseye.7z
+          cpu: cortex-a53
+          commands:
+            test `uname -m` = 'aarch64'
+            lscpu | grep "Architecture"
+            cmake -B ${{github.workspace}}/build -DCMAKE_UARCH=ARM 
+            cmake --build ${{github.workspace}}/build -j8
+            cd ${{github.workspace}}/build && make test
+
+    
+      
+  
+  
