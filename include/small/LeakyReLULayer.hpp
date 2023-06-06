@@ -27,19 +27,21 @@ public:
     typedef typename BufferT::value_type value_type;
 
     LeakyReLULayer(shape_type const &input_shape,
-                   float negative_slope = 0.01f)  /// @todo use value_type?
+                   float             leaky_slope = 0.01f)  /// @todo use value_type?
         : Layer<BufferT>({input_shape}),          // input_shape == output_shape
-          m_negative_slope(negative_slope)
+          m_leaky_slope(1)
     {
 #if defined(DEBUG_LAYERS)
         auto const &output_shape(this->output_shape(0));
         std::cerr << "LeakyReLU(batches:" << output_shape[BATCH]
                   << ",chans:" << output_shape[CHANNEL]
-                  << ",negative_slope:" << m_negative_slope
+                  << ",leaky_slope:" << leaky_slope
                   << ",img:" << output_shape[HEIGHT]
                   << "x" << output_shape[WIDTH]
                   << ")" << std::endl;
 #endif
+        /// @todo Do any type conversion between float and value_type here.
+        m_leaky_slope[0] = leaky_slope;
     }
 
     virtual ~LeakyReLULayer() {}
@@ -66,15 +68,15 @@ public:
 
         small::LeakyReLUActivation(output_shape[CHANNEL],
                                    output_shape[HEIGHT], output_shape[WIDTH],
-                                   m_negative_slope,
                                    input[0]->buffer(),
+                                   m_leaky_slope,
                                    output[0]->buffer());
 
-        output[0]->set_shape(output_shape);
+        output[0]->set_shape(this->output_shape(0));
     }
 
 private:
-    float const m_negative_slope;  /// @todo should this be value_type?
+    BufferT    m_leaky_slope;      /// @todo should this be value_type?
 };
 
 }

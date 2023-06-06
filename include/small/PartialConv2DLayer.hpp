@@ -33,12 +33,12 @@ public:
     ///                     {in_chans, out_chans, kern_h, kern_w}
     ///
     PartialConv2DLayer(shape_type const &input_shape,    //pred.output_shape()
-                       uint32_t         kernel_size,
-                       uint32_t         stride,
-                       PaddingEnum      padding_type,
-                       uint32_t         num_output_channels,
-                       BufferT   const &filters,
-                       bool             filters_are_packed = true,
+                       uint32_t          kernel_size,
+                       uint32_t          stride,
+                       PaddingEnum       padding_type,
+                       uint32_t          num_output_channels,
+                       BufferT    const &filters,
+                       bool              filters_are_packed = true,
                        ActivationType    activation_type = NONE,
                        float             leaky_slope = 1.e-2)
         : Layer<BufferT>(),
@@ -46,8 +46,10 @@ public:
           m_kernel_size(kernel_size),
           m_stride(stride),
           m_activation_type(activation_type),
-          m_leaky_slope(leaky_slope),
-          m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0)
+          m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0),
+          m_leaky_slope(1),
+          m_packed_filters(num_output_channels*input_shape[CHANNEL]*
+                           kernel_size*kernel_size)
     {
 #if defined(DEBUG_LAYERS)
         std::cerr << "PartialConv2D(batches:" << m_input_shape[BATCH]
@@ -101,7 +103,7 @@ public:
         {
             std::cerr << "LeakyReLU(batches:" << output_shape[BATCH]
                       << ",chans:" << output_shape[CHANNEL]
-                      << ",slope:" << m_leaky_slope
+                      << ",slope:" << leaky_slope
                       << ",img:" << output_shape[HEIGHT]
                       << "x" << output_shape[WIDTH]
                       << ")" << std::endl;
@@ -110,8 +112,7 @@ public:
 
         this->set_output_shapes({output_shape});
 
-        BufferT packed_filters(output_shape[CHANNEL]*m_input_shape[CHANNEL]*
-                               kernel_size*kernel_size);
+        m_leaky_slope[0] = leaky_slope;
         if (!filters_are_packed)
         {
             // Pack the filter buffers for SMaLL use
@@ -120,15 +121,14 @@ public:
                                output_shape[CHANNEL], m_input_shape[CHANNEL],
                                m_kernel_size, m_kernel_size,
                                C_ib, C_ob,
-                               packed_filters);
+                               m_packed_filters);
         }
         else
         {
             std::copy(filters.data(),
-                      filters.data() + packed_filters.size(),
-                      packed_filters.data());
+                      filters.data() + m_packed_filters.size(),
+                      m_packed_filters.data());
         }
-        m_packed_filters = std::move(packed_filters);
     }
 
     virtual ~PartialConv2DLayer() {}
@@ -175,8 +175,8 @@ public:
         {
             small::LeakyReLUActivation(output_shape[CHANNEL],
                                        output_shape[HEIGHT], output_shape[WIDTH],
-                                       m_leaky_slope,
                                        output[0]->buffer(),
+                                       m_leaky_slope,
                                        output[0]->buffer());
         }
     }
@@ -188,11 +188,11 @@ private:
     uint32_t   const m_stride;
 
     ActivationType const m_activation_type;
-    float          const m_leaky_slope;
 
     /// @todo: how to make const?
     uint8_t          m_t_pad, m_b_pad, m_l_pad, m_r_pad;
 
+    BufferT          m_leaky_slope;
     BufferT          m_packed_filters;
 };
 

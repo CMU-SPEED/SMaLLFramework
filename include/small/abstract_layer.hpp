@@ -51,6 +51,14 @@ namespace small
     else if (op_type == 'a' || op_type == 'p')                           \
     {                                                                    \
         MAX_TILE_C(step, a_cur, _O_wb, _C_ob);                           \
+    }                                                                    \
+    else if (op_type == 'l')                                             \
+    {                                                                    \
+        COND_SCALE_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob);             \
+    }                                                                    \
+    else if (op_type == 'd')                                             \
+    {                                                                    \
+        ACCUM_TILE_C(step, a_cur, _O_wb, _C_ob);             \
     }
 
 //****************************************************************************
@@ -70,6 +78,14 @@ namespace small
     else if (op_type == 'a' || op_type == 'p')                                      \
     {                                                                               \
         MAX_END_C(step, a_cur, c_cur, W_elements, _C_ob);                           \
+    }                                                                               \
+    else if (op_type == 'l')                                                        \
+    {                                                                               \
+        COND_SCALE_END_C(step, a_cur, b_cur, c_cur, W_elements, _C_ob);             \
+    }                                                                               \
+    else if (op_type == 'd')                                      \
+    {                                                                               \
+        ACCUM_END_C(step, a_cur, c_cur, W_elements, _C_ob);                           \
     }
 
         //****************************************************************************
@@ -392,7 +408,6 @@ namespace small
             constexpr dim_t _C_ob = _G_b * _K_b;
             constexpr dim_t _C_ib = _G_b * _F_cb;
             constexpr dim_t step = _stride * _C_ib;
-
             const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
             DEF_END_C(_O_wb, _C_ob);
 
@@ -406,7 +421,7 @@ namespace small
                     {
                         LOAD_END_C_strided(I, step, O_w_left, _C_ob);
                     }
-                    else if (op_type == 'u')
+                    else if(op_type == 'u')
                     {
                         LOAD_END_C_upsample(I, _stride, _C_ib, O_w_left, _C_ob);
                     }
@@ -733,9 +748,10 @@ namespace small
                   dim_t _O_wb,
                   dim_t _stride,
                   dim_t _UNROLL,
-                  char op_type,        // 'c' (conv,dense), 'p' (pool), or 'a' (activation)
-                  int8_t op_class,     //  2  (conv),  1  (dense,pool), or '0' (activation)
-                  bool rewrite_output> // 0 (partial conv), 1 (otherwise)
+                  char op_type,        // 'c' (conv,dense), 'p' (pool), 'u' (upsample), a' (relu activation), 'l' (leaky relu activation), or 'd' (accumulate)
+                  int8_t op_class,     //  2  (conv),  1  (dense,pool), or '0' (activation, upsample)
+                  bool rewrite_output // 0 (partial conv, accum), 1 (otherwise)
+                  >
         void abstract_layer(
             dim_t G,   // Output Channel Grouping
             dim_t K,   // Output Channels per group
@@ -765,8 +781,9 @@ namespace small
             AccumT I_offset = I->zero();
 
             ScalarT const *F_buf = nullptr;
+            
             AccumT F_offset(0);
-            if constexpr (op_type == 'c') // if (F != nullptr)
+            if constexpr (op_type == 'c' ||  op_type == 'l') // if (F != nullptr)
             {
                 F_buf = F->data();
                 F_offset = F->zero();
@@ -811,41 +828,75 @@ namespace small
             // Deriving padding parameters
 
             //  To calculate offsets to next output row, next output block
-            dim_t H_o_w_pad = small::output_dim((I_h + pad_top + pad_bottom),
-                                                _stride, F_h);
-            dim_t W_o_w_pad = small::output_dim((I_w + pad_left + pad_right),
-                                                _stride, F_w);
+            // @todo fix this in small::output_dim
+            dim_t H_o_w_pad, W_o_w_pad;
+            if constexpr (op_type == 'u')
+            {
+                if constexpr(_stride == std::numeric_limits<dim_t>::max())
+                {
+                    H_o_w_pad = I_h;
+                    W_o_w_pad = I_w;
+                }
+                else
+                {
+                    H_o_w_pad = I_h * _stride;
+                    W_o_w_pad = I_w * _stride;
+                }
+            }
+            else
+            {
+                H_o_w_pad = small::output_dim((I_h + pad_top + pad_bottom),
+                                                    _stride, F_h);
+                W_o_w_pad = small::output_dim((I_w + pad_left + pad_right),
+                                                    _stride, F_w);
+            }
+                const dim_t O_h_w_pad = H_o_w_pad;
+                const dim_t O_w_w_pad = W_o_w_pad;
 
-            const dim_t O_h_w_pad = H_o_w_pad;
-            const dim_t O_w_w_pad = W_o_w_pad;
+                dim_t t_pad_el = pad_top / _stride + (pad_top % _stride != 0);
+                dim_t l_pad_el = pad_left / _stride + (pad_left % _stride != 0);
 
-            dim_t t_pad_el = pad_top / _stride + (pad_top % _stride != 0);
-            dim_t l_pad_el = pad_left / _stride + (pad_left % _stride != 0);
+                dim_t H_full_index = t_pad_el * _stride - pad_top;
+                dim_t W_full_index = l_pad_el * _stride - pad_left;
 
-            dim_t H_full_index = t_pad_el * _stride - pad_top;
-            dim_t W_full_index = l_pad_el * _stride - pad_left;
+                // Full kernel output elements
+                dim_t H_o, W_o_full;
+                if constexpr (op_type == 'u')
+                {
+                    H_o = H_o_w_pad;
+                    W_o_full = W_o_w_pad;
+                }
+                else
+                {
+                 H_o = small::output_dim((I_h - H_full_index), _stride, F_h);
+                 W_o_full = small::output_dim((I_w - W_full_index), _stride, F_w);
+                }
+                // back padding elements
+                dim_t H_back_index = H_full_index + _stride * (H_o);
+                dim_t W_back_index = W_full_index + _stride * (W_o_full);
+                dim_t b_pad_el, r_pad_el;
+                if constexpr (op_type == 'u')
+                {
+                    b_pad_el = 0;
+                    r_pad_el = 0;
+                }
+                else
+                {
+                    b_pad_el = small::output_dim((I_h + pad_bottom - H_back_index),
+                                                    _stride, F_h);
+                    r_pad_el = small::output_dim((I_w + pad_right - W_back_index),
+                                                    _stride, F_w);
+                }
 
-            // Full kernel output elements
-            dim_t H_o = small::output_dim((I_h - H_full_index), _stride, F_h);
-            dim_t W_o_full = small::output_dim((I_w - W_full_index), _stride, F_w);
 
-            // back padding elements
-            dim_t H_back_index = H_full_index + _stride * (H_o);
-            dim_t W_back_index = W_full_index + _stride * (W_o_full);
+                 const dim_t O_h = H_o;
+                 const dim_t O_w = W_o_full;
+                 //************************************************************************
 
-            dim_t b_pad_el = small::output_dim((I_h + pad_bottom - H_back_index),
-                                               _stride, F_h);
-            dim_t r_pad_el = small::output_dim((I_w + pad_right - W_back_index),
-                                               _stride, F_w);
-
-            const dim_t O_h = H_o;
-            const dim_t O_w = W_o_full;
-            //************************************************************************
-
-            // setting up microkernel specific parameters
-            const dim_t O_w_full = (O_w / _O_wb) * _O_wb;
-            const dim_t O_w_left = O_w - O_w_full;
-            const dim_t O_hxO_w = O_h_w_pad * O_w_w_pad;
+                 // setting up microkernel specific parameters
+                 const dim_t O_w_full = (O_w / _O_wb) * _O_wb;
+                 const dim_t O_w_left = O_w - O_w_full;
+                 const dim_t O_hxO_w = O_h_w_pad * O_w_w_pad;
 
 #if DEBUG == 1
             printf("\t\t I_h %d I_w %d F_C %d G %d \n", I_h, I_w, F_c, G);
@@ -904,9 +955,27 @@ namespace small
                 // loops over output channels
                 for (index_t g = group_tid; g < G / _G_b; g += T_group)
                 {
-                    ScalarT const *I_group = I_buf + g * (F_c * I_h * I_w * _G_b);
-                    ScalarT const *F_group = F_buf + g * (K * F_c * F_h * F_w * _G_b);
+                    ScalarT const *I_group;
+                    if constexpr (op_type == 'u' && _stride == std::numeric_limits<dim_t>::max())
+                    {
+                        I_group = I_buf + g * (F_c * 1 * 1* _G_b);
+                    }
+                    else
+                    { 
+                        I_group = I_buf + g * (F_c * I_h * I_w * _G_b);
+                    }
                     ScalarT *O_group = O_buf + g * (K * O_hxO_w * _G_b);
+                    //if leaky relu, the weight pointer does not change with the group id
+
+                    ScalarT const *F_group ;
+                    if(op_type == 'l')
+                    {
+                        F_group = F_buf;
+                    }
+                    else
+                    {
+                        F_group = F_buf + g * (K * F_c * F_h * F_w * _G_b);
+                    }
 
                     // resuse O_group as a uint32_t array
                     for (index_t k = channel_tid; k < K / _K_b; k += T_channel)
@@ -971,6 +1040,8 @@ namespace small
                             for (index_t j = height_tid; j < O_h; j += T_height)
                             {
                                 ScalarT const *I_row;
+                                // @todo cast index calculation as int and make stride a float value.
+                                //I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
                                 if constexpr (op_type == 'u')
                                 {
                                     I_row =
@@ -1009,6 +1080,8 @@ namespace small
                                 for (index_t l = 0; l < O_w_full; l += _O_wb)
                                 {
                                     ScalarT const *I_col;
+                                    // @todo cast index calculation as int and make stride a float value.
+                                    //I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
                                     if constexpr (op_type == 'u')
                                     {
                                         I_col =
@@ -1041,31 +1114,43 @@ namespace small
                                 }
 
                                 // Epilogue for microkernel + right padding elements
-                                ScalarT const *I_col_left =
+                                ScalarT const *I_col_left;
+                                if constexpr (op_type == 'u') 
+                                {
+                                    I_col_left =
+                                    I_col_full + (O_w_full / _stride) * (_F_cb * _G_b);
+                                }
+                                else
+                                {
+                                    I_col_left =
                                     I_col_full + (O_w_full * _stride) * (_F_cb * _G_b);
-                                ScalarT const *F_col_left = F_row + 0;
-                                AccumT *O_col_left = O_col_full + O_w_full * (_G_b * _K_b); // ScalarT --> AccumT
-                                kernel_right<ScalarT, AccumT,
-                                             _G_b, _K_b, _F_cb, _O_wb, _stride,
-                                             _UNROLL, op_type, op_class>(
-                                    first,
-                                    F_h,
-                                    F_w,
-                                    I_w * _C_ib,
-                                    O_w_left,
-                                    r_pad_el,
-                                    pad_right,
-                                    I_col_left,
-                                    F_col_left,
-                                    O_col_left,
-                                    0,
-                                    0,
-                                    k_zero,
-                                    I_offset,
-                                    F_offset);
+                                }
+
+                                    ScalarT const *F_col_left = F_row + 0;
+                                    AccumT *O_col_left = O_col_full + O_w_full * (_G_b * _K_b); // ScalarT --> AccumT
+                                    kernel_right<ScalarT, AccumT,
+                                                 _G_b, _K_b, _F_cb, _O_wb, _stride,
+                                                 _UNROLL, op_type, op_class>(
+                                        first,
+                                        F_h,
+                                        F_w,
+                                        I_w * _C_ib,
+                                        O_w_left,
+                                        r_pad_el,
+                                        pad_right,
+                                        I_col_left,
+                                        F_col_left,
+                                        O_col_left,
+                                        0,
+                                        0,
+                                        k_zero,
+                                        I_offset,
+                                        F_offset);
                             }
                             // Epilogue with bottom padding
                             ScalarT const *I_row_bot;
+                            // @todo cast index calculation as int and make stride a float value.
+                            //I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
                             if constexpr (op_type == 'u')
                             {
                                 I_row_bot =
@@ -1182,6 +1267,8 @@ namespace small
                             for (index_t j = height_tid; j < O_h; j += T_height)
                             {
                                 ScalarT const *I_row;
+                                // @todo cast index calculation as int and make stride a float value.
+                                //I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
                                 if constexpr (op_type == 'u')
                                 {
                                     I_row =
@@ -1222,6 +1309,8 @@ namespace small
                                 for (index_t l = 0; l < O_w_full; l += _O_wb)
                                 {
                                     ScalarT const *I_col;
+                                    // @todo cast index calculation as int and make stride a float value.
+                                    //I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
                                     if constexpr (op_type == 'u')
                                     {
                                         I_col =
@@ -1254,8 +1343,17 @@ namespace small
                                 }
 
                                 // Epilogue for microkernel + right padding elements
-                                ScalarT const *I_col_left =
-                                    I_col_full + (O_w_full * _stride) * (_F_cb * _G_b);
+                                ScalarT const *I_col_left;
+                                if constexpr (op_type == 'u')
+                                {
+                                    I_col_left =
+                                        I_col_full + (O_w_full / _stride) * (_F_cb * _G_b);
+                                }
+                                else
+                                {
+                                    I_col_left =
+                                        I_col_full + (O_w_full * _stride) * (_F_cb * _G_b);
+                                }
                                 ScalarT const *F_col_left = F_row + 0;
                                 AccumT *O_col_left = O_col_full + O_w_full * (_G_b * _K_b); // ScalarT --> AccumT
 
@@ -1280,6 +1378,8 @@ namespace small
                             }
                             // Epilogue with bottom padding
                             ScalarT const *I_row_bot;
+                            // @todo cast index calculation as int and make stride a float value.
+                            //I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
                             if constexpr (op_type == 'u')
                             {
                                 I_row_bot =
@@ -1344,7 +1444,7 @@ namespace small
                     }
                 }
             }
-        }
+                }
 
         //****************************************************************************
         //****************************************************************************
