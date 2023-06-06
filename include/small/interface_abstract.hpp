@@ -51,6 +51,9 @@ void Conv2D(int kernel_size, int stride,  /// @todo dim_t?
               << ",I,F,O)\n";
 #endif
 
+    /// @todo add an assert for invalid numbers of output channels
+    ///       (layer classes should be responsible for padding filters).
+
     /// @todo We need another specific case for input_channels==1 (maybe more)
 
     // Specific case for the first layer
@@ -88,6 +91,8 @@ void Conv2D(int kernel_size, int stride,  /// @todo dim_t?
     }
     else
     {
+        /// @todo add a test for invalid number of input channels
+
         if (stride == 1)
         {
             detail::abstract_layer<BufferT,

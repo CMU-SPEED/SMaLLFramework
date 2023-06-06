@@ -10,7 +10,7 @@
 // DM23-0126
 //****************************************************************************
 
-#define DEBUG_LAYERS
+//#define DEBUG_LAYERS
 #define PARALLEL 1
 
 #include <acutest.h>
@@ -34,97 +34,158 @@ void test_filter_packing_indices(void)
 {
     bool passed = true;
 
-    uint32_t C_i = 16; //96;
-    uint32_t C_o = 1; //96;
-    uint32_t H = 2; //3;
-    uint32_t W = 2;// 3;
+    // uint32_t C_i = 16; //96;
+    // uint32_t C_o = 1; //96;
+    // uint32_t H = 2; //3;
+    // uint32_t W = 2;// 3;
+
+    // C_i,Hi,Wi,k,s,p,C_o
+    std::vector<LayerParams> layer_params =
+    {
+        {  16,   48,  48, 3, 1, small::PADDING_F,   16},
+        {  32,   24,  24, 3, 1, small::PADDING_F,   32},
+
+        {  32,   48,  48, 3, 1, small::PADDING_F,   32},
+        {  64,   24,  24, 3, 1, small::PADDING_F,   64},
+        { 128,   12,  12, 3, 1, small::PADDING_F,  128},
+
+        {  16,   48,  48, 3, 1, small::PADDING_F,   32},
+        {  32,   24,  24, 3, 1, small::PADDING_F,   64},
+        {  64,   12,  12, 3, 1, small::PADDING_F,  128},
+        { 128,    6,   6, 3, 1, small::PADDING_F,  256},
+
+        { 128,   24,  24, 3, 1, small::PADDING_F,  128},
+        { 256,   12,  12, 3, 1, small::PADDING_F,  256},
+
+        { 512,   12,  12, 3, 1, small::PADDING_F,  512},
+        {1024,    6,   6, 3, 1, small::PADDING_F, 1024},
+
+        {  32,  208, 208, 3, 1, small::PADDING_F,   64},
+        {  64,  104, 104, 3, 1, small::PADDING_F,  128},
+        { 128,   52,  52, 3, 1, small::PADDING_F,  256},
+        { 256,   26,  26, 3, 1, small::PADDING_F,  512},
+        { 512,   13,  13, 3, 1, small::PADDING_F, 1024},
+
+        /// @todo fix for non reference platforms or disable
+//        { 3,   13,  13, 3, 1, small::PADDING_F, 16},
+//        { 1,   52,  52, 3, 1, small::PADDING_F, 16}
+    };
 
     std::vector<size_t> unpacked_to_packed_mapping;
-    for (uint32_t co = 0; co < C_o; ++co)
-        for (uint32_t ci = 0; ci < C_i; ++ci)
-            for (uint32_t h = 0; h < H; ++h)
-                for (uint32_t w = 0; w < W; ++w)
-                    unpacked_to_packed_mapping.push_back(
-                        small::packed_weight_index(C_o, C_i, H, W,
-                                                   C_ob, C_ib,
-                                                   co, ci, h, w));
-
-    // *** Extracted from convert_tensor2dc ***
-    uint32_t _C_ib = C_ib;
-    uint32_t _C_ob = C_ob;
-
-    if (C_i < _C_ib) //(dim1 < _C_ob)
+    for (auto &[C_i, H, W, k, s, p, C_o] : layer_params)
     {
-        //std::cerr << "HERE: dim1, C_ob: " << H << ", " << _C_ob << std::endl;;
-        _C_ib = 3;    /// @todo why is this a 3?
-    }
+        //std::cerr << "Testing indexing for Ci,H,W,C_o = "
+        //          << C_i << "," << H << "," << W << "," << C_o
+        //          << std::endl;
+        size_t sz = C_i*H*W*C_o;
 
-    uint32_t ip_block = _C_ib;
-    uint32_t op_block = _C_ob;
-
-    uint32_t offset = 0;
-    for (uint32_t g = 0; g < C_o; g += op_block)
-    {
-        uint32_t g_offset = g * C_i * H * W;
-        for (uint32_t h = 0; h < C_i; h += ip_block)
-        {
-            uint32_t h_offset = h * H * W;
-            for (uint32_t i = 0; i < H; i++)
-            {
-                uint32_t i_offset = i * W;
-                for (uint32_t j = 0; j < W; j++)
-                {
-                    uint32_t j_offset = j;
-                    for (uint32_t k = 0; k < ip_block; k++)
+        unpacked_to_packed_mapping.clear();
+        for (uint32_t co = 0; co < C_o; ++co)
+            for (uint32_t ci = 0; ci < C_i; ++ci)
+                for (uint32_t h = 0; h < H; ++h)
+                    for (uint32_t w = 0; w < W; ++w)
                     {
-                        uint32_t k_offset = k * H * W;
-                        for (uint32_t l = 0; l < op_block; l++)
+                        size_t packed_index =
+                            small::packed_weight_index(C_o, C_i, H, W,
+                                                       C_ob, C_ib,
+                                                       co, ci, h, w);
+                        if (packed_index > sz)
                         {
-                            int l_offset = l * C_i * H * W;
-                            //printf("offset: %d\n", offset);fflush(0);
-                            //std::cerr << "dst index = " << offset << ", src index = "
-                            //          << (g_offset + l_offset +
-                            //              h_offset + k_offset +
-                            //              i_offset +
-                            //              j_offset)
-                            //          << std::endl;
-                            auto idx = small::packed_weight_index(
-                                C_o, C_i, H, W,
-                                C_ob, C_ib,
-                                g+l, h+k, i, j);
+                            std::cerr << "ERROR: out of range: unpacked("
+                                      << unpacked_to_packed_mapping.size()
+                                      << "),  packed(macro) "
+                                      << packed_index << " >= " << sz
+                                      << std::endl;
+                        }
+                        unpacked_to_packed_mapping.push_back(packed_index);
+                    }
 
-                            size_t unpacked_index = g_offset + l_offset +
-                                       h_offset + k_offset +
-                                       i_offset + j_offset;
-                            size_t packed_index = offset++;
+        // *** Extracted from convert_tensor2dc ***
+        uint32_t _C_ib = C_ib;
+        uint32_t _C_ob = C_ob;
 
-                            if (unpacked_index >= unpacked_to_packed_mapping.size())
+        if (C_i < _C_ib) //(dim1 < _C_ob)
+        {
+            //std::cerr << "HERE: dim1, C_ob: " << H << ", " << _C_ob << std::endl;;
+            _C_ib = 3;    /// @todo why is this a 3?
+        }
+
+        uint32_t ip_block = _C_ib;
+        uint32_t op_block = _C_ob;
+
+        uint32_t offset = 0;
+        for (uint32_t g = 0; g < C_o; g += op_block)
+        {
+            uint32_t g_offset = g * C_i * H * W;
+            for (uint32_t h = 0; h < C_i; h += ip_block)
+            {
+                uint32_t h_offset = h * H * W;
+                for (uint32_t i = 0; i < H; i++)
+                {
+                    uint32_t i_offset = i * W;
+                    for (uint32_t j = 0; j < W; j++)
+                    {
+                        uint32_t j_offset = j;
+                        for (uint32_t k = 0; k < ip_block; k++)
+                        {
+                            uint32_t k_offset = k * H * W;
+                            for (uint32_t l = 0; l < op_block; l++)
                             {
-                                passed = false;
-                                std::cerr << "Unpacked index: " << unpacked_index
-                                          << " ERROR: out of bounds ("
-                                          << unpacked_to_packed_mapping.size()
-                                          << ")\n";
-                                continue;
-                            }
+                                int l_offset = l * C_i * H * W;
+                                //printf("offset: %d\n", offset);fflush(0);
+                                //std::cerr << "dst index = " << offset << ", src index = "
+                                //          << (g_offset + l_offset +
+                                //              h_offset + k_offset +
+                                //              i_offset +
+                                //              j_offset)
+                                //          << std::endl;
+                                auto idx = small::packed_weight_index(
+                                    C_o, C_i, H, W,
+                                    C_ob, C_ib,
+                                    g+l, h+k, i, j);
 
-                            std::cerr << "unpacked: " << unpacked_index
-                                      << ": packed(macro): "
-                                      << unpacked_to_packed_mapping[unpacked_index]
-                                      << " ?= packed(t2dc): "
-                                      << packed_index
-                                      << " ?= direct(macro): "
-                                      << idx << std::endl;
+                                size_t unpacked_index = g_offset + l_offset +
+                                    h_offset + k_offset +
+                                    i_offset + j_offset;
+                                size_t packed_index = offset++;
 
-                            if (unpacked_to_packed_mapping[unpacked_index] !=
-                                packed_index)
-                            {
-                                passed = false;
-                                std::cerr << "unpacked: " << unpacked_index
-                                          << ": packed(macro): "
-                                          << unpacked_to_packed_mapping[unpacked_index]
-                                          << " ?= packed(t2dc): "
-                                          << packed_index << std::endl;
+                                if (packed_index != idx)
+                                {
+                                    passed = false;
+                                    std::cerr << "ERROR: packed(macro) != packed(offset), "
+                                              << idx << " != " << packed_index
+                                              << std::endl;
+                                    continue;
+                                }
+
+                                if (unpacked_index >= unpacked_to_packed_mapping.size())
+                                {
+                                    passed = false;
+                                    std::cerr << "ERROR: Unpacked index = " << unpacked_index
+                                              << " out of bounds (size = "
+                                              << unpacked_to_packed_mapping.size()
+                                              << ")\n";
+                                    continue;
+                                }
+
+                                // std::cerr << "unpacked: " << unpacked_index
+                                //           << ": packed(macro): "
+                                //           << unpacked_to_packed_mapping[unpacked_index]
+                                //           << " ?= packed(t2dc): "
+                                //           << packed_index
+                                //           << " ?= direct(macro): "
+                                //           << idx << std::endl;
+
+                                if (unpacked_to_packed_mapping[unpacked_index] !=
+                                    packed_index)
+                                {
+                                    passed = false;
+                                    std::cerr << "ERROR: unpacked: " << unpacked_index
+                                              << ": packed(macro): "
+                                              << unpacked_to_packed_mapping[unpacked_index]
+                                              << " ?= packed(t2dc): "
+                                              << packed_index << std::endl;
+                                }
                             }
                         }
                     }
@@ -159,9 +220,11 @@ void test_conv2d_bias(void)
 
     //=========================================================================
     BufferT bias(params.C_o);
+    float bias_const = 1.0f;
+
     for (size_t ix = 0; ix < params.C_o; ++ix)
     {
-        bias[ix] = 1;
+        bias[ix] = bias_const;
     }
 
     small::shape_type input_shape({1UL, params.C_i, params.H, params.W});
@@ -241,10 +304,10 @@ void test_conv2d_bias(void)
     for (size_t ix = 0; ix < packed_output_tensor.size(); ++ix)
     {
 #if defined(QUANTIZED)
-        if (buf[ix] != packed_output_dc_answers[ix] + 1)
+        if (buf[ix] != packed_output_dc_answers[ix] + bias_const)
 #else
-        if ((buf[ix] != packed_output_dc_answers[ix] + 1) &&
-            !almost_equal(buf[ix], packed_output_dc_answers[ix]))
+        if ((buf[ix] != packed_output_dc_answers[ix] + bias_const) &&
+            !almost_equal(buf[ix], (packed_output_dc_answers[ix] + bias_const)))
 #endif
         {
             passing = false;
@@ -253,7 +316,7 @@ void test_conv2d_bias(void)
                       << std::setw(12) << std::setprecision(10)
                       << buf[ix] << "(computed) != "
                       << std::setw(12) << std::setprecision(10)
-                      << packed_output_dc_answers[ix] + 1
+                      << packed_output_dc_answers[ix] + bias_const
                       << std::endl;
         }
     }
@@ -401,6 +464,288 @@ void test_conv2d_batchnorm_identity(void)
 }
 
 //****************************************************************************
+void test_conv2d_batchnorm_bias_1(void)
+{
+#if defined(QUANTIZED)
+    using BufferT = small::QUInt8Buffer;
+#else
+    using BufferT = small::FloatBuffer;
+#endif
+
+    // C_i,Hi,Wi,k,s,p,C_o
+    LayerParams params {96, 30, 30, 3, 2, small::PADDING_F, 96};
+
+    // Read filter data
+    std::string filter_fname =
+        get_pathname(data_dir, "filter", "conv2d",
+                     params,
+                     params.C_i*params.k*params.k*params.C_o);
+    std::cout << "Conv2D: filter file= " << filter_fname << std::endl;
+
+    BufferT filter_dc = read_inputs<BufferT>(filter_fname);
+    TEST_ASSERT(filter_dc.size() == params.C_i*params.k*params.k*params.C_o);
+
+    //=========================================================================
+    BufferT bn_weight(params.C_o);
+    BufferT bn_bias(params.C_o);
+    BufferT bn_running_mean(params.C_o);
+    BufferT bn_running_variance(params.C_o);
+    float   bn_eps = 0.f;
+    float   bias = 2.0f;
+    for (size_t ix = 0; ix < params.C_o; ++ix)
+    {
+        bn_weight[ix] = 1;
+        bn_bias[ix] = bias;
+        bn_running_mean[ix] = 0;
+        bn_running_variance[ix] = 1;
+    }
+
+    small::shape_type input_shape({1UL, params.C_i, params.H, params.W});
+    size_t input_size = params.C_i*params.H*params.W;
+
+    small::Conv2DLayer<BufferT> conv2d_layer(input_shape,
+                                             params.k, params.k,
+                                             params.s, params.p,
+                                             params.C_o,
+                                             filter_dc,
+                                             bn_weight, bn_bias,
+                                             bn_running_mean, bn_running_variance,
+                                             bn_eps,
+                                             false);
+
+    small::shape_type output_shape(conv2d_layer.output_shape(0));
+    size_t output_buffer_size(conv2d_layer.output_size(0));
+
+    //=========================================================================
+
+    // Read input data
+    std::string in_fname =
+        get_pathname(data_dir, "in", "conv2d",
+                     params,
+                     input_size);
+    std::cout << "\nConv2D: input file = " << in_fname << std::endl;
+
+    BufferT input_dc = read_inputs<BufferT>(in_fname);
+    TEST_ASSERT(input_dc.size() == input_size);
+
+    // Pack input data
+    BufferT packed_input_dc(input_dc.size());
+    small::pack_buffer(input_dc,
+                       small::INPUT,
+                       1U, params.C_i, params.H, params.W,
+                       C_ib, C_ob,
+                       packed_input_dc);
+
+    small::Tensor<BufferT> packed_input_tensor(
+        input_shape,
+        std::move(packed_input_dc));
+
+    // Read output regression data
+    std::cerr << "Output image dims: "
+              << output_shape[small::HEIGHT] << "x" << output_shape[small::WIDTH]
+              << std::endl;
+    std::string out_fname =
+        get_pathname(data_dir, "out", "conv2d",
+                     params,
+                     output_buffer_size);
+    std::cout << "Conv2D: output file= " << out_fname << std::endl;
+
+    BufferT output_dc_answers = read_inputs<BufferT>(out_fname);
+    TEST_ASSERT(output_dc_answers.size() == output_buffer_size);
+
+    // Pack output answer data
+    BufferT packed_output_dc_answers(output_dc_answers.size());
+    small::pack_buffer(output_dc_answers,
+                       small::OUTPUT,
+                       1U, output_shape[small::CHANNEL],
+                       output_shape[small::HEIGHT], output_shape[small::WIDTH],
+                       C_ib, C_ob,
+                       packed_output_dc_answers);
+
+    // Allocate output buffer
+#if defined(QUANTIZED)
+    BufferT packed_output_dc(output_dc_answers.size()*4);  /// @todo HACK hardcoded.
+#else
+    BufferT packed_output_dc(output_dc_answers.size());
+#endif
+    small::Tensor<BufferT> packed_output_tensor(output_shape,
+                                                std::move(packed_output_dc));
+
+    // Compute layer
+    conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
+    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size(0));
+
+    // Check answer
+    bool passing = true;
+    BufferT &buf(packed_output_tensor.buffer());
+    for (size_t ix = 0; ix < packed_output_tensor.size(); ++ix)
+    {
+#if defined(QUANTIZED)
+        if (buf[ix] != packed_output_dc_answers[ix] + bias)
+#else
+        if ((buf[ix] != packed_output_dc_answers[ix] + bias) &&
+            !almost_equal(buf[ix], packed_output_dc_answers[ix] + bias))
+#endif
+        {
+            passing = false;
+
+            std::cout << "FAIL: Conv2D_out(" << ix << ")-->"
+                      << std::setw(12) << std::setprecision(10)
+                      << buf[ix] << "(computed) != "
+                      << std::setw(12) << std::setprecision(10)
+                      << packed_output_dc_answers[ix] + bias
+                      << std::endl;
+        }
+    }
+
+    if (passing) std::cerr << "Test PASSED\n";
+    TEST_ASSERT(passing);
+}
+
+//****************************************************************************
+void test_conv2d_batchnorm_mean_1(void)
+{
+#if defined(QUANTIZED)
+    using BufferT = small::QUInt8Buffer;
+#else
+    using BufferT = small::FloatBuffer;
+#endif
+
+    // C_i,Hi,Wi,k,s,p,C_o
+    LayerParams params {16, 3, 3, 3, 1, small::PADDING_F, 16};
+
+    // Read filter data
+    std::string filter_fname =
+        get_pathname(data_dir, "filter", "conv2d",
+                     params,
+                     params.C_i*params.k*params.k*params.C_o);
+    std::cout << "Conv2D: filter file= " << filter_fname << std::endl;
+
+    BufferT filter_dc = read_inputs<BufferT>(filter_fname);
+    TEST_ASSERT(filter_dc.size() == params.C_i*params.k*params.k*params.C_o);
+
+    //=========================================================================
+    BufferT bn_weight(params.C_o);
+    BufferT bn_bias(params.C_o);
+    BufferT bn_running_mean(params.C_o);
+    BufferT bn_running_variance(params.C_o);
+    float   bn_eps = 0.f;
+    float   running_mean(10.f);
+    for (size_t ix = 0; ix < params.C_o; ++ix)
+    {
+        bn_weight[ix] = 1;
+        bn_bias[ix] = 0;
+        bn_running_mean[ix] = running_mean;
+        bn_running_variance[ix] = 1;
+    }
+
+    small::shape_type input_shape({1UL, params.C_i, params.H, params.W});
+    size_t input_size = params.C_i*params.H*params.W;
+
+    small::Conv2DLayer<BufferT> conv2d_layer(input_shape,
+                                             params.k, params.k,
+                                             params.s, params.p,
+                                             params.C_o,
+                                             filter_dc,
+                                             bn_weight, bn_bias,
+                                             bn_running_mean, bn_running_variance,
+                                             bn_eps,
+                                             false);
+
+    small::shape_type output_shape(conv2d_layer.output_shape(0));
+    size_t output_buffer_size(conv2d_layer.output_size(0));
+
+    //=========================================================================
+
+    // Read input data
+    std::string in_fname =
+        get_pathname(data_dir, "in", "conv2d",
+                     params,
+                     input_size);
+    std::cout << "\nConv2D: input file = " << in_fname << std::endl;
+
+    BufferT input_dc = read_inputs<BufferT>(in_fname);
+    TEST_ASSERT(input_dc.size() == input_size);
+
+    // Pack input data
+    BufferT packed_input_dc(input_dc.size());
+    small::pack_buffer(input_dc,
+                       small::INPUT,
+                       1U, params.C_i, params.H, params.W,
+                       C_ib, C_ob,
+                       packed_input_dc);
+
+    small::Tensor<BufferT> packed_input_tensor(
+        input_shape,
+        std::move(packed_input_dc));
+
+    // Read output regression data
+    std::cerr << "Output image dims: "
+              << output_shape[small::HEIGHT] << "x" << output_shape[small::WIDTH]
+              << std::endl;
+    std::string out_fname =
+        get_pathname(data_dir, "out", "conv2d",
+                     params,
+                     output_buffer_size);
+    std::cout << "Conv2D: output file= " << out_fname << std::endl;
+
+    BufferT output_dc_answers = read_inputs<BufferT>(out_fname);
+    TEST_ASSERT(output_dc_answers.size() == output_buffer_size);
+
+    // Pack output answer data
+    BufferT packed_output_dc_answers(output_dc_answers.size());
+    small::pack_buffer(output_dc_answers,
+                       small::OUTPUT,
+                       1U, output_shape[small::CHANNEL],
+                       output_shape[small::HEIGHT], output_shape[small::WIDTH],
+                       C_ib, C_ob,
+                       packed_output_dc_answers);
+
+    // Allocate output buffer
+#if defined(QUANTIZED)
+    BufferT packed_output_dc(output_dc_answers.size()*4);  /// @todo HACK hardcoded.
+#else
+    BufferT packed_output_dc(output_dc_answers.size());
+#endif
+    small::Tensor<BufferT> packed_output_tensor(output_shape,
+                                                std::move(packed_output_dc));
+
+    // Compute layer
+    conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
+    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size(0));
+
+    // Check answer
+    bool passing = true;
+    BufferT &buf(packed_output_tensor.buffer());
+    for (size_t ix = 0; ix < packed_output_tensor.size(); ++ix)
+    {
+        // std::cerr << ix << ": computed,answer = "
+        //           << buf[ix] << ","
+        //           << packed_output_dc_answers[ix]
+        //           << std::endl;
+#if defined(QUANTIZED)
+        if (buf[ix] != (packed_output_dc_answers[ix] - running_mean))
+#else
+        if ((buf[ix] != (packed_output_dc_answers[ix] - running_mean)) &&
+            !almost_equal(buf[ix], packed_output_dc_answers[ix]-running_mean))
+#endif
+        {
+            passing = false;
+
+            std::cout << "FAIL: Conv2D_out(" << ix << ")-->"
+                      << std::setw(12) << std::setprecision(10)
+                      << buf[ix] << "(computed) != "
+                      << std::setw(12) << std::setprecision(10)
+                      << (packed_output_dc_answers[ix] - running_mean)
+                      << std::endl;
+        }
+    }
+
+    if (passing) std::cerr << "Test PASSED\n";
+    TEST_ASSERT(passing);
+}
+
+//****************************************************************************
 template <class BufferT>
 bool run_conv2d_config(LayerParams const &params)
 {
@@ -437,7 +782,7 @@ bool run_conv2d_config(LayerParams const &params)
     BufferT packed_filter_dc(filter_dc.size());
     small::pack_buffer(filter_dc,
                        small::FILTER_CONV,
-                       params.C_i, params.C_o, params.k, params.k,
+                       params.C_o, params.C_i, params.k, params.k,
                        C_ib, C_ob,
                        packed_filter_dc);
 
@@ -886,9 +1231,11 @@ void measure_conv2d_performance(void)
 TEST_LIST = {
     {"conv2d_regression_data",       test_conv2d_regression_data},
     {"conv2d_layer_regression_data", test_conv2d_layer_regression_data},
-    {"conv2d_performance",           measure_conv2d_performance},
+    //{"conv2d_performance",           measure_conv2d_performance},
     {"conv2d_bias",                  test_conv2d_bias},
     {"conv2d_batchnorm_identity",    test_conv2d_batchnorm_identity},
+    {"conv2d_batchnorm_bias_1",      test_conv2d_batchnorm_bias_1},
+    {"conv2d_batchnorm_mean_1",      test_conv2d_batchnorm_mean_1},
     {"conv2d_filter_packing",        test_filter_packing_indices},
     {NULL, NULL}
 };

@@ -491,6 +491,9 @@ private:
                     m_packed_bias[ochan] = filter_scale*m_packed_bias[ochan] +
                         bn_bias[ochan] - bn_running_mean[ochan]*filter_scale;
                 }
+                //std::cerr << ": packed_bias(" << ochan << ") = "
+                //          << m_packed_bias[ochan]
+                //          << std::endl;
 
                 for (size_t ichan = 0; ichan < m_input_shape[CHANNEL]; ++ichan)
                 {
