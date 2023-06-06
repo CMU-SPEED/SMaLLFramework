@@ -65,7 +65,7 @@ bool run_conv2d_config(LayerParams const &params)
     BufferT packed_filter_dc(filter_dc.size());
     small::pack_buffer(filter_dc,
                        small::FILTER_CONV,
-                       params.C_i, params.C_o, params.k, params.k,
+                       params.C_o, params.C_i, params.k, params.k,
                        C_ib, C_ob,
                        packed_filter_dc);
 

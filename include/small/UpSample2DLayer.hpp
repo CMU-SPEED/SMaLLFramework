@@ -82,8 +82,8 @@ public:
         UpSample2D(m_scale_factor,
                    m_input_shape[CHANNEL],
                    m_input_shape[HEIGHT], m_input_shape[WIDTH],
-                   input.buffer(),
-                   output.buffer());
+                   input[0]->buffer(),
+                   output[0]->buffer());
 
         output[0]->set_shape(this->output_shape(0));
     }
