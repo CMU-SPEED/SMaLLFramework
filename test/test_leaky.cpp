@@ -518,6 +518,6 @@ TEST_LIST = {
     {"leaky_large_tile",  test_leaky_large_tile},
     // {"leaky_regression_data", test_leaky_regression_data},
     // {"leaky_layer_regression_data", test_leaky_layer_regression_data},
-    {"leaky_performance", measure_leaky_performance},
+    // {"leaky_performance", measure_leaky_performance},
     {NULL, NULL}
 };

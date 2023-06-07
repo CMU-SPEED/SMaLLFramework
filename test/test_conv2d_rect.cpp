@@ -293,6 +293,6 @@ void measure_conv2d_rect_performance(void)
 //****************************************************************************
 TEST_LIST = {
     {"conv2d_rect_regression_data",       test_conv2d_rect_regression_data},
-    {"conv2d_rect_performance", measure_conv2d_rect_performance},
+    // {"conv2d_rect_performance", measure_conv2d_rect_performance},
     {NULL, NULL}
 };

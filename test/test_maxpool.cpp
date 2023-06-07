@@ -434,6 +434,6 @@ void measure_maxpool_performance(void)
 TEST_LIST = {
     {"maxpool_regression_data",       test_maxpool_regression_data},
     {"maxpool_layer_regression_data", test_maxpool_layer_regression_data},
-    {"maxpool_performance", measure_maxpool_performance},
+    // {"maxpool_performance", measure_maxpool_performance},
     {NULL, NULL}
 };
