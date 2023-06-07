@@ -45,6 +45,8 @@ class Model
 public:
     Model() = delete;
 
+    // Model() {}
+
     // Assume one input layer with a single shape for now
     Model(shape_type const &input_shape)
         : m_input_shape(input_shape)
@@ -70,7 +72,7 @@ public:
         inference(std::vector<Tensor<BufferT> const *> input) = 0;
 
 protected:
-    shape_type const             m_input_shape;
+    shape_type              m_input_shape;
 
     std::vector<Layer<BufferT>*> m_layers;
 };

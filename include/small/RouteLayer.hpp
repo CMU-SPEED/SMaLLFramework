@@ -40,7 +40,7 @@ public:
 
         // H and W must match
         if (input1_shape[HEIGHT] != input2_shape[HEIGHT] ||
-            input1_shape[WIDTH] != input2_shape[WIDTH] ||)
+            input1_shape[WIDTH] != input2_shape[WIDTH])
         {
             throw std::invalid_argument(
                 "RouteLayer ctor ERROR: "
