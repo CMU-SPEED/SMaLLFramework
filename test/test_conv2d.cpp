@@ -1229,13 +1229,13 @@ void measure_conv2d_performance(void)
 //****************************************************************************
 //****************************************************************************
 TEST_LIST = {
-    {"conv2d_regression_data",       test_conv2d_regression_data},
-    {"conv2d_layer_regression_data", test_conv2d_layer_regression_data},
-    //{"conv2d_performance",           measure_conv2d_performance},
+    {"conv2d_filter_packing",        test_filter_packing_indices},
     {"conv2d_bias",                  test_conv2d_bias},
     {"conv2d_batchnorm_identity",    test_conv2d_batchnorm_identity},
     {"conv2d_batchnorm_bias_1",      test_conv2d_batchnorm_bias_1},
     {"conv2d_batchnorm_mean_1",      test_conv2d_batchnorm_mean_1},
-    {"conv2d_filter_packing",        test_filter_packing_indices},
+    {"conv2d_regression_data",       test_conv2d_regression_data},
+    {"conv2d_layer_regression_data", test_conv2d_layer_regression_data},
+    {"conv2d_performance",           measure_conv2d_performance},
     {NULL, NULL}
 };

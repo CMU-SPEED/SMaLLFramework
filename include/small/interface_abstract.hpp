@@ -342,24 +342,34 @@ void ReLUActivation(int input_channels,
 template <class BufferT>
 void LeakyReLUActivation(int input_channels,
                          int input_height, int input_width,
-                         float negative_slope,
                          BufferT const &input_buf,
-                         BufferT       &output_buf)
+                         BufferT const &filter_buf,
+                         BufferT &output_buf)
 {
 #if defined(RECORD_CALLS)
+    float negative_slope = filter_buf.data()[0];
     std::cout << "LeakyReLUActivation(chans:" << input_channels
               << ",img:" << input_height << "x" << input_width
               << ",slope:" << negative_slope
               << ",I,O)\n";
 #endif
 
-    /// @todo Create an abstract_layer call for this layer type.
-    for (auto ix = 0; ix < input_channels*input_height*input_width; ++ix)
-    {
-        output_buf[ix] = ((input_buf[ix] < 0) ?
-                          (negative_slope*input_buf[ix]) :
-                          input_buf[ix]);
-    }
+    // for (auto ix = 0; ix < input_channels*input_height*input_width; ++ix)
+    // {
+    //     output_buf[ix] = ((input_buf[ix] < 0) ?
+    //                       (negative_slope*input_buf[ix]) :
+    //                       input_buf[ix]);
+    // }
+
+    detail::abstract_layer<BufferT,
+                           C_ob, 1, 1, W_ob, 1, 1, 'l', 0, 1>(
+        input_channels, // Output Channel Grouping
+        1,              // Output Channels per group
+        1,
+        input_height, input_width,
+        1, 1, 
+        0, 0, 0, 0, 
+        &input_buf, &filter_buf, &output_buf);
 }
 
 //****************************************************************************
@@ -407,14 +417,50 @@ void Accum(int input_channels,
 #endif
 
     /// @todo Create an abstract_layer call for this layer type.
-    for (auto ix = 0; ix < input_channels*input_height*input_width; ++ix)
-    {
-        output_buf[ix] += input_buf[ix];
-    }
+    // for (auto ix = 0; ix < input_channels*input_height*input_width; ++ix)
+    // {
+    //     output_buf[ix] += input_buf[ix];
+    // }
+
+    detail::abstract_layer<BufferT, C_ob, 1, 1, W_ob, 1, 1, 'd', 0, 0>(
+        input_channels, // Output Channel Grouping
+        1,              // Output Channels per group
+        1,
+        input_height, input_width,
+        1, 1,
+        0, 0, 0, 0,
+        &input_buf, (BufferT *)NULL, &output_buf);
 }
 
+//init a buffer with bias values, 1 per channel
+template <class BufferT>
+void Bias(int input_channels,
+                         int output_height, int output_width,
+                         BufferT const &input_buf,
+                         BufferT &output_buf)
+{
+#if defined(RECORD_CALLS)
+    std::cout << "BiasAdd(chans:" << input_channels
+              << ",img:" << output_height << "x" << output_width
+              << ",slope:" << negative_slope
+              << ",I,O)\n";
+#endif
 
-
+    // for (auto ix = 0; ix < input_channels*output_height*output_width; ++ix)
+    // {
+    //     output_buf[ix] = ((input_buf[ix] < 0) ?
+    //                       (negative_slope*input_buf[ix]) :
+    //                       input_buf[ix]);
+    // }
+    detail::abstract_layer<BufferT, C_ob, 1, 1, W_ob, std::numeric_limits<dim_t>::max(), 1, 'u', 0, 1>(
+        input_channels, // Output Channel Grouping
+        1,              // Output Channels per group
+        1,
+        output_height, output_width,
+        1, 1,
+        0, 0, 0, 0,
+        &input_buf, (BufferT *)NULL, &output_buf);
+}
 
 //****************************************************************************
 template <class BufferT>

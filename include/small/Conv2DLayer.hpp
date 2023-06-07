@@ -49,9 +49,9 @@ public:
           m_kernel_width(kernel_width),
           m_stride(stride),
           m_activation_type(activation_type),
-          m_leaky_slope(leaky_slope),
           m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0),
-          m_packed_filters(num_output_channels*m_input_shape[CHANNEL]*
+          m_leaky_slope(1),
+          m_packed_filters(num_output_channels*input_shape[CHANNEL]*
                            kernel_height*kernel_width)
     {
 #if defined(DEBUG_LAYERS)
@@ -65,6 +65,7 @@ public:
                   << "x" << m_input_shape[WIDTH]
                   << "), filters.size=" << filters.size() << std::endl;
 #endif
+        m_leaky_slope[0] = leaky_slope;
         compute_padding_output_shape(input_shape,
                                      kernel_height, kernel_width,
                                      stride,
@@ -92,7 +93,7 @@ public:
         {
             std::cerr << "LeakyReLU(batches:" << output_shape[BATCH]
                       << ",chans:" << output_shape[CHANNEL]
-                      << ",slope:" << m_leaky_slope
+                      << ",slope:" << leaky_slope
                       << ",img:" << output_shape[HEIGHT]
                       << "x" << output_shape[WIDTH]
                       << ")" << std::endl;
@@ -117,8 +118,8 @@ public:
           m_kernel_width(kernel_width),
           m_stride(stride),
           m_activation_type(activation_type),
-          m_leaky_slope(leaky_slope),
           m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0),
+          m_leaky_slope(1),
           m_packed_filters(num_output_channels*m_input_shape[CHANNEL]*
                        kernel_height*kernel_width)
     {
@@ -135,6 +136,7 @@ public:
                   << ",bias.size=" << bias.size() << std::endl;
 #endif
 
+        m_leaky_slope[0] = leaky_slope;
         compute_padding_output_shape(input_shape,
                                      kernel_height, kernel_width,
                                      stride,
@@ -162,7 +164,7 @@ public:
         {
             std::cerr << "LeakyReLU(batches:" << output_shape[BATCH]
                       << ",chans:" << output_shape[CHANNEL]
-                      << ",slope:" << m_leaky_slope
+                      << ",slope:" << leaky_slope
                       << ",img:" << output_shape[HEIGHT]
                       << "x" << output_shape[WIDTH]
                       << ")" << std::endl;
@@ -192,8 +194,8 @@ public:
           m_kernel_width(kernel_width),
           m_stride(stride),
           m_activation_type(activation_type),
-          m_leaky_slope(leaky_slope),
           m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0),
+          m_leaky_slope(1),
           m_packed_filters(num_output_channels*m_input_shape[CHANNEL]*
                            kernel_height*kernel_width)
     {
@@ -215,6 +217,7 @@ public:
                   << "),bn_eps:" << bn_eps << std::endl;
 #endif
 
+        m_leaky_slope[0] = leaky_slope;
         compute_padding_output_shape(input_shape,
                                      kernel_height, kernel_width,
                                      stride,
@@ -249,7 +252,6 @@ public:
                       << ")" << std::endl;
         }
 #endif
-
     }
 
     virtual ~Conv2DLayer() {}
@@ -330,8 +332,8 @@ public:
         {
             small::LeakyReLUActivation(output_shape[CHANNEL],
                                        output_shape[HEIGHT], output_shape[WIDTH],
-                                       m_leaky_slope,
                                        output[0]->buffer(),
+                                       m_leaky_slope,
                                        output[0]->buffer());
         }
     }
@@ -525,11 +527,11 @@ private:
     uint32_t   const m_stride;
 
     ActivationType const m_activation_type;
-    float          const m_leaky_slope;
 
     /// @todo: how to make const?
     uint8_t          m_t_pad, m_b_pad, m_l_pad, m_r_pad;
 
+    BufferT          m_leaky_slope;
     BufferT          m_packed_filters;
     BufferT          m_packed_bias;
 };

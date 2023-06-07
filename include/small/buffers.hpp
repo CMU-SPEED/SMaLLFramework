@@ -14,6 +14,7 @@
 
 #include <vector>
 #include <iostream>  // Temporary for debugging only
+#include <cassert>
 #include <exception>
 
 namespace small
@@ -128,10 +129,12 @@ uint32_t convert_tensor2dc(ScalarT               const *flat_t,
         _C_ib = 1;
     }
 
-    if (type == FILTER_CONV)
+    if (type == FILTER_CONV || type == INPUT)
     {
+
         if (C_i < _C_ib) //(dim1 < _C_ob)
         {
+            assert(C_i == 3);
             //std::cerr << "HERE: dim1, C_ob: " << H << ", " << _C_ob << std::endl;;
             _C_ib = 3;    /// @todo why is this a 3?
         }
@@ -193,6 +196,20 @@ uint32_t convert_tensor2dc(ScalarT               const *flat_t,
                             //              i_offset +
                             //              j_offset)
                             //          << std::endl;
+
+                            uint32_t offset_calc = 0;
+                            if(type == INPUT || type == OUTPUT) {
+                                offset_calc = packed_buffer_index(C_i, H, W, _C_ib, h+k, i, j);
+                            }
+                            else {
+                                offset_calc = packed_weight_index(C_o, C_i, H, W, _C_ob, _C_ib, g+l, h+k, i, j);
+                            }
+
+                            if(offset != offset_calc) {
+                                printf("ERROR: offset mismatch: %d != %d\n", offset, offset_calc);
+                                return 0;
+                            }
+
                             dc_array[offset++] =
                                 flat_t[g_offset + l_offset +
                                        h_offset + k_offset +
