@@ -139,11 +139,9 @@ private:
         while(getline(cfg_file, line)) {
 
             // skip empty lines and comments
-            if(line.empty() || line.at(0) == '#') { continue; }
-            if(line.at(0) == '[') { 
-                cfg_file.seekg(last_pos); // move pointer back a line
-                break; 
-            }
+            if(line.empty() || line.at(0) == '#') { last_pos = cfg_file.tellg(); continue; }
+            // stop parsing when we reach the next layer
+            if(line.at(0) == '[') { cfg_file.seekg(last_pos); break; }
             last_pos = cfg_file.tellg();
             std::string key = line.substr(0, line.find("="));
             std::string value = line.substr(line.find("=") + 1);
@@ -203,11 +201,9 @@ private:
         while(getline(cfg_file, line)) {
 
             // skip empty lines and comments
-            if(line.empty() || line.at(0) == '#') { continue; }
-            if(line.at(0) == '[') { 
-                cfg_file.seekg(last_pos); // move pointer back a line
-                break; 
-            }
+            if(line.empty() || line.at(0) == '#') { last_pos = cfg_file.tellg(); continue; }
+            // stop parsing when we reach the next layer
+            if(line.at(0) == '[') { cfg_file.seekg(last_pos); break; }
             last_pos = cfg_file.tellg();
             std::string key = line.substr(0, line.find("="));
             std::string value = line.substr(line.find("=") + 1);
@@ -241,11 +237,9 @@ private:
         while(getline(cfg_file, line)) {
 
             // skip empty lines and comments
-            if(line.empty() || line.at(0) == '#') { continue; }
-            if(line.at(0) == '[') { 
-                cfg_file.seekg(last_pos); // move pointer back a line
-                break; 
-            }
+            if(line.empty() || line.at(0) == '#') { last_pos = cfg_file.tellg(); continue; }
+            // stop parsing when we reach the next layer
+            if(line.at(0) == '[') { cfg_file.seekg(last_pos); break; }
             last_pos = cfg_file.tellg();
             std::string key = line.substr(0, line.find("="));
             std::string value = line.substr(line.find("=") + 1);
@@ -277,11 +271,9 @@ private:
         while(getline(cfg_file, line)) {
 
             // skip empty lines and comments
-            if(line.empty() || line.at(0) == '#') { continue; }
-            if(line.at(0) == '[') { 
-                cfg_file.seekg(last_pos); // move pointer back a line
-                break; 
-            }
+            if(line.empty() || line.at(0) == '#') { last_pos = cfg_file.tellg(); continue; }
+            // stop parsing when we reach the next layer
+            if(line.at(0) == '[') { cfg_file.seekg(last_pos); break; }
             last_pos = cfg_file.tellg();
             std::string key = line.substr(0, line.find("="));
             std::string value = line.substr(line.find("=") + 1);
@@ -322,11 +314,9 @@ private:
         while(getline(cfg_file, line)) {
 
             // skip empty lines and comments
-            if(line.empty() || line.at(0) == '#') { continue; }
-            if(line.at(0) == '[') { 
-                cfg_file.seekg(last_pos); // move pointer back a line
-                break; 
-            }
+            if(line.empty() || line.at(0) == '#') { last_pos = cfg_file.tellg(); continue; }
+            // stop parsing when we reach the next layer
+            if(line.at(0) == '[') { cfg_file.seekg(last_pos); break; }
             last_pos = cfg_file.tellg();
             std::string key = line.substr(0, line.find("="));
             std::string value = line.substr(line.find("=") + 1);
@@ -360,11 +350,9 @@ private:
         while(getline(cfg_file, line)) {
 
             // skip empty lines and comments
-            if(line.empty() || line.at(0) == '#') { continue; }
-            if(line.at(0) == '[') { 
-                cfg_file.seekg(last_pos); // move pointer back a line
-                break; 
-            }
+            if(line.empty() || line.at(0) == '#') { last_pos = cfg_file.tellg(); continue; }
+            // stop parsing when we reach the next layer
+            if(line.at(0) == '[') { cfg_file.seekg(last_pos); break; }
             last_pos = cfg_file.tellg();
             std::string key = line.substr(0, line.find("="));
             std::string value = line.substr(line.find("=") + 1);
@@ -402,11 +390,9 @@ private:
         while(getline(cfg_file, line)) {
             
             // skip empty lines and comments
-            if(line.empty() || line.at(0) == '#') { continue; }
-            if(line.at(0) == '[') { 
-                cfg_file.seekg(last_pos); // move pointer back a line
-                break; 
-            }
+            if(line.empty() || line.at(0) == '#') { last_pos = cfg_file.tellg(); continue; }
+            // stop parsing when we reach the next layer
+            if(line.at(0) == '[') { cfg_file.seekg(last_pos); break; }
             last_pos = cfg_file.tellg();
             std::string key = line.substr(0, line.find("="));
             std::string value = line.substr(line.find("=") + 1);
@@ -414,7 +400,7 @@ private:
             if(key == "height") { input_shape[HEIGHT] = std::stoi(value); } 
             else if(key == "width") { input_shape[WIDTH] = std::stoi(value); } 
             else if(key == "channels") { input_shape[CHANNEL] = std::stoi(value); }
-            #ifdef PARSER_DEBUG
+            #ifdef PARSER_DEBUG_VERBOSE
             else { std::cerr << "WARNING: unknown key in net layer: " << key << std::endl;}
             #endif
         }
@@ -514,8 +500,14 @@ private:
                 // raise warning and skip
                 else {
                     std::cerr << "WARNING: Unsupported block: " << line << std::endl;
+                    int last_pos = cfg_file.tellg();
                     while(getline(cfg_file, line)) {
-                        if(line.empty()) { break; }
+                        if(line.empty()) { last_pos = cfg_file.tellg(); continue; }
+                        if(line.at(0) == '[') { 
+                            cfg_file.seekg(last_pos); // move pointer back a line
+                            break; 
+                        }
+                        last_pos = cfg_file.tellg();
                     }
                     continue;
                 }
