@@ -23,7 +23,10 @@ void test_darknet_parser(void)
     std::string cfg = "../test/cfg_data/no_wspace_yolov3-tiny.cfg";
     std::string weights = "../test/cfg_data/yolov3-tiny.weights";
 
-    std::cout << "\nReading Darknet CFG from " << cfg << std::endl;
+    // std::string cfg = "/home/nicholai/prog/cnn_cfgs/no_wspace_yolov3.cfg";
+    // std::string weights = "/home/nicholai/prog/yolo_weights/yolov3.weights";
+
+    std::cout << "\n\nReading Darknet CFG from " << cfg << std::endl;
     std::cout << "Reading Darknet weights from " << weights << std::endl;
 
     small::Darknet<small::FloatBuffer> model(cfg, weights);

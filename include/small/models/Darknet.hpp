@@ -234,6 +234,7 @@ private:
         #endif
 
         int from = 0;
+        ActivationType activation = ActivationType::NONE; 
 
         int last_pos = cfg_file.tellg();
         std::string line;
@@ -253,7 +254,8 @@ private:
             /// @todo: shortcut also specifies an activation but its always linear
             /// ignore activation for now, but will need to support in the future
             if(key == "from") { from = stoi(value); }
-            else { std::cerr << "WARNING: unknown key in route layer: " << key << std::endl; }
+            else if(key == "activation") { activation = parse_activation(value); (void)activation; }
+            else { std::cerr << "WARNING: unknown key in shortcut layer: " << key << std::endl; }
         }
 
         // create shortcut layer
@@ -412,7 +414,9 @@ private:
             if(key == "height") { input_shape[HEIGHT] = std::stoi(value); } 
             else if(key == "width") { input_shape[WIDTH] = std::stoi(value); } 
             else if(key == "channels") { input_shape[CHANNEL] = std::stoi(value); }
+            #ifdef PARSER_DEBUG
             else { std::cerr << "WARNING: unknown key in net layer: " << key << std::endl;}
+            #endif
         }
         return input_shape;
     }
@@ -477,7 +481,10 @@ private:
                 }
 
                 // Print layer info
-                std::cout << layer_idx << " " <<  line << " " << "\n\tinput shape: " << str_shape(prev_shape) << std::endl;
+                if(line != "[route]") {
+                    std::cout << layer_idx << " " <<  line << " " << \
+                            "\n\tinput shape: " << str_shape(prev_shape) << std::endl;
+                }
 
                 if(line == "[convolutional]" || line == "[conv]") {
                     prev = parse_conv<ScalarT>(cfg_file, prev_shape, weight_data_ptr, weight_idx);
@@ -493,6 +500,8 @@ private:
                 }
                 else if(line == "[route]") {
                     prev = parse_route(cfg_file);
+                    std::cout << layer_idx << " " <<  line << \
+                        "\n\toutput shape: " << str_shape(prev->output_shape()) << "\n";
                 }
                 else if(line == "[upsample]") {
                     prev = parse_upsample(cfg_file, prev_shape);
