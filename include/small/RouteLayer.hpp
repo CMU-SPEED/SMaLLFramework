@@ -27,7 +27,8 @@ public:
     typedef typename BufferT::value_type value_type;
 
     RouteLayer(shape_type const &input1_shape,
-             shape_type const &input2_shape)
+               shape_type const &input2_shape,
+               std::vector<int> const &parents_idxs)
         : Layer<BufferT>()
     {
 #if defined(DEBUG_LAYERS)
@@ -52,11 +53,14 @@ public:
         output_shape[CHANNEL] = input1_shape[CHANNEL] + input2_shape[CHANNEL];
 
         this->set_output_shapes({output_shape});
+        this->set_parents_idxs(parents_idxs);
     }
 
     // accept single input shape
-    RouteLayer(shape_type const &input_shape) {
+    RouteLayer(shape_type const &input_shape,
+               std::vector<int> const &parents_idxs) {
         this->set_output_shapes({input_shape});
+        this->set_parents_idxs(parents_idxs);
     }
 
     virtual ~RouteLayer() {}

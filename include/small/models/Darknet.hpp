@@ -43,6 +43,15 @@ std::string str_shape(small::shape_type shape) {
     return str;
 }
 
+std::string str_shape(std::vector<int> shape) {
+    std::string str = "(" + std::to_string(shape[0]);
+    for(uint32_t i=1; i<shape.size(); i++) {
+        str += ", " + std::to_string(shape[i]);
+    }
+    str += ")";
+    return str;
+}
+
 // extract a list of ints from a string assuming that the string is a comma separated list of ints
 template <typename T>
 std::vector<T> extract_int_array(std::string s) {
@@ -260,7 +269,7 @@ private:
 
         // create shortcut layer
         size_t total_layers_so_far = this->m_layers.size();
-        AddLayer<BufferT> *shortcut = new AddLayer<BufferT> (input, this->m_layers[total_layers_so_far + from]->output_shape());
+        AddLayer<BufferT> *shortcut = new AddLayer<BufferT> (input, this->m_layers[total_layers_so_far + from]->output_shape(), {-1, from});
         return shortcut;
     }
 
@@ -299,8 +308,8 @@ private:
             else { inputs.push_back(this->m_layers[layer]->output_shape()); }
         }
 
-        if(inputs.size() == 1) { route = new RouteLayer<BufferT> (inputs[0]); }
-        else if(inputs.size() == 2) { route = new RouteLayer<BufferT> (inputs[0], inputs[1]); }
+        if(inputs.size() == 1) { route = new RouteLayer<BufferT> (inputs[0], route_layers); }
+        else if(inputs.size() == 2) { route = new RouteLayer<BufferT> (inputs[0], inputs[1], route_layers); }
         else {
             std::cerr << "ERROR: route layer must have 1 or 2 layers" << std::endl;
             throw std::exception(); /// @todo: throw some exception
@@ -480,12 +489,6 @@ private:
                     continue;
                 }
 
-                // Print layer info
-                if(line != "[route]") {
-                    std::cout << layer_idx << " " <<  line << " " << \
-                            "\n\tinput shape: " << str_shape(prev_shape) << std::endl;
-                }
-
                 if(line == "[convolutional]" || line == "[conv]") {
                     prev = parse_conv<ScalarT>(cfg_file, prev_shape, weight_data_ptr, weight_idx);
                     #ifdef PARSER_DEBUG_VERBOSE
@@ -497,11 +500,15 @@ private:
                 }
                 else if(line == "[shortcut]") {
                     prev = parse_shortcut(cfg_file, prev_shape);
+                    std::cout << layer_idx << " " <<  line << \
+                        "\n\tadding: " << str_shape(prev->parents()) << \
+                        "\toutput shape: " << str_shape(prev->output_shape()) << "\n";
                 }
                 else if(line == "[route]") {
                     prev = parse_route(cfg_file);
                     std::cout << layer_idx << " " <<  line << \
-                        "\n\toutput shape: " << str_shape(prev->output_shape()) << "\n";
+                        "\n\trouting: " << str_shape(prev->parents()) << \
+                        "\toutput shape: " << str_shape(prev->output_shape()) << "\n";
                 }
                 else if(line == "[upsample]") {
                     prev = parse_upsample(cfg_file, prev_shape);
@@ -518,6 +525,16 @@ private:
                         if(line.empty()) { break; }
                     }
                     continue;
+                }
+
+                // Print layer info
+                if(line != "[route]" && line != "[shortcut]") {
+                    std::cout << layer_idx << " " <<  line << " " << \
+                            "\n\tinput shape: " << str_shape(prev_shape);
+                    if(line != "[yolo]") {
+                        std::cout << "\toutput shape: " << str_shape(prev->output_shape());
+                    }
+                    std::cout << "\n";
                 }
 
                 // add layer to model and update prev shape

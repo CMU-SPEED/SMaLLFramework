@@ -583,7 +583,7 @@ std::vector<small::Layer<BufferT>*> create_model(
             /// @todo for adding two tensors
             layers.push_back(
                 new small::AddLayer<BufferT>(layers.back()->output_shape(),
-                                             skip_layer->output_shape()));
+                                             skip_layer->output_shape(), {-1, -3}));
             std::cerr << "skip_connection(this, -4)\n";
             // ================== End Residual Block ==================
             std::cerr << "====== End Residual Block ======\n";

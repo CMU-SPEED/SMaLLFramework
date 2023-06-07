@@ -35,13 +35,35 @@ class Layer
 public:
     Layer() {}
 
-    Layer(shape_type const &output_shape)
+    Layer(shape_type const &output_shape) 
+        : m_parent_idxs({-1}) // default to prev layer. @todo: need to consider input layer
+    {
+        set_output_shapes({output_shape});
+    }
+
+    Layer(shape_type const &output_shape, 
+          std::vector<int> const &parents_idxs)
+        : m_parent_idxs(parents_idxs)
     {
         set_output_shapes({output_shape});
     }
 
 
     Layer(std::vector<shape_type> const &output_shapes)
+        : m_parent_idxs({-1})
+    {
+        if (output_shapes.size() == 0)
+        {
+            throw std::invalid_argument(
+                "Layer::ctor ERROR: output_shapes empty.");
+        }
+
+        set_output_shapes(output_shapes);
+    }
+
+    Layer(std::vector<shape_type> const &output_shapes, 
+          std::vector<int> const &parents_idxs)
+        : m_parent_idxs(parents_idxs)
     {
         if (output_shapes.size() == 0)
         {
@@ -55,6 +77,8 @@ public:
     virtual ~Layer() {}
 
     inline size_t get_num_outputs() const { return m_output_sizes.size(); }
+
+    inline std::vector<int> parents() const { return m_parent_idxs; }
 
     inline size_t output_size(size_t idx = 0) const
     {
@@ -86,8 +110,17 @@ protected:
         }
     }
 
+    inline void set_parents_idxs(std::vector<int> const &parents_idxs)
+    {
+        m_parent_idxs.clear();
+        for(auto& parent_idx : parents_idxs) {
+            m_parent_idxs.push_back(parent_idx);
+        }
+    }
+
     std::vector<shape_type> m_output_shapes;
     std::vector<size_t>     m_output_sizes;
+    std::vector<int>        m_parent_idxs;
 };
 
 }

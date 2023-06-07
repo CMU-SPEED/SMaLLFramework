@@ -27,7 +27,8 @@ public:
     typedef typename BufferT::value_type value_type;
 
     AddLayer(shape_type const &input1_shape,
-             shape_type const &input2_shape)
+             shape_type const &input2_shape,
+             std::vector<int> const &parents_idxs)
         : Layer<BufferT>()
     {
 #if defined(DEBUG_LAYERS)
@@ -46,6 +47,7 @@ public:
         }
 
         this->set_output_shapes({input1_shape});
+        this->set_parents_idxs(parents_idxs);
     }
 
     virtual ~AddLayer() {}
