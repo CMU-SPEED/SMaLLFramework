@@ -15,6 +15,7 @@
 #include <fstream>
 #include <iostream>
 #include <vector>
+#include <iomanip>
 
 #include <small.h>
 #include <small/Model.hpp>
@@ -44,11 +45,11 @@ std::string str_shape(small::shape_type shape) {
 }
 
 std::string str_shape(std::vector<int> shape) {
-    std::string str = "(" + std::to_string(shape[0]);
+    std::string str = "[" + std::to_string(shape[0]);
     for(uint32_t i=1; i<shape.size(); i++) {
         str += ", " + std::to_string(shape[i]);
     }
-    str += ")";
+    str += "]";
     return str;
 }
 
@@ -486,15 +487,9 @@ private:
                 }
                 else if(line == "[shortcut]") {
                     prev = parse_shortcut(cfg_file, prev_shape);
-                    std::cout << layer_idx << " " <<  line << \
-                        "\n\tadding: " << str_shape(prev->parents()) << \
-                        "\toutput shape: " << str_shape(prev->output_shape()) << "\n";
                 }
                 else if(line == "[route]") {
                     prev = parse_route(cfg_file);
-                    std::cout << layer_idx << " " <<  line << \
-                        "\n\trouting: " << str_shape(prev->parents()) << \
-                        "\toutput shape: " << str_shape(prev->output_shape()) << "\n";
                 }
                 else if(line == "[upsample]") {
                     prev = parse_upsample(cfg_file, prev_shape);
@@ -519,15 +514,26 @@ private:
                     continue;
                 }
 
+                // print layer index and type
+                std::cout << std::setw(3) << layer_idx;
+                std::cout << std::setw(18) << line << "\t";
+
                 // Print layer info
                 if(line != "[route]" && line != "[shortcut]") {
-                    std::cout << layer_idx << " " <<  line << " " << \
-                            "\n\tinput shape: " << str_shape(prev_shape);
                     if(line != "[yolo]") {
-                        std::cout << "\toutput shape: " << str_shape(prev->output_shape());
+                        std::cout << std::setw(30) << str_shape(prev_shape) << " --> " << \
+                                     str_shape(prev->output_shape()) << "\n";
                     }
-                    std::cout << "\n";
+                    else {
+                        std::cout << std::setw(30) << str_shape(prev_shape) << "\n";
+                    }
                 }
+                else{
+                    std::cout << std::setw(30) << str_shape(prev->parents()) << " --> " << \
+                                 str_shape(prev->output_shape()) << "\n";
+                }
+
+                std::cout << "\n";
 
                 // add layer to model and update prev shape
                 prev_shape = prev->output_shape();
