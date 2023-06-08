@@ -422,6 +422,24 @@ void init_ones(BufferT &ptr, uint32_t numel)
 }
 
 //****************************************************************************
+template <class BufferT>
+void init_zeros(BufferT &ptr, uint32_t numel)
+{
+    using ScalarT = typename BufferT::value_type;
+
+    if (numel > ptr.size())
+    {
+        throw std::invalid_argument("init_ones ERROR: buffer too small.");
+    }
+
+    ScalarT *cur_ptr = ptr.data();
+    for (size_t i = 0; i < numel; i++)
+    {
+        *(cur_ptr++) = (ScalarT)0;
+    }
+}
+
+//****************************************************************************
 template<class BufferT, uint32_t _C_ob>
 void init_arange(BufferT &ptr, uint32_t H, uint32_t W, uint32_t C)
 {
