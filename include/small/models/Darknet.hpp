@@ -114,6 +114,7 @@ public:
             const std::type_info& type = typeid(*layer);
             shape_type out_shape = layer->output_shape();
             outputs[layer_num+1] = new Tensor<BufferT>(out_shape);
+            init_zeros(outputs[layer_num+1]->buffer(), compute_size(out_shape));
 
             // single input/output layers
             if(type == typeid(Conv2DLayer<BufferT>) || 
@@ -130,8 +131,12 @@ public:
                 // handle negative indexing
                 if(parents[0] < 0) { parents[0] += layer_num; }
                 if(parents[1] < 0) { parents[1] += layer_num; }
-
-                layer->compute_output({outputs[parents[0]], outputs[parents[1]]}, {outputs[layer_num+1]});
+                
+                // this is bad
+                // AddLayer is set up to do B += A
+                // but we want to do C = A + B
+                layer->compute_output({outputs[parents[0]]}, {outputs[layer_num+1]});
+                layer->compute_output({outputs[parents[1]]}, {outputs[layer_num+1]});
 
             }
             else if(type == typeid(RouteLayer<BufferT>)) {
