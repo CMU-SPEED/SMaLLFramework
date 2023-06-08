@@ -32,15 +32,21 @@ public:
         : Layer<BufferT>()
     {
 #if defined(DEBUG_LAYERS)
-        std::cerr << "Add(batches:" << input1_shape[BATCH]
+        std::cerr << "Route: (batches:" << input1_shape[BATCH]
                   << ",chans:" << input1_shape[CHANNEL]
                   << ",img:" << input1_shape[HEIGHT]
                   << "x" << input1_shape[WIDTH]
+                  << "), " << 
+                  << "(batches:" << input2_shape[BATCH]
+                  << ",chans:" << input2_shape[CHANNEL]
+                  << ",img:" << input2_shape[HEIGHT]
+                  << "x" << input2_shape[WIDTH]
                   << ")" << std::endl;
 #endif
 
-        // H and W must match
-        if (input1_shape[HEIGHT] != input2_shape[HEIGHT] ||
+        // B and H and W must match
+        if (input1_shape[BATCH] != input2_shape[BATCH] ||
+            input1_shape[HEIGHT] != input2_shape[HEIGHT] ||
             input1_shape[WIDTH] != input2_shape[WIDTH])
         {
             throw std::invalid_argument(

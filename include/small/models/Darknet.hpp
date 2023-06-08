@@ -304,8 +304,7 @@ private:
         if(inputs.size() == 1) { route = new RouteLayer<BufferT> (inputs[0], route_layers); }
         else if(inputs.size() == 2) { route = new RouteLayer<BufferT> (inputs[0], inputs[1], route_layers); }
         else {
-            std::cerr << "ERROR: route layer must have 1 or 2 layers" << std::endl;
-            throw std::exception(); /// @todo: throw some exception
+            throw std::invalid_argument("ERROR: route layer must have only 1 or 2 layers");
         }
          
         return route;
