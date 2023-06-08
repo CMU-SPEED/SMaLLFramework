@@ -29,7 +29,7 @@ public:
     RouteLayer(shape_type const &input1_shape,
                shape_type const &input2_shape,
                std::vector<int> const &parents_idxs)
-        : Layer<BufferT>()
+        : Layer<BufferT>(), m_parents_idxs(parents_idxs)
     {
 #if defined(DEBUG_LAYERS)
         std::cerr << "Route: (batches:" << input1_shape[BATCH]
@@ -59,14 +59,13 @@ public:
         output_shape[CHANNEL] = input1_shape[CHANNEL] + input2_shape[CHANNEL];
 
         this->set_output_shapes({output_shape});
-        this->set_parents_idxs(parents_idxs);
     }
 
     // accept single input shape
     RouteLayer(shape_type const &input_shape,
-               std::vector<int> const &parents_idxs) {
+               std::vector<int> const &parents_idxs) 
+        : Layer<BufferT>(), m_parents_idxs(parents_idxs) {
         this->set_output_shapes({input_shape});
-        this->set_parents_idxs(parents_idxs);
     }
 
     virtual ~RouteLayer() {}
@@ -77,6 +76,13 @@ public:
     {
         ///@todo Do nothing or throw? or concat here?
     }
+
+    std::vector<int> const &parents() const { return m_parents_idxs; }
+
+private:
+
+    // layer indices which outputs will be concat
+    std::vector<int> const m_parents_idxs; 
 };
 
 }

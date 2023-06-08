@@ -421,7 +421,8 @@ private:
         using ScalarT = typename BufferT::value_type;
 
         Layer<BufferT> *prev = nullptr;
-        shape_type prev_shape = {0,0,0,0};        
+        shape_type prev_shape = {0,0,0,0};    
+        std::vector<int> prev_parents = {0};     
 
         std::ifstream cfg_file(cfg);
         if(!cfg_file.is_open()) {
@@ -480,21 +481,27 @@ private:
                     #ifdef PARSER_DEBUG_VERBOSE
                     std::cout << "Weights elements remaining: " << total_elems - weight_idx << "\n";
                     #endif
+                    prev_parents = {(int)layer_idx};
                 }
                 else if(line == "[maxpool]" || line == "[max]") {
                     prev = parse_max(cfg_file, prev_shape);
+                    prev_parents = {(int)layer_idx};
                 }
                 else if(line == "[shortcut]") {
                     prev = parse_shortcut(cfg_file, prev_shape);
+                    prev_parents = dynamic_cast<AddLayer<BufferT>*>(prev)->parents();
                 }
                 else if(line == "[route]") {
                     prev = parse_route(cfg_file);
+                    prev_parents = dynamic_cast<RouteLayer<BufferT>*>(prev)->parents();
                 }
                 else if(line == "[upsample]") {
                     prev = parse_upsample(cfg_file, prev_shape);
+                    prev_parents = {(int)layer_idx};
                 }
                 else if(line == "[yolo]") {
                     prev = parse_yolo(cfg_file, prev_shape);
+                    prev_parents = {(int)layer_idx};
                 }
 
                 // unsupported block
@@ -528,7 +535,7 @@ private:
                     }
                 }
                 else{
-                    std::cout << std::setw(30) << str_shape(prev->parents()) << " --> " << \
+                    std::cout << std::setw(30) << str_shape(prev_parents) << " --> " << \
                                  str_shape(prev->output_shape()) << "\n";
                 }
 
