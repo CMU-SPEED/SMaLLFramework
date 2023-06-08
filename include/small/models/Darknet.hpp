@@ -99,10 +99,16 @@ public:
         inference(std::vector<Tensor<BufferT> const *> inputs)
     {
         // std::cerr << "ERROR: Darknet::inference not implemented.\n";
+        
+        // for now, i am creating an output buffer for each layer
+        // this is not feasible
+        // one idea is to create a map of layer_idx to output buffers
         std::vector<Tensor<BufferT>*> outputs(this->m_layers.size() + 1);
+
+        // the first output is actually the input
         outputs[0] = new Tensor<BufferT>(this->m_input_shape, inputs[0]->buffer());
         
-        size_t layer_num = 0;
+        size_t layer_num = 0; 
         for(auto layer : this->m_layers) {
 
             const std::type_info& type = typeid(*layer);
@@ -112,19 +118,28 @@ public:
             // single input/output layers
             if(type == typeid(Conv2DLayer<BufferT>) || 
                type == typeid(MaxPool2DLayer<BufferT>) ||
-               type == typeid(UpSample2DLayer<BufferT>)) 
+               type == typeid(UpSample2DLayer<BufferT>))  
             {
                 layer->compute_output({outputs[layer_num]}, {outputs[layer_num+1]});
             }
             else if(type == typeid(AddLayer<BufferT>)) {
+
                 // there will always only be 2 parents
                 std::vector<int> parents = dynamic_cast<AddLayer<BufferT>*>(layer)->parents();
+
+                // handle negative indexing
                 if(parents[0] < 0) { parents[0] += layer_num; }
                 if(parents[1] < 0) { parents[1] += layer_num; }
+
                 layer->compute_output({outputs[parents[0]], outputs[parents[1]]}, {outputs[layer_num+1]});
+
             }
             else if(type == typeid(RouteLayer<BufferT>)) {
+
                 std::vector<int> parents = dynamic_cast<RouteLayer<BufferT>*>(layer)->parents();
+
+                // route could potentially be a skip or a concat
+                // handle negative indexing
                 if(parents.size() == 1) {
                     if(parents[0] < 0) { parents[0] += layer_num; }
                     layer->compute_output({outputs[parents[0]]}, {outputs[layer_num+1]});
@@ -134,7 +149,9 @@ public:
                     if(parents[1] < 0) { parents[1] += layer_num; }
                     layer->compute_output({outputs[parents[0]], outputs[parents[1]]}, {outputs[layer_num+1]});
                 }
+
             }
+            // this will be where yolo where go
             else if(type == typeid(DummyLayer<BufferT>)) {
                 std::cout << "Dummy\n";
                 outputs[layer_num+1] = nullptr;
@@ -147,7 +164,9 @@ public:
             layer_num++;
         }
 
-        return outputs;
+        // we will need to return all the outputs of the yolo blocks (or whatever the output layers are)
+        // for now we will just return the last output
+        return {outputs[layer_num]};
 
     }
 
