@@ -414,12 +414,15 @@ private:
         shape_type prev_shape = {0,0,0,0};        
 
         std::ifstream cfg_file(cfg);
-        if(!cfg_file.is_open()) {
-            std::cerr << "Could not open cfg file: " << cfg << std::endl;
-            throw std::invalid_argument("parse_cfg_and_weights ERROR: failed to open file.");
+        if(!cfg_file) {
+            throw std::invalid_argument("Could not open cfg file: " + cfg);
         }
 
         std::ifstream weights_file(weights, std::ios::binary);
+        if(!weights_file) {
+            throw std::invalid_argument("Could not open weights file: " + weights);
+        }
+        
         weights_file.seekg(0, std::ios::end);
         size_t total_bytes = weights_file.tellg(); // total size of weights in bytes
         weights_file.seekg(0, std::ios::beg);
