@@ -30,7 +30,14 @@ void test_darknet_parser(void)
     std::cout << "\n\nReading Darknet CFG from " << cfg << std::endl;
     std::cout << "Reading Darknet weights from " << weights << std::endl;
 
-    small::Darknet<small::FloatBuffer> model(cfg, weights);
+    try {
+        small::Darknet<small::FloatBuffer> model(cfg, weights);
+        TEST_CHECK(true);
+    }
+    catch (std::exception const &e) {
+        std::cout << "ERROR: " << e.what() << std::endl;
+        TEST_CHECK(false);
+    }
 
 }
 
