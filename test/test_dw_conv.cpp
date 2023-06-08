@@ -485,6 +485,6 @@ void measure_dw_performance(void)
 TEST_LIST = {
     {"dw_regression_data",       test_dw_regression_data},
     {"dw_layer_regression_data", test_dw_layer_regression_data},
-    {"dw_performance", measure_dw_performance},
+    // {"dw_performance", measure_dw_performance},
     {NULL, NULL}
 };

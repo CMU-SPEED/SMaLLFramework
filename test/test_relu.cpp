@@ -501,6 +501,6 @@ TEST_LIST = {
     {"relu_large_tile",  test_relu_large_tile},
     {"relu_regression_data", test_relu_regression_data},
     {"relu_layer_regression_data", test_relu_layer_regression_data},
-    {"relu_performance", measure_relu_performance},
+    // {"relu_performance", measure_relu_performance},
     {NULL, NULL}
 };

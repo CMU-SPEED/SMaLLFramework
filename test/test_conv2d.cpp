@@ -1276,6 +1276,6 @@ TEST_LIST = {
     {"conv2d_batchnorm_mean_variance_1", test_conv2d_batchnorm_mean_variance_1},
     {"conv2d_regression_data",       test_conv2d_regression_data},
     {"conv2d_layer_regression_data", test_conv2d_layer_regression_data},
-//    {"conv2d_performance",           measure_conv2d_performance},
+    // {"conv2d_performance", measure_conv2d_performance},
     {NULL, NULL}
 };
