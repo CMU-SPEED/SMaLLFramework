@@ -98,9 +98,57 @@ public:
     virtual std::vector<Tensor<BufferT>*>
         inference(std::vector<Tensor<BufferT> const *> inputs)
     {
-        std::cerr << "ERROR: Darknet::inference not implemented.\n";
-        std::vector<Tensor<BufferT>*> outputs;
+        // std::cerr << "ERROR: Darknet::inference not implemented.\n";
+        std::vector<Tensor<BufferT>*> outputs(this->m_layers.size() + 1);
+        outputs[0] = new Tensor<BufferT>(this->m_input_shape, inputs[0]->buffer());
+        
+        size_t layer_num = 0;
+        for(auto layer : this->m_layers) {
+
+            const std::type_info& type = typeid(*layer);
+            shape_type out_shape = layer->output_shape();
+            outputs[layer_num+1] = new Tensor<BufferT>(out_shape);
+
+            // single input/output layers
+            if(type == typeid(Conv2DLayer<BufferT>) || 
+               type == typeid(MaxPool2DLayer<BufferT>) ||
+               type == typeid(UpSample2DLayer<BufferT>)) 
+            {
+                layer->compute_output({outputs[layer_num]}, {outputs[layer_num+1]});
+            }
+            else if(type == typeid(AddLayer<BufferT>)) {
+                // there will always only be 2 parents
+                std::vector<int> parents = dynamic_cast<AddLayer<BufferT>*>(layer)->parents();
+                if(parents[0] < 0) { parents[0] += layer_num; }
+                if(parents[1] < 0) { parents[1] += layer_num; }
+                layer->compute_output({outputs[parents[0]], outputs[parents[1]]}, {outputs[layer_num+1]});
+            }
+            else if(type == typeid(RouteLayer<BufferT>)) {
+                std::vector<int> parents = dynamic_cast<RouteLayer<BufferT>*>(layer)->parents();
+                if(parents.size() == 1) {
+                    if(parents[0] < 0) { parents[0] += layer_num; }
+                    layer->compute_output({outputs[parents[0]]}, {outputs[layer_num+1]});
+                }
+                else {
+                    if(parents[0] < 0) { parents[0] += layer_num; }
+                    if(parents[1] < 0) { parents[1] += layer_num; }
+                    layer->compute_output({outputs[parents[0]], outputs[parents[1]]}, {outputs[layer_num+1]});
+                }
+            }
+            else if(type == typeid(DummyLayer<BufferT>)) {
+                std::cout << "Dummy\n";
+                outputs[layer_num+1] = nullptr;
+            }
+            else {
+                std::cerr << "ERROR: Layer type not supported.\n";
+                throw std::exception();
+            }
+
+            layer_num++;
+        }
+
         return outputs;
+
     }
 
 private:
@@ -484,11 +532,9 @@ private:
                     #ifdef PARSER_DEBUG_VERBOSE
                     std::cout << "Weights elements remaining: " << total_elems - weight_idx << "\n";
                     #endif
-                    prev_parents = {(int)layer_idx};
                 }
                 else if(line == "[maxpool]" || line == "[max]") {
                     prev = parse_max(cfg_file, prev_shape);
-                    prev_parents = {(int)layer_idx};
                 }
                 else if(line == "[shortcut]") {
                     prev = parse_shortcut(cfg_file, prev_shape);
@@ -500,11 +546,9 @@ private:
                 }
                 else if(line == "[upsample]") {
                     prev = parse_upsample(cfg_file, prev_shape);
-                    prev_parents = {(int)layer_idx};
                 }
                 else if(line == "[yolo]") {
                     prev = parse_yolo(cfg_file, prev_shape);
-                    prev_parents = {(int)layer_idx};
                 }
 
                 // unsupported block
