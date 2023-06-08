@@ -64,7 +64,7 @@ public:
             (output.size() != 1) || (output[0]->shape() != output_shape))
         {
             throw std::invalid_argument(
-                "DepthwiseConv2DLayer::compute_output() ERROR: "
+                "AddLayer::compute_output() ERROR: "
                 "incorrect input buffer shape.");
         }
 
