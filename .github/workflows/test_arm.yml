@@ -20,7 +20,7 @@ jobs:
             sudo apt-get install -y build-essential cmake;
             mkdir /SMaLLFramework/build;
             cd /SMaLLFramework/build;
-            cmake .. -DCMAKE_UARCH=REF; 
+            cmake .. -DCMAKE_UARCH=ARM; 
             cmake --build . -j;
             make test;
 
