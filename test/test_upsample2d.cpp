@@ -197,4 +197,5 @@ TEST_LIST = {
     {"upsample2d_single_element", test_upsample2d_single_element},
     {"upsample2d_single_tile", test_upsample2d_single_tile},
     {"upsample2d_large_tile", test_upsample2d_large_tile},
-    {NULL, NULL}};
+    {NULL, NULL}
+};
