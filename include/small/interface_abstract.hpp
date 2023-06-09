@@ -126,6 +126,7 @@ void Conv2D(int kernel_size, int stride,  /// @todo dim_t?
 }
 
 //****************************************************************************
+/// @todo add support for rectangular kernels
 template <class BufferT>
 void PartialConv2D(int kernel_size, int stride,
                    uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
@@ -367,8 +368,8 @@ void LeakyReLUActivation(int input_channels,
         1,              // Output Channels per group
         1,
         input_height, input_width,
-        1, 1, 
-        0, 0, 0, 0, 
+        1, 1,
+        0, 0, 0, 0,
         &input_buf, &filter_buf, &output_buf);
 }
 
@@ -416,12 +417,6 @@ void Accum(int input_channels,
               << ",I,O)\n";
 #endif
 
-    /// @todo Create an abstract_layer call for this layer type.
-    // for (auto ix = 0; ix < input_channels*input_height*input_width; ++ix)
-    // {
-    //     output_buf[ix] += input_buf[ix];
-    // }
-
     detail::abstract_layer<BufferT, C_ob, 1, 1, W_ob, 1, 1, 'd', 0, 0>(
         input_channels, // Output Channel Grouping
         1,              // Output Channels per group
@@ -432,34 +427,90 @@ void Accum(int input_channels,
         &input_buf, (BufferT *)NULL, &output_buf);
 }
 
+//****************************************************************************
 //init a buffer with bias values, 1 per channel
 template <class BufferT>
-void Bias(int input_channels,
-                         int output_height, int output_width,
-                         BufferT const &input_buf,
-                         BufferT &output_buf)
+void Bias(int num_channels,
+          int output_height, int output_width,
+          BufferT const &input_buf,
+          BufferT       &output_buf)
 {
 #if defined(RECORD_CALLS)
-    std::cout << "BiasAdd(chans:" << input_channels
+    std::cout << "Bias(chans:" << num_channels
               << ",img:" << output_height << "x" << output_width
-              << ",slope:" << negative_slope
               << ",I,O)\n";
 #endif
 
-    // for (auto ix = 0; ix < input_channels*output_height*output_width; ++ix)
-    // {
-    //     output_buf[ix] = ((input_buf[ix] < 0) ?
-    //                       (negative_slope*input_buf[ix]) :
-    //                       input_buf[ix]);
-    // }
     detail::abstract_layer<BufferT, C_ob, 1, 1, W_ob, std::numeric_limits<dim_t>::max(), 1, 'u', 0, 1>(
-        input_channels, // Output Channel Grouping
+        num_channels,   // Output Channel Grouping
         1,              // Output Channels per group
         1,
         output_height, output_width,
         1, 1,
         0, 0, 0, 0,
         &input_buf, (BufferT *)NULL, &output_buf);
+}
+
+//****************************************************************************
+template <class BufferT>
+void Concat(uint32_t input0_channels,
+            uint32_t input1_channels,
+            uint32_t input_height, uint32_t input_width,
+            BufferT const &input0_buf,
+            BufferT const &input1_buf,
+            BufferT       &output_buf)
+{
+#if defined(RECORD_CALLS)
+    std::cout << "Concat(inchans:" << input0_channels
+              << "+" << input1_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I1,I2,O)\n";
+#endif
+
+    /// @todo Write abstract_layer implementation for this?
+
+    uint32_t output_channels(input0_channels + input1_channels);
+    for (uint32_t ci = 0; ci < input0_channels; ++ci)
+    {
+        for (uint32_t h = 0; h < input_height; ++h)
+        {
+            for (uint32_t w = 0; w < input_width; ++w)
+            {
+                auto input_index =
+                    packed_buffer_index(input0_channels,
+                                        input_height, input_width,
+                                        C_ib,
+                                        ci, h, w);
+                auto output_index =
+                    packed_buffer_index(output_channels,
+                                        input_height, input_width,
+                                        C_ob,
+                                        ci, h, w);
+                output_buf[output_index] = input0_buf[input_index];
+            }
+        }
+    }
+    for (uint32_t ci = 0; ci < input1_channels; ++ci)
+    {
+        for (uint32_t h = 0; h < input_height; ++h)
+        {
+            for (uint32_t w = 0; w < input_width; ++w)
+            {
+                auto input_index =
+                    packed_buffer_index(input1_channels,
+                                        input_height, input_width,
+                                        C_ib,
+                                        ci, h, w);
+                auto output_index =
+                    packed_buffer_index(output_channels,
+                                        input_height, input_width,
+                                        C_ob,
+                                        input0_channels + ci, h, w);
+
+                output_buf[output_index] = input1_buf[input_index];
+            }
+        }
+    }
 }
 
 //****************************************************************************

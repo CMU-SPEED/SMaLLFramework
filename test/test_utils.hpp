@@ -50,6 +50,45 @@ inline bool almost_equal(T v1, T v2, float rtol = 1e-02, float atol = 1e-06)
 }
 
 //****************************************************************************
+template <class BufferT>
+void compute_mean_var(small::shape_type const &output_shape,
+                      BufferT const &output_dc_answers,
+                      BufferT &running_mean,
+                      BufferT &running_var)
+{
+    auto Co(output_shape[small::CHANNEL]);
+    auto Ho(output_shape[small::HEIGHT]);
+    auto Wo(output_shape[small::WIDTH]);
+    float num_vals = (float)(Ho * Wo);
+    for (size_t co = 0; co < Co; ++co)
+    {
+        running_mean[co] = 0.f;
+        running_var[co] = 0.f;
+        for (size_t h = 0; h < Ho; ++h)
+        {
+            for (size_t w = 0; w < Wo; ++w)
+            {
+                running_mean[co] +=
+                    output_dc_answers[co*Ho*Wo + h*Wo +w]/num_vals;
+            }
+        }
+
+        for (size_t h = 0; h < Ho; ++h)
+        {
+            for (size_t w = 0; w < Wo; ++w)
+            {
+                running_var[co] +=
+                    (output_dc_answers[co*Ho*Wo + h*Wo +w] - running_mean[co]) *
+                    (output_dc_answers[co*Ho*Wo + h*Wo +w] - running_mean[co]) /
+                    num_vals;
+            }
+        }
+        //std::cerr << co << "mean, var: " << running_mean[co]
+        //      << ", " << running_var[co] << std::endl;
+    }
+}
+
+//****************************************************************************
 /// @todo move to small::utils
 template <typename T>
 T* small_alloc(size_t num_elements)
