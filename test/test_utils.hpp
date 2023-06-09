@@ -1,7 +1,3 @@
-//-----------------------------------------------------------------------------
-// test/test_utils.hpp
-//-----------------------------------------------------------------------------
-
 //****************************************************************************
 // SMaLL, Software for Machine Learning Libraries
 // Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
@@ -109,6 +105,7 @@ std::string get_pathname(
     LayerParams const &params,
     size_t             num_elements)
 {
+    bool use_Co(layer_name != std::string("dw_conv"));
     std::string fname =
         directory + "/" + buffer_name + "__" + layer_name +
         "_Ci" + std::to_string(params.C_i) +
@@ -117,7 +114,7 @@ std::string get_pathname(
         "_k" + std::to_string(params.k) +
         "_s" + std::to_string(params.s) +
         ((params.p == small::PADDING_V) ? "_v" : "_f") +
-        ((params.C_o > 0) ? ("_Co" + std::to_string(params.C_o)) : "") +
+        (use_Co ? ("_Co" + std::to_string(params.C_o)) : "") +
         "_" +  std::to_string(num_elements) + ".bin";
 
     return fname;

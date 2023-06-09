@@ -70,7 +70,6 @@ void test_conv2d_bias(void)
 
     small::shape_type output_shape(conv2d_layer.output_shape(0));
     size_t output_buffer_size(conv2d_layer.output_size(0));
-
     //=========================================================================
 
     // Read input data
@@ -202,13 +201,13 @@ void test_conv2d_batchnorm_identity(void)
                                              params.C_o,
                                              filter_dc,
                                              bn_weight, bn_bias,
-                                             bn_running_mean, bn_running_variance,
+                                             bn_running_mean,
+                                             bn_running_variance,
                                              bn_eps,
                                              false);
 
     small::shape_type output_shape(conv2d_layer.output_shape(0));
     size_t output_buffer_size(conv2d_layer.output_size(0));
-
     //=========================================================================
 
     // Read input data
@@ -341,13 +340,13 @@ void test_conv2d_batchnorm_bias_1(void)
                                              params.C_o,
                                              filter_dc,
                                              bn_weight, bn_bias,
-                                             bn_running_mean, bn_running_variance,
+                                             bn_running_mean,
+                                             bn_running_variance,
                                              bn_eps,
                                              false);
 
     small::shape_type output_shape(conv2d_layer.output_shape(0));
     size_t output_buffer_size(conv2d_layer.output_size(0));
-
     //=========================================================================
 
     // Read input data
@@ -462,7 +461,7 @@ void test_conv2d_batchnorm_mean_1(void)
     BufferT bn_running_mean(params.C_o);
     BufferT bn_running_variance(params.C_o);
     float   bn_eps = 0.f;
-    float   running_mean(10.f);
+    float   running_mean = 10.f;
     for (size_t ix = 0; ix < params.C_o; ++ix)
     {
         bn_weight[ix] = 1;
@@ -480,13 +479,13 @@ void test_conv2d_batchnorm_mean_1(void)
                                              params.C_o,
                                              filter_dc,
                                              bn_weight, bn_bias,
-                                             bn_running_mean, bn_running_variance,
+                                             bn_running_mean,
+                                             bn_running_variance,
                                              bn_eps,
                                              false);
 
     small::shape_type output_shape(conv2d_layer.output_shape(0));
     size_t output_buffer_size(conv2d_layer.output_size(0));
-
     //=========================================================================
 
     // Read input data
@@ -718,7 +717,7 @@ void test_conv2d_batchnorm_mean_variance_1(void)
     compute_mean_var(output_shape, unpacked_output_tensor,
                      output_mean, output_var);
 
-
+    //=========================================================================
     // Check answer
     bool passing = true;
 
