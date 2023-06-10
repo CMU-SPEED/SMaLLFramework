@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <float.h>
 #include <fstream>
 #include <random>
 #include <exception>
@@ -20,6 +21,7 @@
 #include <stdlib.h>
 #include <arpa/inet.h>
 
+#include <small/Tensor.hpp>
 #include <small/buffers.hpp>
 
 struct LayerParams
@@ -41,16 +43,21 @@ inline bool almost_equal(T v1, T v2, float rtol = 1e-02, float atol = 1e-06)
     float diff_tolerance = (atol + rtol * fabs(v2));
     return (abs_diff <= diff_tolerance);
 
+    // float A = fabs((float)v1);
+    // float B = fabs((float)v2);
+    // float largest = (B > A) ? B : A;
+    // return (abs_diff <= largest*FLT_EPSILON);
+
     // original checker
     // return (tol > fabs(v1 - v2));
 }
 
 //****************************************************************************
 template <class BufferT>
-void compute_mean_var(small::shape_type const &output_shape,
-                      BufferT const &output_dc_answers,
-                      BufferT &running_mean,
-                      BufferT &running_var)
+inline void compute_mean_var(small::shape_type const &output_shape,
+                             BufferT const &output_dc_answers,
+                             BufferT &running_mean,
+                             BufferT &running_var)
 {
     auto Co(output_shape[small::CHANNEL]);
     auto Ho(output_shape[small::HEIGHT]);
@@ -105,7 +112,7 @@ std::string get_pathname(
     LayerParams const &params,
     size_t             num_elements)
 {
-    bool use_Co(layer_name != std::string("dw_conv"));
+    bool use_Co((layer_name != std::string("dw_conv")) && (params.C_o != 0));
     std::string fname =
         directory + "/" + buffer_name + "__" + layer_name +
         "_Ci" + std::to_string(params.C_i) +

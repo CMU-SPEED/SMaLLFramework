@@ -575,6 +575,9 @@ void test_resnet8(void)
     print_stats(small_timing, "\nSMaLL:resnet8 Baseline");
     print_stats(layer_timing, "\nSMaLL:resnet8 Layers  ");
 
+    // clean up
+    for (auto filter : filter_buf_ptrs)
+        small::free_buffer(filter);
 }
 
 //****************************************************************************

@@ -18,12 +18,14 @@
 
 //****************************************************************************
 bool test_input_packing(uint32_t C_i, uint32_t H, uint32_t W) {
-    std::cout << "Testing input packing (C_i = " << C_i << ", H = " << H << ", W = " << W << ")\n";
+    std::cout << "Testing input packing (C_i = " << C_i
+              << ", H = " << H << ", W = " << W << ")\n";
     uint32_t numel = C_i*H*W;
     small::FloatBuffer input(numel);
     small::init(input, numel);
     small::FloatBuffer packed_in(numel);
-    uint32_t status = small::pack_buffer(input, small::INPUT, 1, C_i, H, W, C_ib, C_ob, packed_in);
+    uint32_t status = small::pack_buffer(
+        input, small::INPUT, 1, C_i, H, W, C_ib, C_ob, packed_in);
     if(status == 0) {
         return false;
     }
@@ -32,12 +34,14 @@ bool test_input_packing(uint32_t C_i, uint32_t H, uint32_t W) {
 
 //****************************************************************************
 bool test_filt_packing(uint32_t C_o, uint32_t C_i, uint32_t H, uint32_t W) {
-    std::cout << "Testing filter packing (C_o = " << C_o << ", C_i = " << C_i << ", H = " << H << ", W = " << W << ")\n";
+    std::cout << "Testing filter packing (C_o = " << C_o << ", C_i = " << C_i
+              << ", H = " << H << ", W = " << W << ")\n";
     uint32_t numel = C_o*C_i*H*W;
     small::FloatBuffer filt(numel);
     small::init(filt, numel);
     small::FloatBuffer packed_filt(numel);
-    uint32_t status = small::pack_buffer(filt, small::FILTER_CONV, C_o, C_i, H, W, C_ib, C_ob, packed_filt);
+    uint32_t status = small::pack_buffer(
+        filt, small::FILTER_CONV, C_o, C_i, H, W, C_ib, C_ob, packed_filt);
     if(status == 0) {
         return false;
     }
@@ -46,12 +50,14 @@ bool test_filt_packing(uint32_t C_o, uint32_t C_i, uint32_t H, uint32_t W) {
 
 //****************************************************************************
 bool test_output_packing(uint32_t C_o, uint32_t H, uint32_t W) {
-    std::cout << "Testing output packing (C_o = " << C_o << ", H = " << H << ", W = " << W << ")\n";
+    std::cout << "Testing output packing (C_o = " << C_o
+              << ", H = " << H << ", W = " << W << ")\n";
     uint32_t numel = C_o*H*W;
     small::FloatBuffer output(numel);
     small::init(output, numel);
     small::FloatBuffer packed_out(numel);
-    uint32_t status = small::pack_buffer(output, small::OUTPUT, 1, C_o, H, W, C_ib, C_ob, packed_out);
+    uint32_t status = small::pack_buffer(
+        output, small::OUTPUT, 1, C_o, H, W, C_ib, C_ob, packed_out);
     if(status == 0) {
         return false;
     }

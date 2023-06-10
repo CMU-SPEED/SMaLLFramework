@@ -334,6 +334,7 @@ void test_autoencoder(void)
                   << ": " << (float)output_dc[ix]
                   << " ?= " << (float)output_tensors[0]->buffer()[ix]
                   << std::endl;
+
         passed &= same_value;
     }
     TEST_CHECK(passed);
@@ -368,6 +369,9 @@ void test_autoencoder(void)
     print_stats(small_timing, "\nSMaLL:autoencoder Baseline");
     print_stats(layer_timing, "\nSMaLL:autoencoder Layers  ");
 
+    // clean up
+    for (auto filter : filter_buf_ptrs)
+        small::free_buffer(filter);
 }
 
 //****************************************************************************
