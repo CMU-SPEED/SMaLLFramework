@@ -482,6 +482,9 @@ void test_dscnn(void)
     print_stats(small_timing, "\nSMaLL:dscnn Baseline");
     print_stats(layer_timing, "\nSMaLL:dscnn Layers  ");
 
+    // clean up
+    for (auto filter : filter_buf_ptrs)
+        small::free_buffer(filter);
 }
 
 //****************************************************************************
