@@ -75,9 +75,11 @@ inline size_t packed_buffer_index(
     size_t   height_idx,       // kernel height index
     size_t   width_idx)        // kernel width index
 {
-    return (channel_idx/channel_blocking) * (num_rows * num_cols * channel_blocking) +
-            height_idx * (           num_cols * channel_blocking) +
-            width_idx * (                       channel_blocking) + (channel_idx % channel_blocking);
+    return (
+        (channel_idx/channel_blocking) * (num_rows * num_cols * channel_blocking) +
+                            height_idx * (           num_cols * channel_blocking) +
+                             width_idx * (                      channel_blocking) +
+        (channel_idx % channel_blocking));
 }
 
 //************************************************************************
@@ -129,7 +131,7 @@ uint32_t convert_tensor2dc(ScalarT               const *flat_t,
 
     if (type == FILTER_CONV || type == INPUT)
     {
-        
+
         if (C_i < _C_ib) //(dim1 < _C_ob)
         {
             assert(C_i == 3);
@@ -429,7 +431,7 @@ void init_zeros(BufferT &ptr, uint32_t numel)
 
     if (numel > ptr.size())
     {
-        throw std::invalid_argument("init_ones ERROR: buffer too small.");
+        throw std::invalid_argument("init_zeroes ERROR: buffer too small.");
     }
 
     ScalarT *cur_ptr = ptr.data();

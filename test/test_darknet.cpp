@@ -10,8 +10,6 @@
 // DM23-0126
 //****************************************************************************
 
-//#include <LAGraph.h>
-typedef float dtype;
 #include <acutest.h>
 
 #include <small.h>
@@ -20,7 +18,7 @@ typedef float dtype;
 //****************************************************************************
 void test_darknet_parser(void)
 {
-    
+
     std::string cfg = "../test/cfg_data/no_wspace_yolov3-tiny.cfg";
     std::string weights = "../test/cfg_data/yolov3-tiny.weights";
 

@@ -297,6 +297,24 @@ void Accum(int input_channels,
            BufferT       &output_buf);
 
 //****************************************************************************
+/// @todo document this interface
+template <class BufferT>
+void Bias(int input_channels,
+          int output_height, int output_width,
+          BufferT const &input_buf,
+          BufferT       &output_buf);
+
+//****************************************************************************
+/// @todo document this interface
+template <class BufferT>
+void Concat(uint32_t input0_channels,
+            uint32_t input1_channels,
+            uint32_t input_height, uint32_t input_width,
+            BufferT const &input0_buf,
+            BufferT const &input1_buf,
+            BufferT       &output_buf);
+
+//****************************************************************************
 /**
  * Perform the computation for a fully-connected layer?
  *

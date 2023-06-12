@@ -29,6 +29,716 @@
 std::string const data_dir("../test/regression_data");
 
 //****************************************************************************
+void test_dw_bias(void)
+{
+#if defined(QUANTIZED)
+    using BufferT = small::QUInt8Buffer;
+#else
+    using BufferT = small::FloatBuffer;
+#endif
+
+    // C_i,Hi,Wi,k,s,p,C_o
+    LayerParams params {96, 30, 30, 3, 2, small::PADDING_F, 96};
+
+    // Read filter data
+    std::string filter_fname =
+        get_pathname(data_dir, "filter", "dw_conv",
+                     params,
+                     params.C_i*params.k*params.k);
+    std::cout << "DepthwiseConv: filter file= " << filter_fname << std::endl;
+
+    BufferT filter_dc = read_inputs<BufferT>(filter_fname);
+    TEST_ASSERT(filter_dc.size() == params.C_i*params.k*params.k);
+
+    //=========================================================================
+    BufferT bias(params.C_o);
+    float bias_const = 1.0f;
+
+    for (size_t ix = 0; ix < params.C_o; ++ix)
+    {
+        bias[ix] = bias_const;
+    }
+
+    small::shape_type input_shape({1UL, params.C_i, params.H, params.W});
+    size_t input_size = params.C_i*params.H*params.W;
+
+    small::DepthwiseConv2DLayer<BufferT> dw_layer(input_shape,
+                                                  params.k,
+                                                  params.s, params.p,
+                                                  filter_dc, bias, false);
+
+    small::shape_type output_shape(dw_layer.output_shape(0));
+    size_t output_buffer_size(dw_layer.output_size(0));
+    //=========================================================================
+
+    // Read input data
+    std::string in_fname =
+        get_pathname(data_dir, "in", "dw_conv",
+                     params,
+                     input_size);
+    std::cout << "\nDepthwiseConv: input file = " << in_fname << std::endl;
+
+    BufferT input_dc = read_inputs<BufferT>(in_fname);
+    TEST_ASSERT(input_dc.size() == input_size);
+
+    // Pack input data
+    BufferT packed_input_dc(input_dc.size());
+    small::pack_buffer(input_dc,
+                       small::INPUT,
+                       1U, params.C_i, params.H, params.W,
+                       C_ib, C_ob,
+                       packed_input_dc);
+
+    small::Tensor<BufferT> packed_input_tensor(
+        input_shape,
+        std::move(packed_input_dc));
+
+    // Read output regression data
+    std::cerr << "Output image dims: "
+              << output_shape[small::HEIGHT] << "x" << output_shape[small::WIDTH]
+              << std::endl;
+    std::string out_fname =
+        get_pathname(data_dir, "out", "dw_conv",
+                     params,
+                     output_buffer_size);
+    std::cout << "DepthwiseConv: output file= " << out_fname << std::endl;
+
+    BufferT output_dc_answers = read_inputs<BufferT>(out_fname);
+    TEST_ASSERT(output_dc_answers.size() == output_buffer_size);
+
+    // Pack output answer data
+    BufferT packed_output_dc_answers(output_dc_answers.size());
+    small::pack_buffer(output_dc_answers,
+                       small::OUTPUT,
+                       1U, output_shape[small::CHANNEL],
+                       output_shape[small::HEIGHT], output_shape[small::WIDTH],
+                       C_ib, C_ob,
+                       packed_output_dc_answers);
+
+    // Allocate output buffer
+#if defined(QUANTIZED)
+    BufferT packed_output_dc(output_dc_answers.size()*4);  /// @todo HACK hardcoded.
+#else
+    BufferT packed_output_dc(output_dc_answers.size());
+#endif
+    small::Tensor<BufferT> packed_output_tensor(output_shape,
+                                                std::move(packed_output_dc));
+
+    // Compute layer
+    dw_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
+    TEST_ASSERT(packed_output_tensor.size() == dw_layer.output_size(0));
+
+    // Check answer
+    bool passing = true;
+    BufferT &buf(packed_output_tensor.buffer());
+    for (size_t ix = 0; ix < packed_output_tensor.size(); ++ix)
+    {
+#if defined(QUANTIZED)
+        if (buf[ix] != packed_output_dc_answers[ix] + bias_const)
+#else
+        if ((buf[ix] != packed_output_dc_answers[ix] + bias_const) &&
+            !almost_equal(buf[ix], (packed_output_dc_answers[ix] + bias_const)))
+#endif
+        {
+            passing = false;
+
+            std::cout << "FAIL: DepthwiseConv_out(" << ix << ")-->"
+                      << std::setw(12) << std::setprecision(10)
+                      << buf[ix] << "(computed) != "
+                      << std::setw(12) << std::setprecision(10)
+                      << packed_output_dc_answers[ix] + bias_const
+                      << std::endl;
+        }
+    }
+
+    if (passing) std::cerr << "Test PASSED\n";
+    TEST_ASSERT(passing);
+}
+
+//****************************************************************************
+void test_dw_batchnorm_identity(void)
+{
+#if defined(QUANTIZED)
+    using BufferT = small::QUInt8Buffer;
+#else
+    using BufferT = small::FloatBuffer;
+#endif
+
+    // C_i,Hi,Wi,k,s,p,C_o
+    LayerParams params {96, 30, 30, 3, 2, small::PADDING_F, 96};
+
+    // Read filter data
+    std::string filter_fname =
+        get_pathname(data_dir, "filter", "dw_conv",
+                     params,
+                     params.C_i*params.k*params.k);
+    std::cout << "DepthwiseConv: filter file= " << filter_fname << std::endl;
+
+    BufferT filter_dc = read_inputs<BufferT>(filter_fname);
+    TEST_ASSERT(filter_dc.size() == params.C_i*params.k*params.k);
+
+    //=========================================================================
+    BufferT bn_weight(params.C_o);
+    BufferT bn_bias(params.C_o);
+    BufferT bn_running_mean(params.C_o);
+    BufferT bn_running_variance(params.C_o);
+    float   bn_eps = 0.f;
+    for (size_t ix = 0; ix < params.C_o; ++ix)
+    {
+        bn_weight[ix] = 1;
+        bn_bias[ix] = 0;
+        bn_running_mean[ix] = 0;
+        bn_running_variance[ix] = 1;
+    }
+
+    small::shape_type input_shape({1UL, params.C_i, params.H, params.W});
+    size_t input_size = params.C_i*params.H*params.W;
+
+    small::DepthwiseConv2DLayer<BufferT> dw_layer(input_shape,
+                                                  params.k,
+                                                  params.s, params.p,
+                                                  filter_dc,
+                                                  bn_weight, bn_bias,
+                                                  bn_running_mean,
+                                                  bn_running_variance,
+                                                  bn_eps,
+                                                  false);
+
+    small::shape_type output_shape(dw_layer.output_shape(0));
+    size_t output_buffer_size(dw_layer.output_size(0));
+    //=========================================================================
+
+    // Read input data
+    std::string in_fname =
+        get_pathname(data_dir, "in", "dw_conv",
+                     params,
+                     input_size);
+    std::cout << "\nDepthwiseConv: input file = " << in_fname << std::endl;
+
+    BufferT input_dc = read_inputs<BufferT>(in_fname);
+    TEST_ASSERT(input_dc.size() == input_size);
+
+    // Pack input data
+    BufferT packed_input_dc(input_dc.size());
+    small::pack_buffer(input_dc,
+                       small::INPUT,
+                       1U, params.C_i, params.H, params.W,
+                       C_ib, C_ob,
+                       packed_input_dc);
+
+    small::Tensor<BufferT> packed_input_tensor(
+        input_shape,
+        std::move(packed_input_dc));
+
+    // Read output regression data
+    std::cerr << "Output image dims: "
+              << output_shape[small::HEIGHT] << "x" << output_shape[small::WIDTH]
+              << std::endl;
+    std::string out_fname =
+        get_pathname(data_dir, "out", "dw_conv",
+                     params,
+                     output_buffer_size);
+    std::cout << "DepthwiseConv: output file= " << out_fname << std::endl;
+
+    BufferT output_dc_answers = read_inputs<BufferT>(out_fname);
+    TEST_ASSERT(output_dc_answers.size() == output_buffer_size);
+
+    // Pack output answer data
+    BufferT packed_output_dc_answers(output_dc_answers.size());
+    small::pack_buffer(output_dc_answers,
+                       small::OUTPUT,
+                       1U, output_shape[small::CHANNEL],
+                       output_shape[small::HEIGHT], output_shape[small::WIDTH],
+                       C_ib, C_ob,
+                       packed_output_dc_answers);
+
+    // Allocate output buffer
+#if defined(QUANTIZED)
+    BufferT packed_output_dc(output_dc_answers.size()*4);  /// @todo HACK hardcoded.
+#else
+    BufferT packed_output_dc(output_dc_answers.size());
+#endif
+    small::Tensor<BufferT> packed_output_tensor(output_shape,
+                                                std::move(packed_output_dc));
+
+    // Compute layer
+    dw_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
+    TEST_ASSERT(packed_output_tensor.size() == dw_layer.output_size(0));
+
+    // Check answer
+    bool passing = true;
+    BufferT &buf(packed_output_tensor.buffer());
+    for (size_t ix = 0; ix < packed_output_tensor.size(); ++ix)
+    {
+#if defined(QUANTIZED)
+        if (buf[ix] != packed_output_dc_answers[ix])
+#else
+        if ((buf[ix] != packed_output_dc_answers[ix]) &&
+            !almost_equal(buf[ix], (packed_output_dc_answers[ix])))
+#endif
+        {
+            passing = false;
+
+            std::cout << "FAIL: DepthwiseConv_out(" << ix << ")-->"
+                      << std::setw(12) << std::setprecision(10)
+                      << buf[ix] << "(computed) != "
+                      << std::setw(12) << std::setprecision(10)
+                      << packed_output_dc_answers[ix]
+                      << std::endl;
+        }
+    }
+
+    if (passing) std::cerr << "Test PASSED\n";
+    TEST_ASSERT(passing);
+}
+
+//****************************************************************************
+void test_dw_batchnorm_bias_1(void)
+{
+#if defined(QUANTIZED)
+    using BufferT = small::QUInt8Buffer;
+#else
+    using BufferT = small::FloatBuffer;
+#endif
+
+    // C_i,Hi,Wi,k,s,p,C_o
+    LayerParams params {96, 30, 30, 3, 2, small::PADDING_F, 96};
+
+    // Read filter data
+    std::string filter_fname =
+        get_pathname(data_dir, "filter", "dw_conv",
+                     params,
+                     params.C_i*params.k*params.k);
+    std::cout << "DepthwiseConv: filter file= " << filter_fname << std::endl;
+
+    BufferT filter_dc = read_inputs<BufferT>(filter_fname);
+    TEST_ASSERT(filter_dc.size() == params.C_i*params.k*params.k);
+
+    //=========================================================================
+    BufferT bn_weight(params.C_o);
+    BufferT bn_bias(params.C_o);
+    BufferT bn_running_mean(params.C_o);
+    BufferT bn_running_variance(params.C_o);
+    float   bn_eps = 0.f;
+    float   bias = 2.0f;
+    for (size_t ix = 0; ix < params.C_o; ++ix)
+    {
+        bn_weight[ix] = 1;
+        bn_bias[ix] = bias;
+        bn_running_mean[ix] = 0;
+        bn_running_variance[ix] = 1;
+    }
+
+    small::shape_type input_shape({1UL, params.C_i, params.H, params.W});
+    size_t input_size = params.C_i*params.H*params.W;
+
+    small::DepthwiseConv2DLayer<BufferT> dw_layer(input_shape,
+                                                  params.k,
+                                                  params.s, params.p,
+                                                  filter_dc,
+                                                  bn_weight, bn_bias,
+                                                  bn_running_mean,
+                                                  bn_running_variance,
+                                                  bn_eps,
+                                                  false);
+
+    small::shape_type output_shape(dw_layer.output_shape(0));
+    size_t output_buffer_size(dw_layer.output_size(0));
+    //=========================================================================
+
+    // Read input data
+    std::string in_fname =
+        get_pathname(data_dir, "in", "dw_conv",
+                     params,
+                     input_size);
+    std::cout << "\nDepthwiseConv: input file = " << in_fname << std::endl;
+
+    BufferT input_dc = read_inputs<BufferT>(in_fname);
+    TEST_ASSERT(input_dc.size() == input_size);
+
+    // Pack input data
+    BufferT packed_input_dc(input_dc.size());
+    small::pack_buffer(input_dc,
+                       small::INPUT,
+                       1U, params.C_i, params.H, params.W,
+                       C_ib, C_ob,
+                       packed_input_dc);
+
+    small::Tensor<BufferT> packed_input_tensor(
+        input_shape,
+        std::move(packed_input_dc));
+
+    // Read output regression data
+    std::cerr << "Output image dims: "
+              << output_shape[small::HEIGHT] << "x" << output_shape[small::WIDTH]
+              << std::endl;
+    std::string out_fname =
+        get_pathname(data_dir, "out", "dw_conv",
+                     params,
+                     output_buffer_size);
+    std::cout << "DepthwiseConv: output file= " << out_fname << std::endl;
+
+    BufferT output_dc_answers = read_inputs<BufferT>(out_fname);
+    TEST_ASSERT(output_dc_answers.size() == output_buffer_size);
+
+    // Pack output answer data
+    BufferT packed_output_dc_answers(output_dc_answers.size());
+    small::pack_buffer(output_dc_answers,
+                       small::OUTPUT,
+                       1U, output_shape[small::CHANNEL],
+                       output_shape[small::HEIGHT], output_shape[small::WIDTH],
+                       C_ib, C_ob,
+                       packed_output_dc_answers);
+
+    // Allocate output buffer
+#if defined(QUANTIZED)
+    BufferT packed_output_dc(output_dc_answers.size()*4);  /// @todo HACK hardcoded.
+#else
+    BufferT packed_output_dc(output_dc_answers.size());
+#endif
+    small::Tensor<BufferT> packed_output_tensor(output_shape,
+                                                std::move(packed_output_dc));
+
+    // Compute layer
+    dw_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
+    TEST_ASSERT(packed_output_tensor.size() == dw_layer.output_size(0));
+
+    // Check answer
+    bool passing = true;
+    BufferT &buf(packed_output_tensor.buffer());
+    for (size_t ix = 0; ix < packed_output_tensor.size(); ++ix)
+    {
+#if defined(QUANTIZED)
+        if (buf[ix] != packed_output_dc_answers[ix] + bias)
+#else
+        if ((buf[ix] != packed_output_dc_answers[ix] + bias) &&
+            !almost_equal(buf[ix], packed_output_dc_answers[ix] + bias))
+#endif
+        {
+            passing = false;
+
+            std::cout << "FAIL: DepthwiseConv_out(" << ix << ")-->"
+                      << std::setw(12) << std::setprecision(10)
+                      << buf[ix] << "(computed) != "
+                      << std::setw(12) << std::setprecision(10)
+                      << packed_output_dc_answers[ix] + bias
+                      << std::endl;
+        }
+    }
+
+    if (passing) std::cerr << "Test PASSED\n";
+    TEST_ASSERT(passing);
+}
+
+//****************************************************************************
+void test_dw_batchnorm_mean_1(void)
+{
+#if defined(QUANTIZED)
+    using BufferT = small::QUInt8Buffer;
+#else
+    using BufferT = small::FloatBuffer;
+#endif
+
+    // C_i,Hi,Wi,k,s,p,C_o
+    LayerParams params {16, 3, 3, 3, 1, small::PADDING_F, 16};
+
+    // Read filter data
+    std::string filter_fname =
+        get_pathname(data_dir, "filter", "dw_conv",
+                     params,
+                     params.C_i*params.k*params.k);
+    std::cout << "DepthwiseConv: filter file= " << filter_fname << std::endl;
+
+    BufferT filter_dc = read_inputs<BufferT>(filter_fname);
+    TEST_ASSERT(filter_dc.size() == params.C_i*params.k*params.k);
+
+    //=========================================================================
+    BufferT bn_weight(params.C_o);
+    BufferT bn_bias(params.C_o);
+    BufferT bn_running_mean(params.C_o);
+    BufferT bn_running_variance(params.C_o);
+    float   bn_eps = 0.f;
+    float   running_mean = 10.f;
+    for (size_t ix = 0; ix < params.C_o; ++ix)
+    {
+        bn_weight[ix] = 1;
+        bn_bias[ix] = 0;
+        bn_running_mean[ix] = running_mean;
+        bn_running_variance[ix] = 1;
+    }
+
+    small::shape_type input_shape({1UL, params.C_i, params.H, params.W});
+    size_t input_size = params.C_i*params.H*params.W;
+
+    small::DepthwiseConv2DLayer<BufferT> dw_layer(input_shape,
+                                                  params.k,
+                                                  params.s, params.p,
+                                                  filter_dc,
+                                                  bn_weight, bn_bias,
+                                                  bn_running_mean,
+                                                  bn_running_variance,
+                                                  bn_eps,
+                                                  false);
+
+    small::shape_type output_shape(dw_layer.output_shape(0));
+    size_t output_buffer_size(dw_layer.output_size(0));
+    //=========================================================================
+
+    // Read input data
+    std::string in_fname =
+        get_pathname(data_dir, "in", "dw_conv",
+                     params,
+                     input_size);
+    std::cout << "\nDepthwiseConv: input file = " << in_fname << std::endl;
+
+    BufferT input_dc = read_inputs<BufferT>(in_fname);
+    TEST_ASSERT(input_dc.size() == input_size);
+
+    // Pack input data
+    BufferT packed_input_dc(input_dc.size());
+    small::pack_buffer(input_dc,
+                       small::INPUT,
+                       1U, params.C_i, params.H, params.W,
+                       C_ib, C_ob,
+                       packed_input_dc);
+
+    small::Tensor<BufferT> packed_input_tensor(
+        input_shape,
+        std::move(packed_input_dc));
+
+    // Read output regression data
+    std::cerr << "Output image dims: "
+              << output_shape[small::HEIGHT] << "x" << output_shape[small::WIDTH]
+              << std::endl;
+    std::string out_fname =
+        get_pathname(data_dir, "out", "dw_conv",
+                     params,
+                     output_buffer_size);
+    std::cout << "DepthwiseConv: output file= " << out_fname << std::endl;
+
+    BufferT output_dc_answers = read_inputs<BufferT>(out_fname);
+    TEST_ASSERT(output_dc_answers.size() == output_buffer_size);
+
+    // Pack output answer data
+    BufferT packed_output_dc_answers(output_dc_answers.size());
+    small::pack_buffer(output_dc_answers,
+                       small::OUTPUT,
+                       1U, output_shape[small::CHANNEL],
+                       output_shape[small::HEIGHT], output_shape[small::WIDTH],
+                       C_ib, C_ob,
+                       packed_output_dc_answers);
+
+    // Allocate output buffer
+#if defined(QUANTIZED)
+    BufferT packed_output_dc(output_dc_answers.size()*4);  /// @todo HACK hardcoded.
+#else
+    BufferT packed_output_dc(output_dc_answers.size());
+#endif
+    small::Tensor<BufferT> packed_output_tensor(output_shape,
+                                                std::move(packed_output_dc));
+
+    // Compute layer
+    dw_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
+    TEST_ASSERT(packed_output_tensor.size() == dw_layer.output_size(0));
+
+    // Check answer
+    bool passing = true;
+    BufferT &buf(packed_output_tensor.buffer());
+    for (size_t ix = 0; ix < packed_output_tensor.size(); ++ix)
+    {
+        // std::cerr << ix << ": computed,answer = "
+        //           << buf[ix] << ","
+        //           << packed_output_dc_answers[ix]
+        //           << std::endl;
+#if defined(QUANTIZED)
+        if (buf[ix] != (packed_output_dc_answers[ix] - running_mean))
+#else
+        if ((buf[ix] != (packed_output_dc_answers[ix] - running_mean)) &&
+            !almost_equal(buf[ix], packed_output_dc_answers[ix]-running_mean))
+#endif
+        {
+            passing = false;
+
+            std::cout << "FAIL: DepthwiseConv_out(" << ix << ")-->"
+                      << std::setw(12) << std::setprecision(10)
+                      << buf[ix] << "(computed) != "
+                      << std::setw(12) << std::setprecision(10)
+                      << (packed_output_dc_answers[ix] - running_mean)
+                      << std::endl;
+        }
+    }
+
+    if (passing) std::cerr << "Test PASSED\n";
+    TEST_ASSERT(passing);
+}
+
+//****************************************************************************
+void test_dw_batchnorm_mean_variance_1(void)
+{
+#if defined(QUANTIZED)
+    using BufferT = small::QUInt8Buffer;
+#else
+    using BufferT = small::FloatBuffer;
+#endif
+
+    // C_i,Hi,Wi,k,s,p,C_o
+    LayerParams params {16, 3, 3, 3, 1, small::PADDING_F, 16};
+
+    // Read filter data
+    std::string filter_fname =
+        get_pathname(data_dir, "filter", "dw_conv",
+                     params,
+                     params.C_i*params.k*params.k);
+    std::cout << "DepthwiseConv: filter file= " << filter_fname << std::endl;
+
+    BufferT filter_dc = read_inputs<BufferT>(filter_fname);
+    TEST_ASSERT(filter_dc.size() == params.C_i*params.k*params.k);
+
+    //=========================================================================
+
+    small::shape_type input_shape({1UL, params.C_i, params.H, params.W});
+    size_t input_size = params.C_i*params.H*params.W;
+
+    // Read input data
+    std::string in_fname =
+        get_pathname(data_dir, "in", "dw_conv",
+                     params,
+                     input_size);
+    std::cout << "\nDepthwiseConv: input file = " << in_fname << std::endl;
+
+    BufferT input_dc = read_inputs<BufferT>(in_fname);
+    TEST_ASSERT(input_dc.size() == input_size);
+
+    // Pack input data
+    BufferT packed_input_dc(input_dc.size());
+    small::pack_buffer(input_dc,
+                       small::INPUT,
+                       1U, params.C_i, params.H, params.W,
+                       C_ib, C_ob,
+                       packed_input_dc);
+
+    small::Tensor<BufferT> packed_input_tensor(
+        input_shape,
+        std::move(packed_input_dc));
+
+    //=========================================================================
+    uint32_t Ho(small::compute_output_dim(
+                    params.H, params.k, params.s, params.p));
+    uint32_t Wo(small::compute_output_dim(
+                    params.W, params.k, params.s, params.p));
+
+    small::shape_type output_shape({1U, params.C_o, Ho, Wo});
+    size_t output_buffer_size = params.C_o*Ho*Wo;
+
+    // Read output regression data
+    std::cerr << "Output image dims: "
+              << output_shape[small::HEIGHT] << "x" << output_shape[small::WIDTH]
+              << std::endl;
+    std::string out_fname =
+        get_pathname(data_dir, "out", "dw_conv",
+                     params,
+                     output_buffer_size);
+    std::cout << "DepthwiseConv: output file= " << out_fname << std::endl;
+
+    BufferT output_dc_answers = read_inputs<BufferT>(out_fname);
+    TEST_ASSERT(output_dc_answers.size() == output_buffer_size);
+
+    // Pack output answer data
+    BufferT packed_output_dc_answers(output_dc_answers.size());
+    small::pack_buffer(output_dc_answers,
+                       small::OUTPUT,
+                       1U, output_shape[small::CHANNEL],
+                       output_shape[small::HEIGHT], output_shape[small::WIDTH],
+                       C_ib, C_ob,
+                       packed_output_dc_answers);
+
+    //=========================================================================
+    // Compute mean and variance by output channel
+    //=========================================================================
+    BufferT bn_weight(params.C_o);
+    BufferT bn_bias(params.C_o);
+    BufferT bn_running_mean(params.C_o);
+    BufferT bn_running_variance(params.C_o);
+    float   bn_eps = 0.f;
+
+    compute_mean_var(output_shape, output_dc_answers,
+                     bn_running_mean, bn_running_variance);
+
+    for (size_t ix = 0; ix < params.C_o; ++ix)
+    {
+        bn_weight[ix] = 1;
+        bn_bias[ix] = 0;
+    }
+
+    small::DepthwiseConv2DLayer<BufferT> dw_layer(input_shape,
+                                                  params.k,
+                                                  params.s, params.p,
+                                                  filter_dc,
+                                                  bn_weight, bn_bias,
+                                                  bn_running_mean,
+                                                  bn_running_variance,
+                                                  bn_eps,
+                                                  false);
+
+    output_shape = dw_layer.output_shape(0);
+    output_buffer_size = dw_layer.output_size(0);
+    //=========================================================================
+
+    // Allocate output buffer
+#if defined(QUANTIZED)
+    BufferT packed_output_dc(output_dc_answers.size()*4);  /// @todo HACK hardcoded.
+#else
+    BufferT packed_output_dc(output_dc_answers.size());
+#endif
+    small::Tensor<BufferT> packed_output_tensor(output_shape,
+                                                std::move(packed_output_dc));
+
+    // Compute layer
+    dw_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
+    TEST_ASSERT(packed_output_tensor.size() == dw_layer.output_size(0));
+
+    //=========================================================================
+    BufferT unpacked_output_tensor(packed_output_tensor.size());
+    small::unpack_buffer(packed_output_tensor.buffer(),
+                         small::OUTPUT,
+                         1U, output_shape[small::CHANNEL],
+                         output_shape[small::HEIGHT], output_shape[small::WIDTH],
+                         C_ib, C_ob,
+                         unpacked_output_tensor);
+
+    BufferT output_mean(params.C_o);
+    BufferT output_var(params.C_o);
+
+    compute_mean_var(output_shape, unpacked_output_tensor,
+                     output_mean, output_var);
+
+    //=========================================================================
+    // Check answer
+    bool passing = true;
+
+    for (size_t ix = 0; ix < params.C_o; ++ix)
+    {
+#if defined(QUANTIZED)
+        if ((output_mean[ix] != 0) || (output_var[ix] != 1))
+#else
+        if (!almost_equal(output_mean[ix], 0.f) ||
+            !almost_equal(output_var[ix],  1.f))
+#endif
+        {
+            passing = false;
+            std::cerr << "FAIL: computed mean,var(" << ix
+                      << "): "
+                      << output_mean[ix] << ", "
+                      << output_var[ix]
+                      << std::endl;
+        }
+    }
+
+    if (passing) std::cerr << "Test PASSED\n";
+    TEST_ASSERT(passing);
+}
+
+//****************************************************************************
 template <class BufferT>
 bool run_dw_config(LayerParams const &params)
 {
@@ -256,21 +966,21 @@ void test_dw_regression_data(void)
 {
     std::vector<LayerParams> params =
     {
-        {16,  3,  3, 3, 1, small::PADDING_V, 0},  //Ci,Hi,Wi,k,s,p,Co
-        {16,  3,  8, 3, 1, small::PADDING_V, 0},
-        {16, 30, 30, 3, 1, small::PADDING_V, 0},
+        {16,  3,  3, 3, 1, small::PADDING_V, 16},  //Ci,Hi,Wi,k,s,p,Co
+        {16,  3,  8, 3, 1, small::PADDING_V, 16},
+        {16, 30, 30, 3, 1, small::PADDING_V, 16},
 
-        {96,  3,  8, 3, 1, small::PADDING_V, 0},
-        {96, 30, 30, 3, 1, small::PADDING_V, 0},
+        {96,  3,  8, 3, 1, small::PADDING_V, 96},
+        {96, 30, 30, 3, 1, small::PADDING_V, 96},
 
-        {16,  3,  3, 3, 1, small::PADDING_F, 0},
-        {16,  3,  3, 3, 2, small::PADDING_F, 0},
-        {16,  3,  8, 3, 1, small::PADDING_F, 0},
-        {16,  3, 13, 3, 2, small::PADDING_F, 0},  //Ci,Hi,Wi,k,s,p,Co
-        {96, 30, 30, 3, 1, small::PADDING_F, 0},
-        {96, 30, 30, 3, 2, small::PADDING_F, 0},
-        {96,  3, 13, 3, 2, small::PADDING_F, 0},
-        {96,  3,  8, 3, 1, small::PADDING_F, 0}
+        {16,  3,  3, 3, 1, small::PADDING_F, 16},
+        {16,  3,  3, 3, 2, small::PADDING_F, 16},
+        {16,  3,  8, 3, 1, small::PADDING_F, 16},
+        {16,  3, 13, 3, 2, small::PADDING_F, 16},  //Ci,Hi,Wi,k,s,p,Co
+        {96, 30, 30, 3, 1, small::PADDING_F, 96},
+        {96, 30, 30, 3, 2, small::PADDING_F, 96},
+        {96,  3, 13, 3, 2, small::PADDING_F, 96},
+        {96,  3,  8, 3, 1, small::PADDING_F, 96}
     };
     for (LayerParams const &p: params)
     {
@@ -287,21 +997,21 @@ void test_dw_layer_regression_data(void)
 {
     std::vector<LayerParams> params =
     {
-        {16,  3,  3, 3, 1, small::PADDING_V, 0},  //Ci,Hi,Wi,k,s,p,Co
-        {16,  3,  8, 3, 1, small::PADDING_V, 0},
-        {16, 30, 30, 3, 1, small::PADDING_V, 0},
+        {16,  3,  3, 3, 1, small::PADDING_V, 16},  //Ci,Hi,Wi,k,s,p,Co
+        {16,  3,  8, 3, 1, small::PADDING_V, 16},
+        {16, 30, 30, 3, 1, small::PADDING_V, 16},
 
-        {96,  3,  8, 3, 1, small::PADDING_V, 0},
-        {96, 30, 30, 3, 1, small::PADDING_V, 0},
+        {96,  3,  8, 3, 1, small::PADDING_V, 96},
+        {96, 30, 30, 3, 1, small::PADDING_V, 96},
 
-        {16,  3,  3, 3, 1, small::PADDING_F, 0},
-        {16,  3,  3, 3, 2, small::PADDING_F, 0},
-        {16,  3,  8, 3, 1, small::PADDING_F, 0},
-        {16,  3, 13, 3, 2, small::PADDING_F, 0},  //Ci,Hi,Wi,k,s,p,Co
-        {96, 30, 30, 3, 1, small::PADDING_F, 0},
-        {96, 30, 30, 3, 2, small::PADDING_F, 0},
-        {96,  3, 13, 3, 2, small::PADDING_F, 0},
-        {96,  3,  8, 3, 1, small::PADDING_F, 0}
+        {16,  3,  3, 3, 1, small::PADDING_F, 16},
+        {16,  3,  3, 3, 2, small::PADDING_F, 16},
+        {16,  3,  8, 3, 1, small::PADDING_F, 16},
+        {16,  3, 13, 3, 2, small::PADDING_F, 16},  //Ci,Hi,Wi,k,s,p,Co
+        {96, 30, 30, 3, 1, small::PADDING_F, 96},
+        {96, 30, 30, 3, 2, small::PADDING_F, 96},
+        {96,  3, 13, 3, 2, small::PADDING_F, 96},
+        {96,  3,  8, 3, 1, small::PADDING_F, 96}
     };
     for (LayerParams const &p: params)
     {
@@ -321,15 +1031,12 @@ void measure_dw_performance(void)
     {
         {  16,   48,  48, 3, 1, small::PADDING_F,   16},
         {  32,   24,  24, 3, 1, small::PADDING_F,   32},
+        {  64,   12,  12, 3, 1, small::PADDING_F,   64},
+        { 128,    6,   6, 3, 1, small::PADDING_F,  128},
 
         {  32,   48,  48, 3, 1, small::PADDING_F,   32},
         {  64,   24,  24, 3, 1, small::PADDING_F,   64},
         { 128,   12,  12, 3, 1, small::PADDING_F,  128},
-
-        {  16,   48,  48, 3, 1, small::PADDING_F,   32},
-        {  32,   24,  24, 3, 1, small::PADDING_F,   64},
-        {  64,   12,  12, 3, 1, small::PADDING_F,  128},
-        { 128,    6,   6, 3, 1, small::PADDING_F,  256},
 
         { 128,   24,  24, 3, 1, small::PADDING_F,  128},
         { 256,   12,  12, 3, 1, small::PADDING_F,  256},
@@ -337,11 +1044,11 @@ void measure_dw_performance(void)
         { 512,   12,  12, 3, 1, small::PADDING_F,  512},
         {1024,    6,   6, 3, 1, small::PADDING_F, 1024},
 
-        {  32,  208, 208, 3, 1, small::PADDING_F,   64},
-        {  64,  104, 104, 3, 1, small::PADDING_F,  128},
-        { 128,   52,  52, 3, 1, small::PADDING_F,  256},
-        { 256,   26,  26, 3, 1, small::PADDING_F,  512},
-        { 512,   13,  13, 3, 1, small::PADDING_F, 1024}
+        {  32,  208, 208, 3, 1, small::PADDING_F,   32},
+        {  64,  104, 104, 3, 1, small::PADDING_F,   64},
+        { 128,   52,  52, 3, 1, small::PADDING_F,  128},
+        { 256,   26,  26, 3, 1, small::PADDING_F,  256},
+        { 512,   13,  13, 3, 1, small::PADDING_F,  512}
     };
 
     uint32_t const  num_threads[] = {1, 2, 4};
@@ -483,6 +1190,11 @@ void measure_dw_performance(void)
 //****************************************************************************
 //****************************************************************************
 TEST_LIST = {
+    {"dw_bias",                  test_dw_bias},
+    {"dw_batchnorm_identity",    test_dw_batchnorm_identity},
+    {"dw_batchnorm_bias_1",      test_dw_batchnorm_bias_1},
+    {"dw_batchnorm_mean_1",      test_dw_batchnorm_mean_1},
+    {"dw_batchnorm_mean_variance_1", test_dw_batchnorm_mean_variance_1},
     {"dw_regression_data",       test_dw_regression_data},
     {"dw_layer_regression_data", test_dw_layer_regression_data},
     // {"dw_performance", measure_dw_performance},
