@@ -27,11 +27,12 @@ public:
     typedef typename BufferT::value_type value_type;
 
     // accept single input shape
-    RouteLayer(shape_type const &input0_shape)
+    RouteLayer(shape_type const &input0_shape, std::vector<int> const &parents)
         : Layer<BufferT>(input0_shape),
           m_num_inputs(1U),
           m_input0_shape(input0_shape),
-          m_input1_shape({0,0,0,0})
+          m_input1_shape({0,0,0,0}),
+          m_parents(parents)
     {
 #if defined(DEBUG_LAYERS)
         std::cerr << "Route: (batches:" << input0_shape[BATCH]
@@ -45,11 +46,13 @@ public:
 
     // two input shapes
     RouteLayer(shape_type const &input0_shape,
-               shape_type const &input1_shape)
+               shape_type const &input1_shape,
+               std::vector<int> const &parents)
         : Layer<BufferT>(),
           m_num_inputs(2U),
           m_input0_shape(input0_shape),
-          m_input1_shape(input1_shape)
+          m_input1_shape(input1_shape),
+          m_parents(parents)
     {
 #if defined(DEBUG_LAYERS)
         std::cerr << "Route: (batches:" << input0_shape[BATCH]
@@ -82,6 +85,8 @@ public:
     }
 
     virtual ~RouteLayer() {}
+
+    std::vector<int> parents() { return m_parents; }
 
     virtual void compute_output(
         std::vector<Tensor<BufferT> const *> input,
@@ -159,6 +164,7 @@ private:
     uint32_t const   m_num_inputs;
     shape_type const m_input0_shape;
     shape_type const m_input1_shape;
+    std::vector<int> const m_parents;
 };
 
 }
