@@ -469,6 +469,21 @@ void Concat(uint32_t input0_channels,
 
     /// @todo Write abstract_layer implementation for this?
 
+    // With tensor notation, the function should do the following:
+    //    concat( buf1(C1/Cb, H, W, Cb), buf2(C2/Cb, H, W, Cb) )
+    //                  ---> buf3((C1+C2)/Cb, H, W, Cb).
+    //
+    // Since channels is the slowest dimension, I believe that we can
+    // just do 2 copies into a large buffer assuming that we just want
+    // to concat 2 packed buffers in the channel dimension.
+    size_t size0(input0_channels*input_height*input_width);
+    std::copy(input0_buf.data(), input0_buf.data() + size0,
+              output_buf.data());
+
+    size_t size1(input1_channels*input_height*input_width);
+    std::copy(input1_buf.data(), input1_buf.data() + size1,
+              output_buf.data() + size0);
+#if 0
     uint32_t output_channels(input0_channels + input1_channels);
     for (uint32_t ci = 0; ci < input0_channels; ++ci)
     {
@@ -511,6 +526,7 @@ void Concat(uint32_t input0_channels,
             }
         }
     }
+#endif
 }
 
 //****************************************************************************

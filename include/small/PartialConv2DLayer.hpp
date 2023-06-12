@@ -48,7 +48,7 @@ public:
           m_stride(stride),
           m_activation_type(activation_type),
           m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0),
-          m_leaky_slope(1),
+          m_leaky_slope(1),  /// @note Allocating 1-element buffer
           m_packed_filters(num_output_channels*input_shape[CHANNEL]*
                            kernel_size*kernel_size),
           m_packed_bias()
@@ -121,7 +121,7 @@ public:
           m_stride(stride),
           m_activation_type(activation_type),
           m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0),
-          m_leaky_slope(1),
+          m_leaky_slope(1),  /// @note Allocating 1-element buffer
           m_packed_filters(num_output_channels*m_input_shape[CHANNEL]*
                            kernel_size*kernel_size)
     {
@@ -200,7 +200,7 @@ public:
           m_stride(stride),
           m_activation_type(activation_type),
           m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0),
-          m_leaky_slope(1),
+          m_leaky_slope(1),  /// @note Allocating 1-element buffer
           m_packed_filters(num_output_channels*m_input_shape[CHANNEL]*
                            kernel_size*kernel_size)
     {

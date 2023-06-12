@@ -38,12 +38,12 @@ namespace detail
         BufferT          &m_packed_bias)
     {
         // ============ Filter weights ===========
-        if (filters.size() <
+        if (filters.size() !=   /// @todo consider allowing larger filter buffers??
             num_channels*m_kernel_size*m_kernel_size)
         {
             throw std::invalid_argument(
                 "DepthwiseConv2DLayer::ctor ERROR: "
-                "filters buffer too small.");
+                "filters buffer is incorrect size.");
         }
 
         if (!buffers_are_packed)
@@ -198,7 +198,7 @@ public:
           m_stride(stride),
           m_activation_type(activation_type),
           m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0),
-          m_leaky_slope(1),
+          m_leaky_slope(1),  /// @note Allocating 1-element buffer
           m_packed_filters(input_shape[CHANNEL]*kernel_size*kernel_size)
     {
 #if defined(DEBUG_LAYERS)
@@ -263,7 +263,7 @@ public:
           m_stride(stride),
           m_activation_type(activation_type),
           m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0),
-          m_leaky_slope(1),
+          m_leaky_slope(1),  /// @note Allocating 1-element buffer
           m_packed_filters(input_shape[CHANNEL]*kernel_size*kernel_size)
     {
 #if defined(DEBUG_LAYERS)
@@ -334,7 +334,7 @@ public:
           m_stride(stride),
           m_activation_type(activation_type),
           m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0),
-          m_leaky_slope(1),
+          m_leaky_slope(1),  /// @note Allocating 1-element buffer
           m_packed_filters(input_shape[CHANNEL]*kernel_size*kernel_size)
     {
 #if defined(DEBUG_LAYERS)
