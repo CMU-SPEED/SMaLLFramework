@@ -119,8 +119,8 @@ void test_partial_conv2d(void)
 #endif
     small::Tensor<BufferT> packed_output_tensor(output_shape,
                                                 std::move(packed_output_dc));
-    small::init_zero(packed_output_tensor.buffer(),
-                     packed_output_tensor.size());
+    small::init_zeros(packed_output_tensor.buffer(),
+                      packed_output_tensor.size());
 
     // Compute layer
     conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
@@ -372,8 +372,8 @@ void test_partial_conv2d_bias(void)
 #endif
     small::Tensor<BufferT> packed_output_tensor(output_shape,
                                                 std::move(packed_output_dc));
-    small::init_zero(packed_output_tensor.buffer(),
-                     packed_output_tensor.size());
+    small::init_zeros(packed_output_tensor.buffer(),
+                      packed_output_tensor.size());
 
     // Compute layer
     conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
@@ -644,8 +644,8 @@ void test_partial_conv2d_batchnorm_identity(void)
 #endif
     small::Tensor<BufferT> packed_output_tensor(output_shape,
                                                 std::move(packed_output_dc));
-    small::init_zero(packed_output_tensor.buffer(),
-                     packed_output_tensor.size());
+    small::init_zeros(packed_output_tensor.buffer(),
+                      packed_output_tensor.size());
 
     // Compute layer
     conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
@@ -927,8 +927,8 @@ void test_partial_conv2d_batchnorm_bias_1(void)
 #endif
     small::Tensor<BufferT> packed_output_tensor(output_shape,
                                                 std::move(packed_output_dc));
-    small::init_zero(packed_output_tensor.buffer(),
-                     packed_output_tensor.size());
+    small::init_zeros(packed_output_tensor.buffer(),
+                      packed_output_tensor.size());
 
     // Compute layer
     conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
@@ -1211,8 +1211,8 @@ void test_partial_conv2d_batchnorm_mean_1(void)
 #endif
     small::Tensor<BufferT> packed_output_tensor(output_shape,
                                                 std::move(packed_output_dc));
-    small::init_zero(packed_output_tensor.buffer(),
-                     packed_output_tensor.size());
+    small::init_zeros(packed_output_tensor.buffer(),
+                      packed_output_tensor.size());
 
     // Compute layer
     conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
@@ -1516,8 +1516,8 @@ void test_partial_conv2d_batchnorm_mean_variance_1(void)
 #endif
     small::Tensor<BufferT> packed_output_tensor(output_shape,
                                                 std::move(packed_output_dc));
-    small::init_zero(packed_output_tensor.buffer(),
-                     packed_output_tensor.size());
+    small::init_zeros(packed_output_tensor.buffer(),
+                      packed_output_tensor.size());
 
     // Compute layer
     conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});

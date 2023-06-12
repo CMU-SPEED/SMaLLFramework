@@ -407,24 +407,6 @@ void init(BufferT &ptr, uint32_t numel)
 
 //****************************************************************************
 template <class BufferT>
-void init_zero(BufferT &ptr, uint32_t numel)
-{
-    using ScalarT = typename BufferT::value_type;
-
-    if (numel > ptr.size())
-    {
-        throw std::invalid_argument("init_zero ERROR: buffer too small.");
-    }
-
-    ScalarT *cur_ptr = ptr.data();
-    for (size_t i = 0; i < numel; i++)
-    {
-        *(cur_ptr++) = (ScalarT)0;
-    }
-}
-
-//****************************************************************************
-template <class BufferT>
 void init_ones(BufferT &ptr, uint32_t numel)
 {
     using ScalarT = typename BufferT::value_type;
@@ -438,6 +420,24 @@ void init_ones(BufferT &ptr, uint32_t numel)
     for (size_t i = 0; i < numel; i++)
     {
         *(cur_ptr++) = (ScalarT)1;
+    }
+}
+
+//****************************************************************************
+template <class BufferT>
+void init_zeros(BufferT &ptr, uint32_t numel)
+{
+    using ScalarT = typename BufferT::value_type;
+
+    if (numel > ptr.size())
+    {
+        throw std::invalid_argument("init_zeroes ERROR: buffer too small.");
+    }
+
+    ScalarT *cur_ptr = ptr.data();
+    for (size_t i = 0; i < numel; i++)
+    {
+        *(cur_ptr++) = (ScalarT)0;
     }
 }
 
