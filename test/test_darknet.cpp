@@ -33,6 +33,7 @@ void test_darknet_parser(void)
     try {
         small::Darknet<small::FloatBuffer> model(cfg, weights);
         small::Tensor<small::FloatBuffer> input(model.get_input_shape());
+        small::init(input.buffer(), input.capacity());
         std::cout << "\n";
         model.inference({&input});
         TEST_CHECK(true);

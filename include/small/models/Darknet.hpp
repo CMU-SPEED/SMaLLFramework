@@ -15,6 +15,7 @@
 #include <fstream>
 #include <iostream>
 #include <vector>
+#include <map>
 #include <iomanip>
 
 #include <small.h>
@@ -28,6 +29,7 @@
 #include <small/LeakyReLULayer.hpp>
 #include <small/AddLayer.hpp>
 #include <small/UpSample2DLayer.hpp>
+#include <small/YOLOLayer.hpp>
 
 #define PARSER_DEBUG
 
@@ -98,84 +100,113 @@ public:
     virtual std::vector<Tensor<BufferT>*>
         inference(std::vector<Tensor<BufferT> const *> inputs)
     {
-        // std::cerr << "ERROR: Darknet::inference not implemented.\n";
-        
-        // for now, i am creating an output buffer for each layer
-        // this is not feasible
-        // one idea is to create a map of layer_idx to output buffers
-        std::vector<Tensor<BufferT>*> outputs(this->m_layers.size() + 1);
 
-        // the first output is actually the input
-        outputs[0] = new Tensor<BufferT>(this->m_input_shape, inputs[0]->buffer());
-        
-        size_t layer_num = 0; 
-        for(auto layer : this->m_layers) {
+        std::cout << "Entering Darknet::inference()" << std::endl;
 
+        Tensor<BufferT> *in = new Tensor<BufferT>(inputs[0]->shape());
+        std::copy(
+            &(inputs[0]->buffer()[0]), 
+            &(inputs[0]->buffer()[compute_size(inputs[0]->shape())]), 
+            &(in->buffer()[0])
+        );
+        Tensor<BufferT> *cur_output;
+        
+        size_t layer_num = 0;
+
+        for(size_t i=0; i<this->m_layers.size(); i++) {
+            
+            // get layer info
+            Layer<BufferT> *layer = this->m_layers[i];
             const std::type_info& type = typeid(*layer);
             shape_type out_shape = layer->output_shape();
-            outputs[layer_num+1] = new Tensor<BufferT>(out_shape);
-            init_zeros(outputs[layer_num+1]->buffer(), compute_size(out_shape));
+            cur_output = new Tensor<BufferT>(out_shape);
+            // init_zeros(cur_output->buffer(), compute_size(out_shape));
 
             // single input/output layers
             if(type == typeid(Conv2DLayer<BufferT>) || 
                type == typeid(MaxPool2DLayer<BufferT>) ||
-               type == typeid(UpSample2DLayer<BufferT>))  
+               type == typeid(UpSample2DLayer<BufferT>))
             {
-                layer->compute_output({outputs[layer_num]}, {outputs[layer_num+1]});
+                std::cout << "Conv/MaxPool/UpSample Layer" << std::endl;
+                layer->compute_output({in}, {cur_output});
             }
             else if(type == typeid(AddLayer<BufferT>)) {
 
+                std::cout << "Add Layer" << std::endl;
+
                 // there will always only be 2 parents
                 std::vector<int> parents = dynamic_cast<AddLayer<BufferT>*>(layer)->parents();
-
-                // handle negative indexing
-                if(parents[0] < 0) { parents[0] += layer_num; }
-                if(parents[1] < 0) { parents[1] += layer_num; }
                 
                 // this is bad
                 // AddLayer is set up to do B += A
                 // but we want to do C = A + B
-                layer->compute_output({outputs[parents[0]]}, {outputs[layer_num+1]});
-                layer->compute_output({outputs[parents[1]]}, {outputs[layer_num+1]});
+                std::copy(
+                    &cached_outputs[parents[1]]->buffer()[0], 
+                    &cached_outputs[parents[1]]->buffer()[compute_size(out_shape)], 
+                    &cur_output->buffer()[0]
+                );
+                layer->compute_output({in}, {cur_output});
 
             }
             else if(type == typeid(RouteLayer<BufferT>)) {
+
+                std::cout << "Route Layer" << std::endl;
 
                 std::vector<int> parents = dynamic_cast<RouteLayer<BufferT>*>(layer)->parents();
 
                 // route could potentially be a skip or a concat
                 // handle negative indexing
+
+                // for parent.size() == 1, this should just be a buffer swap/copy
                 if(parents.size() == 1) {
-                    if(parents[0] < 0) { parents[0] += layer_num; }
-                    layer->compute_output({outputs[parents[0]]}, {outputs[layer_num+1]});
+                    layer->compute_output({cached_outputs[parents[0]]}, {cur_output});
                 }
+                // here we actually need to concat
                 else {
-                    if(parents[0] < 0) { parents[0] += layer_num; }
-                    if(parents[1] < 0) { parents[1] += layer_num; }
-                    layer->compute_output({outputs[parents[0]], outputs[parents[1]]}, {outputs[layer_num+1]});
+                    layer->compute_output({cached_outputs[parents[0]], cached_outputs[parents[1]]}, {cur_output});
                 }
 
             }
             // this will be where yolo where go
-            else if(type == typeid(DummyLayer<BufferT>)) {
-                std::cout << "Dummy\n";
-                outputs[layer_num+1] = nullptr;
+            else if(type == typeid(YOLOLayer<BufferT>)) {
+                std::cout << "YOLO\n";
+                layer->compute_output({in}, {cur_output});
             }
             else {
                 std::cerr << "ERROR: Layer type not supported.\n";
                 throw std::exception();
             }
 
+            // found key in cached_outputs
+            // save output to cached_outputs
+            if(cached_outputs.count(layer_num) == 1) {
+                std::cout << "Saving output to cached_outputs\n";
+
+                cached_outputs[layer_num] = new Tensor<BufferT>(out_shape);
+                std::copy(
+                    &cur_output->buffer()[0], 
+                    &cur_output->buffer()[compute_size(out_shape)], 
+                    &cached_outputs[layer_num]->buffer()[0]
+                );
+            }
+
+            // swap?
+            // free before assignment?
+            in = cur_output;
+
             layer_num++;
         }
 
         // we will need to return all the outputs of the yolo blocks (or whatever the output layers are)
-        // for now we will just return the last output
-        return {outputs[layer_num]};
+        return {nullptr};
 
     }
 
 private:
+
+    // map for cached outputs
+    // layer_idx -> output
+    std::map<size_t, Tensor<BufferT>*> cached_outputs;
 
     // returns type of activation based on the key
     ActivationType parse_activation(std::string act_type) {
@@ -335,8 +366,10 @@ private:
         }
 
         // create shortcut layer
-        size_t total_layers_so_far = this->m_layers.size();
-        AddLayer<BufferT> *shortcut = new AddLayer<BufferT> (input, this->m_layers[total_layers_so_far + from]->output_shape(), {-1, from});
+        int total_layers_so_far = this->m_layers.size();
+        cached_outputs[total_layers_so_far+from] = nullptr;
+        AddLayer<BufferT> *shortcut = new AddLayer<BufferT> \
+            (input, this->m_layers[total_layers_so_far + from]->output_shape(), {total_layers_so_far-1, total_layers_so_far+from});
         return shortcut;
     }
 
@@ -367,10 +400,16 @@ private:
         RouteLayer<BufferT> *route;
         std::vector<shape_type> inputs;
 
-        for(auto layer : route_layers) {
-            // handle negative indexing
-            if(layer < 0) { inputs.push_back(this->m_layers[this->m_layers.size() + layer]->output_shape()); }
-            else { inputs.push_back(this->m_layers[layer]->output_shape()); }
+        for(uint32_t i = 0; i < route_layers.size(); i++) {
+            // convert negative indexing
+            if(route_layers[i] < 0) { 
+                route_layers[i] = this->m_layers.size() + route_layers[i];
+                inputs.push_back(this->m_layers[route_layers[i]]->output_shape());
+            }
+            else { 
+                inputs.push_back(this->m_layers[route_layers[i]]->output_shape()); 
+            }
+            cached_outputs[route_layers[i]] = nullptr;
         }
 
         if(inputs.size() == 1) { route = new RouteLayer<BufferT> (inputs[0], route_layers); }
@@ -451,7 +490,13 @@ private:
 
         /// @todo add support for yolo layer
 
-        DummyLayer<BufferT> *yolo = new DummyLayer<BufferT>(input);
+        // DummyLayer<BufferT> *yolo = new DummyLayer<BufferT>(input);
+        std::vector<std::pair<uint32_t,uint32_t>> masked_anchors;
+        for(uint32_t i = 0; i < mask.size(); i++) {
+            masked_anchors.push_back(anchors[mask[i]]);
+        }
+
+        YOLOLayer<BufferT> *yolo = new YOLOLayer<BufferT>(input, masked_anchors, classes);
 
         return yolo;
     }
@@ -625,6 +670,7 @@ private:
         #endif
 
     }
+
 };
 
 }
