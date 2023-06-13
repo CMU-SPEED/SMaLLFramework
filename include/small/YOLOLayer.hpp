@@ -54,7 +54,8 @@ public:
     YOLOLayer(shape_type const &shape,
             // std::vector<uint32_t> const mask,
             std::vector<std::pair<uint32_t, uint32_t>> anchors,
-            size_t num_classes) // {B, C, H, W}
+            size_t num_classes,
+            size_t input_img_size) // {B, C, H, W}
         : Layer<BufferT>(shape), m_anchors(anchors), m_num_classes(num_classes)
     {
 #if defined(DEBUG_LAYERS)
@@ -68,6 +69,8 @@ public:
 
         m_num_outputs = m_num_classes + 5; // # of outputs per anchor
         m_num_anchors = m_anchors.size();
+        // the 416 needs to replaced with network input image shape
+        m_stride = input_img_size / shape[HEIGHT];
     }
 
     virtual ~YOLOLayer() {}
@@ -126,11 +129,11 @@ public:
 
                         // compute x
                         if(i3 == 0) {
-                            bbox_n_conf->buffer()[pred_idx*85U + i3] = (sigmoid<ScalarT>(input[0]->buffer()[offset]) + i2) / w;
+                            bbox_n_conf->buffer()[pred_idx*85U + i3] = (sigmoid<ScalarT>(input[0]->buffer()[offset]) + i2) * m_stride;
                         }
                         // compute y
                         else if(i3 == 1) {
-                            bbox_n_conf->buffer()[pred_idx*85U + i3] = (sigmoid<ScalarT>(input[0]->buffer()[offset]) + i1) / h;
+                            bbox_n_conf->buffer()[pred_idx*85U + i3] = (sigmoid<ScalarT>(input[0]->buffer()[offset]) + i1) * m_stride;
                         }
                         // compute w
                         else if(i3 == 2) {
@@ -155,6 +158,7 @@ public:
 
 private:
 
+    size_t      m_stride;
     std::vector<std::pair<uint32_t,uint32_t>> const m_anchors;
     size_t       m_num_anchors;
     size_t const m_num_classes;

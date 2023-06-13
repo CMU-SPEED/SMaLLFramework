@@ -51,7 +51,8 @@ bool run_relu_layer_config(LayerParams const &params)
     size_t input_size = params.C_i*params.H*params.W;
     small::YOLOLayer<BufferT>  yolo_layer(
         input_shape, {{116,90}, {156,198}, {373,326}},
-        80
+        80,
+        416
     );
 
     std::string in_fname =
@@ -81,25 +82,18 @@ bool run_relu_layer_config(LayerParams const &params)
     std::cout << "Finished YOLO\n";
     small::Tensor<BufferT>* bb_n_conf_out = outs[0];
 
-    std::string bb_fname = data_dir + "/out_bb__yolo_Ci255_H19_W19.bin";
-    std::string score_fname = data_dir + "/out_score__yolo_Ci255_H19_W19.bin";
+    std::string bb_n_conf_fname = data_dir + "/out__yolo_Ci255_H13_W13_k0_s0_f_43095.bin";
 
-    BufferT bb = read_yolo_data<BufferT>(bb_fname);
-    BufferT obj_score = read_yolo_data<BufferT>(score_fname);
+    BufferT bb_n_conf_ref = read_yolo_data<BufferT>(bb_n_conf_fname);
 
     // compare against regression data
     for(size_t i = 0; i < num_pred; i++) {
         // make sure bounding boxes are correctly computed
-        for(size_t j = 0; j < 4U; j++) {
-            if(!almost_equal(bb_n_conf_out->buffer()[i*(num_classes+5U)+j], bb[i*4U+j])) {
-                std::cerr << "bb_n_conf_out[" << i << "][" << j << "] = " << bb_n_conf_out->buffer()[i*(num_classes+5U)+j] << " != " << bb[i*4U+j] << std::endl;
+        for(size_t j = 0; j < 85U; j++) {
+            if(!almost_equal(bb_n_conf_out->buffer()[i*(num_classes+5U)+j], bb_n_conf_ref[i*(num_classes+5U)+j])) {
+                std::cerr << "bb_n_conf_out[" << i << "][" << j << "] = " << bb_n_conf_out->buffer()[i*(num_classes+5U)+j] << " != " << bb_n_conf_ref[i*(num_classes+5U)+j] << std::endl;
                 return false;
             }
-        }
-        // make sure obj confidences are correctly computed
-        if(!almost_equal(bb_n_conf_out->buffer()[i*(num_classes+5U) + 4U], obj_score[i])) {
-            std::cerr << "bb_n_conf_out[" << i << "][4] = " << bb_n_conf_out->buffer()[i*(num_classes+5U)+4U] << " != " << obj_score[i] << std::endl;
-            return false;
         }
     }
 
@@ -111,7 +105,7 @@ void test_relu_layer_regression_data(void)
 {
     std::vector<LayerParams> params =
     {
-        {255,  19,  19, 0, 0, small::PADDING_F, 0}  //Ci,Hi,Wi,k,s,p,Co
+        {255,  13,  13, 0, 0, small::PADDING_F, 0}  //Ci,Hi,Wi,k,s,p,Co
     };
 
     for (LayerParams const &p : params)
