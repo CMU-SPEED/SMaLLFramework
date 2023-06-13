@@ -496,7 +496,7 @@ private:
             masked_anchors.push_back(anchors[mask[i]]);
         }
 
-        YOLOLayer<BufferT> *yolo = new YOLOLayer<BufferT>(input, masked_anchors, classes);
+        YOLOLayer<BufferT> *yolo = new YOLOLayer<BufferT>(input, masked_anchors, classes, this->m_input_shape[HEIGHT]);
 
         return yolo;
     }
@@ -538,7 +538,7 @@ private:
         using ScalarT = typename BufferT::value_type;
 
         Layer<BufferT> *prev = nullptr;
-        shape_type prev_shape = {0,0,0,0};    
+        shape_type prev_shape = {0,0,0,0};
         std::vector<int> prev_parents = {0};     
 
         std::ifstream cfg_file(cfg);
