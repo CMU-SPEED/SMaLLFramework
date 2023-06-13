@@ -83,7 +83,7 @@ void test_route_bad_shapes(void)
 
     try {
         small::RouteLayer<small::FloatBuffer> route(input1_shape,
-                                                    input2_shape);
+                                                    input2_shape, {0});
         TEST_CHECK(false);
     }
     catch (std::invalid_argument const &e) {
@@ -93,7 +93,7 @@ void test_route_bad_shapes(void)
 
     try {
         small::RouteLayer<small::FloatBuffer> route(input1_shape,
-                                                    input3_shape);
+                                                    input3_shape, {0});
         TEST_CHECK(false);
     }
     catch (std::invalid_argument const &e) {
@@ -103,7 +103,7 @@ void test_route_bad_shapes(void)
 
     try {
         small::RouteLayer<small::FloatBuffer> route(input1_shape,
-                                                    input4_shape);
+                                                    input4_shape, {0});
         TEST_CHECK(false);
     }
     catch (std::invalid_argument const &e) {
@@ -119,7 +119,7 @@ void test_route_concat(void)
     small::shape_type input2_shape({1, 32, 52, 52});
 
     small::RouteLayer<small::FloatBuffer> route(input1_shape,
-                                                input2_shape);
+                                                input2_shape, {0});
 
     TEST_CHECK(1 == route.get_num_outputs());
     auto const &output_shape(route.output_shape(0));
@@ -137,7 +137,7 @@ void test_route_1_buffer(void)
     small::Tensor<Buffer> input(shape, (create_packed_data<Buffer>(shape, 0.f)));
     small::Tensor<Buffer> output(input.size());
 
-    small::RouteLayer<Buffer> route(shape);
+    small::RouteLayer<Buffer> route(shape, {0});
 
     route.compute_output({&input}, {&output});
     TEST_CHECK(shape == output.shape());
@@ -172,7 +172,7 @@ void test_route_2_buffers(void)
     small::shape_type output_shape({1, 48, 13, 13});
     small::Tensor<Buffer> output(input0.size() + input1.size());
 
-    small::RouteLayer<Buffer> route(shape0, shape1);
+    small::RouteLayer<Buffer> route(shape0, shape1, {0});
 
     std::cerr << "FIRST TEST\n";
     route.compute_output({&input0, &input1}, {&output});
