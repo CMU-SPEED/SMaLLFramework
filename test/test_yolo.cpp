@@ -47,60 +47,58 @@ BufferT read_yolo_data(std::string const &data_file) {
 template <class BufferT>
 bool run_relu_layer_config(LayerParams const &params)
 {
-    /// @todo add smart pointer to buffers
-    //=========================================================================
     small::shape_type input_shape({1UL, params.C_i, params.H, params.W});
     size_t input_size = params.C_i*params.H*params.W;
     small::YOLOLayer<BufferT>  yolo_layer(
         input_shape, {{116,90}, {156,198}, {373,326}},
         80
     );
-    //=========================================================================
 
-    // Read input data
     std::string in_fname =
         get_pathname(data_dir, "in", "yolo",
                      params,
                      input_size);
     std::cout << "\nYOLO: input file = " << in_fname << std::endl;
-
-    // Allocate the input buffer
     BufferT input = read_yolo_data<BufferT>(in_fname);
     small::Tensor<BufferT> input_tensor(input_shape, std::move(input));
 
     TEST_ASSERT(input_tensor.capacity() == input_size);
 
+    // total predictions are H*W*num_anchors
+    size_t num_pred = params.H*params.W*3U;
+    size_t num_classes = 80U;
+
+    // create output buffers
     std::vector<small::Tensor<BufferT>*> outs;
-    small::Tensor<BufferT> bb_({1U, 1U, 19U*19U*3U, 4U});
-    small::Tensor<BufferT> score_({1U, 1U, 1U, 19U*19U*3U});
-    outs.push_back(&bb_);
-    outs.push_back(&score_);
+    // first 4 elements of the fastest dimension represent bounding box info
+    // 5th element is the confidence score
+    // remaining elements are the class confidence scores
+    small::Tensor<BufferT> bb_n_conf({1U, 1U, num_pred, num_classes + 5U});
+    outs.push_back(&bb_n_conf);
 
     std::cout << "Computing YOLO\n";
     yolo_layer.compute_output({&input_tensor}, outs);
     std::cout << "Finished YOLO\n";
-    small::Tensor<BufferT>* bb_out = outs[0];
-    small::Tensor<BufferT>* score_out = outs[1];
+    small::Tensor<BufferT>* bb_n_conf_out = outs[0];
 
     std::string bb_fname = data_dir + "/out_bb__yolo_Ci255_H19_W19.bin";
-    // std::string prob_fname = data_dir + "/out_prob__yolo_Ci255_H19_W19.bin";
     std::string score_fname = data_dir + "/out_score__yolo_Ci255_H19_W19.bin";
-    // std::string idx_fname = data_dir + "/out_idx__yolo_Ci255_H19_W19.bin";
 
     BufferT bb = read_yolo_data<BufferT>(bb_fname);
-    BufferT score = read_yolo_data<BufferT>(score_fname);
-    // BufferT idx = read_yolo_data<BufferT>(idx_fname);
+    BufferT obj_score = read_yolo_data<BufferT>(score_fname);
 
-    for(size_t i = 0; i < bb.size(); i++) {
-        if(almost_equal(bb_out->buffer()[i], bb[i]) == false) {
-            std::cerr << "bb_out[" << i << "] = " << bb_out->buffer()[i] << " != " << bb[i] << std::endl;
-            return false;
+    // compare against regression data
+    for(size_t i = 0; i < num_pred; i++) {
+        // make sure bounding boxes are correctly computed
+        for(size_t j = 0; j < 4U; j++) {
+            if(!almost_equal(bb_n_conf_out->buffer()[i*(num_classes+5U)+j], bb[i*4U+j])) {
+                std::cerr << "bb_n_conf_out[" << i << "][" << j << "] = " << bb_n_conf_out->buffer()[i*(num_classes+5U)+j] << " != " << bb[i*4U+j] << std::endl;
+                return false;
+            }
         }
-    }
-
-    for(size_t i = 0; i<score.size(); i++) {
-        if(almost_equal(score_out->buffer()[i], score[i]) == false) {
-            std::cerr << "score_out[" << i << "] = " << score_out->buffer()[i] << " != " << score[i] << std::endl;
+        // make sure obj confidences are correctly computed
+        if(!almost_equal(bb_n_conf_out->buffer()[i*(num_classes+5U) + 4U], obj_score[i])) {
+            std::cerr << "bb_n_conf_out[" << i << "][4] = " << bb_n_conf_out->buffer()[i*(num_classes+5U)+4U] << " != " << obj_score[i] << std::endl;
             return false;
         }
     }

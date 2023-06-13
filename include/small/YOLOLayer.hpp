@@ -100,30 +100,51 @@ public:
         size_t h = input[0]->shape()[HEIGHT];
         size_t w = input[0]->shape()[WIDTH];
 
+        // alias outputs
+        Tensor <BufferT> *bbox_n_conf = output[0];
+        // Tensor <BufferT> *bbox = output[0];
+        // Tensor <BufferT> *conf = output[1];
+        // Tensor <BufferT> *class_conf = output[2];
+
         // size_t num_pred = m_num_anchors * h * w;
 
+        // image is [C, H, W]
+        // reshaped image is [num_anchors, num_classes + 5, H, W]
         size_t pred_idx = 0;
         for(size_t i0 = 0; i0 < m_num_anchors; i0++) {
+            size_t anchor_offset = i0 * (m_num_classes + 5) * h * w;
+
             for(size_t i1 = 0; i1 < h; i1++) {
+                size_t h_offset = i1 * w;
+
                 for(size_t i2 = 0; i2 < w; i2++) {
-                    for(size_t bb_idx = 0; bb_idx < 5; bb_idx++) {
-                        size_t offset = compute_offset(i0, bb_idx, i1, i2, m_num_classes, h, w);
-                        // compute signmoid for x, y, w, h, and confidence
-                        if(bb_idx == 0) {
-                            output[0]->buffer()[pred_idx*4U + bb_idx] = (sigmoid<ScalarT>(input[0]->buffer()[offset]) + i2) / w;
+                    size_t w_offset = i2;
+
+                    // fastest dimension for output
+                    for(size_t i3 = 0; i3 < (m_num_classes + 5); i3++) {
+                        size_t offset = anchor_offset + i3 * h * w + h_offset + w_offset;
+
+                        // compute x
+                        if(i3 == 0) {
+                            bbox_n_conf->buffer()[pred_idx*85U + i3] = (sigmoid<ScalarT>(input[0]->buffer()[offset]) + i2) / w;
                         }
-                        else if(bb_idx == 1) {
-                            output[0]->buffer()[pred_idx*4U + bb_idx] = (sigmoid<ScalarT>(input[0]->buffer()[offset]) + i1) / h;
+                        // compute y
+                        else if(i3 == 1) {
+                            bbox_n_conf->buffer()[pred_idx*85U + i3] = (sigmoid<ScalarT>(input[0]->buffer()[offset]) + i1) / h;
                         }
-                        else if(bb_idx == 2) {
-                            output[0]->buffer()[pred_idx*4U + bb_idx] = std::exp(input[0]->buffer()[offset]) * m_anchors[i0].first;
+                        // compute w
+                        else if(i3 == 2) {
+                            bbox_n_conf->buffer()[pred_idx*85U + i3] = std::exp(input[0]->buffer()[offset]) * m_anchors[i0].first;
                         }
-                        else if(bb_idx == 3) {
-                            output[0]->buffer()[pred_idx*4U + bb_idx] = std::exp(input[0]->buffer()[offset]) * m_anchors[i0].second;
+                        // compute h
+                        else if(i3 == 3) {
+                            bbox_n_conf->buffer()[pred_idx*85U + i3] = std::exp(input[0]->buffer()[offset]) * m_anchors[i0].second;
                         }
+                        // compute obj and class conf
                         else {
-                            output[1]->buffer()[pred_idx] = sigmoid<ScalarT>(input[0]->buffer()[offset]);
+                            bbox_n_conf->buffer()[pred_idx*85U + i3] = sigmoid<ScalarT>(input[0]->buffer()[offset]);
                         }
+
                     }
                     pred_idx++;
                 }
