@@ -45,14 +45,16 @@ BufferT read_yolo_data(std::string const &data_file) {
 
 //****************************************************************************
 template <class BufferT>
-bool run_relu_layer_config(LayerParams const &params)
+bool run_relu_layer_config(LayerParams const &params,
+    std::vector<std::pair<uint32_t, uint32_t>> const &anchors)
 {
     small::shape_type input_shape({1UL, params.C_i, params.H, params.W});
     size_t input_size = params.C_i*params.H*params.W;
     small::YOLOLayer<BufferT>  yolo_layer(
-        input_shape, {{116,90}, {156,198}, {373,326}},
-        80,
-        416
+        input_shape, 
+        anchors,
+        80, // hardcoded num_classes
+        608 // hardcoded image size
     );
 
     std::string in_fname =
@@ -77,14 +79,19 @@ bool run_relu_layer_config(LayerParams const &params)
     small::Tensor<BufferT> bb_n_conf({1U, 1U, num_pred, num_classes + 5U});
     outs.push_back(&bb_n_conf);
 
-    std::cout << "Computing YOLO\n";
+    // std::cout << "Computing YOLO\n";
     yolo_layer.compute_output({&input_tensor}, outs);
-    std::cout << "Finished YOLO\n";
+    // std::cout << "Finished YOLO\n";
     small::Tensor<BufferT>* bb_n_conf_out = outs[0];
 
-    std::string bb_n_conf_fname = data_dir + "/out__yolo_Ci255_H13_W13_k0_s0_f_43095.bin";
+    std::string out_fname =
+        get_pathname(data_dir, "out", "yolo",
+                     params,
+                     input_size);
+    std::cout << "YOLO: output file = " << out_fname << std::endl;
+    // std::string bb_n_conf_fname = data_dir + "/out__yolo_Ci255_H13_W13_k0_s0_f_43095.bin";
 
-    BufferT bb_n_conf_ref = read_yolo_data<BufferT>(bb_n_conf_fname);
+    BufferT bb_n_conf_ref = read_yolo_data<BufferT>(out_fname);
 
     // compare against regression data
     for(size_t i = 0; i < num_pred; i++) {
@@ -101,23 +108,26 @@ bool run_relu_layer_config(LayerParams const &params)
 }
 
 //****************************************************************************
-void test_relu_layer_regression_data(void)
+void test_yolo_layer_regression_data(void)
 {
     std::vector<LayerParams> params =
     {
-        {255,  13,  13, 0, 0, small::PADDING_F, 0}  //Ci,Hi,Wi,k,s,p,Co
+        {255,  19,  19, 0, 0, small::PADDING_F, 0},
+        {255,  38,  38, 0, 0, small::PADDING_F, 0},
+        {255,  76,  76, 0, 0, small::PADDING_F, 0} //Ci,Hi,Wi,k,s,p,Co
     };
 
-    for (LayerParams const &p : params)
-    {
-        TEST_CHECK(true == run_relu_layer_config<small::FloatBuffer>(p));
-    }
+    // first yolo block
+    TEST_CHECK(true == run_relu_layer_config<small::FloatBuffer>(params[0], {{116,90}, {156,198}, {373,326}}));
+    // second yolo block
+    TEST_CHECK(true == run_relu_layer_config<small::FloatBuffer>(params[1], {{30,61}, {62,45}, {59,119}}));
+    // third yolo block
+    TEST_CHECK(true == run_relu_layer_config<small::FloatBuffer>(params[2], {{10,13}, {16,30}, {33,23}}));
 }
 
 //****************************************************************************
 //****************************************************************************
 TEST_LIST = {
-    {"yolo_layer_regression_data", test_relu_layer_regression_data},
-    // {"relu_performance", measure_relu_performance},
+    {"yolo_layer_regression_data", test_yolo_layer_regression_data},
     {NULL, NULL}
 };
