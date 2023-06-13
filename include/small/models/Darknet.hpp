@@ -110,6 +110,8 @@ public:
             &(in->buffer()[0])
         );
         Tensor<BufferT> *cur_output;
+
+        std::vector<Tensor<BufferT>*> all_yolo_outputs;
         
         size_t layer_num = 0;
 
@@ -154,9 +156,6 @@ public:
 
                 std::vector<int> parents = dynamic_cast<RouteLayer<BufferT>*>(layer)->parents();
 
-                // route could potentially be a skip or a concat
-                // handle negative indexing
-
                 // for parent.size() == 1, this should just be a buffer swap/copy
                 if(parents.size() == 1) {
                     layer->compute_output({cached_outputs[parents[0]]}, {cur_output});
@@ -170,7 +169,11 @@ public:
             // this will be where yolo where go
             else if(type == typeid(YOLOLayer<BufferT>)) {
                 std::cout << "YOLO\n";
-                layer->compute_output({in}, {cur_output});
+                size_t num_pred = dynamic_cast<YOLOLayer<BufferT>*>(layer)->get_num_pred();
+                size_t num_outputs = dynamic_cast<YOLOLayer<BufferT>*>(layer)->get_num_outputs();
+                Tensor <BufferT> *yolo_output = new Tensor<BufferT>({1U, 1U, num_pred, num_outputs});
+                layer->compute_output({in}, {yolo_output});
+                all_yolo_outputs.push_back(yolo_output);
             }
             else {
                 std::cerr << "ERROR: Layer type not supported.\n";
@@ -180,7 +183,7 @@ public:
             // found key in cached_outputs
             // save output to cached_outputs
             if(cached_outputs.count(layer_num) == 1) {
-                std::cout << "Saving output to cached_outputs\n";
+                std::cout << "Saving output to cached_outputs\tlayer_num = " << layer_num << "\n";
 
                 cached_outputs[layer_num] = new Tensor<BufferT>(out_shape);
                 std::copy(
@@ -198,7 +201,7 @@ public:
         }
 
         // we will need to return all the outputs of the yolo blocks (or whatever the output layers are)
-        return {nullptr};
+        return all_yolo_outputs;
 
     }
 

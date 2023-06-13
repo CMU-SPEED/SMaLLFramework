@@ -69,11 +69,16 @@ public:
 
         m_num_outputs = m_num_classes + 5; // # of outputs per anchor
         m_num_anchors = m_anchors.size();
+        m_num_pred = m_num_anchors * shape[HEIGHT] * shape[WIDTH];
         // the 416 needs to replaced with network input image shape
         m_stride = input_img_size / shape[HEIGHT];
     }
 
     virtual ~YOLOLayer() {}
+
+    size_t get_num_pred() const { return m_num_pred; }
+
+    size_t get_num_outputs() const { return m_num_outputs; }
 
     // note: fastest dimension is rightmost
     // input is in packed format
@@ -103,11 +108,19 @@ public:
         size_t h = input[0]->shape()[HEIGHT];
         size_t w = input[0]->shape()[WIDTH];
 
+
         // alias outputs
         Tensor <BufferT> *bbox_n_conf = output[0];
         // Tensor <BufferT> *bbox = output[0];
         // Tensor <BufferT> *conf = output[1];
         // Tensor <BufferT> *class_conf = output[2];
+
+        if(m_num_pred != bbox_n_conf->shape()[2]) {
+            std::cerr << "ERROR: num_pred != bbox_n_conf->shape()[2]" << std::endl;
+            std::cerr << "       num_pred = " << m_num_pred << std::endl;
+            std::cerr << "       bbox_n_conf->shape()[2] = " << bbox_n_conf->shape()[2] << std::endl;
+            exit(1);
+        }
 
         // size_t num_pred = m_num_anchors * h * w;
 
@@ -163,6 +176,7 @@ private:
     size_t       m_num_anchors;
     size_t const m_num_classes;
     size_t       m_num_outputs;
+    size_t       m_num_pred;
 
 };
 
