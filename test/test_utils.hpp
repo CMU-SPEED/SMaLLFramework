@@ -17,6 +17,7 @@
 #include <random>
 #include <exception>
 #include <algorithm> // std::min_element
+#include <filesystem>
 
 #include <stdlib.h>
 #include <arpa/inet.h>
@@ -125,6 +126,22 @@ std::string get_pathname(
         "_" +  std::to_string(num_elements) + ".bin";
 
     return fname;
+}
+
+//****************************************************************************
+template <class BufferT>
+BufferT read_yolo_data(std::string const &data_file) {
+    std::filesystem::path data_path(data_file);
+
+    // total size of weights in bytes
+    size_t total_bytes = std::filesystem::file_size(data_path);
+
+    std::ifstream data_in(data_file, std::ios::binary);
+    BufferT yolo_data(total_bytes / sizeof(typename BufferT::value_type));
+    data_in.read(reinterpret_cast<char*>(yolo_data.data()), total_bytes);
+    data_in.close();
+
+    return yolo_data;
 }
 
 #if 0

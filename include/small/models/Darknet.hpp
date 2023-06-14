@@ -166,14 +166,16 @@ public:
                 }
 
             }
-            // this will be where yolo where go
+            // yolo is our output block
+            // aggregate all yolo outputs
+            // each tensor will represent output using a different set of anchor weights
             else if(type == typeid(YOLOLayer<BufferT>)) {
-                std::cout << "YOLO\n";
+                std::cout << "YOLO layer\n";
                 size_t num_pred = dynamic_cast<YOLOLayer<BufferT>*>(layer)->get_num_pred();
                 size_t num_outputs = dynamic_cast<YOLOLayer<BufferT>*>(layer)->get_num_outputs();
                 Tensor <BufferT> *yolo_output = new Tensor<BufferT>({1U, 1U, num_pred, num_outputs});
                 layer->compute_output({in}, {yolo_output});
-                all_yolo_outputs.push_back(yolo_output);
+                all_yolo_outputs.push_back(std::move(yolo_output));
             }
             else {
                 std::cerr << "ERROR: Layer type not supported.\n";
@@ -270,35 +272,75 @@ private:
             else if(key == "activation") { activation = parse_activation(value); }
             else { std::cerr << "WARNING: unknown key in conv2d layer: " << key << std::endl;}
         }
-
-        BufferT biases(num_filters);
-        std::copy(&weight_data_ptr[weight_idx], &weight_data_ptr[weight_idx] + num_filters, &biases[0]);
-        weight_idx += num_filters;
-        /// @todo: need to find a good way to read batch norm parameters without losing scope
-        // HACK: just move pointer for now
-        if(bn){
-            weight_idx += 3 * num_filters;
-        }
         
-        // Load convolution weights in
+        // filter size
         size_t filt_size = num_filters * kernel_size * kernel_size * input[CHANNEL];
-        BufferT filters(filt_size);
-        std::copy(&weight_data_ptr[weight_idx], &weight_data_ptr[weight_idx] + filt_size, &filters[0]);
-        weight_idx += filt_size;
 
-        // create convolutional layer
-        Conv2DLayer<BufferT> *conv = new Conv2DLayer<BufferT> (
-            input, 
-            kernel_size, kernel_size, 
-            stride,
-            pad, 
-            num_filters,
-            filters,
-            true, /// @todo: this is not correct. however, when filter_size % C_ob != 0, it breaks;
-            activation
-        );
+        Conv2DLayer<BufferT> *conv;
+        
+        if(bn) {
+
+            BufferT bn_weights(num_filters);
+            std::copy(weight_data_ptr + weight_idx, weight_data_ptr + weight_idx + num_filters, &bn_weights[0]);
+            weight_idx += num_filters;
+
+            BufferT bn_bias(num_filters);
+            std::copy(weight_data_ptr + weight_idx, weight_data_ptr + weight_idx + num_filters, &bn_bias[0]);
+            weight_idx += num_filters;
+
+            BufferT bn_running_mean(num_filters);
+            std::copy(weight_data_ptr + weight_idx, weight_data_ptr + weight_idx + num_filters, &bn_running_mean[0]);
+            weight_idx += num_filters;
+
+            BufferT bn_running_variance(num_filters);
+            std::copy(weight_data_ptr + weight_idx, weight_data_ptr + weight_idx + num_filters, &bn_running_variance[0]);
+            weight_idx += num_filters;
+
+            BufferT filters(filt_size);
+            std::copy(weight_data_ptr + weight_idx, weight_data_ptr + weight_idx + filt_size, &filters[0]);
+            weight_idx += filt_size;
+
+            conv = new Conv2DLayer<BufferT> (
+                input, 
+                kernel_size, kernel_size, 
+                stride,
+                pad, 
+                num_filters,
+                std::move(filters),
+                std::move(bn_weights),
+                std::move(bn_bias),
+                std::move(bn_running_mean),
+                std::move(bn_running_variance),
+                1.e-5,
+                true, // WRONG, WE NEED EDGE CASES
+                activation
+            );
+        }
+        else {
+
+            BufferT bias(num_filters);
+            std::copy(weight_data_ptr + weight_idx, weight_data_ptr + weight_idx + num_filters, &bias[0]);
+            weight_idx += num_filters;
+
+            BufferT filters(filt_size);
+            std::copy(weight_data_ptr + weight_idx, weight_data_ptr + weight_idx + filt_size, &filters[0]);
+            weight_idx += filt_size;
+
+            conv = new Conv2DLayer<BufferT> (
+                input, 
+                kernel_size, kernel_size, 
+                stride,
+                pad, 
+                num_filters,
+                std::move(filters),
+                std::move(bias),
+                true, // WRONG, WE NEED EDGE CASES
+                activation
+            );
+        }
 
         return conv;
+
     }
 
     Layer<BufferT>* parse_max(std::ifstream &cfg_file, shape_type input) {

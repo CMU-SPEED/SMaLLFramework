@@ -30,21 +30,6 @@ std::string const data_dir("../test/regression_data");
 
 //****************************************************************************
 template <class BufferT>
-BufferT read_yolo_data(std::string const &data_file) {
-    std::ifstream data_in(data_file, std::ios::binary);
-    data_in.seekg(0, std::ios::end);
-    size_t total_bytes = data_in.tellg(); // total size of weights in bytes
-    data_in.seekg(0, std::ios::beg);
-
-    BufferT yolo_data(total_bytes / sizeof(typename BufferT::value_type));
-    data_in.read(reinterpret_cast<char*>(yolo_data.data()), total_bytes);
-    data_in.close();
-
-    return yolo_data;
-}
-
-//****************************************************************************
-template <class BufferT>
 bool run_relu_layer_config(LayerParams const &params,
     std::vector<std::pair<uint32_t, uint32_t>> const &anchors)
 {
