@@ -51,6 +51,7 @@ namespace detail
 
         if (!buffers_are_packed)
         {
+            std::cout << "Packing filter buffer\n";
             // Pack the filter buffers for SMaLL use
             small::pack_buffer(filters,
                                FILTER_CONV,
@@ -58,6 +59,7 @@ namespace detail
                                m_kernel_height, m_kernel_width,
                                C_ib, C_ob,
                                m_packed_filters);
+            std::cout << "Filter buffers are packed\n";
         }
         else
         {
@@ -91,6 +93,8 @@ namespace detail
             (bn_running_mean.size() > 0) ||
             (bn_running_variance.size() > 0))
         {
+            std::cout << "Getting batch norm\n";
+
             if ((bn_weight.size() != num_output_channels) ||
                 (bn_bias.size() != num_output_channels) ||
                 (bn_running_mean.size() != num_output_channels) ||

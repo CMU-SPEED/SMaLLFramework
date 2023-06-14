@@ -745,6 +745,7 @@ void test_conv2d_batchnorm_mean_variance_1(void)
 
 //*****************************************************************************
 void test_conv2d_batchnorm(void) {
+
     // run a hardcoded test for batchnorm against pytorch
     // this comes from the yolo model
     // [convolutional]
@@ -757,9 +758,9 @@ void test_conv2d_batchnorm(void) {
 
     bool passing = true;
 
-    std::string input_data = data_dir + "/in__conv2d_Ci3_H416_W416_k0_s0_f_519168.bin";
-    std::string filter_data = data_dir + "/filter__conv2d_bn_Ci3_Co16_H416_W416_k3_s0_f_432.bin";
-    std::string output_data = data_dir + "/out__conv2d_Ci3_H416_W416_k0_s0_f_519168.bin";
+    std::string input_data = data_dir + "/in__conv2d_Ci3_H416_W416_k0_s0_f_519168.bin2";
+    std::string filter_data = data_dir + "/filter__conv2d_bn_Ci3_Co16_H416_W416_k3_s0_f_432.bin2";
+    std::string output_data = data_dir + "/out__conv2d_Ci3_H416_W416_k0_s0_f_519168.bin2";
 
     std::cout << "\nConv2D: input file= " << input_data << std::endl;
     std::cout << "Conv2D: filter file= " << filter_data << std::endl;
@@ -778,7 +779,7 @@ void test_conv2d_batchnorm(void) {
                        1U, 3U, 416U, 416U,
                        C_ib, C_ob,
                        input_dc);
-    small::Tensor<BufferT> input_tensor({1, 3, 416, 416}, std::move(input_dc));
+    small::Tensor<BufferT> input_tensor({1, 3, 416, 416}, input_dc);
 
     BufferT output = read_yolo_data<BufferT>(output_data);
     if(output.size() != 16U*416U*416U) {
@@ -791,7 +792,7 @@ void test_conv2d_batchnorm(void) {
                        1U, 16U, 416U, 416U,
                        C_ib, C_ob,
                        output_dc);
-    small::Tensor<BufferT> output_tensor_ref({1, 16, 416, 416}, std::move(output_dc));
+    small::Tensor<BufferT> output_tensor_ref({1, 16, 416, 416}, output_dc);
 
     BufferT filter_dc = read_yolo_data<BufferT>(filter_data);
     std::cout << "Total weight data: " << filter_dc.size() << std::endl;
@@ -818,8 +819,7 @@ void test_conv2d_batchnorm(void) {
     small::Conv2DLayer<BufferT> conv(
         input_shape,
         kernel_size, kernel_size,
-        stride,
-        pad, 
+        stride, pad, 
         num_filters,
         conv_filters,
         bn_weight,
