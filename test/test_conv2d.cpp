@@ -773,7 +773,7 @@ void test_conv2d_batchnorm(void) {
         std::cerr << "FAIL: input size is " << input.size() << " expected 3U*416U*416U" << std::endl;
         TEST_CHECK(false);
     }
-    std::cout << "Input size: " << input.size() << std::endl;
+    // std::cout << "Input size: " << input.size() << std::endl;
     BufferT input_dc(input.size());
     small::pack_buffer(input, small::INPUT,
                        1U, 3U, 416U, 416U,
@@ -786,7 +786,7 @@ void test_conv2d_batchnorm(void) {
         std::cerr << "FAIL: input size is " << output.size() << " expected 16U*416U*416U" << std::endl;
         TEST_CHECK(false);
     }
-    std::cout << "Output size: " << output.size() << std::endl;
+    // std::cout << "Output size: " << output.size() << std::endl;
     BufferT output_dc(output.size());
     small::pack_buffer(output, small::OUTPUT,
                        1U, 16U, 416U, 416U,
@@ -795,7 +795,7 @@ void test_conv2d_batchnorm(void) {
     small::Tensor<BufferT> output_tensor_ref({1, 16, 416, 416}, output_dc);
 
     BufferT filter_dc = read_yolo_data<BufferT>(filter_data);
-    std::cout << "Total weight data: " << filter_dc.size() << std::endl;
+    // std::cout << "Total weight data: " << filter_dc.size() << std::endl;
 
     BufferT bn_bias(16);
     std::copy(&filter_dc[0], &filter_dc[16], &bn_bias[0]);
@@ -815,7 +815,7 @@ void test_conv2d_batchnorm(void) {
     size_t num_filters = 16;
     small::ActivationType activation = small::ActivationType::LEAKY;
 
-    std::cout << "Building conv2d layer\n";
+    // std::cout << "Building conv2d layer\n";
     small::Conv2DLayer<BufferT> conv(
         input_shape,
         kernel_size, kernel_size,
@@ -834,9 +834,9 @@ void test_conv2d_batchnorm(void) {
 
     small::Tensor<BufferT> output_tensor_ans({1, 16, 416, 416});
 
-    std::cout << "Computing conv2d output tensor with batchnorm and leaky activation\n";
+    // std::cout << "Computing conv2d output tensor with batchnorm and leaky activation\n";
     conv.compute_output({&input_tensor}, {&output_tensor_ans});
-    std::cout << "Finished conv2d output tensor with batchnorm and leaky activation\n";
+    // std::cout << "Finished conv2d output tensor with batchnorm and leaky activation\n";
 
     // compare output_tensor_ans to output_tensor_ref
     /// @todo revisit accuracy
@@ -1346,6 +1346,6 @@ TEST_LIST = {
     {"conv2d_batchnorm", test_conv2d_batchnorm},
     {"conv2d_regression_data",       test_conv2d_regression_data},
     {"conv2d_layer_regression_data", test_conv2d_layer_regression_data},
-    {"conv2d_performance", measure_conv2d_performance},
+    // {"conv2d_performance", measure_conv2d_performance},
     {NULL, NULL}
 };
