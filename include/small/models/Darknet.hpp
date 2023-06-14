@@ -280,12 +280,16 @@ private:
         
         if(bn) {
 
-            BufferT bn_weights(num_filters);
-            std::copy(weight_data_ptr + weight_idx, weight_data_ptr + weight_idx + num_filters, &bn_weights[0]);
-            weight_idx += num_filters;
-
+            // order matters
+            // data is stored in the following order:
+            // bn_bias, bn_weights, bn_running_mean, bn_running_variance, conv_weights
+            
             BufferT bn_bias(num_filters);
             std::copy(weight_data_ptr + weight_idx, weight_data_ptr + weight_idx + num_filters, &bn_bias[0]);
+            weight_idx += num_filters;
+
+            BufferT bn_weights(num_filters);
+            std::copy(weight_data_ptr + weight_idx, weight_data_ptr + weight_idx + num_filters, &bn_weights[0]);
             weight_idx += num_filters;
 
             BufferT bn_running_mean(num_filters);
@@ -317,6 +321,10 @@ private:
             );
         }
         else {
+
+            // order matters
+            // data is stored in the following order:
+            // bias, conv_weights
 
             BufferT bias(num_filters);
             std::copy(weight_data_ptr + weight_idx, weight_data_ptr + weight_idx + num_filters, &bias[0]);

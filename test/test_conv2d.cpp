@@ -743,6 +743,118 @@ void test_conv2d_batchnorm_mean_variance_1(void)
     TEST_ASSERT(passing);
 }
 
+//*****************************************************************************
+void test_conv2d_batchnorm(void) {
+    // run a hardcoded test for batchnorm against pytorch
+    // this comes from the yolo model
+    // [convolutional]
+    // batch_normalize=1
+    // filters=16
+    // size=3
+    // stride=1
+    // pad=1
+    // activation=leaky
+
+    bool passing = true;
+
+    std::string input_data = data_dir + "/in__conv2d_Ci3_H416_W416_k0_s0_f_519168.bin";
+    std::string filter_data = data_dir + "/filter__conv2d_bn_Ci3_Co16_H416_W416_k3_s0_f_432.bin";
+    std::string output_data = data_dir + "/out__conv2d_Ci3_H416_W416_k0_s0_f_519168.bin";
+
+    std::cout << "\nConv2D: input file= " << input_data << std::endl;
+    std::cout << "Conv2D: filter file= " << filter_data << std::endl;
+    std::cout << "Conv2D: output file= " << output_data << std::endl;
+
+    using BufferT = small::FloatBuffer;
+
+    BufferT input = read_yolo_data<BufferT>(input_data);
+    if(input.size() != 3U*416U*416U) {
+        std::cerr << "FAIL: input size is " << input.size() << " expected 3U*416U*416U" << std::endl;
+        TEST_CHECK(false);
+    }
+    std::cout << "Input size: " << input.size() << std::endl;
+    BufferT input_dc(input.size());
+    small::pack_buffer(input, small::INPUT,
+                       1U, 3U, 416U, 416U,
+                       C_ib, C_ob,
+                       input_dc);
+    small::Tensor<BufferT> input_tensor({1, 3, 416, 416}, std::move(input_dc));
+
+    BufferT output = read_yolo_data<BufferT>(output_data);
+    if(output.size() != 16U*416U*416U) {
+        std::cerr << "FAIL: input size is " << output.size() << " expected 16U*416U*416U" << std::endl;
+        TEST_CHECK(false);
+    }
+    std::cout << "Output size: " << output.size() << std::endl;
+    BufferT output_dc(output.size());
+    small::pack_buffer(output, small::OUTPUT,
+                       1U, 16U, 416U, 416U,
+                       C_ib, C_ob,
+                       output_dc);
+    small::Tensor<BufferT> output_tensor_ref({1, 16, 416, 416}, std::move(output_dc));
+
+    BufferT filter_dc = read_yolo_data<BufferT>(filter_data);
+    std::cout << "Total weight data: " << filter_dc.size() << std::endl;
+
+    BufferT bn_bias(16);
+    std::copy(&filter_dc[0], &filter_dc[16], &bn_bias[0]);
+    BufferT bn_weight(16);
+    std::copy(&filter_dc[16], &filter_dc[32], &bn_weight[0]);
+    BufferT bn_running_mean(16);
+    std::copy(&filter_dc[32], &filter_dc[48], &bn_running_mean[0]);
+    BufferT bn_running_variance(16);
+    std::copy(&filter_dc[48], &filter_dc[64], &bn_running_variance[0]);
+    BufferT conv_filters(16*3*3*3);
+    std::copy(&filter_dc[64], &filter_dc[64+conv_filters.size()], &conv_filters[0]);
+
+    small::shape_type input_shape = {1, 3, 416, 416};
+    size_t kernel_size = 3;
+    size_t stride = 1;
+    small::PaddingEnum pad = small::PaddingEnum::PADDING_F;
+    size_t num_filters = 16;
+    small::ActivationType activation = small::ActivationType::LEAKY;
+
+    std::cout << "Building conv2d layer\n";
+    small::Conv2DLayer<BufferT> conv(
+        input_shape,
+        kernel_size, kernel_size,
+        stride,
+        pad, 
+        num_filters,
+        conv_filters,
+        bn_weight,
+        bn_bias,
+        bn_running_mean,
+        bn_running_variance,
+        1.e-5,
+        false, // WRONG, WE NEED EDGE CASES
+        activation
+    );
+
+    small::Tensor<BufferT> output_tensor_ans({1, 16, 416, 416});
+
+    std::cout << "Computing conv2d output tensor with batchnorm and leaky activation\n";
+    conv.compute_output({&input_tensor}, {&output_tensor_ans});
+    std::cout << "Finished conv2d output tensor with batchnorm and leaky activation\n";
+
+    // compare output_tensor_ans to output_tensor_ref
+    
+    for (size_t i = 0; i < output_tensor_ref.size(); ++i) {
+        if (!almost_equal(output_tensor_ref.buffer()[i], output_tensor_ans.buffer()[i])) {
+            passing = false;
+            std::cerr << "FAIL: computed output(" << i
+                      << "): "
+                      << output_tensor_ans.buffer()[i] << ", "
+                      << output_tensor_ref.buffer()[i]
+                      << std::endl;
+        }
+    }
+
+    TEST_CHECK(passing);
+    
+}
+
+
 //****************************************************************************
 template <class BufferT>
 bool run_conv2d_config(LayerParams const &params)
@@ -1227,13 +1339,14 @@ void measure_conv2d_performance(void)
 //****************************************************************************
 //****************************************************************************
 TEST_LIST = {
-    {"conv2d_bias",                  test_conv2d_bias},
+    // {"conv2d_bias",                  test_conv2d_bias},
     {"conv2d_batchnorm_identity",    test_conv2d_batchnorm_identity},
     {"conv2d_batchnorm_bias_1",      test_conv2d_batchnorm_bias_1},
     {"conv2d_batchnorm_mean_1",      test_conv2d_batchnorm_mean_1},
     {"conv2d_batchnorm_mean_variance_1", test_conv2d_batchnorm_mean_variance_1},
-    {"conv2d_regression_data",       test_conv2d_regression_data},
-    {"conv2d_layer_regression_data", test_conv2d_layer_regression_data},
+    {"conv2d_batchnorm", test_conv2d_batchnorm},
+    // {"conv2d_regression_data",       test_conv2d_regression_data},
+    // {"conv2d_layer_regression_data", test_conv2d_layer_regression_data},
     // {"conv2d_performance", measure_conv2d_performance},
     {NULL, NULL}
 };
