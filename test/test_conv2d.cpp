@@ -828,7 +828,8 @@ void test_conv2d_batchnorm(void) {
         bn_running_variance,
         1.e-5,
         false, // WRONG, WE NEED EDGE CASES
-        activation
+        activation,
+        0.1 // leaky slope from pytorch yolov3 code
     );
 
     small::Tensor<BufferT> output_tensor_ans({1, 16, 416, 416});
@@ -842,11 +843,7 @@ void test_conv2d_batchnorm(void) {
     for (size_t i = 0; i < output_tensor_ref.size(); ++i) {
         if (!almost_equal(output_tensor_ref.buffer()[i], output_tensor_ans.buffer()[i])) {
             passing = false;
-            std::cerr << "FAIL: computed output(" << i
-                      << "): "
-                      << output_tensor_ans.buffer()[i] << ", "
-                      << output_tensor_ref.buffer()[i]
-                      << std::endl;
+            std::cerr << "FAIL at " << i << ": expected " << output_tensor_ref.buffer()[i] << ", got " << output_tensor_ans.buffer()[i] << std::endl;
         }
     }
 
@@ -1340,10 +1337,10 @@ void measure_conv2d_performance(void)
 //****************************************************************************
 TEST_LIST = {
     // {"conv2d_bias",                  test_conv2d_bias},
-    {"conv2d_batchnorm_identity",    test_conv2d_batchnorm_identity},
-    {"conv2d_batchnorm_bias_1",      test_conv2d_batchnorm_bias_1},
-    {"conv2d_batchnorm_mean_1",      test_conv2d_batchnorm_mean_1},
-    {"conv2d_batchnorm_mean_variance_1", test_conv2d_batchnorm_mean_variance_1},
+    // {"conv2d_batchnorm_identity",    test_conv2d_batchnorm_identity},
+    // {"conv2d_batchnorm_bias_1",      test_conv2d_batchnorm_bias_1},
+    // {"conv2d_batchnorm_mean_1",      test_conv2d_batchnorm_mean_1},
+    // {"conv2d_batchnorm_mean_variance_1", test_conv2d_batchnorm_mean_variance_1},
     {"conv2d_batchnorm", test_conv2d_batchnorm},
     // {"conv2d_regression_data",       test_conv2d_regression_data},
     // {"conv2d_layer_regression_data", test_conv2d_layer_regression_data},

@@ -47,6 +47,19 @@ inline size_t packed_weight_index(
     size_t   height_idx,       // kernel height index
     size_t   width_idx)        // kernel width index
 {
+
+    if(num_channels < channel_blocking) {
+        if(num_channels == 3) {
+            channel_blocking = 3;
+        }
+        else {
+            throw std::runtime_error("num_channels < channel_blocking && num_channels != 3");
+        }
+    }
+    else if(num_channels % channel_blocking != 0) {
+        throw std::runtime_error("num_channels %% channel_blocking != 0");
+    }
+
     return (
         (filter_idx/filter_blocking) * (
             (num_channels/channel_blocking) *
@@ -75,6 +88,18 @@ inline size_t packed_buffer_index(
     size_t   height_idx,       // kernel height index
     size_t   width_idx)        // kernel width index
 {
+    if(num_channels < channel_blocking) {
+        if(num_channels == 3) {
+            channel_blocking = 3;
+        }
+        else {
+            throw std::runtime_error("num_channels < channel_blocking && num_channels != 3");
+        }
+    }
+    else if(num_channels % channel_blocking != 0) {
+        throw std::runtime_error("num_channels %% channel_blocking != 0");
+    }
+
     return (
         (channel_idx/channel_blocking) * (num_rows * num_cols * channel_blocking) +
                             height_idx * (           num_cols * channel_blocking) +
