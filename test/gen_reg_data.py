@@ -72,10 +72,16 @@ def generate_conv2d_test_data(Ci, H, W, k, stride, pad, Co, bias=False):
     
 conv2d_config = [
     
+    # [Ci, H, W, k, stride, pad, Co]
+    [3, 3, 3, 1, 1, "valid", 16],
+    [3, 3, 3, 3, 1, "valid", 16],
+    [3, 1, 1, 1, 1, "same", 16],
+    [3, 3, 3, 1, 1, "same", 16],
+    
     # [3, 1, 1, 1, 1, "valid", 16],
     # [3, 1, 6, 1, 1, "valid", 16],
     # [3, 3, 3, 3, 1, "valid", 16],
-    [3, 4, 4, 3, 1, "valid", 16],
+    # [3, 4, 4, 3, 1, "valid", 16],
     # [3, 3, 8, 3, 1, "valid", 16],
     # [3, 30, 30, 3, 1, "valid", 16],
     

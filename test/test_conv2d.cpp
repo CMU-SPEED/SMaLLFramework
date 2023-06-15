@@ -1104,6 +1104,11 @@ void test_conv2d_regression_data(void)
 {
     std::vector<LayerParams> params =
     {
+        {3,  3,  3, 1, 1, small::PADDING_V, 16},
+        {3,  3,  3, 3, 1, small::PADDING_V, 16},
+        {3,  1,  1, 1, 1, small::PADDING_F, 16},
+        {3,  3,  3, 1, 1, small::PADDING_F, 16},
+
         {16,  1,  1, 1, 1, small::PADDING_V, 16},
         {16,  1,  6, 1, 1, small::PADDING_V, 16},
         {16,  3,  3, 3, 1, small::PADDING_V, 16},  //Ci,Hi,Wi,k,s,p,Co
@@ -1148,6 +1153,11 @@ void test_conv2d_layer_regression_data(void)
 {
     std::vector<LayerParams> params =
     {
+        {3,  3,  3, 1, 1, small::PADDING_V, 16},
+        {3,  3,  3, 3, 1, small::PADDING_V, 16},
+        {3,  1,  1, 1, 1, small::PADDING_F, 16},
+        {3,  3,  3, 1, 1, small::PADDING_F, 16},
+
         {16,  1,  1, 1, 1, small::PADDING_V, 16},
         {16,  1,  6, 1, 1, small::PADDING_V, 16},
         {16,  3,  3, 3, 1, small::PADDING_V, 16},  //Ci,Hi,Wi,k,s,p,Co
