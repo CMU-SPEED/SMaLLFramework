@@ -836,7 +836,7 @@ void test_conv2d_batchnorm(void) {
     conv.compute_output({&input_tensor}, {&output_tensor_ans});
 
     small::Tensor<BufferT> output_tensor_ans_unpacked(output_shape);
-    small::pack_buffer(output_tensor_ans.buffer(), small::OUTPUT,
+    small::unpack_buffer(output_tensor_ans.buffer(), small::OUTPUT,
                        1U, params.C_o, params.H, params.W,
                        C_ib, C_ob,
                        output_tensor_ans_unpacked.buffer());
@@ -1358,14 +1358,14 @@ void measure_conv2d_performance(void)
 //****************************************************************************
 //****************************************************************************
 TEST_LIST = {
-    // {"conv2d_bias",                  test_conv2d_bias},
-    // {"conv2d_batchnorm_identity",    test_conv2d_batchnorm_identity},
-    // {"conv2d_batchnorm_bias_1",      test_conv2d_batchnorm_bias_1},
-    // {"conv2d_batchnorm_mean_1",      test_conv2d_batchnorm_mean_1},
-    // {"conv2d_batchnorm_mean_variance_1", test_conv2d_batchnorm_mean_variance_1},
+    {"conv2d_bias",                  test_conv2d_bias},
+    {"conv2d_batchnorm_identity",    test_conv2d_batchnorm_identity},
+    {"conv2d_batchnorm_bias_1",      test_conv2d_batchnorm_bias_1},
+    {"conv2d_batchnorm_mean_1",      test_conv2d_batchnorm_mean_1},
+    {"conv2d_batchnorm_mean_variance_1", test_conv2d_batchnorm_mean_variance_1},
     {"conv2d_batchnorm", test_conv2d_batchnorm},
-    // {"conv2d_regression_data",       test_conv2d_regression_data},
-    // {"conv2d_layer_regression_data", test_conv2d_layer_regression_data},
-    // {"conv2d_performance", measure_conv2d_performance},
+    {"conv2d_regression_data",       test_conv2d_regression_data},
+    {"conv2d_layer_regression_data", test_conv2d_layer_regression_data},
+    // {"conv2d_performance", measure_conv2 d_performance},
     {NULL, NULL}
 };
