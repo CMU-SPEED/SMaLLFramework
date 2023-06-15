@@ -1,0 +1,21 @@
+name: Test Zen2 Debug Build 
+
+on: [push]
+
+jobs:
+  build-and-test:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - run: mkdir ${{github.workspace}}/build
+      - run: cd ${{github.workspace}}/build
+      - run: cmake ${{github.workspace}} -DCMAKE_UARCH=ZEN2 -DCMAKE_BUILD_TYPE=Debug
+      - run: cmake --build . -j
+      - run: make test
+
+    
+      
+  
+  

@@ -50,53 +50,61 @@ set(CMAKE_VERBOSE_MAKEFILE off)
 set(CMAKE_CXX_COMPILER g++) #<--- Specify C++ compiler
 set(CMAKE_C_COMPILER gcc) #<--- Specify C compiler
 
-#Compiler Flags
+# Set up build types
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopenmp -g -O1 -fsanitize=address -fpermissive")
+# Release is setup to be default
+else()
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopenmp -O3 -fpermissive")
+endif()
+
+# Set up microarchitecture
+message("Microarchitecture target: ${CMAKE_UARCH}")
+set(CMAKE_PLATFORM_DIR ${CMAKE_SOURCE_DIR}/include/small/platforms/)
 
 if(CMAKE_UARCH STREQUAL "ZEN2")
-  SET(GCC_AVX_COMPILE_FLAGS "-DZEN2 -fopenmp -mavx2 -mfma -O3 -fpermissive -march=native -DUARCH_ZEN2")
-  message("Microarchitecture target: ZEN2")
-  include_directories ( ${CMAKE_SOURCE_DIR}/include/small/platforms/zen2 )
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DZEN2 -DUARCH_ZEN2 -mavx2 -mfma -march=native")
+  include_directories ( ${CMAKE_PLATFORM_DIR}/zen2 )
+  
 elseif(CMAKE_UARCH STREQUAL "ARM")
-  SET(GCC_AVX_COMPILE_FLAGS "-fopenmp -O3 -fpermissive -march=native -lrt -DUARCH_ARM")
-  message("Microarchitecture target: ARM (reference)")
-  include_directories ( ${CMAKE_SOURCE_DIR}/include/small/platforms/arm )
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -lrt -DUARCH_ARM")
+  include_directories ( ${CMAKE_PLATFORM_DIR}/arm )
+
 elseif(CMAKE_UARCH STREQUAL "ARM-A72")
-  SET(GCC_AVX_COMPILE_FLAGS "-fopenmp -O3 -fpermissive -march=native -lrt  -DUARCH_ARM")
-  message("Microarchitecture target: ARM-A72")
-  include_directories ( ${CMAKE_SOURCE_DIR}/include/small/platforms/arm_a72 )
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native -lrt  -DUARCH_ARM")
+  include_directories ( ${CMAKE_PLATFORM_DIR}/arm_a72 )
+
 elseif(CMAKE_UARCH STREQUAL "ARM-A55")
-  SET(GCC_AVX_COMPILE_FLAGS "-fopenmp  -static -O3 -fpermissive -march=armv8.2-a -lrt -DUARCH_ARM")
-  message("Microarchitecture target: Qualcomm ARM-A55")
-  include_directories ( ${CMAKE_SOURCE_DIR}/include/small/platforms/arm_a55 )
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static -march=armv8.2-a -lrt -DUARCH_ARM")
+  include_directories ( ${CMAKE_PLATFORM_DIR}/arm_a55 )
+
 elseif(CMAKE_UARCH STREQUAL "ARM-A78")
-  SET(GCC_AVX_COMPILE_FLAGS "-fopenmp  -static -O3 -fpermissive -march=armv8.2-a -lrt -DUARCH_ARM")
-  message("Microarchitecture target: Qualcomm ARM-A78")
-  include_directories ( ${CMAKE_SOURCE_DIR}/include/small/platforms/arm_a78 )
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static -march=armv8.2-a -lrt -DUARCH_ARM")
+  include_directories ( ${CMAKE_PLATFORM_DIR}/arm_a78 )
+
 elseif(CMAKE_UARCH STREQUAL "ARM-X1")
-  SET(GCC_AVX_COMPILE_FLAGS "-fopenmp  -static -O3 -fpermissive -march=armv8.2-a -lrt -DUARCH_ARM")
-  message("Microarchitecture target: Qualcomm ARM-X1")
-  include_directories ( ${CMAKE_SOURCE_DIR}/include/small/platforms/arm_x1 )
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static -march=armv8.2-a -lrt -DUARCH_ARM")
+  include_directories ( ${CMAKE_PLATFORM_DIR}/arm_x1 )
+
 elseif(CMAKE_UARCH STREQUAL "Q-ARM7E")
-  SET(GCC_AVX_COMPILE_FLAGS "-fopenmp -O3 -lrt -DQUANTIZED -DUARCH_ARM")
-  message("Microarchitecture target: Q-ARM-Mx (Q-ARM7E)")
-  include_directories(${CMAKE_SOURCE_DIR}/include/small/platforms/quantized_arm7E)
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -lrt -DQUANTIZED -DUARCH_ARM")
+  include_directories(${CMAKE_PLATFORM_DIR}/quantized_arm7E)
+
 elseif(CMAKE_UARCH STREQUAL "Q-REF")
-  # -g -fsanitize=address
-  SET(GCC_AVX_COMPILE_FLAGS "-fopenmp -O3 -lrt -DQUANTIZED -DUARCH_REF")
-  message("Microarchitecture target: Q-REF")
-  include_directories(${CMAKE_SOURCE_DIR}/include/small/platforms/quantized_reference)
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -lrt -DQUANTIZED -DUARCH_REF")
+  include_directories(${CMAKE_PLATFORM_DIR}/quantized_reference)
+
 else()
   SET(CMAKE_UARCH REF)
-  # -g -fsanitize=address
-  SET(GCC_AVX_COMPILE_FLAGS "-fopenmp -O3 -lrt -DUARCH_REF")
-  message("Microarchitecture target: REF")
-  include_directories ( ${CMAKE_SOURCE_DIR}/include/small/platforms/reference )
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -lrt -DUARCH_REF")
+  include_directories ( ${CMAKE_PLATFORM_DIR}/reference )
+
 endif()
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall ${GCC_AVX_COMPILE_FLAGS}")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall ${CMAKE_C_FLAGS}")
 
-message("CXX_FLAGS:        ${CMAKE_CXX_FLAGS}")
+message("CXX_FLAGS:\t${CMAKE_CXX_FLAGS}")
 
 add_subdirectory(demo)
 

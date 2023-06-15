@@ -66,9 +66,16 @@ bool run_yolo_layer_config(LayerParams const &params,
         80, // hardcoded num_classes
         608 // hardcoded image size
     );
-
+    
+    BufferT effective_inputs = read_inputs<BufferT>(in_fname);
+    BufferT oversize_input_buf(packed_input_size);
+    std::copy(
+        &effective_inputs[0],
+        &effective_inputs[effective_input_size],
+        &oversize_input_buf[0]
+    );
     small::pack_buffer(
-        read_inputs<BufferT>(in_fname),
+        oversize_input_buf,
         small::INPUT,
         1U, packed_C_i, params.H, params.W,
         C_ib, C_ob,
