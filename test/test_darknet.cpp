@@ -24,33 +24,37 @@ std::string const cfg_dir("../test/cfg_data");
 void test_darknet_parser(void)
 {
 
+    using BufferT = small::FloatBuffer;
+
     std::string cfg = cfg_dir + "/no_wspace_yolov3-tiny.cfg";
     std::string weights = cfg_dir + "/yolov3-tiny.weights";
 
     std::cout << "\n\nReading Darknet CFG from " << cfg << std::endl;
     std::cout << "Reading Darknet weights from " << weights << std::endl;
 
-    std::string in_fname = data_dir + "/in_yolov3tiny_Ci3_H416_W416.bin";
-    std::string out_fname = data_dir + "/out_yolov3tiny_NP2535_BC85.bin";
+    std::string in_fname = data_dir + "/in_yolov3tiny_Ci3_H416_W416_519168.bin";
+    std::string out_fname = data_dir + "/out_yolov3tiny_P2535_F85_215475.bin";
 
     std::cout << "\nUsing Input data from " << in_fname << std::endl;
     std::cout << "Using Output data from " << out_fname << std::endl;
 
-    small::FloatBuffer input = read_yolo_data<small::FloatBuffer>(in_fname);
-    small::Tensor<small::FloatBuffer> input_tensor({1, 3, 416, 416}, std::move(input));
+    // BufferT input = read_yolo_data<BufferT>(in_fname);
+    BufferT input(read_inputs<BufferT>(in_fname));
+    small::Tensor<BufferT> input_tensor({1, 3, 416, 416}, std::move(input));
     
-    small::FloatBuffer output = read_yolo_data<small::FloatBuffer>(out_fname);
-    small::Tensor<small::FloatBuffer> output_tensor({1, 1, 2535, 85}, std::move(output));
+    // BufferT output = read_yolo_data<BufferT>(out_fname);
+    BufferT output(read_inputs<BufferT>(out_fname));
+    small::Tensor<BufferT> output_tensor({1, 1, 2535, 85}, std::move(output));
 
     try {
         
-        small::Darknet<small::FloatBuffer> model(cfg, weights);
+        small::Darknet<BufferT> model(cfg, weights);
         if(model.get_input_shape() != input_tensor.shape())
         {
             std::cerr << "ERROR: input shape mismatch" << std::endl;
             TEST_CHECK(false);
         }
-        std::vector<small::Tensor<small::FloatBuffer>*> outs = model.inference({&input_tensor});
+        std::vector<small::Tensor<BufferT>*> outs = model.inference({&input_tensor});
 
         // check number of yolo outputs
         if(outs.size() != 2)
@@ -80,7 +84,7 @@ void test_darknet_parser(void)
         std::cout << "Total yolo predictions = " << total_pred << std::endl;
 
         // copy all outputs into larger buffer
-        small::FloatBuffer out_buf(total_pred*85);
+        BufferT out_buf(total_pred*85);
         float *out_ptr = &(out_buf[0]);
         for(auto out : outs) {
             std::copy(
