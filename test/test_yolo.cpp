@@ -30,27 +30,53 @@ std::string const data_dir("../test/regression_data");
 
 //****************************************************************************
 template <class BufferT>
-bool run_relu_layer_config(LayerParams const &params,
+bool run_yolo_layer_config(LayerParams const &params,
     std::vector<std::pair<uint32_t, uint32_t>> const &anchors)
 {
-    small::shape_type input_shape({1UL, params.C_i, params.H, params.W});
-    size_t input_size = params.C_i*params.H*params.W;
+
+    size_t effective_C_i = params.C_i;
+    size_t packed_C_i = params.C_i;
+    if(effective_C_i % C_ib != 0) {
+        packed_C_i = effective_C_i + (C_ib - (effective_C_i % C_ib));
+    }
+    // std::cout << "effective_C_i = " << effective_C_i << std::endl;
+    // std::cout << "packed_C_i = " << packed_C_i << std::endl;
+
+    // make a buffer of the packed size
+
+    // keep around both the packed and effective shapes
+    small::shape_type packed_input_shape({1UL, packed_C_i, params.H, params.W});
+    small::shape_type effective_input_shape({1UL, effective_C_i, params.H, params.W});
+
+    size_t packed_input_size = packed_C_i*params.H*params.W;
+    size_t effective_input_size = effective_C_i*params.H*params.W;
+
+    std::string in_fname =
+        get_pathname(data_dir, "in", "yolo",
+                     params,
+                     effective_input_size);
+
+    std::cout << "\nYOLO: input file = " << in_fname << std::endl;
+
+    BufferT input(packed_input_size);
+
     small::YOLOLayer<BufferT>  yolo_layer(
-        input_shape, 
+        packed_input_shape, 
         anchors,
         80, // hardcoded num_classes
         608 // hardcoded image size
     );
 
-    std::string in_fname =
-        get_pathname(data_dir, "in", "yolo",
-                     params,
-                     input_size);
-    std::cout << "\nYOLO: input file = " << in_fname << std::endl;
-    BufferT input(read_inputs<BufferT>(in_fname));
-    small::Tensor<BufferT> input_tensor(input_shape, std::move(input));
+    small::pack_buffer(
+        read_inputs<BufferT>(in_fname),
+        small::INPUT,
+        1U, packed_C_i, params.H, params.W,
+        C_ib, C_ob,
+        input
+    );
+    small::Tensor<BufferT> input_tensor(packed_input_shape, input);
 
-    TEST_ASSERT(input_tensor.capacity() == input_size);
+    TEST_ASSERT(input_tensor.capacity() == packed_input_size);
 
     // total predictions are H*W*num_anchors
     size_t num_pred = params.H*params.W*3U;
@@ -72,7 +98,8 @@ bool run_relu_layer_config(LayerParams const &params,
     std::string out_fname =
         get_pathname(data_dir, "out", "yolo",
                      params,
-                     input_size);
+                     effective_input_size);
+
     std::cout << "YOLO: output file = " << out_fname << std::endl;
     
     // std::string bb_n_conf_fname = data_dir + "/out__yolo_Ci255_H13_W13_k0_s0_f_43095.bin";
@@ -116,7 +143,7 @@ void test_yolo_layer_regression_data(void)
     // ignore_thresh = .7
     // truth_thresh = 1
     // random=1
-    TEST_CHECK(true == run_relu_layer_config<small::FloatBuffer>(params[0], {{116,90}, {156,198}, {373,326}}));
+    TEST_CHECK(true == run_yolo_layer_config<small::FloatBuffer>(params[0], {{116,90}, {156,198}, {373,326}}));
 
 
     // second yolo block
@@ -129,7 +156,7 @@ void test_yolo_layer_regression_data(void)
     // ignore_thresh = .7
     // truth_thresh = 1
     // random=1
-    TEST_CHECK(true == run_relu_layer_config<small::FloatBuffer>(params[1], {{30,61}, {62,45}, {59,119}}));
+    TEST_CHECK(true == run_yolo_layer_config<small::FloatBuffer>(params[1], {{30,61}, {62,45}, {59,119}}));
 
     // third yolo block
     // [yolo]
@@ -141,7 +168,7 @@ void test_yolo_layer_regression_data(void)
     // ignore_thresh = .7
     // truth_thresh = 1
     // random=1
-    TEST_CHECK(true == run_relu_layer_config<small::FloatBuffer>(params[2], {{10,13}, {16,30}, {33,23}}));
+    TEST_CHECK(true == run_yolo_layer_config<small::FloatBuffer>(params[2], {{10,13}, {16,30}, {33,23}}));
 }
 
 //****************************************************************************

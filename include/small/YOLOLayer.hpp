@@ -65,13 +65,23 @@ public:
                   << ")" << std::endl;
 #endif
 
-        assert(shape[CHANNEL] % (m_num_classes + 5) == 0);
 
         m_num_outputs = m_num_classes + 5; // # of outputs per anchor
         m_num_anchors = m_anchors.size();
         m_num_pred = m_num_anchors * shape[HEIGHT] * shape[WIDTH];
         // the 416 needs to replaced with network input image shape
         m_stride = input_img_size / shape[HEIGHT];
+
+        // HACK
+        // Since Conv2D can't support channel dimensions that are not a multiple
+        // of the blocking size (i.e., Cb), we need to keep around 2 sizes
+        // effective_channels is equal to the number of channels that are
+        // actually valid (i.e., not padded)
+        // packed_channels is the number of channels that are actually
+        // allocated in the buffer (i.e., padded)
+        m_effective_channels = m_num_anchors * m_num_outputs;
+        m_packed_channels = shape[CHANNEL];
+
     }
 
     virtual ~YOLOLayer() {}
@@ -91,6 +101,17 @@ public:
 
         using ScalarT = typename BufferT::value_type;
 
+        size_t h = input[0]->shape()[HEIGHT];
+        size_t w = input[0]->shape()[WIDTH];
+        
+        BufferT unpacked_input(input[0]->size());
+        small::unpack_buffer(
+            input[0]->buffer(), small::INPUT,
+            1U, /*HACK*/ m_packed_channels, h, w,
+            C_ib, C_ob,
+            unpacked_input
+        );
+
         // For now, assume input is unpacked (i.e. [C, H, W])
         // We need to reshape input into [num_anchors, num_classes + 5, H, W]
         // for a given index [i0, i1, i2, i3]
@@ -101,28 +122,17 @@ public:
         // the rest of data corresponds to the class probabilities
 
         // num_pred = num_anchors * H * W
-        
-        // bbox_list is  [num_pred, 4]
-        // conf_list is  [num_pred, 1]
-        // class_list is [num_pred, 1]
-        size_t h = input[0]->shape()[HEIGHT];
-        size_t w = input[0]->shape()[WIDTH];
-
 
         // alias outputs
         Tensor <BufferT> *bbox_n_conf = output[0];
-        // Tensor <BufferT> *bbox = output[0];
-        // Tensor <BufferT> *conf = output[1];
-        // Tensor <BufferT> *class_conf = output[2];
 
+        // check to make sure the output buffer is the right size
         if(m_num_pred != bbox_n_conf->shape()[2]) {
             std::cerr << "ERROR: num_pred != bbox_n_conf->shape()[2]" << std::endl;
             std::cerr << "       num_pred = " << m_num_pred << std::endl;
             std::cerr << "       bbox_n_conf->shape()[2] = " << bbox_n_conf->shape()[2] << std::endl;
             exit(1);
         }
-
-        // size_t num_pred = m_num_anchors * h * w;
 
         // image is [C, H, W]
         // reshaped image is [num_anchors, num_classes + 5, H, W]
@@ -142,23 +152,23 @@ public:
 
                         // compute x
                         if(i3 == 0) {
-                            bbox_n_conf->buffer()[pred_idx*85U + i3] = (sigmoid<ScalarT>(input[0]->buffer()[offset]) + i2) * m_stride;
+                            bbox_n_conf->buffer()[pred_idx*85U + i3] = (sigmoid<ScalarT>(unpacked_input[offset]) + i2) * m_stride;
                         }
                         // compute y
                         else if(i3 == 1) {
-                            bbox_n_conf->buffer()[pred_idx*85U + i3] = (sigmoid<ScalarT>(input[0]->buffer()[offset]) + i1) * m_stride;
+                            bbox_n_conf->buffer()[pred_idx*85U + i3] = (sigmoid<ScalarT>(unpacked_input[offset]) + i1) * m_stride;
                         }
                         // compute w
                         else if(i3 == 2) {
-                            bbox_n_conf->buffer()[pred_idx*85U + i3] = std::exp(input[0]->buffer()[offset]) * m_anchors[i0].first;
+                            bbox_n_conf->buffer()[pred_idx*85U + i3] = std::exp(unpacked_input[offset]) * m_anchors[i0].first;
                         }
                         // compute h
                         else if(i3 == 3) {
-                            bbox_n_conf->buffer()[pred_idx*85U + i3] = std::exp(input[0]->buffer()[offset]) * m_anchors[i0].second;
+                            bbox_n_conf->buffer()[pred_idx*85U + i3] = std::exp(unpacked_input[offset]) * m_anchors[i0].second;
                         }
                         // compute obj and class conf
                         else {
-                            bbox_n_conf->buffer()[pred_idx*85U + i3] = sigmoid<ScalarT>(input[0]->buffer()[offset]);
+                            bbox_n_conf->buffer()[pred_idx*85U + i3] = sigmoid<ScalarT>(unpacked_input[offset]);
                         }
 
                     }
@@ -167,6 +177,7 @@ public:
             }
         }
         
+        // delete unpacked_input;
     }
 
 private:
@@ -177,6 +188,8 @@ private:
     size_t const m_num_classes;
     size_t       m_num_outputs;
     size_t       m_num_pred;
+    size_t       m_effective_channels;
+    size_t       m_packed_channels;
 
 };
 

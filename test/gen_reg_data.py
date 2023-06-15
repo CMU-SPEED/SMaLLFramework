@@ -1,3 +1,31 @@
+# //****************************************************************************
+# SMaLL, Software for Machine Learning Libraries
+# Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
+# # SPDX-License-Identifier: BSD-3-Clause
+# For additional details (including references to third party source code and
+# other files) see the LICENSE file or contact permission@sei.cmu.edu. See
+# Contributors.txt for a full list of contributors. Created, in part, with
+# funding and support from the U.S. Government (see Acknowledgments.txt file).
+# DM23-0126
+# //****************************************************************************
+
+"""
+This script is meant to be used for generating regression data.
+
+Dependencies:
+- torch
+- numpy
+
+Currently, this script only generates data for the conv2d layer,
+and the sizes are hardcoded in. If you want a certain size, you will
+need to modify the conv2d_config list. Note that this list is meant
+to match the list in test_conv2d_layer_regression_data() within
+test_conv2d.cpp
+
+To use this script, run the following command:
+`python gen_reg_data.py`
+"""
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -44,10 +72,16 @@ def generate_conv2d_test_data(Ci, H, W, k, stride, pad, Co, bias=False):
     
 conv2d_config = [
     
+    # [Ci, H, W, k, stride, pad, Co]
+    [3, 3, 3, 1, 1, "valid", 16],
+    [3, 3, 3, 3, 1, "valid", 16],
+    [3, 1, 1, 1, 1, "same", 16],
+    [3, 3, 3, 1, 1, "same", 16],
+    
     # [3, 1, 1, 1, 1, "valid", 16],
     # [3, 1, 6, 1, 1, "valid", 16],
     # [3, 3, 3, 3, 1, "valid", 16],
-    [3, 4, 4, 3, 1, "valid", 16],
+    # [3, 4, 4, 3, 1, "valid", 16],
     # [3, 3, 8, 3, 1, "valid", 16],
     # [3, 30, 30, 3, 1, "valid", 16],
     
