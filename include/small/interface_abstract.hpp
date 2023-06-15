@@ -57,7 +57,7 @@ void Conv2D(int kernel_size, int stride,  /// @todo dim_t?
     /// @todo We need another specific case for input_channels==1 (maybe more)
 
     // Specific case for the first layer
-    if (input_channels == 3)
+    if ((input_channels == 3) && (input_channels < C_ib))
     {
         if (stride == 1)
         {
@@ -96,7 +96,7 @@ void Conv2D(int kernel_size, int stride,  /// @todo dim_t?
         if (stride == 1)
         {
             detail::abstract_layer<BufferT,
-                                   1, C_ob, C_ob, W_ob, 1, UNROLL, 'c', 2, 1>(
+                                   1, C_ob, C_ib, W_ob, 1, UNROLL, 'c', 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -108,7 +108,7 @@ void Conv2D(int kernel_size, int stride,  /// @todo dim_t?
         else if (stride == 2)
         {
             detail::abstract_layer<BufferT,
-                                   1, C_ob, C_ob, W_ob, 2, UNROLL, 'c', 2, 1>(
+                                   1, C_ob, C_ib, W_ob, 2, UNROLL, 'c', 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -148,7 +148,7 @@ void PartialConv2D(int kernel_size, int stride,
     /// @todo We need another specific case for input_channels==1 (maybe more)
 
     // Specific case for the first layer
-    if (input_channels == 3)
+    if ((input_channels == 3) && (input_channels < C_ib))
     {
         if (stride == 1)
         {
@@ -185,7 +185,7 @@ void PartialConv2D(int kernel_size, int stride,
         if (stride == 1)
         {
             detail::abstract_layer<BufferT,
-                                   1, C_ob, C_ob, W_ob, 1, UNROLL, 'c', 2, 0>(
+                                   1, C_ob, C_ib, W_ob, 1, UNROLL, 'c', 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -198,7 +198,7 @@ void PartialConv2D(int kernel_size, int stride,
         {
 
             detail::abstract_layer<BufferT,
-                                   1, C_ob, C_ob, W_ob, 2, UNROLL, 'c', 2, 0>(
+                                   1, C_ob, C_ib, W_ob, 2, UNROLL, 'c', 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -572,7 +572,7 @@ void Conv2D_rect(int kernel_size_h, int kernel_size_w, int stride,
 #endif
 
     // Specific case for the first layer
-    if (input_channels == 3)
+    if ((input_channels == 3) && (input_channels < C_ib))
     {
         if (stride == 1)
         {
@@ -609,7 +609,7 @@ void Conv2D_rect(int kernel_size_h, int kernel_size_w, int stride,
         if (stride == 1)
         {
             detail::abstract_layer<BufferT,
-                                   1, C_ob, C_ob, W_ob, 1, UNROLL, 'c', 2, 1>(
+                                   1, C_ob, C_ib, W_ob, 1, UNROLL, 'c', 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -622,7 +622,7 @@ void Conv2D_rect(int kernel_size_h, int kernel_size_w, int stride,
         {
 
             detail::abstract_layer<BufferT,
-                                   1, C_ob, C_ob, W_ob, 2, UNROLL, 'c', 2, 1>(
+                                   1, C_ob, C_ib, W_ob, 2, UNROLL, 'c', 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,

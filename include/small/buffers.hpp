@@ -156,7 +156,9 @@ uint32_t convert_tensor2dc(ScalarT               const *flat_t,
 
     if (type == FILTER_CONV || type == INPUT)
     {
-
+        /// @todo this is fragile code.  There is one hardcoded exception
+        ///       3-channel input images.  In all other cases C_i must be an
+        ///       integer multiple of _C_ib.
         if (C_i < _C_ib) //(dim1 < _C_ob)
         {
             assert(C_i == 3);
@@ -299,10 +301,17 @@ uint32_t convert_dc2tensor(ScalarT               const *dc_array,
         _C_ib = 1;
     }
 
-    if (type == FILTER_CONV)
+    if ((type == FILTER_CONV) || (type == INPUT))
     {
+        /// @todo this is fragile code.  There is one hardcoded exception
+        ///       3-channel input images.  In all other cases C_i must be an
+        ///       integer multiple of _C_ib.
         if (C_i < _C_ib) //(H < _C_ob)
+        {
+            assert(C_i == 3);
+
             _C_ib = 3;    /// @todo why is this a 3?
+        }
     }
 
     if (type == INPUT)
