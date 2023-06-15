@@ -47,7 +47,7 @@ bool run_relu_layer_config(LayerParams const &params,
                      params,
                      input_size);
     std::cout << "\nYOLO: input file = " << in_fname << std::endl;
-    BufferT input = read_yolo_data<BufferT>(in_fname);
+    BufferT input(read_inputs<BufferT>(in_fname));
     small::Tensor<BufferT> input_tensor(input_shape, std::move(input));
 
     TEST_ASSERT(input_tensor.capacity() == input_size);
@@ -74,16 +74,20 @@ bool run_relu_layer_config(LayerParams const &params,
                      params,
                      input_size);
     std::cout << "YOLO: output file = " << out_fname << std::endl;
+    
     // std::string bb_n_conf_fname = data_dir + "/out__yolo_Ci255_H13_W13_k0_s0_f_43095.bin";
-
-    BufferT bb_n_conf_ref = read_yolo_data<BufferT>(out_fname);
+    // BufferT bb_n_conf_ref = read_yolo_data<BufferT>(out_fname);
+    BufferT bb_n_conf_ref(read_inputs<BufferT>(out_fname));
 
     // compare against regression data
     for(size_t i = 0; i < num_pred; i++) {
         // make sure bounding boxes are correctly computed
         for(size_t j = 0; j < 85U; j++) {
             if(!almost_equal(bb_n_conf_out->buffer()[i*(num_classes+5U)+j], bb_n_conf_ref[i*(num_classes+5U)+j])) {
-                std::cerr << "bb_n_conf_out[" << i << "][" << j << "] = " << bb_n_conf_out->buffer()[i*(num_classes+5U)+j] << " != " << bb_n_conf_ref[i*(num_classes+5U)+j] << std::endl;
+                std::cerr << "bb_n_conf_out[" << i << "][" << j << "] = (computed)" 
+                    << bb_n_conf_out->buffer()[i*(num_classes+5U)+j] 
+                    << " != " << bb_n_conf_ref[i*(num_classes+5U)+j] 
+                    << std::endl;
                 return false;
             }
         }
@@ -103,10 +107,40 @@ void test_yolo_layer_regression_data(void)
     };
 
     // first yolo block
+    // [yolo]
+    // mask = 6,7,8
+    // anchors = 10,13,  16,30,  33,23,  30,61,  62,45,  59,119,  116,90,  156,198,  373,326
+    // classes=80
+    // num=9
+    // jitter=.3
+    // ignore_thresh = .7
+    // truth_thresh = 1
+    // random=1
     TEST_CHECK(true == run_relu_layer_config<small::FloatBuffer>(params[0], {{116,90}, {156,198}, {373,326}}));
+
+
     // second yolo block
+    // [yolo]
+    // mask = 3,4,5
+    // anchors = 10,13,  16,30,  33,23,  30,61,  62,45,  59,119,  116,90,  156,198,  373,326
+    // classes=80
+    // num=9
+    // jitter=.3
+    // ignore_thresh = .7
+    // truth_thresh = 1
+    // random=1
     TEST_CHECK(true == run_relu_layer_config<small::FloatBuffer>(params[1], {{30,61}, {62,45}, {59,119}}));
+
     // third yolo block
+    // [yolo]
+    // mask = 0,1,2
+    // anchors = 10,13,  16,30,  33,23,  30,61,  62,45,  59,119,  116,90,  156,198,  373,326
+    // classes=80
+    // num=9
+    // jitter=.3
+    // ignore_thresh = .7
+    // truth_thresh = 1
+    // random=1
     TEST_CHECK(true == run_relu_layer_config<small::FloatBuffer>(params[2], {{10,13}, {16,30}, {33,23}}));
 }
 
