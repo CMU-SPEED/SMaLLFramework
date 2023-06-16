@@ -13,7 +13,7 @@ jobs:
       - run: cd ${{github.workspace}}/build
       - run: cmake ${{github.workspace}} -DCMAKE_UARCH=REF 
       - run: cmake --build . -j
-      - run: make test
+      - run: ctest --rerun-failed --output-on-failure
 
     
       
