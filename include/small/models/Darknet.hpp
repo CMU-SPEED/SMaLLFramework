@@ -212,16 +212,16 @@ public:
                         layer->compute_output({m_outputs[parents[0]+1]}, {m_outputs[layer_num+1]});   
                     }
                     else {
-                        layer->compute_output({m_cached_outputs[parents[0]+1]}, {m_out});
+                        layer->compute_output({m_cached_outputs[parents[0]]}, {m_out});
                     }
                 }
                 // here we actually need to concat
                 else {
                     if(m_save_outputs) {
-                        layer->compute_output({m_outputs[parents[0]+1], m_outputs[parents[1]+1]}, {m_out});
+                        layer->compute_output({m_outputs[parents[0]+1], m_outputs[parents[1]+1]}, {m_outputs[layer_num+1]});
                     }
                     else {
-                        layer->compute_output({m_cached_outputs[parents[0]+1], m_cached_outputs[parents[1]+1]}, {m_out});
+                        layer->compute_output({m_cached_outputs[parents[0]], m_cached_outputs[parents[1]]}, {m_out});
                     }
                 }
 
@@ -425,8 +425,9 @@ private:
                 std::move(bn_running_mean),
                 std::move(bn_running_variance),
                 1.e-5,
-                false, // WRONG, WE NEED EDGE CASES
+                false,
                 activation,
+                // this is based on the pytorch yolo implementation from https://github.com/eriklindernoren/PyTorch-YOLOv3
                 0.1
             );
         }
@@ -452,9 +453,10 @@ private:
                 num_filters,
                 std::move(filters),
                 std::move(bias),
-                false, // WRONG, WE NEED EDGE CASES
+                false,
                 activation,
-                0.1
+                // this is based on the pytorch yolo implementation from https://github.com/eriklindernoren/PyTorch-YOLOv3
+                0.1 
             );
         }
 
@@ -846,7 +848,7 @@ private:
         std::cout << "Max buffer size: " << m_max_buffer_size << std::endl;
         if(m_save_outputs)
             std::cout << "Saving outputs for each layer" << std::endl;
-        std::cout << "Total buffer size: " << total_buffer_sizes() << std::endl;
+        std::cout << "Total buffer sizes: " << total_buffer_sizes() << std::endl;
         std::cout << std::endl;
         #endif
 
