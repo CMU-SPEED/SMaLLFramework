@@ -99,7 +99,6 @@ void test_darknet_parser(void)
                 out_ptr
             );
             out_ptr += out->size();
-            delete out;
         }
 
         bool passing = true;

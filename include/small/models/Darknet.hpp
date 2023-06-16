@@ -104,18 +104,18 @@ public:
         for(auto out : m_cached_outputs) {
             delete out.second;
         }
-        // for(auto out : m_yolo_outputs) {
-        //     delete out;
-        // }
+        for(auto out : m_yolo_outputs) {
+            delete out;
+        }
         delete m_in;
         delete m_out;
     }
 
     // assumes all the buffers have been set up in the constructor
-    size_t yolo_block_idx = 0;
     virtual std::vector<Tensor<BufferT>*>
         inference(std::vector<Tensor<BufferT> const *> inputs)
     {
+        size_t yolo_block_idx = 0;
 
         if(inputs[0]->shape() != this->m_input_shape) {
             throw std::runtime_error("Input shape does not match model input shape");
