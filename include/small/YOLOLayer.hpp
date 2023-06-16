@@ -51,26 +51,26 @@ class YOLOLayer : public Layer<BufferT>
 public:
     typedef typename BufferT::value_type value_type;
 
-    YOLOLayer(shape_type const &shape,
+    YOLOLayer(shape_type const &input_shape,
             // std::vector<uint32_t> const mask,
             std::vector<std::pair<uint32_t, uint32_t>> anchors,
             size_t num_classes,
             size_t input_img_size) // {B, C, H, W}
-        : Layer<BufferT>(shape), m_anchors(anchors), m_num_classes(num_classes)
+        : m_anchors(anchors), m_num_classes(num_classes)
     {
 #if defined(DEBUG_LAYERS)
-        std::cerr << "Yolo(batches:" << shape[BATCH]
-                  << ",chans:" << shape[CHANNEL]
-                  << ",img:" << shape[HEIGHT] << "x" << shape[WIDTH]
+        std::cerr << "Yolo(batches:" << input_shape[BATCH]
+                  << ",chans:" << input_shape[CHANNEL]
+                  << ",img:" << input_shape[HEIGHT] << "x" << input_shape[WIDTH]
                   << ")" << std::endl;
 #endif
 
 
         m_num_outputs = m_num_classes + 5; // # of outputs per anchor
         m_num_anchors = m_anchors.size();
-        m_num_pred = m_num_anchors * shape[HEIGHT] * shape[WIDTH];
-        // the 416 needs to replaced with network input image shape
-        m_stride = input_img_size / shape[HEIGHT];
+        m_num_pred = m_num_anchors * input_shape[HEIGHT] * input_shape[WIDTH];
+        // the 416 needs to replaced with network input image input_shape
+        m_stride = input_img_size / input_shape[HEIGHT];
 
         // HACK
         // Since Conv2D can't support channel dimensions that are not a multiple
@@ -80,7 +80,9 @@ public:
         // packed_channels is the number of channels that are actually
         // allocated in the buffer (i.e., padded)
         m_effective_channels = m_num_anchors * m_num_outputs;
-        m_packed_channels = shape[CHANNEL];
+        m_padded_channels = input_shape[CHANNEL];
+
+        this->set_output_shapes({{input_shape[BATCH], 1U, m_num_pred, m_num_outputs}});
 
     }
 
@@ -107,7 +109,7 @@ public:
         BufferT unpacked_input(input[0]->size());
         small::unpack_buffer(
             input[0]->buffer(), small::INPUT,
-            1U, /*HACK*/ m_packed_channels, h, w,
+            1U, m_padded_channels, h, w,
             C_ib, C_ob,
             unpacked_input
         );
@@ -127,11 +129,15 @@ public:
         Tensor <BufferT> *bbox_n_conf = output[0];
 
         // check to make sure the output buffer is the right size
-        if(m_num_pred != bbox_n_conf->shape()[2]) {
-            std::cerr << "ERROR: num_pred != bbox_n_conf->shape()[2]" << std::endl;
-            std::cerr << "       num_pred = " << m_num_pred << std::endl;
-            std::cerr << "       bbox_n_conf->shape()[2] = " << bbox_n_conf->shape()[2] << std::endl;
-            exit(1);
+        // if(m_num_pred != bbox_n_conf->shape()[2]) {
+        //     std::cerr << "ERROR: num_pred != bbox_n_conf->shape()[2]" << std::endl;
+        //     std::cerr << "       num_pred = " << m_num_pred << std::endl;
+        //     std::cerr << "       bbox_n_conf->shape()[2] = " << bbox_n_conf->shape()[2] << std::endl;
+        //     exit(1);
+        // }
+
+        if(bbox_n_conf->shape() != this->output_shape()) {
+            throw std::runtime_error("ERROR: bb_n_conf->shape() != this->output_shape()");
         }
 
         // image is [C, H, W]
@@ -152,23 +158,23 @@ public:
 
                         // compute x
                         if(i3 == 0) {
-                            bbox_n_conf->buffer()[pred_idx*85U + i3] = (sigmoid<ScalarT>(unpacked_input[offset]) + i2) * m_stride;
+                            bbox_n_conf->buffer()[pred_idx*(m_num_classes + 5) + i3] = (sigmoid<ScalarT>(unpacked_input[offset]) + i2) * m_stride;
                         }
                         // compute y
                         else if(i3 == 1) {
-                            bbox_n_conf->buffer()[pred_idx*85U + i3] = (sigmoid<ScalarT>(unpacked_input[offset]) + i1) * m_stride;
+                            bbox_n_conf->buffer()[pred_idx*(m_num_classes + 5) + i3] = (sigmoid<ScalarT>(unpacked_input[offset]) + i1) * m_stride;
                         }
                         // compute w
                         else if(i3 == 2) {
-                            bbox_n_conf->buffer()[pred_idx*85U + i3] = std::exp(unpacked_input[offset]) * m_anchors[i0].first;
+                            bbox_n_conf->buffer()[pred_idx*(m_num_classes + 5) + i3] = std::exp(unpacked_input[offset]) * m_anchors[i0].first;
                         }
                         // compute h
                         else if(i3 == 3) {
-                            bbox_n_conf->buffer()[pred_idx*85U + i3] = std::exp(unpacked_input[offset]) * m_anchors[i0].second;
+                            bbox_n_conf->buffer()[pred_idx*(m_num_classes + 5) + i3] = std::exp(unpacked_input[offset]) * m_anchors[i0].second;
                         }
                         // compute obj and class conf
                         else {
-                            bbox_n_conf->buffer()[pred_idx*85U + i3] = sigmoid<ScalarT>(unpacked_input[offset]);
+                            bbox_n_conf->buffer()[pred_idx*(m_num_classes + 5) + i3] = sigmoid<ScalarT>(unpacked_input[offset]);
                         }
 
                     }
@@ -189,7 +195,7 @@ private:
     size_t       m_num_outputs;
     size_t       m_num_pred;
     size_t       m_effective_channels;
-    size_t       m_packed_channels;
+    size_t       m_padded_channels;
 
 };
 

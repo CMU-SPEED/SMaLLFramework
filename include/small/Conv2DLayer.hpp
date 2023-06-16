@@ -142,6 +142,7 @@ namespace detail
         {
             BufferT filters(num_input_channels*kernel_height*kernel_width*
                             num_output_channels);
+            init_zeros(filters, filters.size());
             packed_filters = std::move(filters);
         }
         else if (packed_filters.size() !=
@@ -169,7 +170,7 @@ namespace detail
                                     kernel_height, kernel_width,
                                     C_ob, C_ib,
                                     co, ci, h, w);
-                                packed_filters[packed_idx] = filters[unpacked_idx];
+                                packed_filters[packed_idx] = filters[unpacked_idx++];
                             }
             }
             else
@@ -207,6 +208,7 @@ namespace detail
 
             // if (!buffers_are_packed)
             BufferT local_bias(num_output_channels);
+            init_zeros(local_bias, local_bias.size());
             std::copy(bias.data(),
                       bias.data() + num_effective_output_channels,
                       local_bias.data());
@@ -258,6 +260,7 @@ namespace detail
             if (packed_bias.size() == 0)
             {
                 packed_bias = std::move(BufferT(num_output_channels));
+                init_zeros(packed_bias, packed_bias.size());
                 no_bias = true;
             }
 

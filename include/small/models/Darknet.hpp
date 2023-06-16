@@ -90,128 +90,205 @@ public:
     Darknet() = delete;
 
     // Assume one input layer with a single shape for now
-    Darknet(std::string cfg, std::string weights) : Model<BufferT>({0,0,0,0})
+    Darknet(std::string cfg, std::string weights, bool save_outputs = false) 
+        : Model<BufferT>({0,0,0,0}), m_save_outputs(save_outputs)
     {
         parse_cfg_and_weights(cfg, weights);
     }
 
-    virtual ~Darknet() {}
+    virtual ~Darknet() {
+        // delete all buffers
+        for(auto out : m_outputs) {
+            delete out;
+        }
+        for(auto out : m_cached_outputs) {
+            delete out.second;
+        }
+        delete m_in;
+        delete m_out;
+    }
 
+    // assumes all the buffers have been set up in the constructor
+    size_t yolo_block_idx = 0;
     virtual std::vector<Tensor<BufferT>*>
         inference(std::vector<Tensor<BufferT> const *> inputs)
     {
 
-        std::cout << "Entering Darknet::inference()" << std::endl;
+        if(inputs[0]->shape() != this->m_input_shape) {
+            throw std::runtime_error("Input shape does not match model input shape");
+        }
 
-        Tensor<BufferT> *in = new Tensor<BufferT>(inputs[0]->shape());
-        std::copy(
-            &(inputs[0]->buffer()[0]), 
-            &(inputs[0]->buffer()[compute_size(inputs[0]->shape())]), 
-            &(in->buffer()[0])
-        );
-        Tensor<BufferT> *cur_output;
-
-        std::vector<Tensor<BufferT>*> all_yolo_outputs;
+        if(m_save_outputs) {
+            std::copy(
+                &(inputs[0]->buffer()[0]), 
+                &(inputs[0]->buffer()[compute_size(inputs[0]->shape())]), 
+                &(m_outputs[0]->buffer()[0])
+            );
+        }
+        else {
+            m_in->set_shape(inputs[0]->shape());
+            std::copy(
+                &(inputs[0]->buffer()[0]), 
+                &(inputs[0]->buffer()[compute_size(inputs[0]->shape())]), 
+                &(m_in->buffer()[0])
+            );
+        }
         
-        size_t layer_num = 0;
+        for(size_t layer_num=0; layer_num<this->m_layers.size(); layer_num++) {
 
-        for(size_t i=0; i<this->m_layers.size(); i++) {
+            std::cout << layer_num;
             
             // get layer info
-            Layer<BufferT> *layer = this->m_layers[i];
+            Layer<BufferT> *layer = this->m_layers[layer_num];
             const std::type_info& type = typeid(*layer);
             shape_type out_shape = layer->output_shape();
-            cur_output = new Tensor<BufferT>(out_shape);
-            // init_zeros(cur_output->buffer(), compute_size(out_shape));
+
+            // make sure the size is always set
+            if(!m_save_outputs) {
+                m_out->set_shape(out_shape);
+            }
 
             // single input/output layers
             if(type == typeid(Conv2DLayer<BufferT>) || 
                type == typeid(MaxPool2DLayer<BufferT>) ||
                type == typeid(UpSample2DLayer<BufferT>))
             {
-                std::cout << "Conv/MaxPool/UpSample Layer" << std::endl;
-                layer->compute_output({in}, {cur_output});
+                std::cout << " Conv/MaxPool/UpSample Layer" << std::endl;
+                if(m_save_outputs) {
+                    layer->compute_output({m_outputs[layer_num]}, {m_outputs[layer_num+1]});
+                }
+                else {
+                    layer->compute_output({m_in}, {m_out});
+                }
             }
             else if(type == typeid(AddLayer<BufferT>)) {
 
-                std::cout << "Add Layer" << std::endl;
+                std::cout << " Add Layer" << std::endl;
 
                 // there will always only be 2 parents
                 std::vector<int> parents = dynamic_cast<AddLayer<BufferT>*>(layer)->parents();
-                
-                // this is bad
-                // AddLayer is set up to do B += A
-                // but we want to do C = A + B
-                std::copy(
-                    &cached_outputs[parents[1]]->buffer()[0], 
-                    &cached_outputs[parents[1]]->buffer()[compute_size(out_shape)], 
-                    &cur_output->buffer()[0]
-                );
-                layer->compute_output({in}, {cur_output});
+                assert(parents.size() == 2);
+
+                if(m_save_outputs) {
+                    std::copy(
+                        &m_outputs[parents[1]]->buffer()[0], 
+                        &m_outputs[parents[1]]->buffer()[compute_size(out_shape)], 
+                        &m_outputs[layer_num+1]->buffer()[0]
+                    );
+                    layer->compute_output({m_outputs[layer_num]}, {m_outputs[layer_num+1]});
+                }
+                else {
+                    std::copy(
+                        &m_cached_outputs[parents[1]]->buffer()[0], 
+                        &m_cached_outputs[parents[1]]->buffer()[compute_size(out_shape)], 
+                        &m_out->buffer()[0]
+                    );
+                    layer->compute_output({m_in}, {m_out});
+                }
 
             }
             else if(type == typeid(RouteLayer<BufferT>)) {
 
-                std::cout << "Route Layer" << std::endl;
+                std::cout << " Route Layer" << std::endl;
 
                 std::vector<int> parents = dynamic_cast<RouteLayer<BufferT>*>(layer)->parents();
+                assert(parents.size() == 1 || parents.size() == 2);
 
                 // for parent.size() == 1, this should just be a buffer swap/copy
                 if(parents.size() == 1) {
-                    layer->compute_output({cached_outputs[parents[0]]}, {cur_output});
+                    if(m_save_outputs) {
+                        layer->compute_output({m_outputs[parents[0]]}, {m_outputs[layer_num+1]});   
+                    }
+                    else {
+                        layer->compute_output({m_cached_outputs[parents[0]]}, {m_out});
+                    }
                 }
                 // here we actually need to concat
                 else {
-                    layer->compute_output({cached_outputs[parents[0]], cached_outputs[parents[1]]}, {cur_output});
+                    if(m_save_outputs) {
+                        layer->compute_output({m_outputs[parents[0]], m_outputs[parents[1]]}, {m_out});
+                    }
+                    else {
+                        layer->compute_output({m_cached_outputs[parents[0]], m_cached_outputs[parents[1]]}, {m_out});
+                    }
                 }
 
             }
             // yolo is our output block
-            // aggregate all yolo outputs
-            // each tensor will represent output using a different set of anchor weights
             else if(type == typeid(YOLOLayer<BufferT>)) {
-                std::cout << "YOLO layer\n";
-                size_t num_pred = dynamic_cast<YOLOLayer<BufferT>*>(layer)->get_num_pred();
-                size_t num_outputs = dynamic_cast<YOLOLayer<BufferT>*>(layer)->get_num_outputs();
-                Tensor <BufferT> *yolo_output = new Tensor<BufferT>({1U, 1U, num_pred, num_outputs});
-                layer->compute_output({in}, {yolo_output});
-                all_yolo_outputs.push_back(std::move(yolo_output));
+                assert(yolo_block_idx < m_yolo_outputs.size());
+                std::cout << " YOLO layer\n";
+
+                if(m_save_outputs) {
+                    layer->compute_output({m_outputs[layer_num]}, {m_outputs[layer_num+1]});
+                    std::copy(
+                        &m_outputs[layer_num+1]->buffer()[0], 
+                        &m_outputs[layer_num+1]->buffer()[compute_size(out_shape)], 
+                        &m_yolo_outputs[yolo_block_idx]->buffer()[0]
+                    );
+                }
+                else {
+                    layer->compute_output({m_in}, {m_yolo_outputs[yolo_block_idx]});
+                }
+                yolo_block_idx++;
             }
             else {
                 std::cerr << "ERROR: Layer type not supported.\n";
                 throw std::exception();
             }
 
-            // found key in cached_outputs
-            // save output to cached_outputs
-            if(cached_outputs.count(layer_num) == 1) {
-                std::cout << "Saving output to cached_outputs\tlayer_num = " << layer_num << "\n";
-
-                cached_outputs[layer_num] = new Tensor<BufferT>(out_shape);
+            // found key in m_cached_outputs
+            // save output to m_cached_outputs
+            if(!m_save_outputs && m_cached_outputs.count(layer_num) == 1) {
+                std::cout << "Saving output to m_cached_outputs\tlayer_num = " << layer_num << "\n";
+                m_cached_outputs[layer_num] = new Tensor<BufferT>(out_shape);
                 std::copy(
-                    &cur_output->buffer()[0], 
-                    &cur_output->buffer()[compute_size(out_shape)], 
-                    &cached_outputs[layer_num]->buffer()[0]
+                    &m_out->buffer()[0], 
+                    &m_out->buffer()[compute_size(out_shape)], 
+                    &m_cached_outputs[layer_num]->buffer()[0]
                 );
             }
 
-            // swap?
-            // free before assignment?
-            in = cur_output;
-
-            layer_num++;
+            // swap input and output
+            m_in->swap(*m_out);
         }
 
-        // we will need to return all the outputs of the yolo blocks (or whatever the output layers are)
-        return all_yolo_outputs;
+        return m_yolo_outputs;
+    }
 
+    size_t total_buffer_sizes() {
+        size_t total_buf_size = 0;
+        if(m_save_outputs) {
+            for(auto out : m_outputs) {
+                total_buf_size += compute_size(out->shape());
+            }
+        }
+        else {
+            total_buf_size += 2*m_max_buffer_size;
+        }
+        for(auto out : m_yolo_outputs) {
+            total_buf_size += compute_size(out->shape());
+        }
+        return total_buf_size;
     }
 
 private:
 
     // map for cached outputs
     // layer_idx -> output
-    std::map<size_t, Tensor<BufferT>*> cached_outputs;
+    std::map<size_t, Tensor<BufferT>*>  m_cached_outputs;
+    
+    // intermediates
+    // these are init at parse time
+    size_t                              m_max_buffer_size = 0;
+    Tensor<BufferT>*                    m_in;
+    Tensor<BufferT>*                    m_out;
+    std::vector<Tensor<BufferT>*>       m_yolo_outputs;
+
+    // explict output for layer
+    // this is used for robustness testing
+    std::vector<Tensor<BufferT>*>       m_outputs;
+    bool                                m_save_outputs;
 
     // returns type of activation based on the key
     ActivationType parse_activation(std::string act_type) {
@@ -316,8 +393,9 @@ private:
                 std::move(bn_running_mean),
                 std::move(bn_running_variance),
                 1.e-5,
-                true, // WRONG, WE NEED EDGE CASES
-                activation
+                false, // WRONG, WE NEED EDGE CASES
+                activation,
+                0.1
             );
         }
         else {
@@ -342,8 +420,9 @@ private:
                 num_filters,
                 std::move(filters),
                 std::move(bias),
-                true, // WRONG, WE NEED EDGE CASES
-                activation
+                false, // WRONG, WE NEED EDGE CASES
+                activation,
+                0.1
             );
         }
 
@@ -420,7 +499,7 @@ private:
 
         // create shortcut layer
         int total_layers_so_far = this->m_layers.size();
-        cached_outputs[total_layers_so_far+from] = nullptr;
+        m_cached_outputs[total_layers_so_far+from] = nullptr;
         AddLayer<BufferT> *shortcut = new AddLayer<BufferT> \
             (input, this->m_layers[total_layers_so_far + from]->output_shape(), {total_layers_so_far-1, total_layers_so_far+from});
         return shortcut;
@@ -462,7 +541,7 @@ private:
             else { 
                 inputs.push_back(this->m_layers[route_layers[i]]->output_shape()); 
             }
-            cached_outputs[route_layers[i]] = nullptr;
+            m_cached_outputs[route_layers[i]] = nullptr;
         }
 
         if(inputs.size() == 1) { route = new RouteLayer<BufferT> (inputs[0], route_layers); }
@@ -646,6 +725,10 @@ private:
                     this->m_input_shape[BATCH] = 1;
                     std::cout << "\nDarknet Input Shape: " << str_shape(this->m_input_shape) << "\n\n";
                     prev_shape = this->m_input_shape; // set prev shape to input shape
+                    m_max_buffer_size = std::max(m_max_buffer_size, compute_size(prev_shape));
+                    if(m_save_outputs) {
+                        this->m_outputs.push_back(new Tensor<BufferT>(prev_shape));
+                    }
                     continue;
                 }
 
@@ -671,6 +754,8 @@ private:
                 }
                 else if(line == "[yolo]") {
                     prev = parse_yolo(cfg_file, prev_shape);
+                    m_yolo_outputs.push_back(new Tensor<BufferT>(prev->output_shape()));
+                    /// @todo: allocate output buffers here
                 }
 
                 // unsupported block
@@ -708,19 +793,34 @@ private:
                                  str_shape(prev->output_shape()) << "\n";
                 }
 
-                std::cout << "\n";
-
-                // add layer to model and update prev shape
                 prev_shape = prev->output_shape();
+                m_max_buffer_size = std::max(m_max_buffer_size, compute_size(prev_shape));
+
                 this->m_layers.push_back(prev);
+                if(m_save_outputs){
+                    m_outputs.push_back(new Tensor<BufferT>(prev_shape));
+                }
+
                 layer_idx++;
+                std::cout << "\n";
             }
         }
+
+        /// @todo allocate intermediate buffers here
 
         #ifdef PARSER_DEBUG
         std::cout << "\nFinished parsing." << std::endl;
         std::cout << "Total layers: " << this->m_layers.size() << std::endl;
+        std::cout << "Max buffer size: " << m_max_buffer_size << std::endl;
+        if(m_save_outputs)
+            std::cout << "Saving outputs for each layer" << std::endl;
+        std::cout << "Total buffer size: " << total_buffer_sizes() << std::endl;
+        std::cout << std::endl;
         #endif
+
+        // allocate intermediate buffers
+        m_in = new Tensor<BufferT>(m_max_buffer_size);
+        m_out = new Tensor<BufferT>(m_max_buffer_size);
 
     }
 

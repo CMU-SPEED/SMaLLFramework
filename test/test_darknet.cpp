@@ -93,21 +93,27 @@ void test_darknet_parser(void)
                 out_ptr
             );
             out_ptr += out->size();
+            delete out;
         }
 
+        bool passing = true;
+        size_t fail_cnt = 0;
         for(size_t p = 0; p < total_pred; p++) {
             for(size_t c = 0; c < 85; c++) {
                 if(!almost_equal(out_buf[p*85U + c], output_tensor.buffer()[p*85U + c]))
                 {
-                    std::cerr << "ERROR: output mismatch" << std::endl;
-                    std::cerr << "\tExpected " << output_tensor.buffer()[p*85U + c] << ", got " << out_buf[p*85U + c] << std::endl;
-                    TEST_CHECK(false);
-                    return;
+                    fail_cnt++;
+                    if(fail_cnt < 10) {
+                        std::cerr << "FAIL: darknet(" << p << ", " << c << ") = " 
+                                << "(computed) " << out_buf[p*85U + c] << " != "
+                                << output_tensor.buffer()[p*85U + c] << std::endl;
+                    }
+                    passing = false;
                 }
             }
         }
 
-        TEST_CHECK(true);
+        TEST_CHECK(passing);
     }
     catch (std::exception const &e) {
         std::cerr << "ERROR: " << e.what() << std::endl;
