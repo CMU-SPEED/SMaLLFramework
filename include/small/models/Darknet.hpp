@@ -181,8 +181,8 @@ public:
 
                 if(m_save_outputs) {
                     std::copy(
-                        &m_outputs[parents[1]]->buffer()[0], 
-                        &m_outputs[parents[1]]->buffer()[compute_size(out_shape)], 
+                        &m_outputs[parents[1]+1]->buffer()[0], 
+                        &m_outputs[parents[1]+1]->buffer()[compute_size(out_shape)], 
                         &m_outputs[layer_num+1]->buffer()[0]
                     );
                     layer->compute_output({m_outputs[layer_num]}, {m_outputs[layer_num+1]});
@@ -209,19 +209,19 @@ public:
                 // for parent.size() == 1, this should just be a buffer swap/copy
                 if(parents.size() == 1) {
                     if(m_save_outputs) {
-                        layer->compute_output({m_outputs[parents[0]]}, {m_outputs[layer_num+1]});   
+                        layer->compute_output({m_outputs[parents[0]+1]}, {m_outputs[layer_num+1]});   
                     }
                     else {
-                        layer->compute_output({m_cached_outputs[parents[0]]}, {m_out});
+                        layer->compute_output({m_cached_outputs[parents[0]+1]}, {m_out});
                     }
                 }
                 // here we actually need to concat
                 else {
                     if(m_save_outputs) {
-                        layer->compute_output({m_outputs[parents[0]], m_outputs[parents[1]]}, {m_out});
+                        layer->compute_output({m_outputs[parents[0]+1], m_outputs[parents[1]+1]}, {m_out});
                     }
                     else {
-                        layer->compute_output({m_cached_outputs[parents[0]], m_cached_outputs[parents[1]]}, {m_out});
+                        layer->compute_output({m_cached_outputs[parents[0]+1], m_cached_outputs[parents[1]+1]}, {m_out});
                     }
                 }
 

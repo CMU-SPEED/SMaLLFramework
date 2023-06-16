@@ -38,9 +38,7 @@ void test_darknet_parser(void)
     std::cout << "\nUsing Input data from " << in_fname << std::endl;
     std::cout << "Using Output data from " << out_fname << std::endl;
 
-    // BufferT input = read_yolo_data<BufferT>(in_fname);
     BufferT input(read_inputs<BufferT>(in_fname));
-    // small::Tensor<BufferT> input_tensor({1, 3, 416, 416}, std::move(input));
     small::Tensor<BufferT> input_tensor_dc({1, 3, 416, 416});
     small::pack_buffer(
         input,
