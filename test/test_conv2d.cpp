@@ -40,14 +40,11 @@ void test_conv2d_layer_odd_output_channels(void)
     // C_i,H,W,k,s,p,C_o
     LayerParams params {1024, 13, 13, 1, 1, small::PADDING_F, 13};
 
+    // Odd packed buffers should fail
     try
     {
-        // Odd packed buffers should fail
-
         small::shape_type input_shape{1U, params.C_i, params.H, params.W};
-
         BufferT filters(params.C_i*params.k*params.k*params.C_o);
-
         small::Conv2DLayer conv2d(input_shape,
                                   params.k, params.k,
                                   params.s, params.p,
@@ -62,6 +59,7 @@ void test_conv2d_layer_odd_output_channels(void)
         TEST_CHECK(params.C_o % C_ob != 0);
     }
 
+    // Odd unpacked buffers should not fail
     try
     {
         small::shape_type input_shape{1U, params.C_i, params.H, params.W};
@@ -76,14 +74,22 @@ void test_conv2d_layer_odd_output_channels(void)
                                   false);
 
         TEST_ASSERT(conv2d.get_effective_output_channels() == params.C_o);
-        TEST_ASSERT(conv2d.output_shape(0)[small::CHANNEL] ==
-                    (params.C_o + (C_ob - params.C_o % C_ob)));
+        if (params.C_o % C_ob == 0)
+        {
+            TEST_ASSERT(conv2d.output_shape(0)[small::CHANNEL] == params.C_o);
+        }
+        else
+        {
+            TEST_ASSERT(conv2d.output_shape(0)[small::CHANNEL] ==
+                        (params.C_o + (C_ob - params.C_o % C_ob)));
+        }
     }
     catch (std::invalid_argument &e_obj)
     {
         TEST_CHECK(false);
     }
 
+    // Test with bias
     try
     {
         small::shape_type input_shape{1U, params.C_i, params.H, params.W};
@@ -100,14 +106,22 @@ void test_conv2d_layer_odd_output_channels(void)
                                   false);
 
         TEST_ASSERT(conv2d.get_effective_output_channels() == params.C_o);
-        TEST_ASSERT(conv2d.output_shape(0)[small::CHANNEL] ==
-                    (params.C_o + (C_ob - params.C_o % C_ob)));
+        if (params.C_o % C_ob == 0)
+        {
+            TEST_ASSERT(conv2d.output_shape(0)[small::CHANNEL] == params.C_o);
+        }
+        else
+        {
+            TEST_ASSERT(conv2d.output_shape(0)[small::CHANNEL] ==
+                        (params.C_o + (C_ob - params.C_o % C_ob)));
+        }
     }
     catch (std::invalid_argument &e_obj)
     {
         TEST_CHECK(false);
     }
 
+    // Test with batchnorm params
     try
     {
         small::shape_type input_shape{1U, params.C_i, params.H, params.W};
@@ -131,12 +145,66 @@ void test_conv2d_layer_odd_output_channels(void)
                                   false);
 
         TEST_ASSERT(conv2d.get_effective_output_channels() == params.C_o);
-        TEST_ASSERT(conv2d.output_shape(0)[small::CHANNEL] ==
-                    (params.C_o + (C_ob - params.C_o % C_ob)));
+        if (params.C_o % C_ob == 0)
+        {
+            TEST_ASSERT(conv2d.output_shape(0)[small::CHANNEL] == params.C_o);
+        }
+        else
+        {
+            TEST_ASSERT(conv2d.output_shape(0)[small::CHANNEL] ==
+                        (params.C_o + (C_ob - params.C_o % C_ob)));
+        }
     }
     catch (std::invalid_argument &e_obj)
     {
         std::cerr << "EXCEPTION: " << e_obj.what() << std::endl;
+        TEST_CHECK(false);
+    }
+
+    // Test extra channel values with random filter and bias
+    try
+    {
+        small::shape_type input_shape{1U, params.C_i, params.H, params.W};
+
+        BufferT filters(params.C_i*params.k*params.k*params.C_o);
+        small::init(filters, filters.size());
+        BufferT bias(params.C_o);
+        small::init(bias, bias.size());
+
+        small::Conv2DLayer conv2d(input_shape,
+                                  params.k, params.k,
+                                  params.s, params.p,
+                                  params.C_o,
+                                  filters,
+                                  bias,
+                                  false);
+
+        small::Tensor<BufferT>  input(input_shape);
+        small::Tensor<BufferT> output(conv2d.output_size());
+
+        conv2d.compute_output({&input}, {&output});
+        for (size_t co = params.C_o;
+             co < conv2d.output_shape(0)[small::CHANNEL]; ++co)
+        {
+            for (size_t h = 0; h < conv2d.output_shape(0)[small::HEIGHT]; ++h)
+            {
+                for (size_t w = 0; w < conv2d.output_shape(0)[small::WIDTH]; ++w)
+                {
+                    size_t packed_index =
+                        small::packed_buffer_index(
+                            conv2d.output_shape(0)[small::CHANNEL],
+                            conv2d.output_shape(0)[small::HEIGHT],
+                            conv2d.output_shape(0)[small::WIDTH],
+                            C_ob,
+                            co, h, w);
+                    TEST_ASSERT(0.f == output.buffer()[packed_index]);
+                }
+            }
+        }
+    }
+    catch (std::invalid_argument &e_obj)
+    {
+        std::cerr << "Unexpected exception caught: " << e_obj.what() << std::endl;
         TEST_CHECK(false);
     }
 }
