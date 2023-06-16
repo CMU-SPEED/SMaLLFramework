@@ -104,6 +104,9 @@ public:
         for(auto out : m_cached_outputs) {
             delete out.second;
         }
+        // for(auto out : m_yolo_outputs) {
+        //     delete out;
+        // }
         delete m_in;
         delete m_out;
     }
@@ -136,7 +139,9 @@ public:
         
         for(size_t layer_num=0; layer_num<this->m_layers.size(); layer_num++) {
 
+            #if DEBUG
             std::cout << layer_num;
+            #endif
             
             // get layer info
             Layer<BufferT> *layer = this->m_layers[layer_num];
@@ -153,7 +158,10 @@ public:
                type == typeid(MaxPool2DLayer<BufferT>) ||
                type == typeid(UpSample2DLayer<BufferT>))
             {
+                #if DEBUG
                 std::cout << " Conv/MaxPool/UpSample Layer" << std::endl;
+                #endif
+
                 if(m_save_outputs) {
                     layer->compute_output({m_outputs[layer_num]}, {m_outputs[layer_num+1]});
                 }
@@ -162,8 +170,10 @@ public:
                 }
             }
             else if(type == typeid(AddLayer<BufferT>)) {
-
+                
+                #if DEBUG
                 std::cout << " Add Layer" << std::endl;
+                #endif
 
                 // there will always only be 2 parents
                 std::vector<int> parents = dynamic_cast<AddLayer<BufferT>*>(layer)->parents();
@@ -188,8 +198,10 @@ public:
 
             }
             else if(type == typeid(RouteLayer<BufferT>)) {
-
+                
+                #if DEBUG
                 std::cout << " Route Layer" << std::endl;
+                #endif
 
                 std::vector<int> parents = dynamic_cast<RouteLayer<BufferT>*>(layer)->parents();
                 assert(parents.size() == 1 || parents.size() == 2);
@@ -216,8 +228,14 @@ public:
             }
             // yolo is our output block
             else if(type == typeid(YOLOLayer<BufferT>)) {
-                assert(yolo_block_idx < m_yolo_outputs.size());
+
+                
+                #if DEBUG
                 std::cout << " YOLO layer\n";
+                #endif
+
+                // we need to make sure nothing funky happens
+                assert(yolo_block_idx < m_yolo_outputs.size());
 
                 if(m_save_outputs) {
                     layer->compute_output({m_outputs[layer_num]}, {m_outputs[layer_num+1]});
@@ -232,6 +250,7 @@ public:
                 }
                 yolo_block_idx++;
             }
+
             else {
                 std::cerr << "ERROR: Layer type not supported.\n";
                 throw std::exception();
@@ -240,7 +259,10 @@ public:
             // found key in m_cached_outputs
             // save output to m_cached_outputs
             if(!m_save_outputs && m_cached_outputs.count(layer_num) == 1) {
+                #if DEBUG
                 std::cout << "Saving output to m_cached_outputs\tlayer_num = " << layer_num << "\n";
+                #endif
+                
                 m_cached_outputs[layer_num] = new Tensor<BufferT>(out_shape);
                 std::copy(
                     &m_out->buffer()[0], 
