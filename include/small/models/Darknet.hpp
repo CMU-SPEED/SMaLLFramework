@@ -272,6 +272,16 @@ public:
         return total_buf_size;
     }
 
+    std::vector<Tensor<BufferT>*> get_layer_outputs() {
+        if(m_save_outputs) {
+            return m_outputs;
+        }
+        else {
+            std::cerr << "ERROR: Layer outputs not saved.\n";
+            throw std::invalid_argument("Saving layer outputs is disabled.");
+        }
+    }
+
 private:
 
     // map for cached outputs
