@@ -74,8 +74,15 @@ void test_conv2d_layer_odd_output_channels(void)
                                   false);
 
         TEST_ASSERT(conv2d.get_effective_output_channels() == params.C_o);
-        TEST_ASSERT(conv2d.output_shape(0)[small::CHANNEL] ==
-                    (params.C_o + (C_ob - params.C_o % C_ob)));
+        if (params.C_o % C_ob == 0)
+        {
+            TEST_ASSERT(conv2d.output_shape(0)[small::CHANNEL] == params.C_o);
+        }
+        else
+        {
+            TEST_ASSERT(conv2d.output_shape(0)[small::CHANNEL] ==
+                        (params.C_o + (C_ob - params.C_o % C_ob)));
+        }
     }
     catch (std::invalid_argument &e_obj)
     {
@@ -99,8 +106,15 @@ void test_conv2d_layer_odd_output_channels(void)
                                   false);
 
         TEST_ASSERT(conv2d.get_effective_output_channels() == params.C_o);
-        TEST_ASSERT(conv2d.output_shape(0)[small::CHANNEL] ==
-                    (params.C_o + (C_ob - params.C_o % C_ob)));
+        if (params.C_o % C_ob == 0)
+        {
+            TEST_ASSERT(conv2d.output_shape(0)[small::CHANNEL] == params.C_o);
+        }
+        else
+        {
+            TEST_ASSERT(conv2d.output_shape(0)[small::CHANNEL] ==
+                        (params.C_o + (C_ob - params.C_o % C_ob)));
+        }
     }
     catch (std::invalid_argument &e_obj)
     {
@@ -131,8 +145,15 @@ void test_conv2d_layer_odd_output_channels(void)
                                   false);
 
         TEST_ASSERT(conv2d.get_effective_output_channels() == params.C_o);
-        TEST_ASSERT(conv2d.output_shape(0)[small::CHANNEL] ==
-                    (params.C_o + (C_ob - params.C_o % C_ob)));
+        if (params.C_o % C_ob == 0)
+        {
+            TEST_ASSERT(conv2d.output_shape(0)[small::CHANNEL] == params.C_o);
+        }
+        else
+        {
+            TEST_ASSERT(conv2d.output_shape(0)[small::CHANNEL] ==
+                        (params.C_o + (C_ob - params.C_o % C_ob)));
+        }
     }
     catch (std::invalid_argument &e_obj)
     {
@@ -183,7 +204,7 @@ void test_conv2d_layer_odd_output_channels(void)
     }
     catch (std::invalid_argument &e_obj)
     {
-        std::cerr << "unexpected exception caught: " << e_obj.what() << std::endl;
+        std::cerr << "Unexpected exception caught: " << e_obj.what() << std::endl;
         TEST_CHECK(false);
     }
 }
