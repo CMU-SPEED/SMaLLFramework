@@ -23,22 +23,29 @@ std::string const cfg_dir("../test/cfg_data");
 
 //****************************************************************************
 template <typename BufferT>
-bool compare_outputs(size_t layer_idx, BufferT computed_out, BufferT expected_out, size_t numel) {
+bool compare_outputs(size_t layer_idx,
+                     BufferT computed_out, BufferT expected_out,
+                     size_t numel)
+{
     bool passing = true;
     size_t fail_cnt = 0;
-    for(size_t i = 0; i < numel; i++) {
-        if(!almost_equal(computed_out[i], expected_out[i])) {
+    for (size_t i = 0; i < numel; i++)
+    {
+        if (!almost_equal(computed_out[i], expected_out[i]))
+        {
             fail_cnt++;
-            if(fail_cnt < 10) {
-                std::cerr << "FAIL: layer " << layer_idx << " output " << i << " = " 
-                        << "(computed) " << computed_out[i] << " != "
-                        << expected_out[i] << std::endl;
+            if (fail_cnt < 10)
+            {
+                std::cerr << "FAIL: layer " << layer_idx
+                          << " output " << i << " = "
+                          << "(computed) " << computed_out[i]
+                          << " != " << expected_out[i] << std::endl;
             }
             passing = false;
         }
     }
     return passing;
-} 
+}
 
 
 //****************************************************************************
@@ -60,15 +67,22 @@ void test_yolov3_tiny(void)
     std::cout << "Using Output data from " << out_fname << std::endl;
 
     BufferT input(read_inputs<BufferT>(in_fname));
-    small::Tensor<BufferT> input_tensor({1U, 3U, 416U, 416U}, input);
-    
+    small::Tensor<BufferT> input_tensor({1U, 3U, 416U, 416U});
+    small::pack_buffer(
+        input,
+        small::INPUT,
+        1U, 3U, 416U, 416U,
+        C_ib, C_ob,
+        input_tensor.buffer()
+    );
+
     BufferT output(read_inputs<BufferT>(out_fname));
     small::Tensor<BufferT> output_tensor({1U, 1U, 2535U, 85U}, output);
 
     try {
-        
+
         small::Darknet<BufferT> model(cfg, weights, true);
-        if(model.get_input_shape() != input_tensor.shape())
+        if (model.get_input_shape() != input_tensor.shape())
         {
             std::cerr << "ERROR: input shape mismatch" << std::endl;
             TEST_CHECK(false);
@@ -77,7 +91,7 @@ void test_yolov3_tiny(void)
         std::vector<small::Tensor<BufferT>*> layer_outs = model.get_layer_outputs();
 
         // check number of yolo outputs
-        if(yolo_outs.size() != 2)
+        if (yolo_outs.size() != 2)
         {
             std::cerr << "ERROR: not enough yolo outputs" << std::endl;
             TEST_CHECK(false);
@@ -85,16 +99,17 @@ void test_yolov3_tiny(void)
 
         bool passing = true;
 
-        for(size_t layer_idx = 0; layer_idx < layer_outs.size(); layer_idx++)
+        for (size_t layer_idx = 0; layer_idx < layer_outs.size(); layer_idx++)
         {
             passing &= compare_outputs<BufferT>(
-                    layer_idx, 
-                    layer_outs[layer_idx]->buffer(), 
-                    layer_outs[layer_idx]->buffer(), 
+                    layer_idx,
+                    layer_outs[layer_idx]->buffer(),
+                    layer_outs[layer_idx]->buffer(),
                     layer_outs[layer_idx]->capacity()
                 );
 
-            if(!passing) {
+            if (!passing)
+            {
                 std::cerr << "FAIL at layer " << layer_idx << std::endl;
                 break;
             }
@@ -107,7 +122,7 @@ void test_yolov3_tiny(void)
         //         {
         //             fail_cnt++;
         //             if(fail_cnt < 10) {
-        //                 std::cerr << "FAIL: darknet(" << p << ", " << c << ") = " 
+        //                 std::cerr << "FAIL: darknet(" << p << ", " << c << ") = "
         //                         << "(computed) " << out_buf[p*85U + c] << " != "
         //                         << output_tensor.buffer()[p*85U + c] << std::endl;
         //             }
@@ -118,11 +133,11 @@ void test_yolov3_tiny(void)
 
         TEST_CHECK(passing);
     }
-    catch (std::exception const &e) {
+    catch (std::exception const &e)
+    {
         std::cerr << "ERROR: " << e.what() << std::endl;
         TEST_CHECK(false);
     }
-
 }
 
 //****************************************************************************

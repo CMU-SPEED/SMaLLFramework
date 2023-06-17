@@ -107,6 +107,6 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall ${CMAKE_C_FLAGS}")
 message("CXX_FLAGS:\t${CMAKE_CXX_FLAGS}")
 
 add_subdirectory(demo)
-
+add_subdirectory(benchmark)
 enable_testing()
 add_subdirectory(test)

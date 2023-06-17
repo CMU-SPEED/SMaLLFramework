@@ -71,6 +71,17 @@ public:
     virtual std::vector<Tensor<BufferT>*>
         inference(std::vector<Tensor<BufferT> const *> input) = 0;
 
+    // For debugging purposes
+    size_t get_num_layers() const { return m_layers.size(); }
+
+    Layer<BufferT>* get_layer(size_t idx)
+    {
+        if (idx < m_layers.size())
+            return m_layers[idx];
+        else
+            throw std::invalid_argument("ERROR: invalid layer index.");
+    }
+
 protected:
     shape_type              m_input_shape;
 
