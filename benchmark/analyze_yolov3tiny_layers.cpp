@@ -10,6 +10,9 @@
 // DM23-0126
 //****************************************************************************
 
+#define DEBUG_LAYERS
+#define RECORD_CALLS
+
 #include <small.h>
 #include <small/models/Darknet.hpp>
 
