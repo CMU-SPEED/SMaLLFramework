@@ -125,12 +125,95 @@ bool test_yolov3_tiny(void)
         // --------------
         // compute layer
         std::cout << "Computing output of layer " << layer_num << std::endl;
-        if (typeid(*layer_ptr) == typeid(small::YOLOLayer<BufferT>))
+        if (typeid(*layer_ptr) == typeid(small::RouteLayer<BufferT>))
         {
-            // YOLOLayer requires correct output_shape
-            out_tensor.set_shape(layer_ptr->output_shape());
+            // --------------
+            // override input tensor for Route layers
+            if (typeid(*layer_ptr) == typeid(small::RouteLayer<BufferT>))
+            {
+                std::cout << "Reading different input for Route layer "
+                          << layer_num << std::endl;
+                auto route_ptr = dynamic_cast<small::RouteLayer<BufferT>*>(layer_ptr);
+                if (route_ptr->parents().size() == 1)
+                {
+                    std::cout << layer_num << ": RouteLayer reading output of layer "
+                              << route_ptr->parents()[0] << std::endl;
+                    std::string layer_input_filename =
+                        "out" + std::to_string(route_ptr->parents()[0]) + "__darknet.bin";
+                    BufferT tmp_input =
+                        read_inputs<BufferT>(yolo_data_dir + "/" + layer_input_filename);
+                    small::Tensor<BufferT> tmp_in_tensor(
+                        model.get_layer(route_ptr->parents()[0])->output_shape());
+
+                    // pack new input tensor
+                    small::pack_buffer(tmp_input,
+                                       small::INPUT,
+                                       1U,
+                                       tmp_in_tensor.shape()[small::CHANNEL],
+                                       tmp_in_tensor.shape()[small::HEIGHT],
+                                       tmp_in_tensor.shape()[small::WIDTH],
+                                       C_ib, C_ob,
+                                       tmp_in_tensor.buffer());
+
+                    layer_ptr->compute_output({&tmp_in_tensor}, {&out_tensor});
+                }
+                else if (route_ptr->parents().size() == 2)
+                {
+                    small::shape_type shape0(
+                        model.get_layer(route_ptr->parents()[0])->output_shape());
+                    small::shape_type shape1(
+                        model.get_layer(route_ptr->parents()[1])->output_shape());
+
+                    assert(shape0[small::HEIGHT] == shape1[small::HEIGHT]);
+                    assert(shape0[small::WIDTH]  == shape1[small::WIDTH]);
+
+                    std::string layer_input0_filename =
+                        "out" + std::to_string(route_ptr->parents()[0]) + "__darknet.bin";
+                    BufferT tmp_input0 =
+                        read_inputs<BufferT>(yolo_data_dir + "/" + layer_input0_filename);
+                    small::Tensor<BufferT> tmp_in_tensor0(shape0);
+                    small::pack_buffer(tmp_input0,
+                                       small::INPUT,
+                                       1U,
+                                       shape0[small::CHANNEL],
+                                       shape0[small::HEIGHT],
+                                       shape0[small::WIDTH],
+                                       C_ib, C_ob,
+                                       tmp_in_tensor0.buffer());
+
+                    std::string layer_input1_filename =
+                        "out" + std::to_string(route_ptr->parents()[1]) + "__darknet.bin";
+                    BufferT tmp_input1 =
+                        read_inputs<BufferT>(yolo_data_dir + "/" + layer_input1_filename);
+                    small::Tensor<BufferT> tmp_in_tensor1(shape1);
+                    small::pack_buffer(tmp_input1,
+                                       small::INPUT,
+                                       1U,
+                                       shape1[small::CHANNEL],
+                                       shape1[small::HEIGHT],
+                                       shape1[small::WIDTH],
+                                       C_ib, C_ob,
+                                       tmp_in_tensor1.buffer());
+
+                    layer_ptr->compute_output({&tmp_in_tensor0, &tmp_in_tensor1}, {&out_tensor});
+                }
+                else
+                {
+                    throw std::runtime_error(
+                        "ERROR: Route layer with more than 2 parents.");
+                }
+            }
         }
-        layer_ptr->compute_output({&in_tensor}, {&out_tensor});
+        else
+        {
+            if (typeid(*layer_ptr) == typeid(small::YOLOLayer<BufferT>))
+            {
+                // YOLOLayer requires correct output_shape
+                out_tensor.set_shape(layer_ptr->output_shape());
+            }
+            layer_ptr->compute_output({&in_tensor}, {&out_tensor});
+        }
+
         small::shape_type output_shape(out_tensor.shape());
 
         // --------------
