@@ -23,6 +23,8 @@ std::string const data_dir("../test/regression_data");
 std::string const yolo_data_dir(
     "../benchmark/regression_data/yolov3tiny_layer_outputs");
 
+size_t const FAIL_COUNT_MAX(10);
+
 //****************************************************************************
 template <typename ScalarT>
 bool compare_outputs(size_t   layer_num,
@@ -37,7 +39,7 @@ bool compare_outputs(size_t   layer_num,
         if (!almost_equal(computed_out[i], expected_out[i], 5e-3, 1e-3))
         {
             fail_cnt++;
-            if (fail_cnt < 20)
+            if (fail_cnt < FAIL_COUNT_MAX)
             {
                 std::cerr << "FAIL: layer " << layer_num
                           << " output " << i << " = "
@@ -123,6 +125,11 @@ bool test_yolov3_tiny(void)
         // --------------
         // compute layer
         std::cout << "Computing output of layer " << layer_num << std::endl;
+        if (typeid(*layer_ptr) == typeid(small::YOLOLayer<BufferT>))
+        {
+            // YOLOLayer requires correct output_shape
+            out_tensor.set_shape(layer_ptr->output_shape());
+        }
         layer_ptr->compute_output({&in_tensor}, {&out_tensor});
         small::shape_type output_shape(out_tensor.shape());
 
@@ -143,7 +150,7 @@ bool test_yolov3_tiny(void)
 
         // we only unpack when it is not a yolo block
         // currently which blocks are yolo are hardcoded
-        if (layer_num == 16 || layer_num == 23)
+        if (typeid(*layer_ptr) == typeid(small::YOLOLayer<BufferT>))
         {
             // for yolo, the number of outputs must match
             assert(effective_out_size == computed_out_size);
@@ -176,7 +183,16 @@ bool test_yolov3_tiny(void)
                     effective_out_size);
         }
 
+        // Packed the expected oututs over the computed and
         // swap output to input_tensor for next layer
+        small::pack_buffer(expected_layer_out,
+                           small::OUTPUT,
+                           1U,
+                           output_shape[small::CHANNEL],
+                           output_shape[small::HEIGHT],
+                           output_shape[small::WIDTH],
+                           C_ib, C_ob,
+                           out_tensor.buffer());
         in_tensor.swap(out_tensor);
     }
 
