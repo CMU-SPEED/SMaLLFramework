@@ -30,6 +30,7 @@
 #include <small/AddLayer.hpp>
 #include <small/UpSample2DLayer.hpp>
 #include <small/YOLOLayer.hpp>
+#include <small/non_max_suppression.hpp>
 
 #define PARSER_DEBUG
 
@@ -91,7 +92,9 @@ public:
 
     // Assume one input layer with a single shape for now
     Darknet(std::string cfg, std::string weights, bool save_outputs = false)
-        : Model<BufferT>({0,0,0,0}), m_save_outputs(save_outputs)
+        : Model<BufferT>({0,0,0,0}),
+          m_num_classes(0),
+          m_save_outputs(save_outputs)
     {
         parse_cfg_and_weights(cfg, weights);
     }
@@ -109,6 +112,55 @@ public:
         }
         delete m_in;
         delete m_out;
+    }
+
+    size_t get_num_classes() const { return m_num_classes; }
+
+    static std::vector<bbox>
+    process_outputs(std::vector<Tensor<BufferT>*> const &outputs,
+                    float confidence_threshold = 0.25f,
+                    float iou_threshold = 0.45f)
+    {
+        assert(outputs.size() == 2);
+
+        // collect all predictions that satisfy threshold
+        std::vector<bbox> predictions;
+        for (auto tensor_ptr : outputs)
+        {
+            assert(tensor_ptr->shape()[3] == 85);
+            BufferT const &buf = tensor_ptr->buffer();
+
+            for (size_t pred = 0; pred < tensor_ptr->shape()[2]; ++pred)
+            {
+                size_t idx = pred*tensor_ptr->shape()[3];
+                if (buf[idx + 4] > confidence_threshold)
+                {
+                    // compute max class score
+                    size_t max_class_idx=0;
+                    float  max_class_val=0.f;
+                    for(size_t cls = 0; cls < m_num_classes; ++cls)
+                    {
+                        //std::cout << "," << out_buf[idx+5+cls];
+                        if (buf[idx+5+cls] > max_class_val)
+                        {
+                            max_class_idx = cls;
+                            max_class_val = buf[idx+5+cls];
+                        }
+                    }
+
+                    predictions.push_back(
+                        bbox{buf[idx+0], //(buf[idx]   - 0.5f*buf[idx+2]),
+                             buf[idx+1], //(buf[idx+1] - 0.5f*buf[idx+3]),
+                             buf[idx+2], //(buf[idx]   + 0.5f*buf[idx+2]),
+                             buf[idx+3], //(buf[idx+1] + 0.5f*buf[idx+3]),
+                             buf[idx+4],
+                             max_class_val,
+                             max_class_idx});
+                }
+            }
+        }
+
+        return basic_nms(predictions, iou_threshold);
     }
 
     // assumes all the buffers have been set up in the constructor
@@ -305,6 +357,7 @@ public:
     }
 
 private:
+    size_t m_num_classes;
 
     // map for cached outputs
     // layer_idx -> output
@@ -646,7 +699,23 @@ private:
 
             if(key == "mask") { mask = extract_int_array<uint32_t>(value); (void)mask;}
             else if(key == "anchors") { anchors = get_anchors(value); (void)anchors; }
-            else if(key == "classes") { classes = stoi(value); (void)classes; }
+            else if(key == "classes")
+            {
+                classes = stoi(value);
+                if (m_num_classes == 0)
+                {
+                    m_num_classes = classes;
+                }
+                else
+                {
+                    if (classes != m_num_classes)
+                    {
+                        throw std::invalid_argument(
+                            "Darknet::parse_yolo ERROR: "
+                            "inconsistent number of classes.");
+                    }
+                }
+            }
             else if(key == "num") { num = stoi(value); (void)num; }
             else if(key == "jitter") { jitter = stof(value); (void)jitter; }
             else if(key == "ignore_thresh") { ignore_thresh = stof(value); (void)ignore_thresh; }

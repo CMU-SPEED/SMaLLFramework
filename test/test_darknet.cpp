@@ -47,13 +47,13 @@ void test_darknet_parser(void)
         C_ib, C_ob,
         input_tensor_dc.buffer()
     );
-    
+
     // BufferT output = read_yolo_data<BufferT>(out_fname);
     BufferT output(read_inputs<BufferT>(out_fname));
     small::Tensor<BufferT> output_tensor({1, 1, 2535, 85}, std::move(output));
 
     try {
-        
+
         small::Darknet<BufferT> model(cfg, weights);
         if(model.get_input_shape() != input_tensor_dc.shape())
         {
@@ -82,7 +82,7 @@ void test_darknet_parser(void)
 
         if(total_pred != output_tensor.shape()[2])
         {
-            std::cerr << "ERROR: number of preditictions is wrong\n" << std::endl;
+            std::cerr << "ERROR: number of predictions is wrong\n" << std::endl;
             std::cerr << "\tExpected 2535, got " << total_pred << std::endl;
             TEST_CHECK(false);
         }
@@ -94,8 +94,8 @@ void test_darknet_parser(void)
         float *out_ptr = &(out_buf[0]);
         for(auto out : outs) {
             std::copy(
-                &(out->buffer()[0]), 
-                &(out->buffer()[0]) + out->size(), 
+                &(out->buffer()[0]),
+                &(out->buffer()[0]) + out->size(),
                 out_ptr
             );
             out_ptr += out->size();
@@ -110,7 +110,7 @@ void test_darknet_parser(void)
                 {
                     fail_cnt++;
                     if(fail_cnt < 10) {
-                        std::cerr << "FAIL: darknet(" << p << ", " << c << ") = " 
+                        std::cerr << "FAIL: darknet(" << p << ", " << c << ") = "
                                 << "(computed) " << out_buf[p*85U + c] << " != "
                                 << output_tensor.buffer()[p*85U + c] << std::endl;
                     }
@@ -121,7 +121,21 @@ void test_darknet_parser(void)
 
         std::cout << "Total failed (diff was greater than 1e-3) = " << fail_cnt << std::endl;
         TEST_CHECK(passing);
-        
+
+        auto final_predictions = model.process_outputs(outs);
+
+        std::cerr << "FINAL LIST:\n";
+        for (auto &bbox : final_predictions)
+        {
+            std::cerr << "[c("
+                      << bbox.x << "," << bbox.y << "),sz("
+                      << bbox.w << "," << bbox.h << "),obj="
+                      << bbox.objectness << ",class="
+                      << bbox.class_idx << ",conf="
+                      << bbox.class_score << "]"
+                      << std::endl;
+        }
+
     }
     catch (std::exception const &e) {
         std::cerr << "ERROR: " << e.what() << std::endl;
