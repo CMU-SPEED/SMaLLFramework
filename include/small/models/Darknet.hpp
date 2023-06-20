@@ -116,7 +116,7 @@ public:
 
     size_t get_num_classes() const { return m_num_classes; }
 
-    static std::vector<bbox>
+    std::vector<bbox>
     process_outputs(std::vector<Tensor<BufferT>*> const &outputs,
                     float confidence_threshold = 0.25f,
                     float iou_threshold = 0.45f)
