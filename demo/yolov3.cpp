@@ -202,7 +202,7 @@ policy=steps
 steps=400000,450000
 scales=.1,.1
 
-[conv2d], batch_norm=1, filters=32, size=3, stride=1, pad=1, activation=leaky   Output: 416x416
+[0: conv2d], batch_norm=1, filters=32, size=3, stride=1, pad=1, activation=leaky   Output: 416x416
 
 # Downsample
 [conv2d], batch_norm=1, filters=64, size=3, stride=2, pad=1, activation=leaky   Output: 208x208
@@ -211,7 +211,7 @@ scales=.1,.1
  |   [conv2d], batch_norm=1, filters=32, size=1, stride=1, pad=1, activation=leaky
  |   [conv2d], batch_norm=1, filters=64, size=3, stride=1, pad=1, activation=leaky
  |     |
-[shortcut], from=-3, activation=linear
+[4: shortcut], from=-3, activation=linear
 
 
 # Downsample
@@ -226,7 +226,7 @@ scales=.1,.1
  |   [conv2d], batch_norm=1, filters=64, size=1, stride=1, pad=1, activation=leaky
  |   [conv2d], batch_norm=1, filters=128, size=3, stride=1, pad=1, activation=leaky
  |     |
-[shortcut], from=-3, activation=linear
+[11: shortcut], from=-3, activation=linear
 
 
 # Downsample
@@ -271,9 +271,10 @@ scales=.1,.1
  |   [conv2d], batch_norm=1, filters=128, size=1, stride=1, pad=1, activation=leaky
  |   [conv2d], batch_norm=1, filters=256, size=3, stride=1, pad=1, activation=leaky
  |     |
-[shortcut], from=-3, activation=linear
-
-
+[*36*:shortcut], from=-3, activation=linear  (52x52)
+ /     |
+/      |
+       |
 # Downsample
 [conv2d], batch_norm=1, filters=512, size=3, stride=2, pad=1, activation=leaky  Output 26x26
  |     |
@@ -316,9 +317,10 @@ scales=.1,.1
  |   [conv2d], batch_norm=1, filters=256, size=1, stride=1, pad=1, activation=leaky
  |   [conv2d], batch_norm=1, filters=512, size=3, stride=1, pad=1, activation=leaky
  |     |
-[shortcut], from=-3, activation=linear
-
-
+[*61*: shortcut], from=-3, activation=linear (26x26)
+ /     |
+/      |
+       |
 # Downsample
 [conv2d], batch_norm=1, filters=1024, size=3, stride=2, pad=1, activation=leaky     Output 13x13
  |     |
@@ -341,99 +343,97 @@ scales=.1,.1
  |   [conv2d], batch_norm=1, filters=512, size=1, stride=1, pad=1, activation=leaky
  |   [conv2d], batch_norm=1, filters=1024, size=3, stride=1, pad=1, activation=leaky
  |     |
-[shortcut], from=-3, activation=linear,
-
+[74: shortcut], from=-3, activation=linear, (13x13)
+     |
 ######################
 ######################
-
-[conv2d], batch_norm=1, filters=512,  size=1, stride=1, pad=1, activation=leaky	  Output 13x13?
-[conv2d], batch_norm=1, size=3, stride=1, pad=1, filters=1024, activation=leaky
-
-[conv2d], batch_norm=1, filters=512,  size=1, stride=1, pad=1, activation=leaky
-[conv2d], batch_norm=1, size=3, stride=1, pad=1, filters=1024, activation=leaky
-
-[conv2d], batch_norm=1, filters=512,  size=1, stride=1, pad=1, activation=leaky
-[conv2d], batch_norm=1, size=3, stride=1, pad=1, filters=1024, activation=leaky
-
-[conv2d], size=1, stride=1, pad=1, filters=18, activation=linear		Output 13x13
-
-
-[yolo]
-mask = 6,7,8
-anchors = 10,13,  16,30,  33,23,  30,61,  62,45,  59,119,  116,90,  156,198,  373,326
-classes=1
-num=9
-jitter=.3
-ignore_thresh = .7
-truth_thresh = 1
-random=1
-
-
-[route], layers = -4
-
-[conv2d], batch_norm=1, filters=256, size=1, stride=1, pad=1, activation=leaky
-
-[upsample], stride=2
-
-[route], layers = -1, 61
-
-
-[conv2d], batch_norm=1, filters=256, size=1, stride=1, pad=1, activation=leaky
-[conv2d], batch_norm=1, size=3, stride=1, pad=1, filters=512, activation=leaky
-
-[conv2d], batch_norm=1, filters=256, size=1, stride=1, pad=1, activation=leaky
-[conv2d], batch_norm=1, size=3, stride=1, pad=1, filters=512, activation=leaky
-
-[conv2d], batch_norm=1, filters=256, size=1, stride=1, pad=1, activation=leaky
-[conv2d], batch_norm=1, size=3, stride=1, pad=1, filters=512, activation=leaky
-
-
-[conv2d], size=1, stride=1, pad=1, filters=18, activation=linear
-
-
-[yolo]
-mask = 3,4,5
-anchors = 10,13,  16,30,  33,23,  30,61,  62,45,  59,119,  116,90,  156,198,  373,326
-classes=1
-num=9
-jitter=.3
-ignore_thresh = .7
-truth_thresh = 1
-random=1
-
-
-[route], layers = -4
-
-[conv2d], batch_norm=1, filters=128, size=1, stride=1, pad=1, activation=leaky
-
-[upsample], stride=2
-
-[route], layers = -1, 36
-
-
-[conv2d], batch_norm=1, filters=128, size=1, stride=1, pad=1, activation=leaky
-[conv2d], batch_norm=1, size=3, stride=1, pad=1, filters=256, activation=leaky
-
-[conv2d], batch_norm=1, filters=128, size=1, stride=1, pad=1, activation=leaky
-[conv2d], batch_norm=1, size=3, stride=1, pad=1, filters=256, activation=leaky
-
-[conv2d], batch_norm=1, filters=128, size=1, stride=1, pad=1, activation=leaky
-[conv2d], batch_norm=1, size=3, stride=1, pad=1, filters=256, activation=leaky
-
-
-[conv2d], size=1, stride=1, pad=1, filters=18. activation=linear
-
-
-[yolo]
-mask = 0,1,2
-anchors = 10,13,  16,30,  33,23,  30,61,  62,45,  59,119,  116,90,  156,198,  373,326
-classes=1
-num=9
-jitter=.3
-ignore_thresh = .7
-truth_thresh = 1
-random=1
-
+     |
+    [conv2d], batch_norm=1, filters=512,  size=1, stride=1, pad=1, activation=leaky	  Output 13x13
+     |
+    [conv2d], batch_norm=1, filters=1024, size=3, stride=1, pad=1, activation=leaky
+     |
+    [conv2d], batch_norm=1, filters=512,  size=1, stride=1, pad=1, activation=leaky
+     |
+    [conv2d], batch_norm=1, filters=1024, size=3, stride=1, pad=1, activation=leaky
+     |
+    [conv2d], batch_norm=1, filters=512,  size=1, stride=1, pad=1, activation=leaky
+     |   \
+     |    \
+     |     \
+     |  [conv2d], batch_norm=1, size=3, stride=1, pad=1, filters=1024, activation=leaky
+     |      |
+     |  [conv2d], size=1, stride=1, pad=1, filters=18, activation=linear   Output 13x13
+     |      |
+     |  [yolo] mask = 6,7,8
+     |         anchors = 10,13,  16,30,  33,23,  30,61,  62,45,  59,119,  116,90,  156,198,  373,326
+     |         classes=1, num=9,
+     |         jitter=.3, ignore_thresh = .7, truth_thresh = 1, random=1
+     |
+     |
+    [route], layers = -4
+     |
+    [conv2d], batch_norm=1, filters=256, size=1, stride=1, pad=1, activation=leaky
+     |
+\   [upsample], stride=2
+ \   |
+  \  |
+   \ |
+    [route], layers = -1, 61
+     |
+     |
+    [conv2d], batch_norm=1, filters=256, size=1, stride=1, pad=1, activation=leaky
+     |
+    [conv2d], batch_norm=1, size=3, stride=1, pad=1, filters=512, activation=leaky
+     |
+    [conv2d], batch_norm=1, filters=256, size=1, stride=1, pad=1, activation=leaky
+     |
+    [conv2d], batch_norm=1, size=3, stride=1, pad=1, filters=512, activation=leaky
+     |
+    [conv2d], batch_norm=1, filters=256, size=1, stride=1, pad=1, activation=leaky
+     |   \
+     |    \
+     |     \
+     |  [conv2d], batch_norm=1, size=3, stride=1, pad=1, filters=512, activation=leaky
+     |      |
+     |  [conv2d], size=1, stride=1, pad=1, filters=18, activation=linear
+     |      |
+     |  [yolo] mask = 3,4,5
+     |         anchors = 10,13,  16,30,  33,23,  30,61,  62,45,  59,119,  116,90,  156,198,  373,326
+     |         classes=1, num=9,
+     |         jitter=.3, ignore_thresh = .7, truth_thresh = 1, random=1
+     |
+     |
+    [route], layers = -4
+     |
+    [conv2d], batch_norm=1, filters=128, size=1, stride=1, pad=1, activation=leaky
+     |
+\   [upsample], stride=2
+ \   |
+  \  |
+   \ |
+    [route], layers = -1, 36
+     |
+     |
+    [conv2d], batch_norm=1, filters=128, size=1, stride=1, pad=1, activation=leaky
+     |
+    [conv2d], batch_norm=1, size=3, stride=1, pad=1, filters=256, activation=leaky
+     |
+    [conv2d], batch_norm=1, filters=128, size=1, stride=1, pad=1, activation=leaky
+     |
+    [conv2d], batch_norm=1, size=3, stride=1, pad=1, filters=256, activation=leaky
+     |
+    [conv2d], batch_norm=1, filters=128, size=1, stride=1, pad=1, activation=leaky
+         \
+          \
+           \
+        [conv2d], batch_norm=1, size=3, stride=1, pad=1, filters=256, activation=leaky
+            |
+        [conv2d], size=1, stride=1, pad=1, filters=18. activation=linear
+            |
+        [yolo] mask = 0,1,2
+               anchors = 10,13,  16,30,  33,23,  30,61,  62,45,  59,119,  116,90,  156,198,  373,326
+               classes=1, num=9,
+               jitter=.3, ignore_thresh = .7, truth_thresh = 1, random=1
  */
 
 //****************************************************************************

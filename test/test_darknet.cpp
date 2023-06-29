@@ -119,21 +119,16 @@ void test_darknet_parser(void)
             }
         }
 
-        std::cout << "Total failed (diff was greater than 1e-3) = " << fail_cnt << std::endl;
+        std::cout << "Total failed (diff was greater than 1e-3) = "
+                  << fail_cnt << std::endl;
         TEST_CHECK(passing);
 
         auto final_predictions = model.process_outputs(outs);
 
         std::cerr << "FINAL LIST:\n";
-        for (auto &bbox : final_predictions)
+        for (auto &detection : final_predictions)
         {
-            std::cerr << "[c("
-                      << bbox.x << "," << bbox.y << "),sz("
-                      << bbox.w << "," << bbox.h << "),obj="
-                      << bbox.objectness << ",class="
-                      << bbox.class_idx << ",conf="
-                      << bbox.class_score << "]"
-                      << std::endl;
+            std::cerr << detection << std::endl;
         }
 
     }
