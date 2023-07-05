@@ -33,7 +33,7 @@
 #include <small/non_max_suppression.hpp>
 
 #define PARSER_DEBUG
-#define PARSER_DEBUG_VERBOSE
+//#define PARSER_DEBUG_VERBOSE
 
 //****************************************************************************
 // helper functions for parsing
@@ -1183,32 +1183,30 @@ private:
                     continue;
                 }
 
+#ifdef PARSER_DEBUG
                 // print layer index and type
                 std::cout << std::setw(3) << layer_idx;
                 std::cout << std::setw(18) << line << "\t";
 
-#ifdef PARSER_DEBUG
                 // Print layer info
                 if (line != "[route]" && line != "[shortcut]")
                 {
                     if (line != "[yolo]")
                     {
                         std::cout << std::setw(30) << str_shape(prev_shape)
-                                  << " --> " << str_shape(prev->output_shape())
-                                  << std::endl;
+                                  << " --> " << str_shape(prev->output_shape());
                     }
                     else
                     {
-                        std::cout << std::setw(30) << str_shape(prev_shape)
-                                  << std::endl;
+                        std::cout << std::setw(30) << str_shape(prev_shape);
                     }
                 }
                 else
                 {
                     std::cout << std::setw(30) << str_shape(prev_parents)
-                              << " --> " << str_shape(prev->output_shape())
-                              << std::endl;
+                              << " --> " << str_shape(prev->output_shape());
                 }
+                std::cout << "\n";
 #endif
 
                 prev_shape = prev->output_shape();
@@ -1222,7 +1220,6 @@ private:
                 }
 
                 layer_idx++;
-                std::cout << "\n";
             }
         }
 
