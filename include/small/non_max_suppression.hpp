@@ -78,9 +78,9 @@ std::ostream &operator<<(std::ostream &ostr, BoundingBox const &bbox)
 struct Detection
 {
     BoundingBox bbox;
-    float objectness;
-    float class_score;  // max class score
-    size_t class_id;   // max class id (index)
+    float       objectness;   // objectness confidence score
+    float       class_score;  // class confidence score
+    size_t      class_id;     // max class id (index)
     // probability = objectness * class_score;
 };
 
@@ -97,7 +97,7 @@ std::ostream &operator<<(std::ostream &ostr, Detection const &detection)
 //****************************************************************************
 std::vector<Detection> basic_nms(
     std::vector<Detection> predictions,        // copy intended
-    float                  iou_threshold = 0.45f)
+    float                  iou_threshold)      //= 0.45f
 {
     std::sort(predictions.begin(), predictions.end(),
               [](auto &a, auto &b) { return a.objectness > b.objectness; });
@@ -118,24 +118,35 @@ std::vector<Detection> basic_nms(
         predictions.erase(predictions.begin());
         auto const &curr_detection = keep_list.back();
 #ifdef NMS_DEBUG
-        std::cout << "KEEPING: " << curr_detection << std::endl;
+        std::cout << "KEEPING:  " << curr_detection << std::endl;
 #endif
         for (auto &detection : predictions)
         {
-            auto iou = curr_detection.bbox.iou(detection.bbox);
-#ifdef NMS_DEBUG
-            std::cout << "     IoU = " << iou << ", " << detection << std::endl;
-#endif
-            if (iou < iou_threshold)
+            if (detection.class_id == curr_detection.class_id)
             {
-                survivor_list.push_back(detection);
-            }
+                auto iou = curr_detection.bbox.iou(detection.bbox);
 #ifdef NMS_DEBUG
+                std::cout << "     IoU = " << iou << ", " << detection << std::endl;
+#endif
+                if (iou < iou_threshold)
+                {
+                    survivor_list.push_back(detection);
+                }
+#ifdef NMS_DEBUG
+                else
+                {
+                    std::cerr << "**REMOVED**\n";
+                }
+#endif
+            }
             else
             {
-                std::cerr << "**REMOVED**\n";
-            }
+#ifdef NMS_DEBUG
+                std::cout << "SKIPPING: " << detection << std::endl;
 #endif
+
+                survivor_list.push_back(detection);
+            }
         }
 
         predictions.swap(survivor_list);

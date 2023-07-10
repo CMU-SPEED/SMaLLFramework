@@ -123,7 +123,11 @@ void test_darknet_parser(void)
                   << fail_cnt << std::endl;
         TEST_CHECK(passing);
 
-        auto final_predictions = model.process_outputs(outs);
+        float const conf_thresh = 0.25f;
+        float const iou_thresh = 0.45f;
+        auto final_predictions = model.process_outputs(outs,
+                                                       conf_thresh,
+                                                       iou_thresh);
 
         std::cerr << "FINAL LIST:\n";
         for (auto &detection : final_predictions)

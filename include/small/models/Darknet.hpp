@@ -125,16 +125,30 @@ public:
     size_t get_num_classes() const { return m_num_classes; }
 
     //************************************************************************
-    // Convert outputs to detections and perform NMS to filter duplicates.
+    /** Convert outputs to detections and perform NMS to filter duplicates.
+     *
+     *  @param[in]  outputs    One buffer from each YOLO layer.  Shape is
+     *                         [1, 1, num_proposals, (5 + m_num_classes)]
+     *                         Each proposal record has following data:
+     *                         [center_x, center_y, width, height, objectness,
+     *                          class1_conf, class2_conf, ... classN_conf]
+     *
+     *  @param[in]  confidence_threshold   For both objectness and class conf.
+     *  @param[in]  iou_threshold          Exceed this and box is eliminated
+     *
+     *  @retval  A vector of Detection objects that survive NMS
+     */
     std::vector<Detection>
     process_outputs(std::vector<Tensor<BufferT>*> const &outputs,
-                    float objectness_threshold = 0.25f,
-                    float iou_threshold = 0.45f)
+                    float confidence_threshold, // = 0.25f,
+                    float iou_threshold)        // = 0.45f)
     {
         //assert(outputs.size() == 2);  // This only applies to Tiny Yolo V3
 
-        // 1. collect all predictions that satisfy the objectness threshold
+        // 1. collect all predictions that satisfy the confidence threshold
         std::vector<Detection> predictions;
+
+        // step through all of the output buffers.
         for (auto tensor_ptr : outputs)
         {
             assert(tensor_ptr->shape()[3] == (5 + m_num_classes));
@@ -143,31 +157,26 @@ public:
             for (size_t pred = 0; pred < tensor_ptr->shape()[2]; ++pred)
             {
                 size_t idx = pred*tensor_ptr->shape()[3];
-                if (buf[idx + 4] > objectness_threshold)
+                if (buf[idx + 4] > confidence_threshold)
                 {
                     /// @todo do we threshold this and keep multiple classes?
                     // Find the class with the maximum score
-                    size_t max_class_id  = 0;
-                    float  max_class_val = 0.f;
-                    for (size_t cls = 0; cls < m_num_classes; ++cls)
+                    for (size_t class_id=0; class_id<m_num_classes; ++class_id)
                     {
-                        //std::cout << "," << out_buf[idx+5+cls];
-                        if (buf[idx+5+cls] > max_class_val)
+                        //std::cout << "," << out_buf[idx+5+class_id];
+                        if (buf[idx+5+class_id] > confidence_threshold)
                         {
-                            max_class_id  = cls;
-                            max_class_val = buf[idx+5+cls];
+                            predictions.push_back(
+                                Detection{
+                                    {buf[idx+0],         // center_x
+                                     buf[idx+1],         // center_y
+                                     buf[idx+2],         // width
+                                     buf[idx+3]},        // height
+                                    buf[idx+4],          // objectness
+                                    buf[idx+5+class_id], // class confidence
+                                    class_id});
                         }
                     }
-
-                    predictions.push_back(
-                        Detection{
-                            {buf[idx+0],  //(buf[idx]   - 0.5f*buf[idx+2]),
-                             buf[idx+1],  //(buf[idx+1] - 0.5f*buf[idx+3]),
-                             buf[idx+2],  //(buf[idx]   + 0.5f*buf[idx+2]),
-                             buf[idx+3]}, //(buf[idx+1] + 0.5f*buf[idx+3]),
-                            buf[idx+4],
-                            max_class_val,
-                            max_class_id});
                 }
             }
         }
