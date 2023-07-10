@@ -18,21 +18,23 @@
 #include <small/Layer.hpp>
 
 // Some possible requirements
-// - stores the input shape
+// - stores the (single) input shape
+// - support multiple input nodes?? [NO, not until we have specific need.]
+// - support multiple outputs?? [YES]
+//      - Must the output be stored in one BufferT or multiple? [MULTIPLE]
 // - manages/owns all of the layers in a model
 // - pure virtual functions for
 //      - create model [NO]
 //      - inference [YES]
-//      - post process output [DON'T THINK SO]
+//      - post process output [DON'T THINK SO...PUT IN DERIVED CLASSES]
 // - Should this class be subclassed for specific models
 //      - building model occurs during subclass constructor.
-// - support multiple input nodes??
-// - support multiple outputs??
-//      - Must the output be stored in a BufferT?
-// - Manages the DAG of computation [POSSIBLE]
+// - Manages the DAG of computation and produces/manages a schedule [POSSIBLE]
 //      - automatic assignment of reusable buffers?
 //      - automatic computation of buffer high water marks?
-// - Where should .cfg file parsing be done.
+//      - schedule for sequential processing only or support parallel
+//        layer computation?
+// - Where should .cfg file parsing be done. [IN DERIVED CLASSES]
 //      - is there a general purpose Model subclass that can parse any input file
 
 namespace small
@@ -64,12 +66,13 @@ public:
 
     shape_type const &get_input_shape() const { return m_input_shape; }
 
-    // Models can have multiple input and output buffers
+    // Models can have multiple output buffers
+    // Assume one input layer with a single shape for now
     /// @note Ownership of output buffers is NOT transferred to the caller.
     /// @todo Consider returning a vector of smart pointers (weak_ptr?) to the
     ///       output buffers.
-    virtual std::vector<Tensor<BufferT>*>
-        inference(std::vector<Tensor<BufferT> const *> input) = 0;
+    virtual std::vector<Tensor<BufferT>*> inference(
+        Tensor<BufferT> const *input) = 0;
 
     // For debugging purposes
     size_t get_num_layers() const { return m_layers.size(); }

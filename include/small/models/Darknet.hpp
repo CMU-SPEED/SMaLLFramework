@@ -179,11 +179,11 @@ public:
     //************************************************************************
     // assumes all the buffers have been set up in the constructor
     virtual std::vector<Tensor<BufferT>*>
-        inference(std::vector<Tensor<BufferT> const *> inputs)
+        inference(Tensor<BufferT> const *input)
     {
         size_t yolo_block_idx = 0;
 
-        if(inputs[0]->shape() != this->m_input_shape)
+        if (input->shape() != this->m_input_shape)
         {
             throw std::runtime_error(
                 "Input shape does not match model input shape");
@@ -192,17 +192,17 @@ public:
         if (m_save_outputs)
         {
             std::copy(
-                &(inputs[0]->buffer()[0]),
-                &(inputs[0]->buffer()[compute_size(inputs[0]->shape())]),
+                &(input->buffer()[0]),
+                &(input->buffer()[compute_size(input->shape())]),
                 &(m_outputs[0]->buffer()[0])
             );
         }
         else
         {
-            m_in->set_shape(inputs[0]->shape());
+            m_in->set_shape(input->shape());
             std::copy(
-                &(inputs[0]->buffer()[0]),
-                &(inputs[0]->buffer()[compute_size(inputs[0]->shape())]),
+                &(input->buffer()[0]),
+                &(input->buffer()[compute_size(input->shape())]),
                 &(m_in->buffer()[0])
             );
         }

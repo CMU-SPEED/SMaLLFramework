@@ -262,15 +262,12 @@ public:
     /// @todo Consider returning a vector of smart pointers (weak_ptr?) to the
     ///       output buffers.
     virtual std::vector<Tensor<BufferT>*>
-        inference(std::vector<Tensor<BufferT> const *> input_tensors)
+        inference(Tensor<BufferT> const *input_tensor)
     {
-        // assert(input_tensors.size() == 1);
         // assert(input_tensors[0]->size() is correct);
-        // assert(output_tensors.size() == 0);
-        // assert(m_buffers.size() == 2);
 
         size_t layer_num = 0;
-        this->m_layers[layer_num++]->compute_output(input_tensors,
+        this->m_layers[layer_num++]->compute_output({input_tensor},
                                                     {m_buffer_0}); // Conv2D+ReLU
 
         this->m_layers[layer_num++]->compute_output({m_buffer_0},
