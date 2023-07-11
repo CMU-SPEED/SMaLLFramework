@@ -129,15 +129,16 @@ std::string get_pathname(
 }
 
 //****************************************************************************
-template <class BufferT>
-BufferT read_binary(std::string const &data_file) {
+/// reads a binary file assuming all the data is floats
+/// @todo: change float buffer when buffer types are merged
+small::FloatBuffer read_binary(std::string const &data_file) {
     std::filesystem::path data_path(data_file);
 
     // total size of weights in bytes
     size_t total_bytes = std::filesystem::file_size(data_path);
 
     std::ifstream data_in(data_file, std::ios::binary);
-    BufferT yolo_data(total_bytes / sizeof(typename BufferT::value_type));
+    small::FloatBuffer  yolo_data(total_bytes / sizeof(typename small::FloatBuffer ::value_type));
     data_in.read(reinterpret_cast<char*>(yolo_data.data()), total_bytes);
     data_in.close();
 

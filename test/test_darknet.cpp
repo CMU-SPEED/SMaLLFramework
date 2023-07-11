@@ -47,7 +47,6 @@ void test_yolo_parser(void)
         input_tensor_dc.buffer()
     );
 
-    // BufferT output = read_yolo_data<BufferT>(out_fname);
     BufferT output(read_inputs<BufferT>(out_fname));
     small::Tensor<BufferT> output_tensor({1, 1, 2535, 85}, std::move(output));
 

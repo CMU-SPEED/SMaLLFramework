@@ -109,8 +109,6 @@ bool run_yolo_layer_config(LayerParams const &params,
 
     std::cout << "YOLO: output file = " << out_fname << std::endl;
     
-    // std::string bb_n_conf_fname = data_dir + "/out__yolo_Ci255_H13_W13_k0_s0_f_43095.bin";
-    // BufferT bb_n_conf_ref = read_yolo_data<BufferT>(out_fname);
     BufferT bb_n_conf_ref(read_inputs<BufferT>(out_fname));
 
     // compare against regression data
