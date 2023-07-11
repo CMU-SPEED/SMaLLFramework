@@ -21,12 +21,11 @@ std::string const data_dir("../test/regression_data");
 std::string const cfg_dir("../test/cfg_data");
 
 //****************************************************************************
-void test_darknet_parser(void)
+void test_yolo_parser(void)
 {
-
     using BufferT = small::FloatBuffer;
 
-    std::string cfg = cfg_dir + "/no_wspace_yolov3-tiny.cfg";
+    std::string cfg = cfg_dir + "/yolov3-tiny.cfg";
     std::string weights = cfg_dir + "/yolov3-tiny.weights";
 
     std::cout << "\n\nReading Darknet CFG from " << cfg << std::endl;
@@ -141,11 +140,32 @@ void test_darknet_parser(void)
         TEST_CHECK(false);
     }
 
+
+
+}
+
+void test_bug_parser(void)
+{
+
+    std::string cfg = cfg_dir + "/yolov3-tiny_wbug.cfg";
+    std::string weights = cfg_dir + "/yolov3-tiny.weights";
+
+    try {
+        small::Darknet<small::FloatBuffer> model(cfg, weights);
+        TEST_CHECK(false);
+    }
+
+    catch (std::exception const &e) {
+        std::cerr << "ERROR: " << e.what() << std::endl;
+        TEST_CHECK(true);
+    }
+
 }
 
 //****************************************************************************
 //****************************************************************************
 TEST_LIST = {
-    {"darknet_parser", test_darknet_parser},
+    {"darknet_parser", test_yolo_parser},
+    {"darknet_parser", test_bug_parser},
     {NULL, NULL}
 };

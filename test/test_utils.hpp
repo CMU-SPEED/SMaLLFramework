@@ -130,7 +130,7 @@ std::string get_pathname(
 
 //****************************************************************************
 template <class BufferT>
-BufferT read_yolo_data(std::string const &data_file) {
+BufferT read_binary(std::string const &data_file) {
     std::filesystem::path data_path(data_file);
 
     // total size of weights in bytes

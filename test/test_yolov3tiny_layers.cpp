@@ -54,7 +54,7 @@ void test_yolov3_tiny(void)
 
     using BufferT = small::FloatBuffer;
 
-    std::string cfg = cfg_dir + "/no_wspace_yolov3-tiny.cfg";
+    std::string cfg = cfg_dir + "/yolov3-tiny.cfg";
     std::string weights = cfg_dir + "/yolov3-tiny.weights";
 
     std::cout << "\n\nReading Darknet CFG from " << cfg << std::endl;

@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <vector>
@@ -74,17 +75,6 @@ std::vector<T> extract_int_array(std::string const &s)
     return list;
 }
 
-// get all anchor pairs
-std::vector<std::pair<uint32_t, uint32_t>> get_anchors(std::string const &anchors)
-{
-    std::vector<uint32_t> anchor_list = extract_int_array<uint32_t>(anchors);
-    std::vector<std::pair<uint32_t, uint32_t>> anchor_pairs;
-    for (uint32_t i = 0; i < anchor_list.size(); i+=2) {
-        anchor_pairs.push_back(std::make_pair(anchor_list[i], anchor_list[i+1]));
-    }
-    return anchor_pairs;
-}
-
 namespace small
 {
 
@@ -96,12 +86,12 @@ public:
     Darknet() = delete;
 
     // Assume one input layer with a single shape for now
-    Darknet(std::string cfg, std::string weights, bool save_outputs = false)
+    Darknet(std::string cfg_path, std::string weights_path, bool save_outputs = false)
         : Model<BufferT>({0,0,0,0}),
           m_num_classes(0),
           m_save_outputs(save_outputs)
     {
-        parse_cfg_and_weights(cfg, weights);
+        parse_cfg_and_weights(cfg_path, weights_path);
     }
 
     virtual ~Darknet() {
@@ -275,12 +265,13 @@ public:
                 }
                 else
                 {
-                    std::copy(
-                        &m_cached_outputs[parents[1]]->buffer()[0],
-                        &m_cached_outputs[parents[1]]->buffer()[compute_size(out_shape)],
-                        &m_out->buffer()[0]
-                    );
-                    layer->compute_output({m_in}, {m_out});
+                    // std::copy(
+                    //     &m_cached_outputs[parents[1]]->buffer()[0],
+                    //     &m_cached_outputs[parents[1]]->buffer()[compute_size(out_shape)],
+                    //     &m_out->buffer()[0]
+                    // );
+                    layer->compute_output({m_cached_outputs[parents[1]]}, {m_in});
+                    m_in->swap(*m_out);
                 }
 
             }
@@ -379,6 +370,7 @@ public:
             }
 
             // swap input and output
+            // swap input and output
             m_in->swap(*m_out);
         }
 
@@ -423,6 +415,7 @@ public:
 
 private:
     size_t m_num_classes;
+     size_t m_line_num;
 
     // map for cached outputs
     // layer_idx -> output
@@ -440,10 +433,21 @@ private:
     std::vector<Tensor<BufferT>*>       m_outputs;
     bool                                m_save_outputs;
 
-private:
+    // read line and remove white space
+     inline bool getline_(std::ifstream &file, std::string &line) {
+        if(getline(file, line)) {
+            line.erase(std::remove(line.begin(), line.end(), ' '), line.end());
+            this->m_line_num++;
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
     //************************************************************************
     // returns type of activation based on the key
-    static ActivationType parse_activation(std::string act_type)
+     ActivationType parse_activation(std::string act_type)
     {
         if      (act_type == "leaky")  { return ActivationType::LEAKY; }
         else if (act_type == "relu" )  { return ActivationType::RELU; }
@@ -459,7 +463,7 @@ private:
     //************************************************************************
     /// @todo: this really needs to be checked. I have no clue how this should
     ///        be handled.  Note there is also a separate padding parameter
-    static PaddingEnum parse_padding(std::string pad_type)
+     PaddingEnum parse_padding(std::string pad_type)
     {
         if      (pad_type == "1") { return PaddingEnum::PADDING_F; }
         else if (pad_type == "0") { return PaddingEnum::PADDING_V; }
@@ -474,7 +478,7 @@ private:
     //************************************************************************
     // parsing "[convolutional]" blocks
     template <typename ScalarT>
-    static Layer<BufferT>* parse_conv(std::ifstream    &cfg_file,
+     Layer<BufferT>* parse_conv(std::ifstream    &cfg_file,
                                       shape_type const &input_shape,
                                       ScalarT          *weight_data_ptr,
                                       size_t           &weight_idx)
@@ -494,7 +498,7 @@ private:
 
         int last_pos = cfg_file.tellg();
         std::string line;
-        while (getline(cfg_file, line))
+        while (getline_(cfg_file, line))
         {
             // skip empty lines and comments
             if (line.empty() || line.at(0) == '#')
@@ -507,6 +511,7 @@ private:
             if (line.at(0) == '[')
             {
                 cfg_file.seekg(last_pos);
+                this->m_line_num--;
                 break;
             }
 
@@ -634,7 +639,7 @@ private:
     }
 
     //************************************************************************
-    static Layer<BufferT>* parse_max(std::ifstream    &cfg_file,
+     Layer<BufferT>* parse_max(std::ifstream    &cfg_file,
                                      shape_type const &input_shape)
     {
 #ifdef PARSER_DEBUG_VERBOSE
@@ -648,7 +653,7 @@ private:
 
         int last_pos = cfg_file.tellg();
         std::string line;
-        while (getline(cfg_file, line))
+        while (getline_(cfg_file, line))
         {
             // skip empty lines and comments
             if (line.empty() || line.at(0) == '#')
@@ -661,6 +666,7 @@ private:
             if (line.at(0) == '[')
             {
                 cfg_file.seekg(last_pos);
+                this->m_line_num--;
                 break;
             }
 
@@ -700,7 +706,7 @@ private:
 
         int last_pos = cfg_file.tellg();
         std::string line;
-        while (getline(cfg_file, line))
+        while (getline_(cfg_file, line))
         {
             // skip empty lines and comments
             if (line.empty() || line.at(0) == '#')
@@ -713,6 +719,7 @@ private:
             if (line.at(0) == '[')
             {
                 cfg_file.seekg(last_pos);
+                this->m_line_num--;
                 break;
             }
 
@@ -765,7 +772,7 @@ private:
 
         int last_pos = cfg_file.tellg();
         std::string line;
-        while (getline(cfg_file, line))
+        while (getline_(cfg_file, line))
         {
             // skip empty lines and comments
             if (line.empty() || line.at(0) == '#')
@@ -778,6 +785,7 @@ private:
             if (line.at(0) == '[')
             {
                 cfg_file.seekg(last_pos);
+                this->m_line_num--;
                 break;
             }
 
@@ -842,7 +850,7 @@ private:
 
         int last_pos = cfg_file.tellg();
         std::string line;
-        while (getline(cfg_file, line))
+        while (getline_(cfg_file, line))
         {
             // skip empty lines and comments
             if (line.empty() || line.at(0) == '#')
@@ -855,6 +863,7 @@ private:
             if (line.at(0) == '[')
             {
                 cfg_file.seekg(last_pos);
+                this->m_line_num--;
                 break;
             }
 
@@ -897,7 +906,7 @@ private:
 
         int last_pos = cfg_file.tellg();
         std::string line;
-        while (getline(cfg_file, line))
+        while (getline_(cfg_file, line))
         {
             // skip empty lines and comments
             if (line.empty() || line.at(0) == '#')
@@ -910,6 +919,7 @@ private:
             if (line.at(0) == '[')
             {
                 cfg_file.seekg(last_pos);
+                this->m_line_num--;
                 break;
             }
 
@@ -923,7 +933,10 @@ private:
             }
             else if (key == "anchors")
             {
-                anchors = get_anchors(value);
+                std::vector<uint32_t> anchor_list = extract_int_array<uint32_t>(value);
+                for (uint32_t i = 0; i < anchor_list.size(); i+=2) {
+                    anchors.push_back(std::make_pair(anchor_list[i], anchor_list[i+1]));
+                }
             }
             else if (key == "classes")
             {
@@ -995,7 +1008,7 @@ private:
         int last_pos = cfg_file.tellg();
 
         // consume network block entirely and extract input shape
-        while (getline(cfg_file, line))
+        while (getline_(cfg_file, line))
         {
             // skip empty lines and comments
             if (line.empty() || line.at(0) == '#')
@@ -1008,6 +1021,7 @@ private:
             if (line.at(0) == '[')
             {
                 cfg_file.seekg(last_pos);
+                this->m_line_num--;
                 break;
             }
 
@@ -1035,34 +1049,36 @@ private:
     }
 
     //************************************************************************
-    void parse_cfg_and_weights(std::string cfg, std::string weights)
+    void parse_cfg_and_weights(std::string cfg_path, std::string weights_path)
     {
         using ScalarT = typename BufferT::value_type;
+
+        this->m_line_num = 0;
+        bool error = false;
 
         Layer<BufferT> *prev = nullptr;
         shape_type prev_shape = {0,0,0,0};
         std::vector<int> prev_parents = {0};
 
-        std::ifstream cfg_file(cfg);
+        std::ifstream cfg_file(cfg_path);
         if (!cfg_file)
         {
             throw std::invalid_argument(
                 "Darknet::parse_cfg_and_weights ERROR: "
-                "Could not open cfg file: " + cfg);
+                "Could not open cfg file: " + cfg_path);
         }
 
-        std::ifstream weights_file(weights, std::ios::binary);
+        std::ifstream weights_file(weights_path, std::ios::binary);
         if (!weights_file)
         {
             throw std::invalid_argument(
                 "Darknet::parse_cfg_and_weights ERROR: "
-                "Could not open weights file: " + weights);
+                "Could not open weights file: " + weights_path);
         }
 
-        // total size of weights in bytes
-        weights_file.seekg(0, std::ios::end);
-        size_t total_bytes = weights_file.tellg();
-        weights_file.seekg(0, std::ios::beg);
+        // total size of weights_path in bytes
+        std::filesystem::path weights_fs_path(weights_path);
+        size_t total_bytes = std::filesystem::file_size(weights_fs_path);
 
         // first 20 bytes are header
         // -------------------------
@@ -1102,7 +1118,7 @@ private:
         size_t layer_idx = 0;
 
         std::string line;
-        while (getline(cfg_file, line))
+        while (getline_(cfg_file, line))
         {
             // skip empty lines and comments
             if (line.empty() || line.at(0) == '#') { continue; }
@@ -1137,7 +1153,7 @@ private:
                                                weight_data_ptr,
                                                weight_idx);
 #ifdef PARSER_DEBUG_VERBOSE
-                    std::cout << "Weights elements remaining: "
+                    std::cout << "weights_path elements remaining: "
                               << total_elems - weight_idx << "\n";
 #endif
                 }
@@ -1171,9 +1187,12 @@ private:
                 // unsupported block: raise warning and skip
                 else
                 {
-                    std::cerr << "WARNING: Unsupported block: " << line << "\n";
+                    error = true;
+                    std::cerr << \
+                        "\033[1;31m[ERROR]\033[0m: Unsupported block (" << \
+                        line << ")" << " on line " << this->m_line_num << "\n";
                     int last_pos = cfg_file.tellg();
-                    while (getline(cfg_file, line))
+                    while (getline_(cfg_file, line))
                     {
                         if (line.empty())
                         {
@@ -1184,6 +1203,7 @@ private:
                         if (line.at(0) == '[')
                         {
                             cfg_file.seekg(last_pos); // move pointer back a line
+                            this->m_line_num--;
                             break;
                         }
                         last_pos = cfg_file.tellg();
@@ -1243,6 +1263,11 @@ private:
         std::cout << "Total buffer sizes: " << total_buffer_sizes() << std::endl;
         std::cout << std::endl;
 #endif
+
+        if(error) {
+            throw std::invalid_argument("Failure to build model. Check errors and try again.");
+        }
+
 
         // allocate intermediate buffers
         m_in = new Tensor<BufferT>(m_max_buffer_size);
