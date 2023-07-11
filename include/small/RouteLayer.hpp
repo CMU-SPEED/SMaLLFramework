@@ -41,7 +41,12 @@ public:
                   << "x" << input0_shape[WIDTH]
                   << ")" << std::endl;
 #endif
-
+        if(parents.size() != 1) {
+            throw std::invalid_argument(
+                "RouteLayer ctor ERROR: "
+                "parents vector size does not match number of inputs (expected 1)."
+            );
+        }
     }
 
     // two input shapes
@@ -75,6 +80,13 @@ public:
             throw std::invalid_argument(
                 "RouteLayer ctor ERROR: "
                 "predecessors do not have same output shape.");
+        }
+
+        if(parents.size() != 2) {
+            throw std::invalid_argument(
+                "RouteLayer ctor ERROR: "
+                "parents vector size does not match number of inputs (expected 2)."
+            );
         }
 
         // only concat along channel dimension
