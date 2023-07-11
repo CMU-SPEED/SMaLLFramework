@@ -1265,6 +1265,9 @@ private:
 #endif
 
         if(error) {
+            for(auto &yolo_out : m_yolo_outputs) {
+                delete yolo_out;
+            }
             throw std::invalid_argument("Failure to build model. Check errors and try again.");
         }
 
