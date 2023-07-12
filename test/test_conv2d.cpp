@@ -29,6 +29,187 @@
 std::string const data_dir("../test/regression_data");
 
 //****************************************************************************
+void test_conv2d_layer_odd_output_channels(void)
+{
+#if defined(QUANTIZED)
+    using BufferT = small::QUInt8Buffer;
+#else
+    using BufferT = small::FloatBuffer;
+#endif
+
+    // C_i,H,W,k,s,p,C_o
+    LayerParams params {1024, 13, 13, 1, 1, small::PADDING_F, 13};
+
+    // Odd packed buffers should fail
+    try
+    {
+        small::shape_type input_shape{1U, params.C_i, params.H, params.W};
+        BufferT filters(params.C_i*params.k*params.k*params.C_o);
+        small::Conv2DLayer conv2d(input_shape,
+                                  params.k, params.k,
+                                  params.s, params.p,
+                                  params.C_o,
+                                  filters,
+                                  true);
+
+        TEST_ASSERT(params.C_o % C_ob == 0);
+    }
+    catch (std::invalid_argument &e_obj)
+    {
+        TEST_CHECK(params.C_o % C_ob != 0);
+    }
+
+    // Odd unpacked buffers should not fail
+    try
+    {
+        small::shape_type input_shape{1U, params.C_i, params.H, params.W};
+
+        BufferT filters(params.C_i*params.k*params.k*params.C_o);
+
+        small::Conv2DLayer conv2d(input_shape,
+                                  params.k, params.k,
+                                  params.s, params.p,
+                                  params.C_o,
+                                  filters,
+                                  false);
+
+        TEST_ASSERT(conv2d.get_effective_output_channels() == params.C_o);
+        if (params.C_o % C_ob == 0)
+        {
+            TEST_ASSERT(conv2d.output_shape(0)[small::CHANNEL] == params.C_o);
+        }
+        else
+        {
+            TEST_ASSERT(conv2d.output_shape(0)[small::CHANNEL] ==
+                        (params.C_o + (C_ob - params.C_o % C_ob)));
+        }
+    }
+    catch (std::invalid_argument &e_obj)
+    {
+        TEST_CHECK(false);
+    }
+
+    // Test with bias
+    try
+    {
+        small::shape_type input_shape{1U, params.C_i, params.H, params.W};
+
+        BufferT filters(params.C_i*params.k*params.k*params.C_o);
+        BufferT bias(params.C_o);
+
+        small::Conv2DLayer conv2d(input_shape,
+                                  params.k, params.k,
+                                  params.s, params.p,
+                                  params.C_o,
+                                  filters,
+                                  bias,
+                                  false);
+
+        TEST_ASSERT(conv2d.get_effective_output_channels() == params.C_o);
+        if (params.C_o % C_ob == 0)
+        {
+            TEST_ASSERT(conv2d.output_shape(0)[small::CHANNEL] == params.C_o);
+        }
+        else
+        {
+            TEST_ASSERT(conv2d.output_shape(0)[small::CHANNEL] ==
+                        (params.C_o + (C_ob - params.C_o % C_ob)));
+        }
+    }
+    catch (std::invalid_argument &e_obj)
+    {
+        TEST_CHECK(false);
+    }
+
+    // Test with batchnorm params
+    try
+    {
+        small::shape_type input_shape{1U, params.C_i, params.H, params.W};
+
+        BufferT filters(params.C_i*params.k*params.k*params.C_o);
+        BufferT bn_weight(params.C_o);
+        BufferT bn_bias(params.C_o);
+        BufferT bn_running_mean(params.C_o);
+        BufferT bn_running_variance(params.C_o);
+
+        small::Conv2DLayer conv2d(input_shape,
+                                  params.k, params.k,
+                                  params.s, params.p,
+                                  params.C_o,
+                                  filters,
+                                  bn_weight,
+                                  bn_bias,
+                                  bn_running_mean,
+                                  bn_running_variance,
+                                  0.f,
+                                  false);
+
+        TEST_ASSERT(conv2d.get_effective_output_channels() == params.C_o);
+        if (params.C_o % C_ob == 0)
+        {
+            TEST_ASSERT(conv2d.output_shape(0)[small::CHANNEL] == params.C_o);
+        }
+        else
+        {
+            TEST_ASSERT(conv2d.output_shape(0)[small::CHANNEL] ==
+                        (params.C_o + (C_ob - params.C_o % C_ob)));
+        }
+    }
+    catch (std::invalid_argument &e_obj)
+    {
+        std::cerr << "EXCEPTION: " << e_obj.what() << std::endl;
+        TEST_CHECK(false);
+    }
+
+    // Test extra channel values with random filter and bias
+    try
+    {
+        small::shape_type input_shape{1U, params.C_i, params.H, params.W};
+
+        BufferT filters(params.C_i*params.k*params.k*params.C_o);
+        small::init(filters, filters.size());
+        BufferT bias(params.C_o);
+        small::init(bias, bias.size());
+
+        small::Conv2DLayer conv2d(input_shape,
+                                  params.k, params.k,
+                                  params.s, params.p,
+                                  params.C_o,
+                                  filters,
+                                  bias,
+                                  false);
+
+        small::Tensor<BufferT>  input(input_shape);
+        small::Tensor<BufferT> output(conv2d.output_size());
+
+        conv2d.compute_output({&input}, {&output});
+        for (size_t co = params.C_o;
+             co < conv2d.output_shape(0)[small::CHANNEL]; ++co)
+        {
+            for (size_t h = 0; h < conv2d.output_shape(0)[small::HEIGHT]; ++h)
+            {
+                for (size_t w = 0; w < conv2d.output_shape(0)[small::WIDTH]; ++w)
+                {
+                    size_t packed_index =
+                        small::packed_buffer_index(
+                            conv2d.output_shape(0)[small::CHANNEL],
+                            conv2d.output_shape(0)[small::HEIGHT],
+                            conv2d.output_shape(0)[small::WIDTH],
+                            C_ob,
+                            co, h, w);
+                    TEST_ASSERT(0.f == output.buffer()[packed_index]);
+                }
+            }
+        }
+    }
+    catch (std::invalid_argument &e_obj)
+    {
+        std::cerr << "Unexpected exception caught: " << e_obj.what() << std::endl;
+        TEST_CHECK(false);
+    }
+}
+
+//****************************************************************************
 void test_conv2d_bias(void)
 {
 #if defined(QUANTIZED)
@@ -45,7 +226,7 @@ void test_conv2d_bias(void)
         get_pathname(data_dir, "filter", "conv2d",
                      params,
                      params.C_i*params.k*params.k*params.C_o);
-    std::cout << "Conv2D: filter file= " << filter_fname << std::endl;
+    std::cout << "\nConv2D: filter file= " << filter_fname << std::endl;
 
     BufferT filter_dc = read_inputs<BufferT>(filter_fname);
     TEST_ASSERT(filter_dc.size() == params.C_i*params.k*params.k*params.C_o);
@@ -743,6 +924,137 @@ void test_conv2d_batchnorm_mean_variance_1(void)
     TEST_ASSERT(passing);
 }
 
+//*****************************************************************************
+void test_conv2d_batchnorm(void) {
+
+    using BufferT = small::FloatBuffer;
+
+    // run a hardcoded test for batchnorm against pytorch
+    // this comes from the yolo model
+    // [convolutional]
+    // batch_normalize=1
+    // filters=16
+    // size=3
+    // stride=1
+    // pad=1
+    // activation=leaky
+
+    // C_i,Hi,Wi,k,s,p,C_o
+    LayerParams params = {3, 416, 416, 3, 1, small::PADDING_F, 16};
+
+    small::shape_type input_shape({1UL, params.C_i, params.H, params.W});
+
+    // we are using PADDING:F so output H and W are the same as input
+    small::shape_type output_shape({1UL, params.C_o, params.H, params.W});
+
+    size_t input_size = params.C_i*params.H*params.W;
+    size_t output_buffer_size = params.C_o*params.H*params.W;
+    size_t batch_norm_size = params.C_o*4;
+    size_t filter_size = params.C_o*params.C_i*params.k*params.k;
+
+    bool passing = true;
+
+    std::string in_fname =
+        get_pathname(data_dir, "in", "conv2d",
+                     params,
+                     input_size);
+    std::cout << "\nConv2D: input file = " << in_fname << std::endl;
+
+    BufferT input(read_inputs<BufferT>(in_fname));
+    BufferT input_dc(input.size());
+    small::pack_buffer(input, small::INPUT,
+                       1U, params.C_i, params.H, params.W,
+                       C_ib, C_ob,
+                       input_dc);
+    small::Tensor<BufferT> input_tensor(input_shape, input_dc);
+
+    std::string filter_data = data_dir + "/filter__conv2d_bn_Ci3_Co16_H416_W416_k3_s0_f_432.bin2";
+    std::cout << "Conv2D: filter file= " << filter_data << std::endl;
+
+    std::string bn_fname =
+        get_pathname(data_dir, "bn", "conv2d",
+                     params,
+                     batch_norm_size);
+    BufferT batch_norm_data(read_inputs<BufferT>(bn_fname));
+
+    BufferT bn_bias(params.C_o);
+    std::copy(&batch_norm_data[0], &batch_norm_data[params.C_o], &bn_bias[0]);
+
+    BufferT bn_weight(params.C_o);
+    std::copy(&batch_norm_data[params.C_o], &batch_norm_data[params.C_o*2], &bn_weight[0]);
+
+    BufferT bn_running_mean(params.C_o);
+    std::copy(&batch_norm_data[params.C_o*2], &batch_norm_data[params.C_o*3], &bn_running_mean[0]);
+
+    BufferT bn_running_variance(params.C_o);
+    std::copy(&batch_norm_data[params.C_o*3], &batch_norm_data[params.C_o*4], &bn_running_variance[0]);
+
+
+    std::string filter_fname =
+        get_pathname(data_dir, "filter", "conv2d",
+                     params,
+                     filter_size);
+    BufferT filter(read_inputs<BufferT>(filter_fname));
+
+    small::ActivationType activation = small::ActivationType::LEAKY;
+    small::Conv2DLayer<BufferT> conv(
+        input_shape,
+        params.k, params.k,
+        params.s, params.p,
+        params.C_o,
+        filter,
+        bn_weight,
+        bn_bias,
+        bn_running_mean,
+        bn_running_variance,
+        1.e-5,
+        false,
+        activation,
+        0.1 // leaky slope from pytorch yolov3 code
+    );
+
+    small::Tensor<BufferT> output_tensor_ans(output_shape);
+    conv.compute_output({&input_tensor}, {&output_tensor_ans});
+
+    small::Tensor<BufferT> output_tensor_ans_unpacked(output_shape);
+    small::unpack_buffer(output_tensor_ans.buffer(), small::OUTPUT,
+                       1U, params.C_o, params.H, params.W,
+                       C_ib, C_ob,
+                       output_tensor_ans_unpacked.buffer());
+
+
+    std::string out_fname =
+        get_pathname(data_dir, "out", "conv2d",
+                     params,
+                     output_buffer_size);
+    std::cout << "Conv2D: output file= " << out_fname << std::endl;
+
+    BufferT output(read_inputs<BufferT>(out_fname));
+    small::Tensor<BufferT> output_tensor_ref(output_shape, output);
+
+    // compare output_tensor_ans to output_tensor_ref
+    /// @todo revisit accuracy
+    size_t fail_cnt = 0;
+    for (size_t i = 0; i < output_tensor_ref.size(); ++i) {
+        if (!almost_equal(output_tensor_ref.buffer()[i], output_tensor_ans_unpacked.buffer()[i], 5e-03, 1e-04)) {
+            fail_cnt++;
+            passing = false;
+            if(fail_cnt < 10) {
+                std::cout << "FAIL: Conv2D_out(" << i << ")-->"
+                        << std::setw(12) << std::setprecision(10)
+                        << output_tensor_ans_unpacked.buffer()[i] << "(computed) != "
+                        << std::setw(12) << std::setprecision(10)
+                        << output_tensor_ref.buffer()[i]
+                        << std::endl;
+            }
+        }
+    }
+
+    TEST_CHECK(passing);
+
+}
+
+
 //****************************************************************************
 template <class BufferT>
 bool run_conv2d_config(LayerParams const &params)
@@ -973,6 +1285,11 @@ void test_conv2d_regression_data(void)
 {
     std::vector<LayerParams> params =
     {
+        {3,  3,  3, 1, 1, small::PADDING_V, 16},
+        {3,  3,  3, 3, 1, small::PADDING_V, 16},
+        {3,  1,  1, 1, 1, small::PADDING_F, 16},
+        {3,  3,  3, 1, 1, small::PADDING_F, 16},
+
         {16,  1,  1, 1, 1, small::PADDING_V, 16},
         {16,  1,  6, 1, 1, small::PADDING_V, 16},
         {16,  3,  3, 3, 1, small::PADDING_V, 16},  //Ci,Hi,Wi,k,s,p,Co
@@ -1017,6 +1334,11 @@ void test_conv2d_layer_regression_data(void)
 {
     std::vector<LayerParams> params =
     {
+        {3,  3,  3, 1, 1, small::PADDING_V, 16},
+        {3,  3,  3, 3, 1, small::PADDING_V, 16},
+        {3,  1,  1, 1, 1, small::PADDING_F, 16},
+        {3,  3,  3, 1, 1, small::PADDING_F, 16},
+
         {16,  1,  1, 1, 1, small::PADDING_V, 16},
         {16,  1,  6, 1, 1, small::PADDING_V, 16},
         {16,  3,  3, 3, 1, small::PADDING_V, 16},  //Ci,Hi,Wi,k,s,p,Co
@@ -1227,13 +1549,15 @@ void measure_conv2d_performance(void)
 //****************************************************************************
 //****************************************************************************
 TEST_LIST = {
+    {"conv2d_layer_odd_output_channels",   test_conv2d_layer_odd_output_channels},
     {"conv2d_bias",                  test_conv2d_bias},
     {"conv2d_batchnorm_identity",    test_conv2d_batchnorm_identity},
     {"conv2d_batchnorm_bias_1",      test_conv2d_batchnorm_bias_1},
     {"conv2d_batchnorm_mean_1",      test_conv2d_batchnorm_mean_1},
     {"conv2d_batchnorm_mean_variance_1", test_conv2d_batchnorm_mean_variance_1},
+    {"conv2d_batchnorm", test_conv2d_batchnorm},
     {"conv2d_regression_data",       test_conv2d_regression_data},
     {"conv2d_layer_regression_data", test_conv2d_layer_regression_data},
-    // {"conv2d_performance", measure_conv2d_performance},
+    // {"conv2d_performance", measure_conv2 d_performance},
     {NULL, NULL}
 };

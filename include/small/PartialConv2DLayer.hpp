@@ -64,6 +64,18 @@ public:
                   << "x" << m_input_shape[WIDTH]
                   << "), filter.size=" << filters.size() << std::endl;
 #endif
+        if (((input_shape[CHANNEL] % C_ib) != 0) && (input_shape[CHANNEL] != 3))
+        {
+            throw std::invalid_argument(
+                "PartialConv2DLayer::ctor ERROR: "
+                "invalid number of input channels.");
+        }
+        if ((num_output_channels % C_ob) != 0)
+        {
+            throw std::invalid_argument(
+                "PartialConv2DLayer::ctor ERROR: "
+                "invalid number of output channels.");
+        }
 
         m_leaky_slope[0] = leaky_slope;
         compute_padding_output_shape(input_shape,
@@ -73,6 +85,7 @@ public:
                                      num_output_channels);
 
         detail::initialize_conv2d_buffers(
+            num_output_channels,
             num_output_channels,
             m_input_shape[CHANNEL],
             m_kernel_size, m_kernel_size,
@@ -106,15 +119,15 @@ public:
     }
 
     PartialConv2DLayer(shape_type const &input_shape,    //pred.output_shape()
-                uint32_t          kernel_size,
-                uint32_t          stride,
-                PaddingEnum       padding_type,
-                uint32_t          num_output_channels,
-                BufferT    const &filters,
-                BufferT    const &bias,
-                bool              buffers_are_packed = true,
-                ActivationType    activation_type = NONE,
-                float             leaky_slope = 1.e-2)
+                       uint32_t          kernel_size,
+                       uint32_t          stride,
+                       PaddingEnum       padding_type,
+                       uint32_t          num_output_channels,
+                       BufferT    const &filters,
+                       BufferT    const &bias,
+                       bool              buffers_are_packed = true,
+                       ActivationType    activation_type = NONE,
+                       float             leaky_slope = 1.e-2)
         : Layer<BufferT>(),
           m_input_shape(input_shape),
           m_kernel_size(kernel_size),
@@ -137,6 +150,18 @@ public:
                   << "),filters.size=" << filters.size()
                   << ",bias.size=" << bias.size() << std::endl;
 #endif
+        if (((input_shape[CHANNEL] % C_ib) != 0) && (input_shape[CHANNEL] != 3))
+        {
+            throw std::invalid_argument(
+                "PartialConv2DLayer::ctor ERROR: "
+                "invalid number of input channels.");
+        }
+        if ((num_output_channels % C_ob) != 0)
+        {
+            throw std::invalid_argument(
+                "PartialConv2DLayer::ctor ERROR: "
+                "invalid number of output channels.");
+        }
 
         m_leaky_slope[0] = leaky_slope;
         compute_padding_output_shape(input_shape,
@@ -146,6 +171,7 @@ public:
                                      num_output_channels);
 
         detail::initialize_conv2d_buffers(
+            num_output_channels,
             num_output_channels,
             m_input_shape[CHANNEL],
             m_kernel_size, m_kernel_size,
@@ -181,19 +207,19 @@ public:
     }
 
     PartialConv2DLayer(shape_type const &input_shape,    //pred.output_shape()
-                uint32_t          kernel_size,
-                uint32_t          stride,
-                PaddingEnum       padding_type,
-                uint32_t          num_output_channels,
-                BufferT    const &filters,
-                BufferT    const &bn_weight,            // gamma
-                BufferT    const &bn_bias,              // beta
-                BufferT    const &bn_running_mean,      // mu_hat
-                BufferT    const &bn_running_variance,  // sigma_hat^2
-                float      const &bn_eps = 1.e-5,       // float?
-                bool              buffers_are_packed = true,
-                ActivationType    activation_type = NONE,
-                float             leaky_slope = 1.e-2)
+                       uint32_t          kernel_size,
+                       uint32_t          stride,
+                       PaddingEnum       padding_type,
+                       uint32_t          num_output_channels,
+                       BufferT    const &filters,
+                       BufferT    const &bn_weight,            // gamma
+                       BufferT    const &bn_bias,              // beta
+                       BufferT    const &bn_running_mean,      // mu_hat
+                       BufferT    const &bn_running_variance,  // sigma_hat^2
+                       float      const &bn_eps = 1.e-5,       // float?
+                       bool              buffers_are_packed = true,
+                       ActivationType    activation_type = NONE,
+                       float             leaky_slope = 1.e-2)
         : Layer<BufferT>(),
           m_input_shape(input_shape),
           m_kernel_size(kernel_size),
@@ -221,6 +247,18 @@ public:
                   << "," << bn_running_mean.size()
                   << "),bn_eps:" << bn_eps << std::endl;
 #endif
+        if (((input_shape[CHANNEL] % C_ib) != 0) && (input_shape[CHANNEL] != 3))
+        {
+            throw std::invalid_argument(
+                "PartialConv2DLayer::ctor ERROR: "
+                "invalid number of input channels.");
+        }
+        if ((num_output_channels % C_ob) != 0)
+        {
+            throw std::invalid_argument(
+                "PartialConv2DLayer::ctor ERROR: "
+                "invalid number of output channels.");
+        }
 
         m_leaky_slope[0] = leaky_slope;
         compute_padding_output_shape(input_shape,
@@ -230,6 +268,7 @@ public:
                                      num_output_channels);
 
         detail::initialize_conv2d_buffers(
+            num_output_channels,
             num_output_channels,
             m_input_shape[CHANNEL],
             m_kernel_size, m_kernel_size,

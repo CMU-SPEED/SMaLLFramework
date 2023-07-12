@@ -12,9 +12,12 @@
 
 #pragma once
 
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <vector>
+#include <map>
+#include <iomanip>
 
 #include <small.h>
 #include <small/Model.hpp>
@@ -27,44 +30,40 @@
 #include <small/LeakyReLULayer.hpp>
 #include <small/AddLayer.hpp>
 #include <small/UpSample2DLayer.hpp>
+#include <small/YOLOLayer.hpp>
+#include <small/non_max_suppression.hpp>
 
 #define PARSER_DEBUG
+//#define PARSER_DEBUG_VERBOSE
 
 //****************************************************************************
 // helper functions for parsing
 
 // returns shape in a string
-std::string str_shape(small::shape_type shape) {
+std::string str_shape(small::shape_type const &shape)
+{
     std::string str = "(" + std::to_string(shape[0]);
-    for(uint32_t i=1; i<shape.size(); i++) {
+    for (uint32_t i=1; i<shape.size(); i++) {
         str += ", " + std::to_string(shape[i]);
     }
     str += ")";
     return str;
 }
 
-// extract a list of ints from a string assuming that the string is a comma separated list of ints
+// extract a list of ints from a string assuming that the string is a
+// comma separated list of ints
 template <typename T>
-std::vector<T> extract_int_array(std::string s) {
+std::vector<T> extract_int_array(std::string const &s)
+{
     std::vector<T> list;
     std::string delimiter = ",";
-    size_t last = 0, next = 0; 
-    while ((next = s.find(delimiter, last)) != std::string::npos) { 
-        list.push_back(stoi(s.substr(last, next-last)));  
-        last = next + 1; 
-    } 
-    list.push_back(stoi(s.substr(last)));  
-    return list;
-}
-
-// get all anchor pairs
-std::vector<std::pair<uint32_t, uint32_t>> get_anchors(std::string anchors) {
-    std::vector<uint32_t> anchor_list = extract_int_array<uint32_t>(anchors);
-    std::vector<std::pair<uint32_t, uint32_t>> anchor_pairs;
-    for(uint32_t i = 0; i < anchor_list.size(); i+=2) {
-        anchor_pairs.push_back(std::make_pair(anchor_list[i], anchor_list[i+1]));
+    size_t last = 0, next = 0;
+    while ((next = s.find(delimiter, last)) != std::string::npos) {
+        list.push_back(stoi(s.substr(last, next-last)));
+        last = next + 1;
     }
-    return anchor_pairs;
+    list.push_back(stoi(s.substr(last)));
+    return list;
 }
 
 namespace small
@@ -78,55 +77,411 @@ public:
     Darknet() = delete;
 
     // Assume one input layer with a single shape for now
-    Darknet(std::string cfg, std::string weights) : Model<BufferT>({0,0,0,0})
+    Darknet(std::string cfg_path, std::string weights_path, bool save_outputs = false)
+        : Model<BufferT>({0,0,0,0}),
+          m_num_classes(0),
+          m_save_outputs(save_outputs)
     {
-        parse_cfg_and_weights(cfg, weights);
+        parse_cfg_and_weights(cfg_path, weights_path);
     }
 
-    virtual ~Darknet() {}
+    virtual ~Darknet() {
+        // delete all buffers
+        for (auto out : m_outputs)
+        {
+            delete out;
+        }
+        for (auto out : m_cached_outputs)
+        {
+            delete out.second;
+        }
+        for (auto out : m_yolo_outputs)
+        {
+            delete out;
+        }
+        delete m_in;
+        delete m_out;
+    }
 
-    virtual std::vector<Tensor<BufferT>*>
-        inference(std::vector<Tensor<BufferT> const *> inputs)
+    size_t get_num_classes() const { return m_num_classes; }
+
+    //************************************************************************
+    /** Convert outputs to detections and perform NMS to filter duplicates.
+     *
+     *  @param[in]  outputs    One buffer from each YOLO layer.  Shape is
+     *                         [1, 1, num_proposals, (5 + m_num_classes)]
+     *                         Each proposal record has following data:
+     *                         [center_x, center_y, width, height, objectness,
+     *                          class1_conf, class2_conf, ... classN_conf]
+     *
+     *  @param[in]  confidence_threshold   For both objectness and class conf.
+     *  @param[in]  iou_threshold          Exceed this and box is eliminated
+     *
+     *  @retval  A vector of Detection objects that survive NMS
+     */
+    std::vector<Detection>
+    process_outputs(std::vector<Tensor<BufferT>*> const &outputs,
+                    float confidence_threshold, // = 0.25f,
+                    float iou_threshold)        // = 0.45f)
     {
-        std::cerr << "ERROR: Darknet::inference not implemented.\n";
-        std::vector<Tensor<BufferT>*> outputs;
-        return outputs;
+        //assert(outputs.size() == 2);  // This only applies to Tiny Yolo V3
+
+        // 1. collect all predictions that satisfy the confidence threshold
+        std::vector<Detection> predictions;
+
+        // step through all of the output buffers.
+        for (auto tensor_ptr : outputs)
+        {
+            assert(tensor_ptr->shape()[3] == (5 + m_num_classes));
+            BufferT const &buf = tensor_ptr->buffer();
+
+            for (size_t pred = 0; pred < tensor_ptr->shape()[2]; ++pred)
+            {
+                size_t idx = pred*tensor_ptr->shape()[3];
+                if (buf[idx + 4] > confidence_threshold)
+                {
+                    /// @todo do we threshold this and keep multiple classes?
+                    // Find the class with the maximum score
+                    for (size_t class_id=0; class_id<m_num_classes; ++class_id)
+                    {
+                        //std::cout << "," << out_buf[idx+5+class_id];
+                        if (buf[idx+5+class_id] > confidence_threshold)
+                        {
+                            predictions.push_back(
+                                Detection{
+                                    {buf[idx+0],         // center_x
+                                     buf[idx+1],         // center_y
+                                     buf[idx+2],         // width
+                                     buf[idx+3]},        // height
+                                    buf[idx+4],          // objectness
+                                    buf[idx+5+class_id], // class confidence
+                                    class_id});
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Run NMS on the collected detections
+        return basic_nms(predictions, iou_threshold);
+    }
+
+    //************************************************************************
+    // assumes all the buffers have been set up in the constructor
+    virtual std::vector<Tensor<BufferT>*>
+    inference(Tensor<BufferT> const *input)
+    {
+        size_t yolo_block_idx = 0;
+
+        if (input->shape() != this->m_input_shape)
+        {
+            throw std::runtime_error(
+                "Input shape does not match model input shape");
+        }
+
+        if (m_save_outputs)
+        {
+            std::copy(
+                &(input->buffer()[0]),
+                &(input->buffer()[compute_size(input->shape())]),
+                &(m_outputs[0]->buffer()[0])
+            );
+        }
+        else
+        {
+            m_in->set_shape(input->shape());
+            std::copy(
+                &(input->buffer()[0]),
+                &(input->buffer()[compute_size(input->shape())]),
+                &(m_in->buffer()[0])
+            );
+        }
+
+        for (size_t layer_num=0; layer_num<this->m_layers.size(); layer_num++)
+        {
+#if DEBUG
+            std::cout << layer_num;
+#endif
+
+            // get layer info
+            Layer<BufferT> *layer = this->m_layers[layer_num];
+            const std::type_info& type = typeid(*layer);
+            shape_type out_shape = layer->output_shape();
+
+            // make sure the size is always set
+            if (!m_save_outputs)
+            {
+                m_out->set_shape(out_shape);
+            }
+
+            // single input/output layers
+            if (type == typeid(Conv2DLayer<BufferT>) ||
+                type == typeid(MaxPool2DLayer<BufferT>) ||
+                type == typeid(UpSample2DLayer<BufferT>))
+            {
+#if DEBUG
+                std::cout << " Conv/MaxPool/UpSample Layer" << std::endl;
+#endif
+
+                if (m_save_outputs)
+                {
+                    layer->compute_output({m_outputs[layer_num]},
+                                          {m_outputs[layer_num+1]});
+                }
+                else
+                {
+                    layer->compute_output({m_in}, {m_out});
+                }
+            }
+            else if (type == typeid(AddLayer<BufferT>))
+            {
+#if DEBUG
+                std::cout << " Add Layer" << std::endl;
+#endif
+
+                // there will always only be 2 parents
+                std::vector<int> parents =
+                    dynamic_cast<AddLayer<BufferT>*>(layer)->parents();
+                assert(parents.size() == 2);
+
+                if (m_save_outputs)
+                {
+                    std::copy(
+                        &m_outputs[parents[1]+1]->buffer()[0],
+                        &m_outputs[parents[1]+1]->buffer()[compute_size(out_shape)],
+                        &m_outputs[layer_num+1]->buffer()[0]
+                    );
+                    layer->compute_output({m_outputs[layer_num]},
+                                          {m_outputs[layer_num+1]});
+                }
+                else
+                {
+                    // std::copy(
+                    //     &m_cached_outputs[parents[1]]->buffer()[0],
+                    //     &m_cached_outputs[parents[1]]->buffer()[compute_size(out_shape)],
+                    //     &m_out->buffer()[0]
+                    // );
+                    layer->compute_output({m_cached_outputs[parents[1]]}, {m_in});
+                    m_in->swap(*m_out);
+                }
+
+            }
+            else if (type == typeid(RouteLayer<BufferT>))
+            {
+#if DEBUG
+                std::cout << " Route Layer" << std::endl;
+#endif
+
+                std::vector<int> parents =
+                    dynamic_cast<RouteLayer<BufferT>*>(layer)->parents();
+                assert(parents.size() == 1 || parents.size() == 2);
+
+                // for parent.size() == 1, this should just be a buffer swap/copy
+                if (parents.size() == 1)
+                {
+                    if (m_save_outputs)
+                    {
+                        layer->compute_output({m_outputs[parents[0]+1]},
+                                              {m_outputs[layer_num+1]});
+                    }
+                    else
+                    {
+                        layer->compute_output({m_cached_outputs[parents[0]]},
+                                              {m_out});
+                    }
+                }
+                // here we actually need to concat
+                else
+                {
+                    if (m_save_outputs)
+                    {
+                        layer->compute_output(
+                            {m_outputs[parents[0]+1], m_outputs[parents[1]+1]},
+                            {m_outputs[layer_num+1]});
+                    }
+                    else
+                    {
+                        layer->compute_output(
+                            {m_cached_outputs[parents[0]],
+                             m_cached_outputs[parents[1]]},
+                            {m_out});
+                    }
+                }
+
+            }
+            // yolo is our output block
+            else if (type == typeid(YOLOLayer<BufferT>))
+            {
+#if DEBUG
+                std::cout << " YOLO layer\n";
+#endif
+
+                // we need to make sure nothing funky happens
+                assert(yolo_block_idx < m_yolo_outputs.size());
+
+                if
+                    (m_save_outputs)
+                {
+                    layer->compute_output({m_outputs[layer_num]},
+                                          {m_outputs[layer_num+1]});
+                    std::copy(
+                        &m_outputs[layer_num+1]->buffer()[0],
+                        &m_outputs[layer_num+1]->buffer()[compute_size(out_shape)],
+                        &m_yolo_outputs[yolo_block_idx]->buffer()[0]
+                    );
+                }
+                else
+                {
+                    layer->compute_output({m_in},
+                                          {m_yolo_outputs[yolo_block_idx]});
+                }
+                yolo_block_idx++;
+            }
+            else
+            {
+                std::cerr << "ERROR: Layer type not supported.\n";
+                throw std::exception();
+            }
+
+            // found key in m_cached_outputs
+            // save output to m_cached_outputs
+            if (!m_save_outputs && m_cached_outputs.count(layer_num) == 1)
+            {
+#if DEBUG
+                std::cout << "Saving output to m_cached_outputs\tlayer_num = "
+                          << layer_num << "\n";
+#endif
+
+                m_cached_outputs[layer_num] = new Tensor<BufferT>(out_shape);
+                std::copy(
+                    &m_out->buffer()[0],
+                    &m_out->buffer()[compute_size(out_shape)],
+                    &m_cached_outputs[layer_num]->buffer()[0]
+                );
+            }
+
+            // swap input and output
+            // swap input and output
+            m_in->swap(*m_out);
+        }
+
+        return m_yolo_outputs;
+    }
+
+    //************************************************************************
+    size_t total_buffer_sizes()
+    {
+        size_t total_buf_size = 0;
+        if (m_save_outputs)
+        {
+            for (auto out : m_outputs)
+            {
+                total_buf_size += compute_size(out->shape());
+            }
+        }
+        else
+        {
+            total_buf_size += 2*m_max_buffer_size;
+        }
+        for (auto out : m_yolo_outputs)
+        {
+            total_buf_size += compute_size(out->shape());
+        }
+        return total_buf_size;
+    }
+
+    //************************************************************************
+    std::vector<Tensor<BufferT>*> get_layer_outputs()
+    {
+        if (m_save_outputs)
+        {
+            return m_outputs;
+        }
+        else
+        {
+            std::cerr << "ERROR: Layer outputs not saved.\n";
+            throw std::invalid_argument("Saving layer outputs is disabled.");
+        }
     }
 
 private:
+    size_t m_num_classes;
+    size_t m_line_num;
 
+    // map for cached outputs
+    // layer_idx -> output
+    std::map<size_t, Tensor<BufferT>*>  m_cached_outputs;
+
+    // intermediates
+    // these are init at parse time
+    size_t                              m_max_buffer_size = 0;
+    Tensor<BufferT>*                    m_in;
+    Tensor<BufferT>*                    m_out;
+    std::vector<Tensor<BufferT>*>       m_yolo_outputs;
+
+    // explict output for layer
+    // this is used for robustness testing
+    std::vector<Tensor<BufferT>*>       m_outputs;
+    bool                                m_save_outputs;
+
+    //************************************************************************
+    // read line and remove white space
+     inline bool getline_(std::ifstream &file, std::string &line) {
+        if(std::getline(file, line)) {
+            line.erase(std::remove(line.begin(), line.end(), ' '), line.end());
+            m_line_num++;
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    //************************************************************************
     // returns type of activation based on the key
-    ActivationType parse_activation(std::string act_type) {
-        if(act_type == "leaky") { return ActivationType::LEAKY; }
-        else if(act_type == "relu" ) { return ActivationType::RELU; }
-        else if(act_type == "linear") { return ActivationType::NONE; }
-        else { 
-            std::cerr << "WARNING: Activation type " << act_type << " not supported. Using NONE.\n";
-            return ActivationType::NONE; 
-        }
-    }
-
-    /// @todo: this really needs to be checked. i have no clue how this should be handled
-    PaddingEnum parse_padding(std::string pad_type) {
-        if(pad_type == "1") { return PaddingEnum::PADDING_F; }
-        else if(pad_type == "0") { return PaddingEnum::PADDING_V; }
-        else { 
-            std::cerr << "WARNING: Padding type " << pad_type << " not supported. Using PADDING_F.\n";
-            return PaddingEnum::PADDING_F; 
-        }
-    }
-
-    template <typename ScalarT>
-    Layer<BufferT>* parse_conv(std::ifstream &cfg_file, 
-                                shape_type input, 
-                                ScalarT *weight_data_ptr, 
-                                size_t &weight_idx) 
+    ActivationType parse_activation(std::string act_type)
     {
-        #ifdef PARSER_DEBUG_VERBOSE
-        std::cout << "Parsing Convolutional Layer\n";
-        #endif
+        if      (act_type == "leaky")  { return ActivationType::LEAKY; }
+        else if (act_type == "relu" )  { return ActivationType::RELU; }
+        else if (act_type == "linear") { return ActivationType::NONE; }
+        else
+        {
+            std::cerr << "WARNING: Activation type " << act_type
+                      << " not supported. Using NONE.\n";
+            return ActivationType::NONE;
+        }
+    }
 
-        /// @todo: double check other possible parameters such as dialation, groups, etc.
+    //************************************************************************
+    /// @todo: this really needs to be checked. I have no clue how this should
+    ///        be handled.  Note there is also a separate padding parameter
+    PaddingEnum parse_padding(std::string pad_type)
+    {
+        if      (pad_type == "1") { return PaddingEnum::PADDING_F; }
+        else if (pad_type == "0") { return PaddingEnum::PADDING_V; }
+        else
+        {
+            std::cerr << "WARNING: Padding type " << pad_type
+                      << " not supported. Using PADDING_F.\n";
+            return PaddingEnum::PADDING_F;
+        }
+    }
+
+    //************************************************************************
+    // parsing "[convolutional]" blocks
+    template <typename ScalarT>
+    Layer<BufferT>* parse_conv(std::ifstream    &cfg_file,
+                               shape_type const &input_shape,
+                               ScalarT          *weight_data_ptr,
+                               size_t           &weight_idx)
+    {
+#ifdef PARSER_DEBUG_VERBOSE
+        std::cout << "Parsing Convolutional Layer\n";
+#endif
+
+        /// @todo: double check other possible parameters such as dilation,
+        ///        groups, etc.
         bool bn = false;
         size_t num_filters = 0;
         size_t kernel_size = 0;
@@ -136,61 +491,154 @@ private:
 
         int last_pos = cfg_file.tellg();
         std::string line;
-        while(getline(cfg_file, line)) {
-
+        while (getline_(cfg_file, line))
+        {
             // skip empty lines and comments
-            if(line.empty() || line.at(0) == '#') { last_pos = cfg_file.tellg(); continue; }
+            if (line.empty() || line.at(0) == '#')
+            {
+                last_pos = cfg_file.tellg();
+                continue;
+            }
+
             // stop parsing when we reach the next layer
-            if(line.at(0) == '[') { cfg_file.seekg(last_pos); break; }
+            if (line.at(0) == '[')
+            {
+                cfg_file.seekg(last_pos);
+                m_line_num--;
+                break;
+            }
+
             last_pos = cfg_file.tellg();
-            std::string key = line.substr(0, line.find("="));
+            std::string key   = line.substr(0, line.find("="));
             std::string value = line.substr(line.find("=") + 1);
 
-            if(key == "batch_normalize") { bn = (value == "1"); }
-            else if(key == "filters") { num_filters = stoi(value); }
-            else if(key == "size") { kernel_size = stoi(value); }
-            else if(key == "stride") { stride = stoi(value); }
-            else if(key == "pad") { pad = parse_padding(value); }
-            else if(key == "activation") { activation = parse_activation(value); }
-            else { std::cerr << "WARNING: unknown key in conv2d layer: " << key << std::endl;}
+            if      (key == "batch_normalize") { bn = (value == "1"); }
+            else if (key == "filters")         { num_filters = stoi(value); }
+            else if (key == "size")            { kernel_size = stoi(value); }
+            else if (key == "stride")          { stride = stoi(value); }
+            else if (key == "pad")             { pad = parse_padding(value); }
+            else if (key == "activation")
+            {
+                activation = parse_activation(value);
+            }
+            else
+            {
+                std::cerr << "WARNING: unknown key in conv2d layer: "
+                          << key << std::endl;
+            }
         }
 
-        BufferT biases(num_filters);
-        std::copy(&weight_data_ptr[weight_idx], &weight_data_ptr[weight_idx] + num_filters, &biases[0]);
-        weight_idx += num_filters;
-        /// @todo: need to find a good way to read batch norm parameters without losing scope
-        // HACK: just move pointer for now
-        if(bn){
-            weight_idx += 3 * num_filters;
-        }
-        
-        // Load convolution weights in
-        size_t filt_size = num_filters * kernel_size * kernel_size * input[CHANNEL];
-        BufferT filters(filt_size);
-        std::copy(&weight_data_ptr[weight_idx], &weight_data_ptr[weight_idx] + filt_size, &filters[0]);
-        weight_idx += filt_size;
+        // filter size
+        size_t filt_size =
+            num_filters * kernel_size * kernel_size * input_shape[CHANNEL];
 
-        // create convolutional layer
-        Conv2DLayer<BufferT> *conv = new Conv2DLayer<BufferT> (
-            input, 
-            kernel_size, kernel_size, 
-            stride,
-            pad, 
-            num_filters,
-            filters,
-            true, /// @todo: this is not correct. however, when filter_size % C_ob != 0, it breaks;
-            activation
-        );
+        Conv2DLayer<BufferT> *conv{nullptr};
+
+        if (bn)
+        {
+            // order matters
+            // data is stored in the following order:
+            //    bn_bias,
+            //    bn_weights,
+            //    bn_running_mean,
+            //    bn_running_variance,
+            //    conv_filter_weights
+
+            BufferT bn_bias(num_filters);
+            std::copy(weight_data_ptr + weight_idx,
+                      weight_data_ptr + weight_idx + num_filters,
+                      &bn_bias[0]);
+            weight_idx += num_filters;
+
+            BufferT bn_weights(num_filters);
+            std::copy(weight_data_ptr + weight_idx,
+                      weight_data_ptr + weight_idx + num_filters,
+                      &bn_weights[0]);
+            weight_idx += num_filters;
+
+            BufferT bn_running_mean(num_filters);
+            std::copy(weight_data_ptr + weight_idx,
+                      weight_data_ptr + weight_idx + num_filters,
+                      &bn_running_mean[0]);
+            weight_idx += num_filters;
+
+            BufferT bn_running_variance(num_filters);
+            std::copy(weight_data_ptr + weight_idx,
+                      weight_data_ptr + weight_idx + num_filters,
+                      &bn_running_variance[0]);
+            weight_idx += num_filters;
+
+            BufferT filters(filt_size);
+            std::copy(weight_data_ptr + weight_idx,
+                      weight_data_ptr + weight_idx + filt_size,
+                      &filters[0]);
+            weight_idx += filt_size;
+
+            conv = new Conv2DLayer<BufferT> (
+                input_shape,
+                kernel_size, kernel_size,
+                stride,
+                pad,
+                num_filters,
+                filters,
+                bn_weights,
+                bn_bias,
+                bn_running_mean,
+                bn_running_variance,
+                1.e-5,
+                false,
+                activation,
+                // This next val is based on the pytorch yolo implementation
+                // from https://github.com/eriklindernoren/PyTorch-YOLOv3
+                0.1
+            );
+        }
+        else  // no batch normalization params
+        {
+            // order matters
+            // data is stored in the following order:
+            //    bias,
+            //    conv_filter_weights
+
+            BufferT bias(num_filters);
+            std::copy(weight_data_ptr + weight_idx,
+                      weight_data_ptr + weight_idx + num_filters,
+                      &bias[0]);
+            weight_idx += num_filters;
+
+            BufferT filters(filt_size);
+            std::copy(weight_data_ptr + weight_idx,
+                      weight_data_ptr + weight_idx + filt_size,
+                      &filters[0]);
+            weight_idx += filt_size;
+
+            conv = new Conv2DLayer<BufferT> (
+                input_shape,
+                kernel_size, kernel_size,
+                stride,
+                pad,
+                num_filters,
+                filters,
+                bias,
+                false,
+                activation,
+                // This next val is based on the pytorch yolo implementation
+                // from https://github.com/eriklindernoren/PyTorch-YOLOv3
+                0.1
+            );
+        }
 
         return conv;
     }
 
-    Layer<BufferT>* parse_max(std::ifstream &cfg_file, shape_type input) {
-
-        #ifdef PARSER_DEBUG_VERBOSE
+    //************************************************************************
+    Layer<BufferT>* parse_max(std::ifstream    &cfg_file,
+                              shape_type const &input_shape)
+    {
+#ifdef PARSER_DEBUG_VERBOSE
         std::cout << "Parsing MaxPool Layer\n";
-        #endif
-        
+#endif
+
         size_t kernel_size = 0;
         size_t stride = 0;
         /// @todo check this
@@ -198,24 +646,39 @@ private:
 
         int last_pos = cfg_file.tellg();
         std::string line;
-        while(getline(cfg_file, line)) {
-
+        while (getline_(cfg_file, line))
+        {
             // skip empty lines and comments
-            if(line.empty() || line.at(0) == '#') { last_pos = cfg_file.tellg(); continue; }
+            if (line.empty() || line.at(0) == '#')
+            {
+                last_pos = cfg_file.tellg();
+                continue;
+            }
+
             // stop parsing when we reach the next layer
-            if(line.at(0) == '[') { cfg_file.seekg(last_pos); break; }
+            if (line.at(0) == '[')
+            {
+                cfg_file.seekg(last_pos);
+                m_line_num--;
+                break;
+            }
+
             last_pos = cfg_file.tellg();
             std::string key = line.substr(0, line.find("="));
             std::string value = line.substr(line.find("=") + 1);
 
-            if(key == "size") { kernel_size = stoi(value); }
-            else if(key == "stride") { stride = stoi(value); }
-            else { std::cerr << "WARNING: unknown key in maxpool layer: " << key << std::endl;}
+            if      (key == "size")   { kernel_size = stoi(value); }
+            else if (key == "stride") { stride = stoi(value); }
+            else
+            {
+                std::cerr << "WARNING: unknown key in maxpool layer: "
+                          << key << std::endl;
+            }
         }
 
         MaxPool2DLayer<BufferT> *max = new MaxPool2DLayer<BufferT> (
-            input, 
-            kernel_size, kernel_size, 
+            input_shape,
+            kernel_size, kernel_size,
             stride,
             pad
         );
@@ -223,216 +686,415 @@ private:
         return max;
     }
 
-    Layer<BufferT>* parse_shortcut(std::ifstream &cfg_file, shape_type input) {
-
-        #ifdef PARSER_DEBUG_VERBOSE
+    //************************************************************************
+    Layer<BufferT>* parse_shortcut(std::ifstream    &cfg_file,
+                                   shape_type const &input_shape)
+    {
+#ifdef PARSER_DEBUG_VERBOSE
         std::cout << "Parsing Shortcut Layer\n";
-        #endif
+#endif
 
         int from = 0;
-        ActivationType activation = ActivationType::NONE; 
+        ActivationType activation = ActivationType::NONE;
 
         int last_pos = cfg_file.tellg();
         std::string line;
-        while(getline(cfg_file, line)) {
-
+        while (getline_(cfg_file, line))
+        {
             // skip empty lines and comments
-            if(line.empty() || line.at(0) == '#') { last_pos = cfg_file.tellg(); continue; }
+            if (line.empty() || line.at(0) == '#')
+            {
+                last_pos = cfg_file.tellg();
+                continue;
+            }
+
             // stop parsing when we reach the next layer
-            if(line.at(0) == '[') { cfg_file.seekg(last_pos); break; }
+            if (line.at(0) == '[')
+            {
+                cfg_file.seekg(last_pos);
+                m_line_num--;
+                break;
+            }
+
             last_pos = cfg_file.tellg();
             std::string key = line.substr(0, line.find("="));
             std::string value = line.substr(line.find("=") + 1);
-            
 
             /// @todo: shortcut also specifies an activation but its always linear
             /// ignore activation for now, but will need to support in the future
-            if(key == "from") { from = stoi(value); }
-            else if(key == "activation") { activation = parse_activation(value); (void)activation; }
-            else { std::cerr << "WARNING: unknown key in shortcut layer: " << key << std::endl; }
+            if (key == "from")
+            {
+                from = stoi(value);
+            }
+            else if (key == "activation")
+            {
+                activation = parse_activation(value);
+                if (activation != ActivationType::NONE)
+                {
+                    std::cerr << "ERROR: unsupported activation in shortcut layer: "
+                              << value << std::endl;
+                }
+            }
+            else
+            {
+                std::cerr << "WARNING: unknown key in shortcut layer: "
+                          << key << std::endl;
+            }
         }
 
         // create shortcut layer
-        size_t total_layers_so_far = this->m_layers.size();
-        AddLayer<BufferT> *shortcut = new AddLayer<BufferT> (input, this->m_layers[total_layers_so_far + from]->output_shape());
+        int total_layers_so_far = this->m_layers.size();
+        m_cached_outputs[total_layers_so_far+from] = nullptr;
+
+        /// @todo storing parent IDs in the AddLayer should be removed and
+        ///       a DAG needs to be built here or in Model base class
+        AddLayer<BufferT> *shortcut = new AddLayer<BufferT>(
+            input_shape,
+            this->m_layers[total_layers_so_far + from]->output_shape(),
+            {total_layers_so_far-1, total_layers_so_far+from});
+
         return shortcut;
     }
 
-    Layer<BufferT>* parse_route(std::ifstream &cfg_file) {
-
-        #ifdef PARSER_DEBUG_VERBOSE
+    //************************************************************************
+    Layer<BufferT>* parse_route(std::ifstream &cfg_file)
+    {
+#ifdef PARSER_DEBUG_VERBOSE
         std::cout << "Parsing Route Layer\n";
-        #endif
+#endif
 
         std::vector<int> route_layers;
 
-        int last_pos = cfg_file.tellg(); 
+        int last_pos = cfg_file.tellg();
         std::string line;
-        while(getline(cfg_file, line)) {
-
+        while (getline_(cfg_file, line))
+        {
             // skip empty lines and comments
-            if(line.empty() || line.at(0) == '#') { last_pos = cfg_file.tellg(); continue; }
+            if (line.empty() || line.at(0) == '#')
+            {
+                last_pos = cfg_file.tellg();
+                continue;
+            }
+
             // stop parsing when we reach the next layer
-            if(line.at(0) == '[') { cfg_file.seekg(last_pos); break; }
+            if (line.at(0) == '[')
+            {
+                cfg_file.seekg(last_pos);
+                m_line_num--;
+                break;
+            }
+
             last_pos = cfg_file.tellg();
             std::string key = line.substr(0, line.find("="));
             std::string value = line.substr(line.find("=") + 1);
 
-            if(key == "layers") { route_layers = extract_int_array<int>(value); }
-            else { std::cerr << "WARNING: unknown key in route layer: " << key << std::endl; }
+            if (key == "layers")
+            {
+                route_layers = extract_int_array<int>(value);
+            }
+            else
+            {
+                std::cerr << "WARNING: unknown key in route layer: "
+                          << key << std::endl;
+            }
         }
 
         RouteLayer<BufferT> *route;
         std::vector<shape_type> inputs;
 
-        for(auto layer : route_layers) {
-            // handle negative indexing
-            if(layer < 0) { inputs.push_back(this->m_layers[this->m_layers.size() + layer]->output_shape()); }
-            else { inputs.push_back(this->m_layers[layer]->output_shape()); }
+        for (uint32_t i = 0; i < route_layers.size(); i++)
+        {
+            // convert negative indexing
+            if (route_layers[i] < 0)
+            {
+                route_layers[i] = this->m_layers.size() + route_layers[i];
+                inputs.push_back(this->m_layers[route_layers[i]]->output_shape());
+            }
+            else
+            {
+                inputs.push_back(this->m_layers[route_layers[i]]->output_shape());
+            }
+            m_cached_outputs[route_layers[i]] = nullptr;
         }
 
-        if(inputs.size() == 1) { route = new RouteLayer<BufferT> (inputs[0]); }
-        else if(inputs.size() == 2) { route = new RouteLayer<BufferT> (inputs[0], inputs[1]); }
-        else {
-            throw std::invalid_argument("ERROR: route layer must have only 1 or 2 layers");
+        /// @todo storing parent IDs in the RouteLayer should be removed and
+        ///       a DAG needs to be built here or in Model base class
+        if (inputs.size() == 1)
+        {
+            route = new RouteLayer<BufferT>(inputs[0], route_layers);
         }
-         
+        else if (inputs.size() == 2)
+        {
+            route = new RouteLayer<BufferT>(inputs[0], inputs[1], route_layers);
+        }
+        else
+        {
+            throw std::invalid_argument(
+                "ERROR: route layer must have only 1 or 2 layers");
+        }
+
         return route;
     }
 
-    Layer<BufferT>* parse_upsample(std::ifstream &cfg_file, shape_type input) {
-
-        #ifdef PARSER_DEBUG_VERBOSE
+    //************************************************************************
+    Layer<BufferT>* parse_upsample(std::ifstream &cfg_file, shape_type input)
+    {
+#ifdef PARSER_DEBUG_VERBOSE
         std::cout << "Parsing Upsample Layer\n";
-        #endif
+#endif
 
         uint32_t stride = 0;
 
-        int last_pos = cfg_file.tellg(); 
+        int last_pos = cfg_file.tellg();
         std::string line;
-        while(getline(cfg_file, line)) {
-
+        while (getline_(cfg_file, line))
+        {
             // skip empty lines and comments
-            if(line.empty() || line.at(0) == '#') { last_pos = cfg_file.tellg(); continue; }
+            if (line.empty() || line.at(0) == '#')
+            {
+                last_pos = cfg_file.tellg();
+                continue;
+            }
+
             // stop parsing when we reach the next layer
-            if(line.at(0) == '[') { cfg_file.seekg(last_pos); break; }
+            if (line.at(0) == '[')
+            {
+                cfg_file.seekg(last_pos);
+                m_line_num--;
+                break;
+            }
+
             last_pos = cfg_file.tellg();
             std::string key = line.substr(0, line.find("="));
             std::string value = line.substr(line.find("=") + 1);
 
-            if(key == "stride") { stride = stoi(value); }
-            else { std::cerr << "WARNING: unknown key in upsample layer: " << key << std::endl; }
+            if (key == "stride")
+            {
+                stride = stoi(value);
+            }
+            else
+            {
+                std::cerr << "WARNING: unknown key in upsample layer: "
+                          << key << std::endl;
+            }
         }
 
-        UpSample2DLayer<BufferT> *upsample = new UpSample2DLayer<BufferT> (input, stride);
+        UpSample2DLayer<BufferT> *upsample =
+            new UpSample2DLayer<BufferT>(input, stride);
 
         return upsample;
     }
- 
-    Layer<BufferT>* parse_yolo(std::ifstream &cfg_file, shape_type input) {
 
-        #ifdef PARSER_DEBUG_VERBOSE
+    //************************************************************************
+    Layer<BufferT>* parse_yolo(std::ifstream &cfg_file, shape_type input)
+    {
+#ifdef PARSER_DEBUG_VERBOSE
         std::cout << "Parsing Yolo Layer\n";
-        #endif
+#endif
 
         std::vector<uint32_t> mask;
         std::vector<std::pair<uint32_t,uint32_t>> anchors;
         uint32_t classes = 0;
-        uint32_t num = 0;
-        float jitter = 0.0;
-        float ignore_thresh = 0.0;
-        float truth_thresh = 0.0;
-        bool rand = false;
+        //uint32_t num = 0;
+        //float jitter = 0.0;
+        //float ignore_thresh = 0.0;
+        //float truth_thresh = 0.0;
+        //bool rand = false;
 
         int last_pos = cfg_file.tellg();
         std::string line;
-        while(getline(cfg_file, line)) {
-
+        while (getline_(cfg_file, line))
+        {
             // skip empty lines and comments
-            if(line.empty() || line.at(0) == '#') { last_pos = cfg_file.tellg(); continue; }
+            if (line.empty() || line.at(0) == '#')
+            {
+                last_pos = cfg_file.tellg();
+                continue;
+            }
+
             // stop parsing when we reach the next layer
-            if(line.at(0) == '[') { cfg_file.seekg(last_pos); break; }
+            if (line.at(0) == '[')
+            {
+                cfg_file.seekg(last_pos);
+                m_line_num--;
+                break;
+            }
+
             last_pos = cfg_file.tellg();
             std::string key = line.substr(0, line.find("="));
             std::string value = line.substr(line.find("=") + 1);
 
-            if(key == "mask") { mask = extract_int_array<uint32_t>(value); (void)mask;}
-            else if(key == "anchors") { anchors = get_anchors(value); (void)anchors; }
-            else if(key == "classes") { classes = stoi(value); (void)classes; }
-            else if(key == "num") { num = stoi(value); (void)num; }
-            else if(key == "jitter") { jitter = stof(value); (void)jitter; }
-            else if(key == "ignore_thresh") { ignore_thresh = stof(value); (void)ignore_thresh; }
-            else if(key == "truth_thresh") { truth_thresh = stof(value); (void)truth_thresh; }
-            else if(key == "random" || key == "rand") { rand = (value == "1"); (void)rand; }
-            else { std::cerr << "WARNING: unknown key in yolo layer: " << key << std::endl;}
+            if (key == "mask")
+            {
+                mask = extract_int_array<uint32_t>(value);
+            }
+            else if (key == "anchors")
+            {
+                std::vector<uint32_t> anchor_list = extract_int_array<uint32_t>(value);
+                for (uint32_t i = 0; i < anchor_list.size(); i+=2) {
+                    anchors.push_back(std::make_pair(anchor_list[i], anchor_list[i+1]));
+                }
+            }
+            else if (key == "classes")
+            {
+                classes = stoi(value);
+                if (m_num_classes == 0)
+                {
+                    m_num_classes = classes;
+                }
+                else
+                {
+                    if (classes != m_num_classes)
+                    {
+                        throw std::invalid_argument(
+                            "Darknet::parse_yolo ERROR: "
+                            "inconsistent number of classes.");
+                    }
+                }
+            }
+            // ignore these for now...used for training?
+            else if (key == "num")           {} //num = stoi(value); }
+            else if (key == "jitter")        {} //jitter = stof(value); }
+            else if (key == "ignore_thresh") {} //ignore_thresh = stof(value); }
+            else if (key == "truth_thresh")  {} //truth_thresh = stof(value); }
+            else if (key == "random" ||
+                     key == "rand")          {} //rand = (value == "1"); }
+            else
+            {
+                std::cerr << "WARNING: unknown key in yolo layer: "
+                          << key << std::endl;
+            }
         }
 
-        /// @todo add support for yolo layer
+        if (mask.empty() || anchors.empty())
+        {
+            throw std::invalid_argument(
+                "Darknet::parse_yolo ERROR: missing anchors or mask fields.");
+        }
 
-        DummyLayer<BufferT> *yolo = new DummyLayer<BufferT>(input);
+        std::vector<std::pair<uint32_t,uint32_t>> masked_anchors;
+        for (uint32_t i = 0; i < mask.size(); i++)
+        {
+            if (mask[i] >= anchors.size())
+            {
+                throw std::invalid_argument(
+                    "Darknet::parse_yolo ERROR: mask index out of range.");
+            }
+            masked_anchors.push_back(anchors[mask[i]]);
+        }
+
+        YOLOLayer<BufferT> *yolo =
+            new YOLOLayer<BufferT>(input,
+                                   masked_anchors,
+                                   classes,
+                                   this->m_input_shape[HEIGHT]);
 
         return yolo;
     }
 
+    //************************************************************************
     // parse network block and return the input shape
-    shape_type parse_network(std::ifstream &cfg_file) {
-
-        #ifdef PARSER_DEBUG
+    shape_type parse_network(std::ifstream &cfg_file)
+    {
+#ifdef PARSER_DEBUG_VERBOSE
         std::cout << "Parsing Network Block\n";
-        #endif
+#endif
 
-        shape_type input_shape = {0,0,0,0};
+        shape_type input_shape = {1U,0,0,0};
         std::string line;
-        int last_pos = cfg_file.tellg(); 
+        int last_pos = cfg_file.tellg();
 
         // consume network block entirely and extract input shape
-        while(getline(cfg_file, line)) {
-            
+        while (getline_(cfg_file, line))
+        {
             // skip empty lines and comments
-            if(line.empty() || line.at(0) == '#') { last_pos = cfg_file.tellg(); continue; }
+            if (line.empty() || line.at(0) == '#')
+            {
+                last_pos = cfg_file.tellg();
+                continue;
+            }
+
             // stop parsing when we reach the next layer
-            if(line.at(0) == '[') { cfg_file.seekg(last_pos); break; }
+            if (line.at(0) == '[')
+            {
+                cfg_file.seekg(last_pos);
+                m_line_num--;
+                break;
+            }
+
             last_pos = cfg_file.tellg();
             std::string key = line.substr(0, line.find("="));
             std::string value = line.substr(line.find("=") + 1);
 
-            if(key == "height") { input_shape[HEIGHT] = std::stoi(value); } 
-            else if(key == "width") { input_shape[WIDTH] = std::stoi(value); } 
-            else if(key == "channels") { input_shape[CHANNEL] = std::stoi(value); }
-            #ifdef PARSER_DEBUG_VERBOSE
-            else { std::cerr << "WARNING: unknown key in net layer: " << key << std::endl;}
-            #endif
+            if      (key == "height")   { input_shape[HEIGHT] =std::stoi(value); }
+            else if (key == "width")    { input_shape[WIDTH]  =std::stoi(value); }
+            else if (key == "channels") { input_shape[CHANNEL]=std::stoi(value); }
+#ifdef PARSER_DEBUG_VERBOSE
+            else
+            {
+                std::cerr << "WARNING: unknown key in net layer: "
+                          << key << std::endl;
+            }
+#endif
+        }
+        if (input_shape[1] == 0 || input_shape[2] == 0 || input_shape[3] == 0)
+        {
+            throw std::invalid_argument(
+                "Darknet::parse_network ERROR: a zero input dimension.");
         }
         return input_shape;
     }
 
-    void parse_cfg_and_weights(std::string cfg, std::string weights) {
-
+    //************************************************************************
+    void parse_cfg_and_weights(std::string cfg_path, std::string weights_path)
+    {
         using ScalarT = typename BufferT::value_type;
 
+        m_line_num = 0;
+        bool error = false;
+
         Layer<BufferT> *prev = nullptr;
-        shape_type prev_shape = {0,0,0,0};        
+        shape_type prev_shape = {0,0,0,0};
+        std::vector<int> prev_parents = {0};
 
-        std::ifstream cfg_file(cfg);
-        if(!cfg_file) {
-            throw std::invalid_argument("Could not open cfg file: " + cfg);
+        std::ifstream cfg_file(cfg_path);
+        if (!cfg_file)
+        {
+            throw std::invalid_argument(
+                "Darknet::parse_cfg_and_weights ERROR: "
+                "Could not open cfg file: " + cfg_path);
         }
 
-        std::ifstream weights_file(weights, std::ios::binary);
-        if(!weights_file) {
-            throw std::invalid_argument("Could not open weights file: " + weights);
+        std::ifstream weights_file(weights_path, std::ios::binary);
+        if (!weights_file)
+        {
+            throw std::invalid_argument(
+                "Darknet::parse_cfg_and_weights ERROR: "
+                "Could not open weights file: " + weights_path);
         }
-        
-        weights_file.seekg(0, std::ios::end);
-        size_t total_bytes = weights_file.tellg(); // total size of weights in bytes
-        weights_file.seekg(0, std::ios::beg);
-        
+
+        // total size of weights_path in bytes
+        std::filesystem::path weights_fs_path(weights_path);
+        size_t total_bytes = std::filesystem::file_size(weights_fs_path);
+
         // first 20 bytes are header
-        // first 12 bytes are uint32_t that represent the version
-        // last 8 bytes is uint64_t that represents # of images seen during training
-        // more info can be found here: https://github.com/AlexeyAB/darknet/issues/2914#issuecomment-496675346
-        std::vector<int> header(5);
-        weights_file.read((char*)header.data(), 20);
+        // -------------------------
+        // first 12 bytes are 3 uint32_t's that represent the version
+        // last   8 bytes is uint64_t that represents # of images seen
+        //                during training.
+        //
+        // More info can be found here:
+        // https://github.com/AlexeyAB/darknet/issues/2914#issuecomment-496675346
+        struct WeightsHeader
+        {
+            uint32_t version[3];
+            uint64_t num_images;
+        };
+        //std::vector<int> header(5);
+
+        WeightsHeader header;
+        weights_file.read((char*)&header.version[0], 12);
+        weights_file.read((char*)&header.num_images, 8);
 
         // total elems of weight file
         size_t total_elems = (total_bytes-20) / sizeof(ScalarT);
@@ -441,92 +1103,183 @@ private:
         ScalarT *weight_data_ptr = weight_data.data();
         size_t weight_idx = 0;
 
-        #ifdef PARSER_DEBUG
+#ifdef PARSER_DEBUG
         std::cout << "\nWEIGHT FILE METADATA:\n";
-        std::cout << "Header: " << header[0] << "." << header[1] << "." << header[2] << \
-                   "\tImages Seen: " << (int64_t)header[3] << "\n";
+        std::cout << "Header: " << header.version[0]
+                  << "." << header.version[1]
+                  << "." << header.version[2]
+                  << "\tImages Seen: " << header.num_images << "\n";
         std::cout << "Total weight elements: " << total_elems << "\n\n";
-        #endif
+#endif
 
         size_t layer_idx = 0;
 
         std::string line;
-        while (getline(cfg_file, line)) {
+        while (getline_(cfg_file, line))
+        {
             // skip empty lines and comments
-            // MAKE SURE EMPTY() IS FIRST OR ELSE AT() WILL THROW
-            if(line.empty() || line.at(0) == '#') { continue; }
+            if (line.empty() || line.at(0) == '#') { continue; }
 
             // all blocks are enclosed in []
-            if(line.at(0) == '[') {
-
+            if (line.at(0) == '[')
+            {
                 // network block contains training info and input shape
-                if(line == "[network]" || line == "[net]") {
-                    this->m_input_shape = parse_network(cfg_file); // set model shape
-                    this->m_input_shape[BATCH] = 1;
-                    std::cout << "\nDarknet Input Shape: " << str_shape(this->m_input_shape) << "\n\n";
-                    prev_shape = this->m_input_shape; // set prev shape to input shape
-                    continue;
-                }
+                if (line == "[network]" || line == "[net]")
+                {
+                    // set model input shape
+                    this->m_input_shape = parse_network(cfg_file);
+#ifdef PARSER_DEBUG
+                    std::cout << "\nDarknet Input Shape: "
+                              << str_shape(this->m_input_shape) << "\n\n";
+#endif
+                    prev_shape = this->m_input_shape;
+                    m_max_buffer_size = std::max(m_max_buffer_size,
+                                                 compute_size(prev_shape));
 
-                // Print layer info
-                if(line != "[route]") {
-                    std::cout << layer_idx << " " <<  line << " " << \
-                            "\n\tinput shape: " << str_shape(prev_shape) << std::endl;
-                }
-
-                if(line == "[convolutional]" || line == "[conv]") {
-                    prev = parse_conv<ScalarT>(cfg_file, prev_shape, weight_data_ptr, weight_idx);
-                    #ifdef PARSER_DEBUG_VERBOSE
-                    std::cout << "Weights elements remaining: " << total_elems - weight_idx << "\n";
-                    #endif
-                }
-                else if(line == "[maxpool]" || line == "[max]") {
-                    prev = parse_max(cfg_file, prev_shape);
-                }
-                else if(line == "[shortcut]") {
-                    prev = parse_shortcut(cfg_file, prev_shape);
-                }
-                else if(line == "[route]") {
-                    prev = parse_route(cfg_file);
-                    std::cout << layer_idx << " " <<  line << \
-                        "\n\toutput shape: " << str_shape(prev->output_shape()) << "\n";
-                }
-                else if(line == "[upsample]") {
-                    prev = parse_upsample(cfg_file, prev_shape);
-                }
-                else if(line == "[yolo]") {
-                    prev = parse_yolo(cfg_file, prev_shape);
-                }
-
-                // unsupported block
-                // raise warning and skip
-                else {
-                    std::cerr << "WARNING: Unsupported block: " << line << std::endl;
-                    int last_pos = cfg_file.tellg();
-                    while(getline(cfg_file, line)) {
-                        if(line.empty()) { last_pos = cfg_file.tellg(); continue; }
-                        if(line.at(0) == '[') { 
-                            cfg_file.seekg(last_pos); // move pointer back a line
-                            break; 
-                        }
-                        last_pos = cfg_file.tellg();
+                    if (m_save_outputs)
+                    {
+                        m_outputs.push_back(new Tensor<BufferT>(prev_shape));
                     }
                     continue;
                 }
 
-                // add layer to model and update prev shape
+                if (line == "[convolutional]" || line == "[conv]")
+                {
+                    prev = parse_conv<ScalarT>(cfg_file,
+                                               prev_shape,
+                                               weight_data_ptr,
+                                               weight_idx);
+#ifdef PARSER_DEBUG_VERBOSE
+                    std::cout << "weights_path elements remaining: "
+                              << total_elems - weight_idx << "\n";
+#endif
+                }
+                else if (line == "[maxpool]" || line == "[max]")
+                {
+                    prev = parse_max(cfg_file, prev_shape);
+                }
+                else if (line == "[shortcut]")
+                {
+                    prev = parse_shortcut(cfg_file, prev_shape);
+                    prev_parents =
+                        dynamic_cast<AddLayer<BufferT>*>(prev)->parents();
+                }
+                else if (line == "[route]")
+                {
+                    prev = parse_route(cfg_file);
+                    prev_parents =
+                        dynamic_cast<RouteLayer<BufferT>*>(prev)->parents();
+                }
+                else if (line == "[upsample]")
+                {
+                    prev = parse_upsample(cfg_file, prev_shape);
+                }
+                else if (line == "[yolo]")
+                {
+                    prev = parse_yolo(cfg_file, prev_shape);
+                    m_yolo_outputs.push_back(
+                        new Tensor<BufferT>(prev->output_shape()));
+                }
+
+                // unsupported block: raise warning and skip
+                else
+                {
+                    error = true;
+                    std::cerr << \
+                        "\033[1;31m[ERROR]\033[0m: Unsupported block (" << \
+                        line << ")" << " on line " << m_line_num << "\n";
+                    int last_pos = cfg_file.tellg();
+                    while (getline_(cfg_file, line))
+                    {
+                        if (line.empty())
+                        {
+                            last_pos = cfg_file.tellg();
+                            continue;
+                        }
+
+                        if (line.at(0) == '[')
+                        {
+                            cfg_file.seekg(last_pos); // move pointer back a line
+                            m_line_num--;
+                            break;
+                        }
+                        last_pos = cfg_file.tellg();
+                    }
+
+                    continue;
+                }
+
+#ifdef PARSER_DEBUG
+                // print layer index and type
+                std::cout << std::setw(3) << layer_idx;
+                std::cout << std::setw(18) << line << "\t";
+
+                // Print layer info
+                if (line != "[route]" && line != "[shortcut]")
+                {
+                    if (line != "[yolo]")
+                    {
+                        std::cout << std::setw(30) << str_shape(prev_shape)
+                                  << " --> " << str_shape(prev->output_shape());
+                    }
+                    else
+                    {
+                        std::cout << std::setw(30) << str_shape(prev_shape);
+                    }
+                }
+                else
+                {
+                    std::string str = "[" + std::to_string(prev_parents[0]);
+                    for (uint32_t i=1; i<prev_parents.size(); i++) {
+                        str += ", " + std::to_string(prev_parents[i]);
+                    }
+                    str += "]";
+                    std::cout << std::setw(30) << str
+                              << " --> " << str_shape(prev->output_shape());
+                }
+                std::cout << "\n";
+#endif
+
                 prev_shape = prev->output_shape();
+                m_max_buffer_size = std::max(m_max_buffer_size,
+                                             compute_size(prev_shape));
+
                 this->m_layers.push_back(prev);
+                if (m_save_outputs)
+                {
+                    m_outputs.push_back(new Tensor<BufferT>(prev_shape));
+                }
+
                 layer_idx++;
             }
         }
 
-        #ifdef PARSER_DEBUG
+        /// @todo allocate intermediate buffers here
+
+#ifdef PARSER_DEBUG
         std::cout << "\nFinished parsing." << std::endl;
         std::cout << "Total layers: " << this->m_layers.size() << std::endl;
-        #endif
+        std::cout << "Max buffer size: " << m_max_buffer_size << std::endl;
+        if (m_save_outputs)
+            std::cout << "Saving outputs for each layer" << std::endl;
+        std::cout << "Total buffer sizes: " << total_buffer_sizes() << std::endl;
+        std::cout << std::endl;
+#endif
+
+        if(error) {
+            for(auto &yolo_out : m_yolo_outputs) {
+                delete yolo_out;
+            }
+            throw std::invalid_argument("Failure to build model. Check errors and try again.");
+        }
+
+
+        // allocate intermediate buffers
+        m_in = new Tensor<BufferT>(m_max_buffer_size);
+        m_out = new Tensor<BufferT>(m_max_buffer_size);
 
     }
+
 };
 
 }

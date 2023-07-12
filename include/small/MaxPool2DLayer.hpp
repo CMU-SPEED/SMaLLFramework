@@ -45,7 +45,7 @@ public:
                   << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
                   << ",chans:" << m_input_shape[CHANNEL]
                   << ",img:" << m_input_shape[HEIGHT]
-                  << "x" << m_input_shape[WIDTH]
+                  << "x" << m_input_shape[WIDTH] << ")"
                   << std::endl;
 #endif
 
@@ -63,9 +63,11 @@ public:
                                           stride, padding_type,
                                           m_l_pad, m_r_pad,
                                           output_shape[WIDTH]);
-        // std::cerr << "MaxPool2D padding: "
-        //           << (int)m_t_pad << "," << (int)m_b_pad
-        //          << "," << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
+#if defined(DEBUG_LAYERS)
+        std::cerr << "MaxPool2D padding: "
+                  << (int)m_t_pad << "," << (int)m_b_pad
+                 << "," << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
+#endif
 
         this->set_output_shapes({output_shape});
     }

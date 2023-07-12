@@ -22,7 +22,7 @@ jobs:
             cd /SMaLLFramework/build;
             cmake .. -DCMAKE_UARCH=ARM; 
             cmake --build . -j;
-            make test;
+            ctest --rerun-failed --output-on-failure;
 
     
       

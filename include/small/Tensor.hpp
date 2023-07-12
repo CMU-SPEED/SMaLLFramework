@@ -13,6 +13,7 @@
 #pragma once
 
 #include <array>
+#include <ostream>
 #include <small.h>
 #include <small/buffers.hpp>
 
@@ -32,7 +33,17 @@ inline size_t compute_size(shape_type const &shape)
 {
     return shape[0]*shape[1]*shape[2]*shape[3];
 }
+}
 
+std::ostream &operator<<(std::ostream &ostr, small::shape_type const &shape)
+{
+    ostr << "(" << shape[0] << ", " << shape[1] << ", "
+         << shape[2] << ", " << shape[3] << ")";
+    return ostr;
+}
+
+namespace small
+{
 
 //****************************************************************************
 // Wraps a buffer and defines a set of dimensions of dense data that can be

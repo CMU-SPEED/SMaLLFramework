@@ -27,8 +27,9 @@ public:
     typedef typename BufferT::value_type value_type;
 
     AddLayer(shape_type const &input1_shape,
-             shape_type const &input2_shape)
-        : Layer<BufferT>()
+             shape_type const &input2_shape,
+             std::vector<int> const &parents_idxs)
+        : Layer<BufferT>(), m_parents_idxs(parents_idxs)
     {
 #if defined(DEBUG_LAYERS)
         std::cerr << "Add(batches:" << input1_shape[BATCH]
@@ -63,7 +64,7 @@ public:
             (output.size() != 1) || (output[0]->shape() != output_shape))
         {
             throw std::invalid_argument(
-                "DepthwiseConv2DLayer::compute_output() ERROR: "
+                "AddLayer::compute_output() ERROR: "
                 "incorrect input buffer shape.");
         }
 
@@ -76,6 +77,13 @@ public:
         // No need to reset the shape of the output buffer.
         //output.set_shape(this->output_shape());
     }
+
+    std::vector<int> const &parents() const { return m_parents_idxs; }
+
+private:
+
+    std::vector<int> const m_parents_idxs;
+
 };
 
 }

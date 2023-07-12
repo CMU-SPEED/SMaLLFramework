@@ -27,11 +27,12 @@ public:
     typedef typename BufferT::value_type value_type;
 
     // accept single input shape
-    RouteLayer(shape_type const &input0_shape)
+    RouteLayer(shape_type const &input0_shape, std::vector<int> const &parents)
         : Layer<BufferT>(input0_shape),
           m_num_inputs(1U),
           m_input0_shape(input0_shape),
-          m_input1_shape({0,0,0,0})
+          m_input1_shape({0,0,0,0}),
+          m_parents(parents)
     {
 #if defined(DEBUG_LAYERS)
         std::cerr << "Route: (batches:" << input0_shape[BATCH]
@@ -40,16 +41,23 @@ public:
                   << "x" << input0_shape[WIDTH]
                   << ")" << std::endl;
 #endif
-
+        if(parents.size() != 1) {
+            throw std::invalid_argument(
+                "RouteLayer ctor ERROR: "
+                "parents vector size does not match number of inputs (expected 1)."
+            );
+        }
     }
 
     // two input shapes
     RouteLayer(shape_type const &input0_shape,
-               shape_type const &input1_shape)
+               shape_type const &input1_shape,
+               std::vector<int> const &parents)
         : Layer<BufferT>(),
           m_num_inputs(2U),
           m_input0_shape(input0_shape),
-          m_input1_shape(input1_shape)
+          m_input1_shape(input1_shape),
+          m_parents(parents)
     {
 #if defined(DEBUG_LAYERS)
         std::cerr << "Route: (batches:" << input0_shape[BATCH]
@@ -74,6 +82,13 @@ public:
                 "predecessors do not have same output shape.");
         }
 
+        if(parents.size() != 2) {
+            throw std::invalid_argument(
+                "RouteLayer ctor ERROR: "
+                "parents vector size does not match number of inputs (expected 2)."
+            );
+        }
+
         // only concat along channel dimension
         shape_type output_shape = input0_shape;
         output_shape[CHANNEL] = input0_shape[CHANNEL] + input1_shape[CHANNEL];
@@ -82,6 +97,8 @@ public:
     }
 
     virtual ~RouteLayer() {}
+
+    std::vector<int> parents() { return m_parents; }
 
     virtual void compute_output(
         std::vector<Tensor<BufferT> const *> input,
@@ -159,6 +176,7 @@ private:
     uint32_t const   m_num_inputs;
     shape_type const m_input0_shape;
     shape_type const m_input1_shape;
+    std::vector<int> const m_parents;
 };
 
 }
