@@ -50,15 +50,6 @@ std::string str_shape(small::shape_type const &shape)
     return str;
 }
 
-std::string str_shape(std::vector<int> const &shape) {
-    std::string str = "[" + std::to_string(shape[0]);
-    for (uint32_t i=1; i<shape.size(); i++) {
-        str += ", " + std::to_string(shape[i]);
-    }
-    str += "]";
-    return str;
-}
-
 // extract a list of ints from a string assuming that the string is a
 // comma separated list of ints
 template <typename T>
@@ -434,8 +425,8 @@ private:
     bool                                m_save_outputs;
 
     // read line and remove white space
-     inline bool getline_(std::ifstream &file, std::string &line) {
-        if(getline(file, line)) {
+    inline bool getline_(std::ifstream &file, std::string &line) {
+        if(std::getline(file, line)) {
             line.erase(std::remove(line.begin(), line.end(), ' '), line.end());
             this->m_line_num++;
             return true;
@@ -447,7 +438,7 @@ private:
 
     //************************************************************************
     // returns type of activation based on the key
-     ActivationType parse_activation(std::string act_type)
+    ActivationType parse_activation(std::string act_type)
     {
         if      (act_type == "leaky")  { return ActivationType::LEAKY; }
         else if (act_type == "relu" )  { return ActivationType::RELU; }
@@ -1232,7 +1223,12 @@ private:
                 }
                 else
                 {
-                    std::cout << std::setw(30) << str_shape(prev_parents)
+                    std::string str = "[" + std::to_string(prev_parents[0]);
+                    for (uint32_t i=1; i<prev_parents.size(); i++) {
+                        str += ", " + std::to_string(prev_parents[i]);
+                    }
+                    str += "]";
+                    std::cout << std::setw(30) << str
                               << " --> " << str_shape(prev->output_shape());
                 }
                 std::cout << "\n";
