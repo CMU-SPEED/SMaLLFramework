@@ -51,7 +51,7 @@ public:
     YOLOLayer(shape_type const &input_shape,
               std::vector<std::pair<uint32_t, uint32_t>> masked_anchors,
               size_t num_classes,
-              size_t input_img_size) // {B, C, H, W}
+              size_t input_img_size) /// @todo assumes square image
         : m_stride(input_img_size / input_shape[HEIGHT]),
           m_anchors(masked_anchors),
           m_num_anchors(masked_anchors.size()),
@@ -95,12 +95,14 @@ public:
         std::vector<Tensor<BufferT> const *> input,
         std::vector<Tensor<BufferT>*>        output) const
     {
-
         using ScalarT = typename BufferT::value_type;
 
         size_t h = input[0]->shape()[HEIGHT];
         size_t w = input[0]->shape()[WIDTH];
 
+        /// @todo profile pulling directly from the packed input buffer
+        ///       to avoid construction of this unpacked buffer. Or preallocate
+        ///       a member buffer and assert that input is the correct size.
         BufferT unpacked_input(input[0]->size());
         small::unpack_buffer(
             input[0]->buffer(), small::INPUT,
@@ -195,18 +197,17 @@ public:
                             bbox_n_conf->buffer()[out_off + i3] =
                                 sigmoid<ScalarT>(unpacked_input[offset]);
                         }
-
                     }
                     pred_idx++;
                 }
             }
         }
 
-        // delete unpacked_input;
+        // destructing unpacked_input;
     }
 
 private:
-    size_t      m_stride;
+    size_t       m_stride;
     std::vector<std::pair<uint32_t,uint32_t>> const m_anchors;
     size_t       m_num_anchors;
     size_t const m_num_classes;

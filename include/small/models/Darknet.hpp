@@ -169,7 +169,7 @@ public:
     //************************************************************************
     // assumes all the buffers have been set up in the constructor
     virtual std::vector<Tensor<BufferT>*>
-        inference(Tensor<BufferT> const *input)
+    inference(Tensor<BufferT> const *input)
     {
         size_t yolo_block_idx = 0;
 
@@ -406,7 +406,7 @@ public:
 
 private:
     size_t m_num_classes;
-     size_t m_line_num;
+    size_t m_line_num;
 
     // map for cached outputs
     // layer_idx -> output
@@ -424,14 +424,16 @@ private:
     std::vector<Tensor<BufferT>*>       m_outputs;
     bool                                m_save_outputs;
 
+    //************************************************************************
     // read line and remove white space
-    inline bool getline_(std::ifstream &file, std::string &line) {
+     inline bool getline_(std::ifstream &file, std::string &line) {
         if(std::getline(file, line)) {
             line.erase(std::remove(line.begin(), line.end(), ' '), line.end());
-            this->m_line_num++;
+            m_line_num++;
             return true;
         }
-        else {
+        else
+        {
             return false;
         }
     }
@@ -454,7 +456,7 @@ private:
     //************************************************************************
     /// @todo: this really needs to be checked. I have no clue how this should
     ///        be handled.  Note there is also a separate padding parameter
-     PaddingEnum parse_padding(std::string pad_type)
+    PaddingEnum parse_padding(std::string pad_type)
     {
         if      (pad_type == "1") { return PaddingEnum::PADDING_F; }
         else if (pad_type == "0") { return PaddingEnum::PADDING_V; }
@@ -469,10 +471,10 @@ private:
     //************************************************************************
     // parsing "[convolutional]" blocks
     template <typename ScalarT>
-     Layer<BufferT>* parse_conv(std::ifstream    &cfg_file,
-                                      shape_type const &input_shape,
-                                      ScalarT          *weight_data_ptr,
-                                      size_t           &weight_idx)
+    Layer<BufferT>* parse_conv(std::ifstream    &cfg_file,
+                               shape_type const &input_shape,
+                               ScalarT          *weight_data_ptr,
+                               size_t           &weight_idx)
     {
 #ifdef PARSER_DEBUG_VERBOSE
         std::cout << "Parsing Convolutional Layer\n";
@@ -502,7 +504,7 @@ private:
             if (line.at(0) == '[')
             {
                 cfg_file.seekg(last_pos);
-                this->m_line_num--;
+                m_line_num--;
                 break;
             }
 
@@ -630,8 +632,8 @@ private:
     }
 
     //************************************************************************
-     Layer<BufferT>* parse_max(std::ifstream    &cfg_file,
-                                     shape_type const &input_shape)
+    Layer<BufferT>* parse_max(std::ifstream    &cfg_file,
+                              shape_type const &input_shape)
     {
 #ifdef PARSER_DEBUG_VERBOSE
         std::cout << "Parsing MaxPool Layer\n";
@@ -657,7 +659,7 @@ private:
             if (line.at(0) == '[')
             {
                 cfg_file.seekg(last_pos);
-                this->m_line_num--;
+                m_line_num--;
                 break;
             }
 
@@ -710,7 +712,7 @@ private:
             if (line.at(0) == '[')
             {
                 cfg_file.seekg(last_pos);
-                this->m_line_num--;
+                m_line_num--;
                 break;
             }
 
@@ -744,6 +746,8 @@ private:
         int total_layers_so_far = this->m_layers.size();
         m_cached_outputs[total_layers_so_far+from] = nullptr;
 
+        /// @todo storing parent IDs in the AddLayer should be removed and
+        ///       a DAG needs to be built here or in Model base class
         AddLayer<BufferT> *shortcut = new AddLayer<BufferT>(
             input_shape,
             this->m_layers[total_layers_so_far + from]->output_shape(),
@@ -776,7 +780,7 @@ private:
             if (line.at(0) == '[')
             {
                 cfg_file.seekg(last_pos);
-                this->m_line_num--;
+                m_line_num--;
                 break;
             }
 
@@ -813,6 +817,8 @@ private:
             m_cached_outputs[route_layers[i]] = nullptr;
         }
 
+        /// @todo storing parent IDs in the RouteLayer should be removed and
+        ///       a DAG needs to be built here or in Model base class
         if (inputs.size() == 1)
         {
             route = new RouteLayer<BufferT>(inputs[0], route_layers);
@@ -854,7 +860,7 @@ private:
             if (line.at(0) == '[')
             {
                 cfg_file.seekg(last_pos);
-                this->m_line_num--;
+                m_line_num--;
                 break;
             }
 
@@ -910,7 +916,7 @@ private:
             if (line.at(0) == '[')
             {
                 cfg_file.seekg(last_pos);
-                this->m_line_num--;
+                m_line_num--;
                 break;
             }
 
@@ -1012,7 +1018,7 @@ private:
             if (line.at(0) == '[')
             {
                 cfg_file.seekg(last_pos);
-                this->m_line_num--;
+                m_line_num--;
                 break;
             }
 
@@ -1044,7 +1050,7 @@ private:
     {
         using ScalarT = typename BufferT::value_type;
 
-        this->m_line_num = 0;
+        m_line_num = 0;
         bool error = false;
 
         Layer<BufferT> *prev = nullptr;
@@ -1132,7 +1138,7 @@ private:
 
                     if (m_save_outputs)
                     {
-                        this->m_outputs.push_back(new Tensor<BufferT>(prev_shape));
+                        m_outputs.push_back(new Tensor<BufferT>(prev_shape));
                     }
                     continue;
                 }
@@ -1181,7 +1187,7 @@ private:
                     error = true;
                     std::cerr << \
                         "\033[1;31m[ERROR]\033[0m: Unsupported block (" << \
-                        line << ")" << " on line " << this->m_line_num << "\n";
+                        line << ")" << " on line " << m_line_num << "\n";
                     int last_pos = cfg_file.tellg();
                     while (getline_(cfg_file, line))
                     {
@@ -1194,7 +1200,7 @@ private:
                         if (line.at(0) == '[')
                         {
                             cfg_file.seekg(last_pos); // move pointer back a line
-                            this->m_line_num--;
+                            m_line_num--;
                             break;
                         }
                         last_pos = cfg_file.tellg();

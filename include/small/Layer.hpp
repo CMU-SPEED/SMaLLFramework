@@ -66,6 +66,8 @@ public:
         return m_output_shapes[idx];
     }
 
+    /// @todo Revisit this interface: are all layers restricted producing
+    //        a single output buffer?
     /// @todo Revisit this interface, recently switched to taking copies
     ///       so that I could call with initializer lists; i.e.,
     ///          compute_output({&input_tensor}, {&output_tensor});
