@@ -165,6 +165,6 @@ void test_bug_parser(void)
 //****************************************************************************
 TEST_LIST = {
     {"darknet_parser", test_yolo_parser},
-    {"darknet_parser", test_bug_parser},
+    {"darknet_parser with bad cfg file", test_bug_parser},
     {NULL, NULL}
 };

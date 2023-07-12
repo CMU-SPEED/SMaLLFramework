@@ -13,6 +13,7 @@
 #include <acutest.h>
 
 #include <small.h>
+#include <small/Tensor.hpp>
 #include <small/models/Darknet.hpp>
 
 #include "test_utils.hpp"
@@ -49,9 +50,8 @@ bool compare_outputs(size_t layer_idx,
 
 
 //****************************************************************************
-void test_yolov3_tiny(void)
+void test_yolov3_tiny_each_layer(void)
 {
-
     using BufferT = small::FloatBuffer;
 
     std::string cfg = cfg_dir + "/yolov3-tiny.cfg";
@@ -141,8 +141,108 @@ void test_yolov3_tiny(void)
 }
 
 //****************************************************************************
+void test_yolov3_tiny(void)
+{
+    using BufferT = small::FloatBuffer;
+
+    std::string cfg = cfg_dir + "/yolov3-tiny.cfg";
+    std::string weights = cfg_dir + "/yolov3-tiny.weights";
+
+    std::cout << "\n\nReading Darknet CFG from " << cfg << std::endl;
+    std::cout << "Reading Darknet weights from " << weights << std::endl;
+
+    std::string in_fname = data_dir + "/in_yolov3tiny_Ci3_H416_W416_519168.bin";
+    std::string out_fname= data_dir + "/out_yolov3tiny_P2535_F85_215475.bin";
+
+    std::cout << "\nUsing Input data from " << in_fname << std::endl;
+    std::cout << "Using Output data from " << out_fname << std::endl;
+
+    BufferT input(read_inputs<BufferT>(in_fname));
+    small::Tensor<BufferT> input_tensor({1U, 3U, 416U, 416U});
+    small::pack_buffer(
+        input,
+        small::INPUT,
+        1U, 3U, 416U, 416U,
+        C_ib, C_ob,
+        input_tensor.buffer()
+    );
+
+    BufferT output(read_inputs<BufferT>(out_fname));
+    small::Tensor<BufferT> output_tensor({1U, 1U, 2535U, 85U}, output);
+
+    try
+    {
+        small::Darknet<BufferT> model(cfg, weights, false);
+        if (model.get_input_shape() != input_tensor.shape())
+        {
+            std::cerr << "ERROR: input shape mismatch" << std::endl;
+            TEST_CHECK(false);
+        }
+        std::vector<small::Tensor<BufferT>*> yolo_outs =
+            model.inference({&input_tensor});
+
+        // check number of yolo outputs
+        if (yolo_outs.size() != 2)
+        {
+            std::cerr << "ERROR: not enough yolo outputs" << std::endl;
+            TEST_CHECK(false);
+        }
+
+        size_t num_records = 0;
+        size_t regression_output_index = 0;
+        size_t fail_count = 0;
+
+        for (auto tensor_ptr : yolo_outs)
+        {
+            std::cerr << "Output buf: " << tensor_ptr->shape() << std::endl;
+            TEST_CHECK(tensor_ptr->shape()[small::BATCH] == 1);
+            TEST_CHECK(tensor_ptr->shape()[small::CHANNEL] == 1);
+            TEST_CHECK(tensor_ptr->shape()[small::WIDTH] == 85);
+            size_t recs = tensor_ptr->shape()[small::HEIGHT];
+            num_records += recs;
+
+            size_t output_index = 0;
+
+            for (size_t rec = 0; rec < recs; ++rec)
+            {
+                for (size_t idx = 0; idx < 85; ++idx)
+                {
+                    if (!almost_equal(tensor_ptr->buffer().data()[output_index],
+                                      output[regression_output_index]))
+                    {
+                        fail_count++;
+                        if (fail_count < 20)
+                        {
+                            std::cerr << "FAIL: darknet("
+                                      << rec << ", " << idx << ") = "
+                                      << "(computed) "
+                                      << tensor_ptr->buffer().data()[output_index]
+                                      << " != "
+                                      << output[regression_output_index]
+                                      << std::endl;
+                        }
+                    }
+                    output_index++;
+                    regression_output_index++;
+                }
+             }
+         }
+
+        std::cerr << fail_count << " failures out of "
+                  << regression_output_index << std::endl;
+        TEST_CHECK(fail_count < 25);
+    }
+    catch (std::exception const &e)
+    {
+        std::cerr << "ERROR: " << e.what() << std::endl;
+        TEST_CHECK(false);
+    }
+}
+
+//****************************************************************************
 //****************************************************************************
 TEST_LIST = {
-    // {"yolov3_tiny", test_yolov3_tiny},
+    //{"yolov3_tiny layers", test_yolov3_tiny_each_layer},
+    {"yolov3_tiny", test_yolov3_tiny},
     {NULL, NULL}
 };
