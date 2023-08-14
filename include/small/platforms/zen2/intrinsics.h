@@ -15,7 +15,9 @@
 //scalar versions of all the microkernels for platform portability
 #define SIMD_EPILOGUE 1
 
-typedef small::FloatBuffer::value_type c_tile_t;
+// typedef small::FloatBuffer::value_type c_tile_t;
+
+typedef float c_tile_t;
 
 #include<immintrin.h>
 //Architecture specific tiling params
