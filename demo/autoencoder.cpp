@@ -154,13 +154,13 @@ small::Tensor<BufferT> &model_inference(
     small::Tensor<BufferT>                                   &inter_1_dc)
 {
     size_t layer_num = 0;
-    layers[layer_num++]->compute_output({&input_dc}, {&inter_0_dc});   // Conv2D
-    layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_0_dc}); // ReLU
+    layers[layer_num++]->compute_output({&input_dc}, &inter_0_dc);   // Conv2D
+    layers[layer_num++]->compute_output({&inter_0_dc}, &inter_0_dc); // ReLU
 
     while (layer_num < layers.size() - 1)
     {
-        layers[layer_num]->compute_output({&inter_0_dc}, {&inter_1_dc});
-        layers[layer_num + 1]->compute_output({&inter_1_dc}, {&inter_1_dc});
+        layers[layer_num]->compute_output({&inter_0_dc}, &inter_1_dc);
+        layers[layer_num + 1]->compute_output({&inter_1_dc}, &inter_1_dc);
         layer_num += 2;
 
         inter_0_dc.swap(inter_1_dc);

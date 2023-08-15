@@ -90,17 +90,17 @@ bool run_yolo_layer_config(LayerParams const &params,
     size_t num_classes = 80U;
 
     // create output buffers
-    std::vector<small::Tensor<BufferT>*> outs;
+
     // first 4 elements of the fastest dimension represent bounding box info
     // 5th element is the confidence score
     // remaining elements are the class confidence scores
     small::Tensor<BufferT> bb_n_conf({1U, 1U, num_pred, num_classes + 5U});
-    outs.push_back(&bb_n_conf);
+    small::Tensor<BufferT>* out = &bb_n_conf;
 
     // std::cout << "Computing YOLO\n";
-    yolo_layer.compute_output({&input_tensor}, outs);
+    yolo_layer.compute_output({&input_tensor}, out);
     // std::cout << "Finished YOLO\n";
-    small::Tensor<BufferT>* bb_n_conf_out = outs[0];
+    small::Tensor<BufferT>* bb_n_conf_out = out;
 
     std::string out_fname =
         get_pathname(data_dir, "out", "yolo",
@@ -112,14 +112,19 @@ bool run_yolo_layer_config(LayerParams const &params,
     BufferT bb_n_conf_ref(read_inputs<BufferT>(out_fname));
 
     // compare against regression data
-    for(size_t i = 0; i < num_pred; i++) {
+    for (size_t i = 0; i < num_pred; i++)
+    {
         // make sure bounding boxes are correctly computed
-        for(size_t j = 0; j < 85U; j++) {
-            if(!almost_equal(bb_n_conf_out->buffer()[i*(num_classes+5U)+j], bb_n_conf_ref[i*(num_classes+5U)+j])) {
-                std::cerr << "bb_n_conf_out[" << i << "][" << j << "] = (computed)"
-                    << bb_n_conf_out->buffer()[i*(num_classes+5U)+j]
-                    << " != " << bb_n_conf_ref[i*(num_classes+5U)+j]
-                    << std::endl;
+        for (size_t j = 0; j < 85U; j++)
+        {
+            if (!almost_equal(bb_n_conf_out->buffer()[i*(num_classes+5U)+j],
+                              bb_n_conf_ref[i*(num_classes+5U)+j]))
+            {
+                std::cerr << "bb_n_conf_out[" << i << "][" << j
+                          << "] = (computed)"
+                          << bb_n_conf_out->buffer()[i*(num_classes+5U)+j]
+                          << " != " << bb_n_conf_ref[i*(num_classes+5U)+j]
+                          << std::endl;
                 return false;
             }
         }

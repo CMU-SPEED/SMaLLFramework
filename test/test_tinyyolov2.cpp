@@ -12,6 +12,11 @@
 
 #define PARALLEL 1
 
+//#define DAG_DEBUG
+//#define BUFFER_DEBUG
+//#define DEBUG_LAYERS
+//#define SUMMARY 1
+
 #include <acutest.h>
 #include <stdlib.h>
 
@@ -22,11 +27,12 @@
 
 #include <small.h>
 #include <small/models/TinyYoloV2.hpp>
+#include <small/models/TinyYoloV2DAG.hpp>
 #include <small/utils/Timer.hpp>
 
 #include "test_utils.hpp"
 
-#define RUNS 10
+#define RUNS 5
 
 //****************************************************************************
 /* This is the runtime recording (for check_blocks==6):
@@ -632,72 +638,38 @@ void test_tinyyolov2(void)
     //************************************************************************
     // Model class
     //************************************************************************
-
-    small::shape_type input_shape({1UL, C_i, N, M});
-
-    small::TinyYoloV2<BufferT> model(input_shape, filter_buf_ptrs, true);
-
-    small::Tensor<BufferT> input_tensor(input_shape, input_dc);
-
-    //***********
-    std::cerr << "Warm up run (LAYERS)" << std::endl;
-    auto output_tensors = model.inference({&input_tensor});
-    BufferT output_buffer = output_tensors[0]->buffer();
-    //***********
-
-    TEST_CHECK(1 == output_tensors.size());
-    std::cerr << "Output sizes: " << num_outputs << " ?= "
-              <<  output_tensors[0]->size() << std::endl;
-    TEST_CHECK(num_outputs == output_tensors[0]->size());
-
-    // Compare outputs
-    bool passed = true;
-    std::cout << "\nCHECK RESULTS: Num output elements: "
-              << num_outputs << std::endl;
-
-    for (size_t ix = 0; ix < num_outputs; ++ix)
-    {
-        bool same_value = (output_answers[ix] == output_tensors[0]->buffer()[ix]);
-
-#if SUMMARY == 1
-        std::cout << (same_value ? "pass: " : "FAIL: ")
-                  << "baseline, Model output " << ix
-                  << ": " << (float)output_answers[ix]
-                  << " ?= " << (float)output_tensors[0]->buffer()[ix]
-                  << std::endl;
-#endif
-        passed &= same_value;
-    }
-    TEST_CHECK(passed);
-
-    //======================================================
-    // Timing runs
-    //======================================================
     std::vector<double> layer_timing;
-
-    for (int r = 0; r < RUNS; r++)
     {
-        std::cout << "Model run: " << r;
-        my_timer.start();
+        small::shape_type input_shape({1UL, C_i, N, M});
+
+        small::TinyYoloV2<BufferT> model(input_shape,
+                                         filter_buf_ptrs, true);
+
+        small::Tensor<BufferT> input_tensor(input_shape, input_dc);
 
         //***********
-        model.inference({&input_tensor});
+        std::cerr << "\nWarm up run (LAYERS)" << std::endl;
+        auto output_tensors = model.inference(&input_tensor);
+        BufferT output_buffer = output_tensors[0]->buffer();
         //***********
 
-        my_timer.stop();
-        auto diff = my_timer.elapsed();
-        layer_timing.push_back(diff);
-        std::cout << ": " << diff << " ns.\n";
+        TEST_CHECK(1 == output_tensors.size());
+        std::cerr << "Output sizes: " << num_outputs << " ?= "
+                  <<  output_tensors[0]->size() << std::endl;
+        TEST_CHECK(num_outputs == output_tensors[0]->size());
 
-        // Test that the answer stays the same through multiple invocations
+        // Compare outputs
         bool passed = true;
+        std::cout << "\nCHECK RESULTS: Num output elements: "
+                  << num_outputs << std::endl;
+
         for (size_t ix = 0; ix < num_outputs; ++ix)
         {
             bool same_value = (output_answers[ix] == output_tensors[0]->buffer()[ix]);
 
 #if SUMMARY == 1
             std::cout << (same_value ? "pass: " : "FAIL: ")
-                      << "baseline (first run), Model output " << ix
+                      << "baseline, Model output " << ix
                       << ": " << (float)output_answers[ix]
                       << " ?= " << (float)output_tensors[0]->buffer()[ix]
                       << std::endl;
@@ -705,6 +677,121 @@ void test_tinyyolov2(void)
             passed &= same_value;
         }
         TEST_CHECK(passed);
+
+        //======================================================
+        // Timing runs
+        //======================================================
+
+        for (int r = 0; r < RUNS; r++)
+        {
+            std::cout << "Model run: " << r;
+            my_timer.start();
+
+            //***********
+            model.inference(&input_tensor);
+            //***********
+
+            my_timer.stop();
+            auto diff = my_timer.elapsed();
+            layer_timing.push_back(diff);
+            std::cout << ": " << diff << " ns.\n";
+
+            // Test that the answer stays the same through multiple invocations
+            bool passed = true;
+            for (size_t ix = 0; ix < num_outputs; ++ix)
+            {
+                bool same_value = (output_answers[ix] == output_tensors[0]->buffer()[ix]);
+
+#if SUMMARY == 1
+                std::cout << (same_value ? "pass: " : "FAIL: ")
+                          << "baseline (first run), Model output " << ix
+                          << ": " << (float)output_answers[ix]
+                          << " ?= " << (float)output_tensors[0]->buffer()[ix]
+                          << std::endl;
+#endif
+                passed &= same_value;
+            }
+            TEST_CHECK(passed);
+        }
+    }
+
+    //************************************************************************
+    // DAGModel class
+    //************************************************************************
+    std::vector<double> dag_timing;
+    {
+        small::shape_type input_shape({1UL, C_i, N, M});
+
+        small::TinyYoloV2DAG<BufferT> model(input_shape, filter_buf_ptrs, true);
+
+        small::Tensor<BufferT> input_tensor(input_shape, input_dc);
+
+        //***********
+        std::cerr << "\nWarm up run (DAG)" << std::endl;
+        auto output_tensors = model.inference(&input_tensor);
+        BufferT output_buffer = output_tensors[0]->buffer();
+        //***********
+
+        TEST_CHECK(1 == output_tensors.size());
+        std::cerr << "Output sizes: " << num_outputs << " ?= "
+                  <<  output_tensors[0]->size() << std::endl;
+        TEST_CHECK(num_outputs == output_tensors[0]->size());
+
+        // Compare outputs
+        bool passed = true;
+        std::cout << "\nCHECK RESULTS: Num output elements: "
+                  << num_outputs << std::endl;
+
+        for (size_t ix = 0; ix < num_outputs; ++ix)
+        {
+            bool same_value = (output_answers[ix] == output_tensors[0]->buffer()[ix]);
+
+#if SUMMARY == 1
+            std::cout << (same_value ? "pass: " : "FAIL: ")
+                      << "baseline, Model output " << ix
+                      << ": " << (float)output_answers[ix]
+                      << " ?= " << (float)output_tensors[0]->buffer()[ix]
+                      << std::endl;
+#endif
+            passed &= same_value;
+        }
+        TEST_CHECK(passed);
+
+        //======================================================
+        // Timing runs
+        //======================================================
+
+        for (int r = 0; r < RUNS; r++)
+        {
+            std::cout << "DAG run: " << r;
+            my_timer.start();
+
+            //***********
+            model.inference(&input_tensor);
+            //***********
+
+            my_timer.stop();
+            auto diff = my_timer.elapsed();
+            dag_timing.push_back(diff);
+            std::cout << ": " << diff << " ns.\n";
+
+            // Test that the answer stays the same through multiple invocations
+            bool passed = true;
+            for (size_t ix = 0; ix < num_outputs; ++ix)
+            {
+                bool same_value = (output_answers[ix] == output_tensors[0]->buffer()[ix]);
+
+#if SUMMARY == 1
+                std::cout << (same_value ? "pass: " : "FAIL: ")
+                          << "baseline (first run), Model output " << ix
+                          << ": " << (float)output_answers[ix]
+                          << " ?= " << (float)output_tensors[0]->buffer()[ix]
+                          << std::endl;
+#endif
+                passed &= same_value;
+            }
+            TEST_CHECK(passed);
+        }
     }
 
     int num_th = 1;
@@ -715,11 +802,13 @@ void test_tinyyolov2(void)
         num_th = atoi(std::getenv("OMP_NUM_THREADS"));
     }
 #endif
+    std::cout << "\nSUMMARY STATS:" << std::endl;
     std::cout << "Num Threads: " << num_th << std::endl;
-    print_stats(small_timing, "\nSMaLL:tinyyolov2 Baseline");
-    print_stats(layer_timing, "\nSMaLL:tinyyolov2 Layers  ");
+    print_stats(small_timing, "SMaLL:tinyyolov2 Baseline");
+    print_stats(layer_timing, "SMaLL:tinyyolov2 Layers  ");
+    print_stats(dag_timing,   "SMaLL:tinyyolov2 DAGModel");
 
-    //clean up
+    // clean up
     for (auto filter : filter_buf_ptrs)
     {
         delete filter;

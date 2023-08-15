@@ -155,7 +155,7 @@ inline uint8_t calc_back_padding(char      padding_type,
 //****************************************************************************
 /// @todo make constexpr(?) function
 /// @todo PICK ONE output_dim function
-// assumes 'f' padding
+// assumes 'v' padding
 inline dim_t output_dim(dim_t input_dim, dim_t stride, dim_t kernel_dim)
 {
     int out_elems = (int(input_dim) - int(kernel_dim))/ stride + 1;
@@ -163,7 +163,7 @@ inline dim_t output_dim(dim_t input_dim, dim_t stride, dim_t kernel_dim)
 }
 
 //****************************************************************************
-// assumes 'f' padding
+// assumes 'v' padding
 inline dim_t output_dim_new(dim_t input_dim, dim_t stride, dim_t kernel_dim)
 {
     return ((kernel_dim > input_dim)

@@ -20,7 +20,7 @@
 #include <iomanip>
 
 #include <small.h>
-#include <small/Model.hpp>
+#include <small/DAGModel.hpp>
 #include <small/Layer.hpp>
 #include <small/DummyLayer.hpp>
 #include <small/RouteLayer.hpp>
@@ -33,74 +33,30 @@
 #include <small/YOLOLayer.hpp>
 #include <small/non_max_suppression.hpp>
 
-#define PARSER_DEBUG
-//#define PARSER_DEBUG_VERBOSE
-
-//****************************************************************************
-// helper functions for parsing
-
-// returns shape in a string
-std::string str_shape(small::shape_type const &shape)
-{
-    std::string str = "(" + std::to_string(shape[0]);
-    for (uint32_t i=1; i<shape.size(); i++) {
-        str += ", " + std::to_string(shape[i]);
-    }
-    str += ")";
-    return str;
-}
-
-// extract a list of ints from a string assuming that the string is a
-// comma separated list of ints
-template <typename T>
-std::vector<T> extract_int_array(std::string const &s)
-{
-    std::vector<T> list;
-    std::string delimiter = ",";
-    size_t last = 0, next = 0;
-    while ((next = s.find(delimiter, last)) != std::string::npos) {
-        list.push_back(stoi(s.substr(last, next-last)));
-        last = next + 1;
-    }
-    list.push_back(stoi(s.substr(last)));
-    return list;
-}
-
 namespace small
 {
 
 //****************************************************************************
 template <typename BufferT>
-class Darknet : public Model<BufferT>
+class Darknet : public DAGModel<BufferT>
 {
 public:
     Darknet() = delete;
 
     // Assume one input layer with a single shape for now
-    Darknet(std::string cfg_path, std::string weights_path, bool save_outputs = false)
-        : Model<BufferT>({0,0,0,0}),
-          m_num_classes(0),
-          m_save_outputs(save_outputs)
+    Darknet(std::string cfg_pathname,
+            std::string weights_pathname,
+            bool        save_outputs = false)
+        : DAGModel<BufferT>({0,0,0,0}, save_outputs),
+          m_num_classes(0)
     {
-        parse_cfg_and_weights(cfg_path, weights_path);
+        size_t max_buffer_size =
+            parse_cfg_and_weights(cfg_pathname, weights_pathname);
+        this->initializeDAG(max_buffer_size);
     }
 
-    virtual ~Darknet() {
-        // delete all buffers
-        for (auto out : m_outputs)
-        {
-            delete out;
-        }
-        for (auto out : m_cached_outputs)
-        {
-            delete out.second;
-        }
-        for (auto out : m_yolo_outputs)
-        {
-            delete out;
-        }
-        delete m_in;
-        delete m_out;
+    virtual ~Darknet()
+    {
     }
 
     size_t get_num_classes() const { return m_num_classes; }
@@ -166,268 +122,17 @@ public:
         return basic_nms(predictions, iou_threshold);
     }
 
-    //************************************************************************
-    // assumes all the buffers have been set up in the constructor
-    virtual std::vector<Tensor<BufferT>*>
-    inference(Tensor<BufferT> const *input)
-    {
-        size_t yolo_block_idx = 0;
-
-        if (input->shape() != this->m_input_shape)
-        {
-            throw std::runtime_error(
-                "Input shape does not match model input shape");
-        }
-
-        if (m_save_outputs)
-        {
-            std::copy(
-                &(input->buffer()[0]),
-                &(input->buffer()[compute_size(input->shape())]),
-                &(m_outputs[0]->buffer()[0])
-            );
-        }
-        else
-        {
-            m_in->set_shape(input->shape());
-            std::copy(
-                &(input->buffer()[0]),
-                &(input->buffer()[compute_size(input->shape())]),
-                &(m_in->buffer()[0])
-            );
-        }
-
-        for (size_t layer_num=0; layer_num<this->m_layers.size(); layer_num++)
-        {
-#if DEBUG
-            std::cout << layer_num;
-#endif
-
-            // get layer info
-            Layer<BufferT> *layer = this->m_layers[layer_num];
-            const std::type_info& type = typeid(*layer);
-            shape_type out_shape = layer->output_shape();
-
-            // make sure the size is always set
-            if (!m_save_outputs)
-            {
-                m_out->set_shape(out_shape);
-            }
-
-            // single input/output layers
-            if (type == typeid(Conv2DLayer<BufferT>) ||
-                type == typeid(MaxPool2DLayer<BufferT>) ||
-                type == typeid(UpSample2DLayer<BufferT>))
-            {
-#if DEBUG
-                std::cout << " Conv/MaxPool/UpSample Layer" << std::endl;
-#endif
-
-                if (m_save_outputs)
-                {
-                    layer->compute_output({m_outputs[layer_num]},
-                                          {m_outputs[layer_num+1]});
-                }
-                else
-                {
-                    layer->compute_output({m_in}, {m_out});
-                }
-            }
-            else if (type == typeid(AddLayer<BufferT>))
-            {
-#if DEBUG
-                std::cout << " Add Layer" << std::endl;
-#endif
-
-                // there will always only be 2 parents
-                std::vector<int> parents =
-                    dynamic_cast<AddLayer<BufferT>*>(layer)->parents();
-                assert(parents.size() == 2);
-
-                if (m_save_outputs)
-                {
-                    std::copy(
-                        &m_outputs[parents[1]+1]->buffer()[0],
-                        &m_outputs[parents[1]+1]->buffer()[compute_size(out_shape)],
-                        &m_outputs[layer_num+1]->buffer()[0]
-                    );
-                    layer->compute_output({m_outputs[layer_num]},
-                                          {m_outputs[layer_num+1]});
-                }
-                else
-                {
-                    // std::copy(
-                    //     &m_cached_outputs[parents[1]]->buffer()[0],
-                    //     &m_cached_outputs[parents[1]]->buffer()[compute_size(out_shape)],
-                    //     &m_out->buffer()[0]
-                    // );
-                    layer->compute_output({m_cached_outputs[parents[1]]}, {m_in});
-                    m_in->swap(*m_out);
-                }
-
-            }
-            else if (type == typeid(RouteLayer<BufferT>))
-            {
-#if DEBUG
-                std::cout << " Route Layer" << std::endl;
-#endif
-
-                std::vector<int> parents =
-                    dynamic_cast<RouteLayer<BufferT>*>(layer)->parents();
-                assert(parents.size() == 1 || parents.size() == 2);
-
-                // for parent.size() == 1, this should just be a buffer swap/copy
-                if (parents.size() == 1)
-                {
-                    if (m_save_outputs)
-                    {
-                        layer->compute_output({m_outputs[parents[0]+1]},
-                                              {m_outputs[layer_num+1]});
-                    }
-                    else
-                    {
-                        layer->compute_output({m_cached_outputs[parents[0]]},
-                                              {m_out});
-                    }
-                }
-                // here we actually need to concat
-                else
-                {
-                    if (m_save_outputs)
-                    {
-                        layer->compute_output(
-                            {m_outputs[parents[0]+1], m_outputs[parents[1]+1]},
-                            {m_outputs[layer_num+1]});
-                    }
-                    else
-                    {
-                        layer->compute_output(
-                            {m_cached_outputs[parents[0]],
-                             m_cached_outputs[parents[1]]},
-                            {m_out});
-                    }
-                }
-
-            }
-            // yolo is our output block
-            else if (type == typeid(YOLOLayer<BufferT>))
-            {
-#if DEBUG
-                std::cout << " YOLO layer\n";
-#endif
-
-                // we need to make sure nothing funky happens
-                assert(yolo_block_idx < m_yolo_outputs.size());
-
-                if
-                    (m_save_outputs)
-                {
-                    layer->compute_output({m_outputs[layer_num]},
-                                          {m_outputs[layer_num+1]});
-                    std::copy(
-                        &m_outputs[layer_num+1]->buffer()[0],
-                        &m_outputs[layer_num+1]->buffer()[compute_size(out_shape)],
-                        &m_yolo_outputs[yolo_block_idx]->buffer()[0]
-                    );
-                }
-                else
-                {
-                    layer->compute_output({m_in},
-                                          {m_yolo_outputs[yolo_block_idx]});
-                }
-                yolo_block_idx++;
-            }
-            else
-            {
-                std::cerr << "ERROR: Layer type not supported.\n";
-                throw std::exception();
-            }
-
-            // found key in m_cached_outputs
-            // save output to m_cached_outputs
-            if (!m_save_outputs && m_cached_outputs.count(layer_num) == 1)
-            {
-#if DEBUG
-                std::cout << "Saving output to m_cached_outputs\tlayer_num = "
-                          << layer_num << "\n";
-#endif
-
-                m_cached_outputs[layer_num] = new Tensor<BufferT>(out_shape);
-                std::copy(
-                    &m_out->buffer()[0],
-                    &m_out->buffer()[compute_size(out_shape)],
-                    &m_cached_outputs[layer_num]->buffer()[0]
-                );
-            }
-
-            // swap input and output
-            // swap input and output
-            m_in->swap(*m_out);
-        }
-
-        return m_yolo_outputs;
-    }
-
-    //************************************************************************
-    size_t total_buffer_sizes()
-    {
-        size_t total_buf_size = 0;
-        if (m_save_outputs)
-        {
-            for (auto out : m_outputs)
-            {
-                total_buf_size += compute_size(out->shape());
-            }
-        }
-        else
-        {
-            total_buf_size += 2*m_max_buffer_size;
-        }
-        for (auto out : m_yolo_outputs)
-        {
-            total_buf_size += compute_size(out->shape());
-        }
-        return total_buf_size;
-    }
-
-    //************************************************************************
-    std::vector<Tensor<BufferT>*> get_layer_outputs()
-    {
-        if (m_save_outputs)
-        {
-            return m_outputs;
-        }
-        else
-        {
-            std::cerr << "ERROR: Layer outputs not saved.\n";
-            throw std::invalid_argument("Saving layer outputs is disabled.");
-        }
-    }
-
 private:
     size_t m_num_classes;
     size_t m_line_num;
 
-    // map for cached outputs
-    // layer_idx -> output
-    std::map<size_t, Tensor<BufferT>*>  m_cached_outputs;
-
-    // intermediates
-    // these are init at parse time
-    size_t                              m_max_buffer_size = 0;
-    Tensor<BufferT>*                    m_in;
-    Tensor<BufferT>*                    m_out;
-    std::vector<Tensor<BufferT>*>       m_yolo_outputs;
-
-    // explict output for layer
-    // this is used for robustness testing
-    std::vector<Tensor<BufferT>*>       m_outputs;
-    bool                                m_save_outputs;
-
+private:
     //************************************************************************
     // read line and remove white space
-     inline bool getline_(std::ifstream &file, std::string &line) {
-        if(std::getline(file, line)) {
+    inline bool getline_(std::ifstream &file, std::string &line)
+    {
+        if (std::getline(file, line))
+        {
             line.erase(std::remove(line.begin(), line.end(), ' '), line.end());
             m_line_num++;
             return true;
@@ -436,6 +141,37 @@ private:
         {
             return false;
         }
+    }
+
+    //************************************************************************
+    // helper function for parsing:
+    // returns shape in a string
+    std::string str_shape(small::shape_type const &shape)
+    {
+        std::string str = "(" + std::to_string(shape[0]);
+        for (uint32_t i=1; i<shape.size(); i++) {
+            str += ", " + std::to_string(shape[i]);
+        }
+        str += ")";
+        return str;
+    }
+
+    //************************************************************************
+    // helper function for parsing:
+    // extract a list of ints from a string assuming that the string is a
+    // comma separated list of ints
+    template <typename T>
+    std::vector<T> extract_int_array(std::string const &s)
+    {
+        std::vector<T> list;
+        std::string delimiter = ",";
+        size_t last = 0, next = 0;
+        while ((next = s.find(delimiter, last)) != std::string::npos) {
+            list.push_back(stoi(s.substr(last, next-last)));
+            last = next + 1;
+        }
+        list.push_back(stoi(s.substr(last)));
+        return list;
     }
 
     //************************************************************************
@@ -688,7 +424,8 @@ private:
 
     //************************************************************************
     Layer<BufferT>* parse_shortcut(std::ifstream    &cfg_file,
-                                   shape_type const &input_shape)
+                                   shape_type const &input_shape,
+                                   std::vector<size_t> &parent_ids)
     {
 #ifdef PARSER_DEBUG_VERBOSE
         std::cout << "Parsing Shortcut Layer\n";
@@ -743,21 +480,20 @@ private:
         }
 
         // create shortcut layer
-        int total_layers_so_far = this->m_layers.size();
-        m_cached_outputs[total_layers_so_far+from] = nullptr;
+        size_t total_layers_so_far = this->m_layers.size();
 
-        /// @todo storing parent IDs in the AddLayer should be removed and
-        ///       a DAG needs to be built here or in Model base class
         AddLayer<BufferT> *shortcut = new AddLayer<BufferT>(
             input_shape,
-            this->m_layers[total_layers_so_far + from]->output_shape(),
-            {total_layers_so_far-1, total_layers_so_far+from});
+            this->m_layers[total_layers_so_far + from]->output_shape());
+        parent_ids = {(total_layers_so_far - 1),
+                      (total_layers_so_far + from)};
 
         return shortcut;
     }
 
     //************************************************************************
-    Layer<BufferT>* parse_route(std::ifstream &cfg_file)
+    Layer<BufferT>* parse_route(std::ifstream &cfg_file,
+                                std::vector<size_t> &parent_ids)
     {
 #ifdef PARSER_DEBUG_VERBOSE
         std::cout << "Parsing Route Layer\n";
@@ -801,31 +537,32 @@ private:
 
         RouteLayer<BufferT> *route;
         std::vector<shape_type> inputs;
+        parent_ids.clear();
 
         for (uint32_t i = 0; i < route_layers.size(); i++)
         {
             // convert negative indexing
             if (route_layers[i] < 0)
             {
-                route_layers[i] = this->m_layers.size() + route_layers[i];
-                inputs.push_back(this->m_layers[route_layers[i]]->output_shape());
+                parent_ids.push_back(this->m_layers.size() + route_layers[i]);
+                inputs.push_back(this->m_layers[parent_ids[i]]->output_shape());
             }
             else
             {
-                inputs.push_back(this->m_layers[route_layers[i]]->output_shape());
+                parent_ids.push_back((size_t)route_layers[i]);
+                inputs.push_back(this->m_layers[parent_ids[i]]->output_shape());
             }
-            m_cached_outputs[route_layers[i]] = nullptr;
         }
 
         /// @todo storing parent IDs in the RouteLayer should be removed and
         ///       a DAG needs to be built here or in Model base class
         if (inputs.size() == 1)
         {
-            route = new RouteLayer<BufferT>(inputs[0], route_layers);
+            route = new RouteLayer<BufferT>(inputs[0]);
         }
         else if (inputs.size() == 2)
         {
-            route = new RouteLayer<BufferT>(inputs[0], inputs[1], route_layers);
+            route = new RouteLayer<BufferT>(inputs[0], inputs[1]);
         }
         else
         {
@@ -1046,16 +783,16 @@ private:
     }
 
     //************************************************************************
-    void parse_cfg_and_weights(std::string cfg_path, std::string weights_path)
+    size_t parse_cfg_and_weights(std::string cfg_path, std::string weights_path)
     {
         using ScalarT = typename BufferT::value_type;
-
+        size_t max_buffer_size(0UL);
         m_line_num = 0;
         bool error = false;
 
         Layer<BufferT> *prev = nullptr;
         shape_type prev_shape = {0,0,0,0};
-        std::vector<int> prev_parents = {0};
+        std::vector<size_t> prev_parents = {0};
 
         std::ifstream cfg_file(cfg_path);
         if (!cfg_file)
@@ -1133,13 +870,9 @@ private:
                               << str_shape(this->m_input_shape) << "\n\n";
 #endif
                     prev_shape = this->m_input_shape;
-                    m_max_buffer_size = std::max(m_max_buffer_size,
+                    max_buffer_size = std::max(max_buffer_size,
                                                  compute_size(prev_shape));
 
-                    if (m_save_outputs)
-                    {
-                        m_outputs.push_back(new Tensor<BufferT>(prev_shape));
-                    }
                     continue;
                 }
 
@@ -1153,32 +886,74 @@ private:
                     std::cout << "weights_path elements remaining: "
                               << total_elems - weight_idx << "\n";
 #endif
+                    // =================================================
+                    this->m_graph.add_vertex(layer_idx);
+                    if (layer_idx > 0)
+                    {
+                        this->m_graph.add_edge(layer_idx - 1, layer_idx);
+                    }
+                    // =================================================
                 }
                 else if (line == "[maxpool]" || line == "[max]")
                 {
                     prev = parse_max(cfg_file, prev_shape);
+
+                    // =================================================
+                    this->m_graph.add_vertex(layer_idx);
+                    if (layer_idx > 0)
+                    {
+                        this->m_graph.add_edge(layer_idx - 1, layer_idx);
+                    }
+                    // =================================================
                 }
                 else if (line == "[shortcut]")
                 {
-                    prev = parse_shortcut(cfg_file, prev_shape);
-                    prev_parents =
-                        dynamic_cast<AddLayer<BufferT>*>(prev)->parents();
+                    prev = parse_shortcut(cfg_file, prev_shape,
+                                          prev_parents);
+
+                    // =================================================
+                    this->m_graph.add_vertex(layer_idx);
+                    for (auto &parent_id : prev_parents)
+                    {
+                        this->m_graph.add_edge(parent_id, layer_idx);
+                    }
+                    // =================================================
                 }
                 else if (line == "[route]")
                 {
-                    prev = parse_route(cfg_file);
-                    prev_parents =
-                        dynamic_cast<RouteLayer<BufferT>*>(prev)->parents();
+                    prev = parse_route(cfg_file, prev_parents);
+
+                    // =================================================
+                    this->m_graph.add_vertex(layer_idx);
+                    for (auto &parent_id : prev_parents)
+                    {
+                        this->m_graph.add_edge(parent_id, layer_idx);
+                    }
+                    // =================================================
                 }
                 else if (line == "[upsample]")
                 {
                     prev = parse_upsample(cfg_file, prev_shape);
+
+                    // =================================================
+                    this->m_graph.add_vertex(layer_idx);
+                    if (layer_idx > 0)
+                    {
+                        this->m_graph.add_edge(layer_idx - 1, layer_idx);
+                    }
+                    // =================================================
                 }
                 else if (line == "[yolo]")
                 {
                     prev = parse_yolo(cfg_file, prev_shape);
-                    m_yolo_outputs.push_back(
-                        new Tensor<BufferT>(prev->output_shape()));
+
+                    // =================================================
+                    this->m_graph.add_vertex(layer_idx);
+                    if (layer_idx > 0)
+                    {
+                        this->m_graph.add_edge(layer_idx - 1, layer_idx);
+                    }
+                    // =================================================
                 }
 
                 // unsupported block: raise warning and skip
@@ -1241,43 +1016,29 @@ private:
 #endif
 
                 prev_shape = prev->output_shape();
-                m_max_buffer_size = std::max(m_max_buffer_size,
+                max_buffer_size = std::max(max_buffer_size,
                                              compute_size(prev_shape));
 
                 this->m_layers.push_back(prev);
-                if (m_save_outputs)
-                {
-                    m_outputs.push_back(new Tensor<BufferT>(prev_shape));
-                }
 
                 layer_idx++;
             }
         }
 
-        /// @todo allocate intermediate buffers here
-
 #ifdef PARSER_DEBUG
         std::cout << "\nFinished parsing." << std::endl;
         std::cout << "Total layers: " << this->m_layers.size() << std::endl;
-        std::cout << "Max buffer size: " << m_max_buffer_size << std::endl;
-        if (m_save_outputs)
-            std::cout << "Saving outputs for each layer" << std::endl;
-        std::cout << "Total buffer sizes: " << total_buffer_sizes() << std::endl;
+        std::cout << "Max buffer size: " << max_buffer_size << std::endl;
         std::cout << std::endl;
 #endif
 
-        if(error) {
-            for(auto &yolo_out : m_yolo_outputs) {
-                delete yolo_out;
-            }
-            throw std::invalid_argument("Failure to build model. Check errors and try again.");
+        if (error)
+        {
+            throw std::invalid_argument(
+                "Failure to build model. Check errors and try again.");
         }
 
-
-        // allocate intermediate buffers
-        m_in = new Tensor<BufferT>(m_max_buffer_size);
-        m_out = new Tensor<BufferT>(m_max_buffer_size);
-
+        return max_buffer_size;
     }
 
 };

@@ -22,7 +22,6 @@
 
 #include <small.h>
 #include <small/utils/Timer.hpp>
-#include <small/InputLayer.hpp>
 #include <small/Conv2DLayer.hpp>
 
 #include "test_utils.hpp"

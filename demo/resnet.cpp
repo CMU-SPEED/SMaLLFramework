@@ -374,29 +374,29 @@ small::Tensor<BufferT> &model_inference(
     small::Tensor<BufferT>                                   &inter_2_dc)
 {
     size_t layer_num = 0;
-    layers[layer_num++]->compute_output({&input_dc}, {&inter_0_dc});   //Conv2D
-    layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_0_dc}); //ReLU
+    layers[layer_num++]->compute_output({&input_dc}, &inter_0_dc);   //Conv2D
+    layers[layer_num++]->compute_output({&inter_0_dc}, &inter_0_dc); //ReLU
 
-    layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_1_dc}); // Conv2D
-    layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_1_dc}); // ReLU
-    layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_0_dc}); // buf0+=Conv2D(buf1)
-    layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_0_dc}); // ReLU
+    layers[layer_num++]->compute_output({&inter_0_dc}, &inter_1_dc); // Conv2D
+    layers[layer_num++]->compute_output({&inter_1_dc}, &inter_1_dc); // ReLU
+    layers[layer_num++]->compute_output({&inter_1_dc}, &inter_0_dc); // buf0+=Conv2D(buf1)
+    layers[layer_num++]->compute_output({&inter_0_dc}, &inter_0_dc); // ReLU
 
     for (auto ix = 0U; ix < 2; ++ix)
     {
-        layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_1_dc}); // Conv2D
-        layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_1_dc}); // ReLU
+        layers[layer_num++]->compute_output({&inter_0_dc}, &inter_1_dc); // Conv2D
+        layers[layer_num++]->compute_output({&inter_1_dc}, &inter_1_dc); // ReLU
 
-        layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_2_dc}); // Conv2D
+        layers[layer_num++]->compute_output({&inter_0_dc}, &inter_2_dc); // Conv2D
 
-        layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_2_dc}); // buf2+=Conv2D(buf1)
-        layers[layer_num++]->compute_output({&inter_2_dc}, {&inter_2_dc}); // ReLU
+        layers[layer_num++]->compute_output({&inter_1_dc}, &inter_2_dc); // buf2+=Conv2D(buf1)
+        layers[layer_num++]->compute_output({&inter_2_dc}, &inter_2_dc); // ReLU
 
         inter_0_dc.swap(inter_2_dc);
     }
 
-    layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_1_dc});
-    layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_0_dc});
+    layers[layer_num++]->compute_output({&inter_0_dc}, &inter_1_dc);
+    layers[layer_num++]->compute_output({&inter_1_dc}, &inter_0_dc);
 
     return inter_0_dc;
 }

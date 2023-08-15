@@ -138,13 +138,13 @@ public:
         size_t layer_num = 0;
         // Conv2D + ReLU
         this->m_layers[layer_num++]->compute_output({input_tensor},
-                                                    {m_buffer_0});
+                                                    m_buffer_0);
 
         while (layer_num < this->m_layers.size())
         {
             // Conv2D + ReLU
             this->m_layers[layer_num++]->compute_output({m_buffer_0},
-                                                        {m_buffer_1});
+                                                        m_buffer_1);
 
             m_buffer_0->swap(*m_buffer_1);
         }
@@ -188,15 +188,15 @@ private:
                                             *filters[ix], filters_are_packed,
                                             RELU);
             this->m_layers.push_back(prev);
-            prev_shape = prev->output_shape(0);
+            prev_shape = prev->output_shape();
 
             if (ix == 0)
             {
-                max_elt_0 = std::max<size_t>(max_elt_0, prev->output_size(0));
+                max_elt_0 = std::max<size_t>(max_elt_0, prev->output_size());
             }
             else
             {
-                max_elt_1 = std::max<size_t>(max_elt_1, prev->output_size(0));
+                max_elt_1 = std::max<size_t>(max_elt_1, prev->output_size());
                 max_elt_0 = std::max<size_t>(max_elt_0, max_elt_1);  // for the swap
             }
         }

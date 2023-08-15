@@ -132,21 +132,21 @@ public:
 
         size_t layer_num = 0;
         this->m_layers[layer_num++]->compute_output({input_tensor},
-                                                    {m_buffer_0}); // Conv2D+ReLU
+                                                    m_buffer_0); // Conv2D+ReLU
 
         for (auto ix = 0U; ix < 13; ++ix)
         {
             this->m_layers[layer_num++]->compute_output({m_buffer_0},
-                                                        {m_buffer_1}); // DWConv+ReLU
+                                                        m_buffer_1); // DWConv+ReLU
 
             this->m_layers[layer_num++]->compute_output({m_buffer_1},
-                                                        {m_buffer_0}); // Conv2D+ReLU
+                                                        m_buffer_0); // Conv2D+ReLU
         }
 
         this->m_layers[layer_num++]->compute_output({m_buffer_0},
-                                                    {m_buffer_1}); // MaxPool2D
+                                                    m_buffer_1); // MaxPool2D
         this->m_layers[layer_num++]->compute_output({m_buffer_1},
-                                                    {m_buffer_0}); // Conv2D
+                                                    m_buffer_0); // Conv2D
 
         return {m_buffer_0};
     }
@@ -182,7 +182,7 @@ private:
                                             *filters[filter_num++],
                                             filters_are_packed,
                                             RELU);
-        max_elt_0 = std::max<size_t>(max_elt_0, prev->output_size(0));
+        max_elt_0 = std::max<size_t>(max_elt_0, prev->output_size());
         this->m_layers.push_back(prev);
 
         size_t   const num_blocks{13};
@@ -199,7 +199,7 @@ private:
                 *filters[filter_num++],
                 filters_are_packed,
                 RELU);
-            max_elt_1 = std::max<size_t>(max_elt_1, prev->output_size(0));
+            max_elt_1 = std::max<size_t>(max_elt_1, prev->output_size());
             this->m_layers.push_back(prev);
 
             // =======================================================
@@ -216,7 +216,7 @@ private:
                                                    *filters[filter_num++],
                                                    filters_are_packed,
                                                    RELU);
-            max_elt_0 = std::max<size_t>(max_elt_0, prev->output_size(0));
+            max_elt_0 = std::max<size_t>(max_elt_0, prev->output_size());
             this->m_layers.push_back(prev);
         }
 
@@ -226,7 +226,7 @@ private:
         prev = new small::MaxPool2DLayer<BufferT>(prev->output_shape(),
                                                   kernel_size, kernel_size,
                                                   stride, small::PADDING_V);
-        max_elt_1 = std::max<size_t>(max_elt_1, prev->output_size(0));
+        max_elt_1 = std::max<size_t>(max_elt_1, prev->output_size());
         this->m_layers.push_back(prev);
 
         kernel_size = 1;
@@ -236,7 +236,7 @@ private:
                                                num_classes,
                                                *filters[filter_num++],
                                                filters_are_packed);
-        max_elt_0 = std::max<size_t>(max_elt_0, prev->output_size(0));
+        max_elt_0 = std::max<size_t>(max_elt_0, prev->output_size());
         this->m_layers.push_back(prev);
 
         m_buffer_0 = new Tensor<BufferT>(max_elt_0);

@@ -14,7 +14,7 @@
 
 include_directories ( ${CMAKE_SOURCE_DIR}/benchmark )
 
-set(SOURCES analyze_yolov3tiny_layers.cpp)
+set(SOURCES analyze_yolov3tiny_layers.cpp analyze_yolov3tiny_layers_accum.cpp)
 
 message("Entering benchmark/CMakeLists.txt: ${SOURCES}")
 

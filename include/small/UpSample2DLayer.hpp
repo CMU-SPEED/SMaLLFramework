@@ -51,18 +51,18 @@ public:
         ///       will image size get moved to compute_output() and all of
         ///       this moves to compute_output()?
 
-        this->set_output_shapes({
+        this->set_output_shape(
             {m_input_shape[BATCH],
              m_input_shape[CHANNEL],
              m_input_shape[HEIGHT]*scale_factor,
-             m_input_shape[WIDTH]*scale_factor}});
+             m_input_shape[WIDTH]*scale_factor});
     }
 
     virtual ~UpSample2DLayer() {}
 
     virtual void compute_output(
         std::vector<Tensor<BufferT> const *> input,
-        std::vector<Tensor<BufferT>*>        output) const
+        Tensor<BufferT>*                     output) const
     {
         if ((input.size() != 1) || (input[0]->shape() != m_input_shape))
         {
@@ -71,7 +71,7 @@ public:
                 "incorrect input buffer shape.");
         }
 
-        if ((output.size() != 1) || (output[0]->capacity() < this->output_size(0)))
+        if (output->capacity() < this->output_size())
         {
             throw std::invalid_argument(
                 "UpSample2DLayer::compute_output ERROR: "
@@ -82,9 +82,9 @@ public:
                    m_input_shape[CHANNEL],
                    m_input_shape[HEIGHT], m_input_shape[WIDTH],
                    input[0]->buffer(),
-                   output[0]->buffer());
+                   output->buffer());
 
-        output[0]->set_shape(this->output_shape(0));
+        output->set_shape(this->output_shape());
     }
 
 private:

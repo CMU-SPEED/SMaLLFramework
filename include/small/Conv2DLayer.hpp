@@ -79,7 +79,7 @@ public:
 
     virtual void compute_output(
         std::vector<Tensor<BufferT> const *> input,
-        std::vector<Tensor<BufferT>*>        output) const;
+        Tensor<BufferT>*                     output) const;
 
 private:
     void compute_padding_output_shape(shape_type const &input_shape,
@@ -403,7 +403,7 @@ Conv2DLayer<BufferT>::Conv2DLayer(
         m_packed_bias);
 
 #if defined(DEBUG_LAYERS)
-    auto &output_shape = this->output_shape(0);
+    auto &output_shape = this->output_shape();
     if (activation_type == RELU)
     {
         std::cerr << "ReLU(batches:" << output_shape[BATCH]
@@ -504,7 +504,7 @@ Conv2DLayer<BufferT>::Conv2DLayer(
 
 
 #if defined(DEBUG_LAYERS)
-    auto &output_shape = this->output_shape(0);
+    auto &output_shape = this->output_shape();
     if (activation_type == RELU)
     {
         std::cerr << "ReLU(batches:" << output_shape[BATCH]
@@ -616,7 +616,7 @@ Conv2DLayer<BufferT>::Conv2DLayer(
 
 
 #if defined(DEBUG_LAYERS)
-    auto &output_shape = this->output_shape(0);
+    auto &output_shape = this->output_shape();
     if (activation_type == RELU)
     {
         std::cerr << "ReLU(batches:" << output_shape[BATCH]
@@ -641,7 +641,7 @@ Conv2DLayer<BufferT>::Conv2DLayer(
 template <class BufferT>
 void Conv2DLayer<BufferT>::compute_output(
     std::vector<Tensor<BufferT> const *> input,
-    std::vector<Tensor<BufferT>*>        output) const
+    Tensor<BufferT>*                     output) const
 {
     if ((input.size() != 1) || (input[0]->shape() != m_input_shape))
     {
@@ -650,14 +650,14 @@ void Conv2DLayer<BufferT>::compute_output(
             "incorrect input buffer shape.");
     }
 
-    if ((output.size() != 1) || (output[0]->capacity() < this->output_size(0)))
+    if (output->capacity() < this->output_size())
     {
         throw std::invalid_argument(
             "Conv2DLayer::compute_output() ERROR: "
             "insufficient output buffer space.");
     }
 
-    auto& output_shape(this->output_shape(0));
+    auto& output_shape(this->output_shape());
 
     if (m_kernel_width == m_kernel_height)
     {
@@ -666,7 +666,7 @@ void Conv2DLayer<BufferT>::compute_output(
             small::Bias(output_shape[CHANNEL],
                         output_shape[HEIGHT],
                         output_shape[WIDTH],
-                        m_packed_bias, output[0]->buffer());
+                        m_packed_bias, output->buffer());
             small::PartialConv2D(m_kernel_width, m_stride,
                                  m_t_pad, m_b_pad, m_l_pad, m_r_pad,
                                  output_shape[CHANNEL],
@@ -675,7 +675,7 @@ void Conv2DLayer<BufferT>::compute_output(
                                  m_input_shape[WIDTH],
                                  input[0]->buffer(),
                                  m_packed_filters,
-                                 output[0]->buffer());
+                                 output->buffer());
         }
         else
         {
@@ -686,7 +686,7 @@ void Conv2DLayer<BufferT>::compute_output(
                    m_input_shape[HEIGHT], m_input_shape[WIDTH],
                    input[0]->buffer(),
                    m_packed_filters,
-                   output[0]->buffer());
+                   output->buffer());
         }
     }
     else
@@ -698,7 +698,7 @@ void Conv2DLayer<BufferT>::compute_output(
                     m_input_shape[HEIGHT], m_input_shape[WIDTH],
                     input[0]->buffer(),
                     m_packed_filters,
-                    output[0]->buffer());
+                    output->buffer());
 
         // HACK: placeholder for bias term
         if (m_packed_bias.size() == output_shape[CHANNEL])
@@ -714,28 +714,28 @@ void Conv2DLayer<BufferT>::compute_output(
                                                          output_shape[WIDTH],
                                                          BufferT::C_ob,
                                                          Co, h, w);
-                        output[0]->buffer()[idx] += m_packed_bias[Co];
+                        output->buffer()[idx] += m_packed_bias[Co];
                     }
                 }
             }
         }
     }
-    output[0]->set_shape(output_shape);
+    output->set_shape(output_shape);
 
     if (m_activation_type == RELU)
     {
         small::ReLUActivation(output_shape[CHANNEL],
                               output_shape[HEIGHT], output_shape[WIDTH],
-                              output[0]->buffer(),
-                              output[0]->buffer());
+                              output->buffer(),
+                              output->buffer());
     }
     else if (m_activation_type == LEAKY)
     {
         small::LeakyReLUActivation(output_shape[CHANNEL],
                                    output_shape[HEIGHT], output_shape[WIDTH],
-                                   output[0]->buffer(),
+                                   output->buffer(),
                                    m_leaky_slope,
-                                   output[0]->buffer());
+                                   output->buffer());
     }
 }
 
@@ -771,7 +771,7 @@ void Conv2DLayer<BufferT>::compute_padding_output_shape(
               << "," << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
 #endif
 
-    this->set_output_shapes({output_shape});
+    this->set_output_shape(output_shape);
 }
 
 }

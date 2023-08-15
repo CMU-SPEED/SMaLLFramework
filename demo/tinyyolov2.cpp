@@ -187,21 +187,21 @@ small::Tensor<BufferT> &model_inference(
     uint32_t num_yolo_blocks = ((check_blocks < 6U) ? check_blocks : 6U);
 
     // yolo_block = 0
-    layers[layer_num++]->compute_output({&input_dc},   {&inter_1_dc}); // Conv2D
-    layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_1_dc}); // ReLU
-    layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_0_dc}); // MaxPool2D
+    layers[layer_num++]->compute_output({&input_dc},   &inter_1_dc); // Conv2D
+    layers[layer_num++]->compute_output({&inter_1_dc}, &inter_1_dc); // ReLU
+    layers[layer_num++]->compute_output({&inter_1_dc}, &inter_0_dc); // MaxPool2D
 
     for (size_t yolo_block = 1; yolo_block < num_yolo_blocks; ++yolo_block)
     {
-        layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_1_dc});
-        layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_1_dc});
-        layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_0_dc});
+        layers[layer_num++]->compute_output({&inter_0_dc}, &inter_1_dc);
+        layers[layer_num++]->compute_output({&inter_1_dc}, &inter_1_dc);
+        layers[layer_num++]->compute_output({&inter_1_dc}, &inter_0_dc);
     }
 
     for (size_t conv_block = 0; conv_block < 3; ++conv_block)
     {
-        layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_1_dc}); // Conv2D
-        layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_1_dc}); // ReLU
+        layers[layer_num++]->compute_output({&inter_0_dc}, &inter_1_dc); // Conv2D
+        layers[layer_num++]->compute_output({&inter_1_dc}, &inter_1_dc); // ReLU
         inter_0_dc.swap(inter_1_dc);
     }
 
