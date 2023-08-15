@@ -37,7 +37,7 @@ BufferT create_packed_data(small::shape_type            shape,
                     small::packed_buffer_index(shape[small::CHANNEL],
                                                shape[small::HEIGHT],
                                                shape[small::WIDTH],
-                                               C_ib,
+                                               BufferT::C_ib,
                                                c, h, w);
                 buf[index] = offset + (typename BufferT::value_type)c;
             }
@@ -59,7 +59,7 @@ bool check_buffer_contents(small::shape_type const &shape,
                     small::packed_buffer_index(shape[small::CHANNEL],
                                                shape[small::HEIGHT],
                                                shape[small::WIDTH],
-                                               C_ib,
+                                               BufferT::C_ib,
                                                c, h, w);
                 if (buf[index] != (typename BufferT::value_type)c)
                 {

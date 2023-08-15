@@ -212,7 +212,7 @@ void build_baseline_resnet8(uint32_t C_i,         // 128, 1, 1, 16(8), ...
             GROUP_C(l) * GROUPS(l);
 
         BufferT *filter_buf_ptr =
-            small::alloc_buffer(filter_dimensions);
+            small::alloc_buffer<BufferT>(filter_dimensions);
         init(*filter_buf_ptr, filter_dimensions);
         filter_buf_ptrs.push_back(filter_buf_ptr);
     }
@@ -220,7 +220,7 @@ void build_baseline_resnet8(uint32_t C_i,         // 128, 1, 1, 16(8), ...
     uint32_t filter_dimensions =
         GROUP_C(layer_num_total - 1) * REDUCTION_C(layer_num_total - 1);
     BufferT *filter_fc_dc_ptr =
-        small::alloc_buffer(filter_dimensions);
+        small::alloc_buffer<BufferT>(filter_dimensions);
     init(*filter_fc_dc_ptr, filter_dimensions);
     filter_buf_ptrs.push_back(filter_fc_dc_ptr);
     /// @todo assert(filter_buf_ptrs.size() == num_filters)

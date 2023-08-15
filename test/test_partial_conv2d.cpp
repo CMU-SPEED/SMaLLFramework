@@ -82,7 +82,7 @@ void test_partial_conv2d(void)
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_input_dc);
 
     small::Tensor<BufferT> packed_input_tensor(
@@ -108,7 +108,7 @@ void test_partial_conv2d(void)
                        small::OUTPUT,
                        1U, output_shape[small::CHANNEL],
                        output_shape[small::HEIGHT], output_shape[small::WIDTH],
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_output_dc_answers);
 
     // Allocate output buffer
@@ -204,7 +204,7 @@ void test_partial_conv2d_1s(void)
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_input_dc);
 
     small::Tensor<BufferT> packed_input_tensor(
@@ -230,7 +230,7 @@ void test_partial_conv2d_1s(void)
                        small::OUTPUT,
                        1U, output_shape[small::CHANNEL],
                        output_shape[small::HEIGHT], output_shape[small::WIDTH],
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_output_dc_answers);
 
     // Allocate output buffer
@@ -335,7 +335,7 @@ void test_partial_conv2d_bias(void)
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_input_dc);
 
     small::Tensor<BufferT> packed_input_tensor(
@@ -361,7 +361,7 @@ void test_partial_conv2d_bias(void)
                        small::OUTPUT,
                        1U, output_shape[small::CHANNEL],
                        output_shape[small::HEIGHT], output_shape[small::WIDTH],
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_output_dc_answers);
 
     // Allocate output buffer
@@ -466,7 +466,7 @@ void test_partial_conv2d_bias_1s(void)
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_input_dc);
 
     small::Tensor<BufferT> packed_input_tensor(
@@ -492,7 +492,7 @@ void test_partial_conv2d_bias_1s(void)
                        small::OUTPUT,
                        1U, output_shape[small::CHANNEL],
                        output_shape[small::HEIGHT], output_shape[small::WIDTH],
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_output_dc_answers);
 
     // Allocate output buffer
@@ -607,7 +607,7 @@ void test_partial_conv2d_batchnorm_identity(void)
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_input_dc);
 
     small::Tensor<BufferT> packed_input_tensor(
@@ -633,7 +633,7 @@ void test_partial_conv2d_batchnorm_identity(void)
                        small::OUTPUT,
                        1U, output_shape[small::CHANNEL],
                        output_shape[small::HEIGHT], output_shape[small::WIDTH],
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_output_dc_answers);
 
     // Allocate output buffer
@@ -748,7 +748,7 @@ void test_partial_conv2d_batchnorm_identity_1s(void)
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_input_dc);
 
     small::Tensor<BufferT> packed_input_tensor(
@@ -774,7 +774,7 @@ void test_partial_conv2d_batchnorm_identity_1s(void)
                        small::OUTPUT,
                        1U, output_shape[small::CHANNEL],
                        output_shape[small::HEIGHT], output_shape[small::WIDTH],
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_output_dc_answers);
 
     // Allocate output buffer
@@ -890,7 +890,7 @@ void test_partial_conv2d_batchnorm_bias_1(void)
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_input_dc);
 
     small::Tensor<BufferT> packed_input_tensor(
@@ -916,7 +916,7 @@ void test_partial_conv2d_batchnorm_bias_1(void)
                        small::OUTPUT,
                        1U, output_shape[small::CHANNEL],
                        output_shape[small::HEIGHT], output_shape[small::WIDTH],
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_output_dc_answers);
 
     // Allocate output buffer
@@ -1032,7 +1032,7 @@ void test_partial_conv2d_batchnorm_bias_1_1s(void)
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_input_dc);
 
     small::Tensor<BufferT> packed_input_tensor(
@@ -1058,7 +1058,7 @@ void test_partial_conv2d_batchnorm_bias_1_1s(void)
                        small::OUTPUT,
                        1U, output_shape[small::CHANNEL],
                        output_shape[small::HEIGHT], output_shape[small::WIDTH],
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_output_dc_answers);
 
     // Allocate output buffer
@@ -1174,7 +1174,7 @@ void test_partial_conv2d_batchnorm_mean_1(void)
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_input_dc);
 
     small::Tensor<BufferT> packed_input_tensor(
@@ -1200,7 +1200,7 @@ void test_partial_conv2d_batchnorm_mean_1(void)
                        small::OUTPUT,
                        1U, output_shape[small::CHANNEL],
                        output_shape[small::HEIGHT], output_shape[small::WIDTH],
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_output_dc_answers);
 
     // Allocate output buffer
@@ -1320,7 +1320,7 @@ void test_partial_conv2d_batchnorm_mean_1_1s(void)
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_input_dc);
 
     small::Tensor<BufferT> packed_input_tensor(
@@ -1346,7 +1346,7 @@ void test_partial_conv2d_batchnorm_mean_1_1s(void)
                        small::OUTPUT,
                        1U, output_shape[small::CHANNEL],
                        output_shape[small::HEIGHT], output_shape[small::WIDTH],
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_output_dc_answers);
 
     // Allocate output buffer
@@ -1437,7 +1437,7 @@ void test_partial_conv2d_batchnorm_mean_variance_1(void)
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_input_dc);
 
     small::Tensor<BufferT> packed_input_tensor(
@@ -1472,7 +1472,7 @@ void test_partial_conv2d_batchnorm_mean_variance_1(void)
                        small::OUTPUT,
                        1U, output_shape[small::CHANNEL],
                        output_shape[small::HEIGHT], output_shape[small::WIDTH],
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_output_dc_answers);
 
     //=========================================================================
@@ -1529,7 +1529,7 @@ void test_partial_conv2d_batchnorm_mean_variance_1(void)
                          small::OUTPUT,
                          1U, output_shape[small::CHANNEL],
                          output_shape[small::HEIGHT], output_shape[small::WIDTH],
-                         C_ib, C_ob,
+                         BufferT::C_ib, BufferT::C_ob,
                          unpacked_output_tensor);
 
     BufferT output_mean(params.C_o);
@@ -1606,7 +1606,7 @@ void test_partial_conv2d_batchnorm_mean_variance_1_1s(void)
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_input_dc);
 
     small::Tensor<BufferT> packed_input_tensor(
@@ -1641,7 +1641,7 @@ void test_partial_conv2d_batchnorm_mean_variance_1_1s(void)
                        small::OUTPUT,
                        1U, output_shape[small::CHANNEL],
                        output_shape[small::HEIGHT], output_shape[small::WIDTH],
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_output_dc_answers);
 
     //=========================================================================
@@ -1698,7 +1698,7 @@ void test_partial_conv2d_batchnorm_mean_variance_1_1s(void)
                          small::OUTPUT,
                          1U, output_shape[small::CHANNEL],
                          output_shape[small::HEIGHT], output_shape[small::WIDTH],
-                         C_ib, C_ob,
+                         BufferT::C_ib, BufferT::C_ob,
                          unpacked_output_tensor);
 
     BufferT output_mean(params.C_o);

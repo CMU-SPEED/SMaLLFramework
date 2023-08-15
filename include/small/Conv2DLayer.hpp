@@ -168,7 +168,7 @@ namespace detail
                                 size_t packed_idx = small::packed_weight_index(
                                     num_output_channels, num_input_channels,
                                     kernel_height, kernel_width,
-                                    C_ob, C_ib,
+                                    BufferT::C_ob, BufferT::C_ib,
                                     co, ci, h, w);
                                 //std::cerr << "unpacked-->packed: " << unpacked_idx
                                 //          << "-->" << packed_idx << std::endl;
@@ -182,7 +182,7 @@ namespace detail
                                    FILTER_CONV,
                                    num_output_channels, num_input_channels,
                                    kernel_height, kernel_width,
-                                   C_ib, C_ob,
+                                   BufferT::C_ib, BufferT::C_ob,
                                    packed_filters);
             }
         }
@@ -298,8 +298,8 @@ namespace detail
                                                     num_input_channels,
                                                     kernel_height,
                                                     kernel_width,
-                                                    C_ob,
-                                                    C_ib,
+                                                    BufferT::C_ob,
+                                                    BufferT::C_ib,
                                                     ochan, ichan, fh, fw);
                             //std::cerr << "packed_index = " << packed_index
                             //          << std::endl;
@@ -362,14 +362,15 @@ Conv2DLayer<BufferT>::Conv2DLayer(
               << "x" << m_input_shape[WIDTH]
               << "), filters.size=" << filters.size() << std::endl;
 #endif
-    if (((input_shape[CHANNEL] % C_ib) != 0) && (input_shape[CHANNEL] != 3))
+    if (((input_shape[CHANNEL] % BufferT::C_ib) != 0) &&
+        (input_shape[CHANNEL] != 3))
     {
         throw std::invalid_argument(
             "Conv2DLayer::ctor ERROR: invalid number of input channels.");
     }
 
     // Deal with odd numbers of output channels by padding unpacked filters
-    if ((num_output_channels % C_ob) != 0)
+    if ((num_output_channels % BufferT::C_ob) != 0)
     {
         if (buffers_are_packed)
         {
@@ -378,7 +379,8 @@ Conv2DLayer<BufferT>::Conv2DLayer(
         }
 
         // set to next integer multiple of blocking factor (for this platform).
-        num_output_channels += (C_ob - num_output_channels%C_ob);
+        num_output_channels +=
+            (BufferT::C_ob - (num_output_channels % BufferT::C_ob));
     }
 
     m_leaky_slope[0] = leaky_slope;
@@ -460,14 +462,15 @@ Conv2DLayer<BufferT>::Conv2DLayer(
               << "),filters.size=" << filters.size()
               << ",bias.size=" << bias.size() << std::endl;
 #endif
-    if (((input_shape[CHANNEL] % C_ib) != 0) && (input_shape[CHANNEL] != 3))
+    if (((input_shape[CHANNEL] % BufferT::C_ib) != 0) &&
+        (input_shape[CHANNEL] != 3))
     {
         throw std::invalid_argument(
             "Conv2DLayer::ctor ERROR: invalid number of input channels.");
     }
 
     // Deal with odd numbers of output channels by padding unpacked filters
-    if ((num_output_channels % C_ob) != 0)
+    if ((num_output_channels % BufferT::C_ob) != 0)
     {
         if (buffers_are_packed)
         {
@@ -476,7 +479,8 @@ Conv2DLayer<BufferT>::Conv2DLayer(
         }
 
         // set to next integer multiple of blocking factor (for this platform).
-        num_output_channels += (C_ob - num_output_channels%C_ob);
+        num_output_channels +=
+            (BufferT::C_ob - (num_output_channels % BufferT::C_ob));
     }
 
     m_leaky_slope[0] = leaky_slope;
@@ -569,24 +573,25 @@ Conv2DLayer<BufferT>::Conv2DLayer(
               << "," << bn_running_mean.size()
               << "),bn_eps:" << bn_eps << std::endl;
 #endif
-    if (((input_shape[CHANNEL] % C_ib) != 0) && (input_shape[CHANNEL] != 3))
+    if (((input_shape[CHANNEL] % BufferT::C_ib) != 0) &&
+        (input_shape[CHANNEL] != 3))
     {
         throw std::invalid_argument(
             "Conv2DLayer::ctor ERROR: invalid number of input channels.");
     }
 
     // Deal with odd numbers of output channels by padding unpacked filters
-    if ((num_output_channels % C_ob) != 0)
+    if ((num_output_channels % BufferT::C_ob) != 0)
     {
         if (buffers_are_packed)
         {
-            std::cerr << "GOT HERE\n";
             throw std::invalid_argument(
                 "Conv2DLayer::ctor ERROR: invalid number of output channels.");
         }
 
         // set to next integer multiple of blocking factor (for this platform).
-        num_output_channels += (C_ob - num_output_channels%C_ob);
+        num_output_channels +=
+            (BufferT::C_ob - (num_output_channels % BufferT::C_ob));
     }
 
     m_leaky_slope[0] = leaky_slope;
@@ -707,7 +712,7 @@ void Conv2DLayer<BufferT>::compute_output(
                         size_t idx = packed_buffer_index(output_shape[CHANNEL],
                                                          output_shape[HEIGHT],
                                                          output_shape[WIDTH],
-                                                         C_ob,
+                                                         BufferT::C_ob,
                                                          Co, h, w);
                         output[0]->buffer()[idx] += m_packed_bias[Co];
                     }

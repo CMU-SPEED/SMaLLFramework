@@ -96,15 +96,10 @@ elseif(CMAKE_UARCH STREQUAL "Q-ARM7E")
   message("Microarchitecture target: quantized ARM7E (ARM-Mx)")
   include_directories(${CMAKE_PLATFORM_DIR}/quantized_arm7E)
 
-elseif(CMAKE_UARCH STREQUAL "Q-REF")
-  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -lrt -DQUANTIZED -DUARCH_REF")
-  message("Microarchitecture target: quantized REF")
-  include_directories(${CMAKE_PLATFORM_DIR}/quantized_reference)
-
 else()
   SET(CMAKE_UARCH REF)
   SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -lrt -DUARCH_REF")
-  message("Microarchitecture target: REF")
+  message("Microarchitecture target: REF (combined)")
   include_directories ( ${CMAKE_PLATFORM_DIR}/reference )
 
 endif()

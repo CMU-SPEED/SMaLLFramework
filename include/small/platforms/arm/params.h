@@ -12,18 +12,19 @@
 
 #pragma once
 
+/// @todo move this include to intrinsics.hpp?
 #include <arm_neon.h>
-typedef float dtype;
 
-#define W_ob 6
-#define C_ob 16
-#define SIMD 4
+#define SMALL_HAS_FLOAT_SUPPORT  1
 
-#define UNROLL 4
-#define C_ib C_ob
+#define FLOAT_W_ob   6
+#define FLOAT_C_ob   16
+#define FLOAT_SIMD   4
+#define FLOAT_UNROLL 4
+#define FLOAT_C_ib   FLOAT_C_ob
 
 // not used for kernels, but used in throughput calculation.
-#define NUM_FMA 2
-#define NUM_MAX 1
-#define NUM_LOAD 2
-#define NUM_STORE 1
+#define FLOAT_NUM_FMA 2
+#define FLOAT_NUM_MAX 1
+#define FLOAT_NUM_LOAD 2
+#define FLOAT_NUM_STORE 1

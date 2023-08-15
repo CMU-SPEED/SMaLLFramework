@@ -12,15 +12,15 @@
 
 #pragma once
 
-//typedef float dtype;
+#define SMALL_HAS_FLOAT_SUPPORT  1
 
-#define W_ob 6
-#define C_ob 16
-#define SIMD 8
-#define UNROLL 1
-#define C_ib C_ob
+#define FLOAT_W_ob   6
+#define FLOAT_C_ob   16
+#define FLOAT_SIMD   8
+#define FLOAT_UNROLL 1
+#define FLOAT_C_ib   FLOAT_C_ob
 
-#define NUM_FMA 2
-#define NUM_MAX 1
-#define NUM_LOAD 2
-#define NUM_STORE 1
+#define FLOAT_NUM_FMA 2
+#define FLOAT_NUM_MAX 1
+#define FLOAT_NUM_LOAD 2
+#define FLOAT_NUM_STORE 1

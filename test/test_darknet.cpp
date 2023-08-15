@@ -43,7 +43,7 @@ void test_yolo_parser(void)
         input,
         small::INPUT,
         1U, 3U, 416U, 416U,
-        C_ib, C_ob,
+        BufferT::C_ib, BufferT::C_ob,
         input_tensor_dc.buffer()
     );
 

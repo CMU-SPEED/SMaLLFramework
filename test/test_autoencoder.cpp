@@ -157,7 +157,7 @@ void build_baseline_autoencoder(uint32_t C_i,         // 128, 1, 1, 16(8), ...
             REDUCTION_HW(l) * REDUCTION_HW(l) * REDUCTION_C(l) *
             GROUP_C(l) * GROUPS(l);
         BufferT *filter_buf_ptr =
-            small::alloc_buffer(filter_dimensions);
+            small::alloc_buffer<BufferT>(filter_dimensions);
         init(*filter_buf_ptr, filter_dimensions);
         filter_buf_ptrs.push_back(filter_buf_ptr);
     }

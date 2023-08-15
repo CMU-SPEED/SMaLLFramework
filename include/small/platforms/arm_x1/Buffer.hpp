@@ -14,15 +14,18 @@
 
 #include <stdexcept>
 #include <stdlib.h> // for posix_memalign
-#include <vector>
+
+//#include <iostream>
 
 namespace small
 {
 
 //****************************************************************************
-// Buffer class templated on size_t must be defined by a specific
+// Buffer class must be defined by a specific
 // platform by defining in params.h of the platform-specific headers.
 // Must have:
+// - all of the platform specific parameters for this data type
+//
 // - value_type typedef for the type of scalars stored in the buffer
 // - accum_type typedef for the type of scalars used to accumulate values
 // - move constructor and move assignment operator
@@ -38,6 +41,18 @@ namespace small
 class FloatBuffer
 {
 public:
+    static uint32_t const   W_ob{FLOAT_W_ob};
+    static uint32_t const   C_ob{FLOAT_C_ob};
+    static uint32_t const   SIMD{FLOAT_SIMD};
+    static uint32_t const UNROLL{FLOAT_UNROLL};
+    static uint32_t const   C_ib{FLOAT_C_ib};
+
+    static uint32_t const   NUM_FMA{FLOAT_NUM_FMA};
+    static uint32_t const   NUM_MAX{FLOAT_NUM_MAX};
+    static uint32_t const  NUM_LOAD{FLOAT_NUM_LOAD};
+    static uint32_t const NUM_STORE{FLOAT_NUM_STORE};
+
+public:
     typedef float value_type;
     typedef float accum_type;
 
@@ -45,6 +60,7 @@ public:
         m_num_elts(0),
         m_buffer(nullptr)
     {
+        //std::cerr << "FloatBuffer::default_ctor " << (void*)this << std::endl;
     }
 
     FloatBuffer(size_t num_elts) : m_num_elts(num_elts)
@@ -56,13 +72,14 @@ public:
             throw std::bad_alloc();
         }
         // std::cerr << "FloatBuffer::ctor " << (void*)this
-        //           << ", data_ptr = " << (void*)m_buffer.data()
-        //           << ", size = " << m_buffer.size() << std::endl;
+        //           << ", data_ptr = " << (void*)m_buffer
+        //           << ", size = " << num_elts << std::endl;
     }
 
     FloatBuffer(FloatBuffer const &other)
         : m_num_elts(other.m_num_elts)
     {
+        //std::cerr << "FloatBuffer copy ctor\n";
         if (0 != posix_memalign((void**)&m_buffer,
                                 64,
                                 m_num_elts*sizeof(value_type)))
@@ -78,12 +95,14 @@ public:
         : m_num_elts(0),
           m_buffer(nullptr)
     {
+        //std::cerr << "FloatBuffer move ctor\n";
         std::swap(m_num_elts, other.m_num_elts);
         std::swap(m_buffer,   other.m_buffer);
     }
 
     FloatBuffer &operator=(FloatBuffer const &other)
     {
+        //std::cerr << "FloatBuffer copy assignment\n";
         if (this != &other)
         {
             // expensive, but with exception guarantees.
@@ -98,6 +117,7 @@ public:
 
     FloatBuffer &operator=(FloatBuffer&& other) noexcept
     {
+        //std::cerr << "FloatBuffer move assignment\n";
         if (this != &other)
         {
             m_num_elts = 0;
@@ -147,7 +167,14 @@ private:
 };
 
 //**********************************************************************
-inline FloatBuffer *alloc_buffer(size_t num_elts)
+template <class BufferT>
+inline BufferT *alloc_buffer(size_t)
+{
+    BufferT::unimplemented_funtion();
+}
+
+template<>
+inline FloatBuffer *alloc_buffer<FloatBuffer>(size_t num_elts)
 {
     return new FloatBuffer(num_elts);
 }
@@ -158,5 +185,3 @@ inline void free_buffer(FloatBuffer *buffer)
 }
 
 } // small
-
-typedef small::FloatBuffer::value_type dtype;

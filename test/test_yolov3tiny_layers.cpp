@@ -72,7 +72,7 @@ void test_yolov3_tiny_each_layer(void)
         input,
         small::INPUT,
         1U, 3U, 416U, 416U,
-        C_ib, C_ob,
+        BufferT::C_ib, BufferT::C_ob,
         input_tensor.buffer()
     );
 
@@ -163,7 +163,7 @@ void test_yolov3_tiny(void)
         input,
         small::INPUT,
         1U, 3U, 416U, 416U,
-        C_ib, C_ob,
+        BufferT::C_ib, BufferT::C_ob,
         input_tensor.buffer()
     );
 
