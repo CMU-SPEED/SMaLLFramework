@@ -17,48 +17,60 @@
 #include "test_utils.hpp"
 
 //****************************************************************************
-bool test_input_packing(uint32_t C_i, uint32_t H, uint32_t W) {
+template <class BufferT>
+bool test_input_packing(uint32_t C_i, uint32_t H, uint32_t W)
+{
     std::cout << "Testing input packing (C_i = " << C_i
               << ", H = " << H << ", W = " << W << ")\n";
     uint32_t numel = C_i*H*W;
-    small::FloatBuffer input(numel);
+    BufferT input(numel);
     small::init(input, numel);
-    small::FloatBuffer packed_in(numel);
+    BufferT packed_in(numel);
     uint32_t status = small::pack_buffer(
-        input, small::INPUT, 1, C_i, H, W, C_ib, C_ob, packed_in);
-    if(status == 0) {
+        input, small::INPUT, 1, C_i, H, W,
+        BufferT::C_ib, BufferT::C_ob, packed_in);
+    if (status == 0)
+    {
         return false;
     }
     return true;
 }
 
 //****************************************************************************
-bool test_filt_packing(uint32_t C_o, uint32_t C_i, uint32_t H, uint32_t W) {
+template <class BufferT>
+bool test_filt_packing(uint32_t C_o, uint32_t C_i, uint32_t H, uint32_t W)
+{
     std::cout << "Testing filter packing (C_o = " << C_o << ", C_i = " << C_i
               << ", H = " << H << ", W = " << W << ")\n";
     uint32_t numel = C_o*C_i*H*W;
-    small::FloatBuffer filt(numel);
+    BufferT filt(numel);
     small::init(filt, numel);
-    small::FloatBuffer packed_filt(numel);
+    BufferT packed_filt(numel);
     uint32_t status = small::pack_buffer(
-        filt, small::FILTER_CONV, C_o, C_i, H, W, C_ib, C_ob, packed_filt);
-    if(status == 0) {
+        filt, small::FILTER_CONV, C_o, C_i, H, W,
+        BufferT::C_ib, BufferT::C_ob, packed_filt);
+    if (status == 0)
+    {
         return false;
     }
     return true;
 }
 
 //****************************************************************************
-bool test_output_packing(uint32_t C_o, uint32_t H, uint32_t W) {
+template <class BufferT>
+bool test_output_packing(uint32_t C_o, uint32_t H, uint32_t W)
+{
     std::cout << "Testing output packing (C_o = " << C_o
               << ", H = " << H << ", W = " << W << ")\n";
     uint32_t numel = C_o*H*W;
-    small::FloatBuffer output(numel);
+    BufferT output(numel);
     small::init(output, numel);
-    small::FloatBuffer packed_out(numel);
+    BufferT packed_out(numel);
     uint32_t status = small::pack_buffer(
-        output, small::OUTPUT, 1, C_o, H, W, C_ib, C_ob, packed_out);
-    if(status == 0) {
+        output, small::OUTPUT, 1, C_o, H, W,
+        BufferT::C_ib, BufferT::C_ob, packed_out);
+    if (status == 0)
+    {
         return false;
     }
     return true;
@@ -67,16 +79,19 @@ bool test_output_packing(uint32_t C_o, uint32_t H, uint32_t W) {
 //****************************************************************************
 void test_packing(void)
 {
+    /// @todo Test QUInt8Buffer too
     std::cout << "\n";
 
-    TEST_CHECK(test_input_packing(3, 96, 96));
-    TEST_CHECK(test_input_packing(C_ib, 416, 416));
-    TEST_CHECK(test_input_packing(3*C_ib, 416, 416));
+    TEST_CHECK(test_input_packing<small::FloatBuffer>(3, 96, 96));
+    TEST_CHECK(test_input_packing<small::FloatBuffer>(
+                   small::FloatBuffer::C_ib, 416, 416));
+    TEST_CHECK(test_input_packing<small::FloatBuffer>(
+                   3*small::FloatBuffer::C_ib, 416, 416));
 
-    TEST_CHECK(test_filt_packing(256, 3, 3, 3));
-    TEST_CHECK(test_filt_packing(256, 3, 1, 1));
+    TEST_CHECK(test_filt_packing<small::FloatBuffer>(256, 3, 3, 3));
+    TEST_CHECK(test_filt_packing<small::FloatBuffer>(256, 3, 1, 1));
 
-    TEST_CHECK(test_output_packing(16, 416, 416));
+    TEST_CHECK(test_output_packing<small::FloatBuffer>(16, 416, 416));
 }
 
 /// @todo test both float and quantized integer buffers eventually
@@ -90,6 +105,7 @@ using Buffer = small::QUInt8Buffer;
 void test_filter_packing_indices(void)
 {
     bool passed = true;
+    using BufferT = small::FloatBuffer;  ///@todo HACK: hardcoded
 
     // C_i,Hi,Wi,k,s,p,C_o
     std::vector<LayerParams> layer_params =
@@ -139,7 +155,8 @@ void test_filter_packing_indices(void)
                     {
                         size_t packed_index =
                             small::packed_weight_index(C_o, C_i, H, W,
-                                                       C_ob, C_ib,
+                                                       BufferT::C_ob,
+                                                       BufferT::C_ib,
                                                        co, ci, h, w);
                         if (packed_index > sz)
                         {
@@ -153,8 +170,8 @@ void test_filter_packing_indices(void)
                     }
 
         // *** Extracted from convert_tensor2dc ***
-        uint32_t _C_ib = C_ib;
-        uint32_t _C_ob = C_ob;
+        uint32_t _C_ib = BufferT::C_ib;
+        uint32_t _C_ob = BufferT::C_ob;
 
         if (C_i < _C_ib) //(dim1 < _C_ob)
         {
@@ -193,7 +210,7 @@ void test_filter_packing_indices(void)
                                 //          << std::endl;
                                 auto idx = small::packed_weight_index(
                                     C_o, C_i, H, W,
-                                    C_ob, C_ib,
+                                    BufferT::C_ob, BufferT::C_ib,
                                     g+l, h+k, i, j);
 
                                 size_t unpacked_index = g_offset + l_offset +

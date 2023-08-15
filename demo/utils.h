@@ -58,10 +58,12 @@ static __inline__ unsigned long long rdtsc(void)
 //logging
 //****************************************************************************
 
+template <class BufferT>
 void print_build_info_check()
 {
     //    string archs[] = {"reference", "zen2", "arm"};
-    printf("W_ob =  %d \n C_ob = %d \n SIMD = %d \n", W_ob, C_ob, SIMD);
+    printf("W_ob =  %d \n C_ob = %d \n SIMD = %d \n",
+           BufferT::W_ob, BufferT::C_ob, BufferT::SIMD);
 }
 
 template <class T>

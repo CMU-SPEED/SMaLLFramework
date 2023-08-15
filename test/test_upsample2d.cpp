@@ -51,8 +51,8 @@ F[(filter_idx/filter_blocking) * ((num_channels/channel_blocking) *  num_rows * 
         {\
             for (size_t j = 0; j < W * scale_factor; j++)\
             {\
-                /*printf("%.2f ", INDEX_tensor(output_dc, C_i, H * scale_factor, W * scale_factor, C_ob, k, i, j));*/\
-                passing &= (INDEX_tensor(output_dc, C_i, H * scale_factor, W * scale_factor, C_ob, k, i, j) == INDEX_tensor(input_dc, C_i, H, W, C_ob, k, i / scale_factor, j / scale_factor));\
+                /*printf("%.2f ", INDEX_tensor(output_dc, C_i, H * scale_factor, W * scale_factor, BufferT::C_ob, k, i, j));*/\
+                passing &= (INDEX_tensor(output_dc, C_i, H * scale_factor, W * scale_factor, BufferT::C_ob, k, i, j) == INDEX_tensor(input_dc, C_i, H, W, BufferT::C_ob, k, i / scale_factor, j / scale_factor));\
             }\
             /*printf("\n");*/\
         }\
@@ -86,17 +86,17 @@ void test_upsample2d_single_element(void)
     size_t const num_output_elts = C_i * H * scale_factor * W * scale_factor;
 
 #if defined(QUANTIZED)
-    small::QUInt8Buffer input_dc =
-        create_upsample2d_data<small::QUInt8Buffer>(num_input_elts);
-    small::QUInt8Buffer output_dc(num_output_elts);
+    using BufferT = small::QUInt8Buffer;
 #else
-    small::FloatBuffer input_dc =
-        create_upsample2d_data<small::FloatBuffer>(num_input_elts);
-    small::FloatBuffer output_dc(num_output_elts);
+    using BufferT = small::FloatBuffer;
 #endif
 
+    BufferT input_dc =
+        create_upsample2d_data<BufferT>(num_input_elts);
+    BufferT output_dc(num_output_elts);
+
     small::UpSample2D(scale_factor, C_i, H, W, input_dc, output_dc);
-    
+
     // for (size_t ix = 0; ix < num_input_elts; ++ix)
     // {
     //     // TEST_CHECK((input_dc[ix] >= 0) ?
@@ -108,7 +108,7 @@ void test_upsample2d_single_element(void)
     bool passing = true;
 
     CHECK_UPSAMPLE(C_i, H, W, scale_factor, input_dc, output_dc, passing)
-    
+
     // for (size_t ix = 0; ix < num_output_elts; ++ix)
     // {
     //     // TEST_CHECK((input_dc[ix] >= 0) ?
@@ -132,14 +132,14 @@ void test_upsample2d_single_tile(void)
     size_t const num_output_elts = C_i * H * scale_factor * W * scale_factor;
 
 #if defined(QUANTIZED)
-    small::QUInt8Buffer input_dc =
-        create_upsample2d_data<small::QUInt8Buffer>(num_input_elts);
-    small::QUInt8Buffer output_dc(num_output_elts);
+    using BufferT = small::QUInt8Buffer;
 #else
-    small::FloatBuffer input_dc =
-        create_upsample2d_data<small::FloatBuffer>(num_input_elts);
-    small::FloatBuffer output_dc(num_output_elts);
+    using BufferT = small::FloatBuffer;
 #endif
+
+    BufferT input_dc =
+        create_upsample2d_data<BufferT>(num_input_elts);
+    BufferT output_dc(num_output_elts);
 
     small::UpSample2D(scale_factor, C_i, H, W, input_dc, output_dc);
 
@@ -168,14 +168,14 @@ void test_upsample2d_large_tile(void)
     size_t const num_output_elts = C_i * H * scale_factor * W * scale_factor;
 
 #if defined(QUANTIZED)
-    small::QUInt8Buffer input_dc =
-        create_upsample2d_data<small::QUInt8Buffer>(num_input_elts);
-    small::QUInt8Buffer output_dc(num_output_elts);
+    using BufferT = small::QUInt8Buffer;
 #else
-    small::FloatBuffer input_dc =
-        create_upsample2d_data<small::FloatBuffer>(num_input_elts);
-    small::FloatBuffer output_dc(num_output_elts);
+    using BufferT = small::FloatBuffer;
 #endif
+
+    BufferT input_dc =
+        create_upsample2d_data<BufferT>(num_input_elts);
+    BufferT output_dc(num_output_elts);
 
     small::UpSample2D(scale_factor, C_i, H, W, input_dc, output_dc);
 

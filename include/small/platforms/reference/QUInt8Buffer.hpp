@@ -19,15 +19,29 @@
 #include <iostream>
 #include <cmath>
 
+#include <params.h>
+
 namespace small
 {
 
 //****************************************************************************
-// define the Buffer type in the small namespace (qdtype becomes QUInt8Buffer)
+// define the Buffer type in the small namespace
 /// @todo if Arduino compiler supports concepts using the integer_type concept
 ///       for ScalarT
 class QUInt8Buffer
 {
+public:
+    static uint32_t const   W_ob{QUINT8_W_ob};
+    static uint32_t const   C_ob{QUINT8_C_ob};
+    static uint32_t const   SIMD{QUINT8_SIMD};
+    static uint32_t const UNROLL{QUINT8_UNROLL};
+    static uint32_t const   C_ib{QUINT8_C_ib};
+
+    static uint32_t const   NUM_FMA{QUINT8_NUM_FMA};
+    static uint32_t const   NUM_MAX{QUINT8_NUM_MAX};
+    static uint32_t const  NUM_LOAD{QUINT8_NUM_LOAD};
+    static uint32_t const NUM_STORE{QUINT8_NUM_STORE};
+
 public:
     typedef uint8_t value_type;
     typedef int32_t accum_type;
@@ -37,6 +51,7 @@ public:
         m_buffer(nullptr)
     {
         quantized_init();
+        //std::cerr << "QUInt8Buffer::default_ctor " << (void*)this << std::endl;
     }
 
     /// @todo add min_val and max_val parameters defaulted to the limits below
@@ -62,9 +77,9 @@ public:
             throw std::bad_alloc();
         }
 
-        // std::cerr << "QUInt8Buffer::ctor " << (void*)this
-        //           << ", data_ptr = " << (void*)m_buffer.data()
-        //           << ", size = " << m_buffer.size() << std::endl;
+        //std::cerr << "QUInt8Buffer::ctor " << (void*)this
+        //          << ", data_ptr = " << (void*)m_buffer
+        //          << ", size = " << num_elts << std::endl;
     }
 
     QUInt8Buffer(QUInt8Buffer const &other)
@@ -259,17 +274,5 @@ private:
     size_t      m_num_elts;
     value_type *m_buffer;
 };
-
-//**********************************************************************
-/// @todo return smart pointer?
-inline QUInt8Buffer *alloc_buffer(size_t num_elts)
-{
-    return new QUInt8Buffer(num_elts);
-}
-
-inline void free_buffer(QUInt8Buffer *buffer)
-{
-    delete buffer;
-}
 
 }  // small

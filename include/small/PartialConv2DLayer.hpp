@@ -64,13 +64,14 @@ public:
                   << "x" << m_input_shape[WIDTH]
                   << "), filter.size=" << filters.size() << std::endl;
 #endif
-        if (((input_shape[CHANNEL] % C_ib) != 0) && (input_shape[CHANNEL] != 3))
+        if (((input_shape[CHANNEL] % BufferT::C_ib) != 0) &&
+            (input_shape[CHANNEL] != 3))
         {
             throw std::invalid_argument(
                 "PartialConv2DLayer::ctor ERROR: "
                 "invalid number of input channels.");
         }
-        if ((num_output_channels % C_ob) != 0)
+        if ((num_output_channels % BufferT::C_ob) != 0)
         {
             throw std::invalid_argument(
                 "PartialConv2DLayer::ctor ERROR: "
@@ -150,13 +151,14 @@ public:
                   << "),filters.size=" << filters.size()
                   << ",bias.size=" << bias.size() << std::endl;
 #endif
-        if (((input_shape[CHANNEL] % C_ib) != 0) && (input_shape[CHANNEL] != 3))
+        if (((input_shape[CHANNEL] % BufferT::C_ib) != 0) &&
+            (input_shape[CHANNEL] != 3))
         {
             throw std::invalid_argument(
                 "PartialConv2DLayer::ctor ERROR: "
                 "invalid number of input channels.");
         }
-        if ((num_output_channels % C_ob) != 0)
+        if ((num_output_channels % BufferT::C_ob) != 0)
         {
             throw std::invalid_argument(
                 "PartialConv2DLayer::ctor ERROR: "
@@ -247,13 +249,14 @@ public:
                   << "," << bn_running_mean.size()
                   << "),bn_eps:" << bn_eps << std::endl;
 #endif
-        if (((input_shape[CHANNEL] % C_ib) != 0) && (input_shape[CHANNEL] != 3))
+        if (((input_shape[CHANNEL] % BufferT::C_ib) != 0) &&
+            (input_shape[CHANNEL] != 3))
         {
             throw std::invalid_argument(
                 "PartialConv2DLayer::ctor ERROR: "
                 "invalid number of input channels.");
         }
-        if ((num_output_channels % C_ob) != 0)
+        if ((num_output_channels % BufferT::C_ob) != 0)
         {
             throw std::invalid_argument(
                 "PartialConv2DLayer::ctor ERROR: "
@@ -347,7 +350,7 @@ public:
                         size_t idx = packed_buffer_index(output_shape[CHANNEL],
                                                          output_shape[HEIGHT],
                                                          output_shape[WIDTH],
-                                                         C_ob,
+                                                         BufferT::C_ob,
                                                          Co, h, w);
                         output[0]->buffer()[idx] += m_packed_bias[Co];
                     }

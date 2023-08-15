@@ -14,8 +14,9 @@
 
 #include <stdexcept>
 #include <stdlib.h> // for posix_memalign
+#include <iostream>
 
-//#include <iostream>
+#include <params.h>
 
 namespace small
 {
@@ -71,9 +72,9 @@ public:
         {
             throw std::bad_alloc();
         }
-        // std::cerr << "FloatBuffer::ctor " << (void*)this
-        //           << ", data_ptr = " << (void*)m_buffer
-        //           << ", size = " << num_elts << std::endl;
+        //std::cerr << "FloatBuffer::ctor " << (void*)this
+        //          << ", data_ptr = " << (void*)m_buffer
+        //          << ", size = " << num_elts << std::endl;
     }
 
     FloatBuffer(FloatBuffer const &other)
@@ -165,23 +166,5 @@ private:
     size_t      m_num_elts;
     value_type *m_buffer;
 };
-
-//**********************************************************************
-template <class BufferT>
-inline BufferT *alloc_buffer(size_t)
-{
-    BufferT::unimplemented_funtion();
-}
-
-template<>
-inline FloatBuffer *alloc_buffer<FloatBuffer>(size_t num_elts)
-{
-    return new FloatBuffer(num_elts);
-}
-
-inline void free_buffer(FloatBuffer *buffer)
-{
-    delete buffer;
-}
 
 } // small

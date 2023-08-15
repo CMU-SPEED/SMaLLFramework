@@ -86,7 +86,7 @@ void test_dw_bias(void)
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_input_dc);
 
     small::Tensor<BufferT> packed_input_tensor(
@@ -112,7 +112,7 @@ void test_dw_bias(void)
                        small::OUTPUT,
                        1U, output_shape[small::CHANNEL],
                        output_shape[small::HEIGHT], output_shape[small::WIDTH],
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_output_dc_answers);
 
     // Allocate output buffer
@@ -223,7 +223,7 @@ void test_dw_batchnorm_identity(void)
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_input_dc);
 
     small::Tensor<BufferT> packed_input_tensor(
@@ -249,7 +249,7 @@ void test_dw_batchnorm_identity(void)
                        small::OUTPUT,
                        1U, output_shape[small::CHANNEL],
                        output_shape[small::HEIGHT], output_shape[small::WIDTH],
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_output_dc_answers);
 
     // Allocate output buffer
@@ -361,7 +361,7 @@ void test_dw_batchnorm_bias_1(void)
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_input_dc);
 
     small::Tensor<BufferT> packed_input_tensor(
@@ -387,7 +387,7 @@ void test_dw_batchnorm_bias_1(void)
                        small::OUTPUT,
                        1U, output_shape[small::CHANNEL],
                        output_shape[small::HEIGHT], output_shape[small::WIDTH],
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_output_dc_answers);
 
     // Allocate output buffer
@@ -499,7 +499,7 @@ void test_dw_batchnorm_mean_1(void)
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_input_dc);
 
     small::Tensor<BufferT> packed_input_tensor(
@@ -525,7 +525,7 @@ void test_dw_batchnorm_mean_1(void)
                        small::OUTPUT,
                        1U, output_shape[small::CHANNEL],
                        output_shape[small::HEIGHT], output_shape[small::WIDTH],
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_output_dc_answers);
 
     // Allocate output buffer
@@ -614,7 +614,7 @@ void test_dw_batchnorm_mean_variance_1(void)
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_input_dc);
 
     small::Tensor<BufferT> packed_input_tensor(
@@ -649,7 +649,7 @@ void test_dw_batchnorm_mean_variance_1(void)
                        small::OUTPUT,
                        1U, output_shape[small::CHANNEL],
                        output_shape[small::HEIGHT], output_shape[small::WIDTH],
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_output_dc_answers);
 
     //=========================================================================
@@ -703,7 +703,7 @@ void test_dw_batchnorm_mean_variance_1(void)
                          small::OUTPUT,
                          1U, output_shape[small::CHANNEL],
                          output_shape[small::HEIGHT], output_shape[small::WIDTH],
-                         C_ib, C_ob,
+                         BufferT::C_ib, BufferT::C_ob,
                          unpacked_output_tensor);
 
     BufferT output_mean(params.C_o);
@@ -758,7 +758,7 @@ bool run_dw_config(LayerParams const &params)
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_input_dc);
 
     // Read filter data
@@ -776,7 +776,7 @@ bool run_dw_config(LayerParams const &params)
     small::pack_buffer(filter_dc,
                        small::FILTER_DW,
                        params.C_i, 1, params.k, params.k,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_filter_dc);
 
     // Read output regression data
@@ -799,7 +799,7 @@ bool run_dw_config(LayerParams const &params)
     small::pack_buffer(output_dc_answers,
                        small::OUTPUT,
                        1U, params.C_i, Ho, Wo,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_output_dc_answers);
 
     // Allocate output buffer
@@ -889,7 +889,7 @@ bool run_dw_layer_config(LayerParams const &params)
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_input_dc);
 
     small::Tensor<BufferT> packed_input_tensor(
@@ -918,7 +918,7 @@ bool run_dw_layer_config(LayerParams const &params)
                        small::OUTPUT,
                        1U, output_shape[small::CHANNEL],
                        output_shape[small::HEIGHT], output_shape[small::WIDTH],
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_output_dc_answers);
 
     // Allocate output buffer

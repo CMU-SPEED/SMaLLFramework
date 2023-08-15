@@ -107,7 +107,7 @@ public:
         small::unpack_buffer(
             input[0]->buffer(), small::INPUT,
             1U, m_padded_channels, h, w,
-            C_ib, C_ob,
+            BufferT::C_ib, BufferT::C_ob,
             unpacked_input
         );
 

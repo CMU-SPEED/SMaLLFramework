@@ -769,7 +769,7 @@ void inference()
             GROUP_C(l) * GROUPS(l);
 
         BufferT *filter_buf_ptr =
-            small::alloc_buffer(filter_dimensions);
+            small::alloc_buffer<BufferT>(filter_dimensions);
         init(*filter_buf_ptr, filter_dimensions);
         filter_buf_ptrs.push_back(filter_buf_ptr);
     }
@@ -777,7 +777,7 @@ void inference()
     uint32_t filter_dimensions =
         GROUP_C(layer_num_total - 1) * REDUCTION_C(layer_num_total - 1);
     BufferT *filter_fc_dc_ptr =
-        small::alloc_buffer(filter_dimensions);
+        small::alloc_buffer<BufferT>(filter_dimensions);
     init(*filter_fc_dc_ptr, filter_dimensions);
     filter_buf_ptrs.push_back(filter_fc_dc_ptr);
     /// @todo assert(filter_buf_ptrs.size() == num_filters)
@@ -785,9 +785,9 @@ void inference()
     // allocate space for intermediate outputs
     // (use the max sizes calculated previously)
 #if defined(QUANTIZED)
-    BufferT inter_0_dc(max_numel_inter_0 + C_ob*16*16*32); // HACK
-    BufferT inter_1_dc(max_numel_inter_1 + C_ob*16*16*32); // HACK
-    BufferT inter_2_dc((max_numel_inter_0 / 2) + C_ob*16*16*3);
+    BufferT inter_0_dc(max_numel_inter_0 + QUINT8_C_ob*16*16*32); // HACK
+    BufferT inter_1_dc(max_numel_inter_1 + QUINT8_C_ob*16*16*32); // HACK
+    BufferT inter_2_dc((max_numel_inter_0 / 2) + QUINT8_C_ob*16*16*3);
 #else
     BufferT inter_0_dc(max_numel_inter_0);
     BufferT inter_1_dc(max_numel_inter_1);
@@ -850,9 +850,9 @@ void inference()
 
     small::Tensor<BufferT> input_tensor({1, 3, 32, 32}, input_dc); // B, C_i, N, M
 #if defined(QUANTIZED)
-    small::Tensor<BufferT> inter_0_tensor(max_numel_inter_0 + C_ob*16*16*32);
-    small::Tensor<BufferT> inter_1_tensor(max_numel_inter_1 + C_ob*16*16*32);
-    small::Tensor<BufferT> inter_2_tensor((max_numel_inter_0 / 2) + C_ob*16*16*3);
+    small::Tensor<BufferT> inter_0_tensor(max_numel_inter_0 + QUINT8_C_ob*16*16*32);
+    small::Tensor<BufferT> inter_1_tensor(max_numel_inter_1 + QUINT8_C_ob*16*16*32);
+    small::Tensor<BufferT> inter_2_tensor((max_numel_inter_0 / 2) + QUINT8_C_ob*16*16*3);
 #else
     small::Tensor<BufferT> inter_0_tensor(max_numel_inter_0);
     small::Tensor<BufferT> inter_1_tensor(max_numel_inter_1);

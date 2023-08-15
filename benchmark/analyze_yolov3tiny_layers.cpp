@@ -88,7 +88,7 @@ bool test_yolov3_tiny(void)
     small::pack_buffer(input,
                        small::INPUT,
                        1U, 3U, 416U, 416U,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        input_dc);
 
     small::shape_type input_shape({1U, 3U, 416U, 416U});
@@ -152,7 +152,7 @@ bool test_yolov3_tiny(void)
                                        tmp_in_tensor.shape()[small::CHANNEL],
                                        tmp_in_tensor.shape()[small::HEIGHT],
                                        tmp_in_tensor.shape()[small::WIDTH],
-                                       C_ib, C_ob,
+                                       BufferT::C_ib, BufferT::C_ob,
                                        tmp_in_tensor.buffer());
 
                     layer_ptr->compute_output({&tmp_in_tensor}, {&out_tensor});
@@ -178,7 +178,7 @@ bool test_yolov3_tiny(void)
                                        shape0[small::CHANNEL],
                                        shape0[small::HEIGHT],
                                        shape0[small::WIDTH],
-                                       C_ib, C_ob,
+                                       BufferT::C_ib, BufferT::C_ob,
                                        tmp_in_tensor0.buffer());
 
                     std::string layer_input1_filename =
@@ -192,7 +192,7 @@ bool test_yolov3_tiny(void)
                                        shape1[small::CHANNEL],
                                        shape1[small::HEIGHT],
                                        shape1[small::WIDTH],
-                                       C_ib, C_ob,
+                                       BufferT::C_ib, BufferT::C_ob,
                                        tmp_in_tensor1.buffer());
 
                     layer_ptr->compute_output({&tmp_in_tensor0, &tmp_in_tensor1}, {&out_tensor});
@@ -255,7 +255,7 @@ bool test_yolov3_tiny(void)
                 output_shape[small::CHANNEL],
                 output_shape[small::HEIGHT],
                 output_shape[small::WIDTH],
-                C_ib, C_ob,
+                BufferT::C_ib, BufferT::C_ob,
                 unpacked_computed_layer_out);
 
             passing &=
@@ -274,7 +274,7 @@ bool test_yolov3_tiny(void)
                            output_shape[small::CHANNEL],
                            output_shape[small::HEIGHT],
                            output_shape[small::WIDTH],
-                           C_ib, C_ob,
+                           BufferT::C_ib, BufferT::C_ob,
                            out_tensor.buffer());
         in_tensor.swap(out_tensor);
     }

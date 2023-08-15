@@ -12,19 +12,14 @@
 
 #pragma once
 
-/// @todo move this include to intrinsics.hpp?
-#include <arm_neon.h>
+#define FLOAT_W_ob   1
+#define FLOAT_C_ob   1
+#define FLOAT_SIMD   1
+#define FLOAT_UNROLL 1
+#define FLOAT_C_ib   FLOAT_C_ob
 
-#define SMALL_HAS_FLOAT_SUPPORT  1
-
-#define FLOAT_W_ob   6
-#define FLOAT_C_ob   16
-#define FLOAT_SIMD   4
-#define FLOAT_UNROLL 16
-#define FLOAT_C_ib FLOAT_C_ob
-
-// not used for kernels, but used in throughput calculation.
-#define FLOAT_NUM_FMA 2
+//Potential blocking parameters for packing
+#define FLOAT_NUM_FMA 1
 #define FLOAT_NUM_MAX 1
-#define FLOAT_NUM_LOAD 2
+#define FLOAT_NUM_LOAD 1
 #define FLOAT_NUM_STORE 1

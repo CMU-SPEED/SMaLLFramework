@@ -53,7 +53,7 @@ namespace detail
                                FILTER_DW,
                                num_channels, 1U,
                                m_kernel_size, m_kernel_size,
-                               C_ib, C_ob,
+                               BufferT::C_ib, BufferT::C_ob,
                                m_packed_filters);
         }
         else
@@ -158,8 +158,8 @@ namespace detail
                                                 1U,            // # input chans
                                                 m_kernel_size,
                                                 m_kernel_size,
-                                                C_ob,
-                                                1U,            //C_ib,
+                                                BufferT::C_ob,
+                                                1U,            //BufferT::C_ib,
                                                 ochan, 0U, fh, fw);
                         //std::cerr << "packed_index = " << packed_index << std::endl;
                         m_packed_filters[packed_index] *= filter_scale;
@@ -434,7 +434,7 @@ public:
                         size_t idx = packed_buffer_index(output_shape[CHANNEL],
                                                          output_shape[HEIGHT],
                                                          output_shape[WIDTH],
-                                                         C_ob,
+                                                         BufferT::C_ob,
                                                          Co, h, w);
                         output[0]->buffer()[idx] += m_packed_bias[Co];
                     }

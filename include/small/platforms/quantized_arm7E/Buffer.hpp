@@ -14,6 +14,8 @@
 
 #include <stdexcept>
 #include <stdint.h>
+//#include <iostream>
+#include <cmath>
 
 namespace small
 {
@@ -90,6 +92,18 @@ namespace detail
 ///       for ScalarT
 class QUInt8Buffer
 {
+public:
+    static uint32_t const   W_ob{QUINT8_W_ob};
+    static uint32_t const   C_ob{QUINT8_C_ob};
+    static uint32_t const   SIMD{QUINT8_SIMD};
+    static uint32_t const UNROLL{QUINT8_UNROLL};
+    static uint32_t const   C_ib{QUINT8_C_ib};
+
+    static uint32_t const   NUM_FMA{QUINT8_NUM_FMA};
+    static uint32_t const   NUM_MAX{QUINT8_NUM_MAX};
+    static uint32_t const  NUM_LOAD{QUINT8_NUM_LOAD};
+    static uint32_t const NUM_STORE{QUINT8_NUM_STORE};
+
 public:
     typedef uint8_t value_type;
     typedef int32_t accum_type;
@@ -215,6 +229,7 @@ public:
         //           << ", size = " << m_buffer.size() << std::endl;
         if (m_buffer != nullptr)
         {
+            /// @todo Need to implement memory pool to reclaim blocks.
             // free(m_buffer);
         }
     }
@@ -308,7 +323,20 @@ private:
 
 //**********************************************************************
 // "dynamic" allocation of Buffer from static buffer (placement new)
-inline QUInt8Buffer *alloc_buffer(size_t num_elts)
+/// @todo return smart pointer?
+/// @todo Consider using static member factory method and hide ctor's
+/// @todo Can this be done better with a CPO or explicit specialization?
+///       I.e., define unimplemented alloc_buffer here and specialize in
+///       the various Buffer header files.
+///
+template <class BufferT>
+inline BufferT *alloc_buffer(size_t num_elts)
+{
+    BufferT::unimplemented_function();
+}
+
+template<>
+inline QUInt8Buffer *alloc_buffer<QUInt8Buffer>(size_t num_elts)
 {
     void *location = detail::alloc(sizeof(QUInt8Buffer), 8);
     QUInt8Buffer *buffer = new (location) QUInt8Buffer(num_elts);
@@ -319,7 +347,7 @@ inline QUInt8Buffer *alloc_buffer(size_t num_elts)
 
 inline void free_buffer(QUInt8Buffer *)
 {
-    // buffer mgmt does not exist on this platform
+    // memory mgmt does not exist on this platform
 }
 
 }  // small
