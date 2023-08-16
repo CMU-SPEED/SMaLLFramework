@@ -10,10 +10,21 @@
 // DM23-0126
 //****************************************************************************
 
+#define PARALLEL 1
+
+//#define PARSER_DEBUG
+//#define PARSER_DEBUG_VERBOSE
+
+//#define DAG_DEBUG
+//#define BUFFER_DEBUG
+//#define DEBUG_LAYERS
+//#define SUMMARY 1
+
 #include <acutest.h>
 
 #include <small.h>
 #include <small/models/Darknet.hpp>
+#include <small/utils/Timer.hpp>
 
 #include "test_utils.hpp"
 
@@ -50,15 +61,19 @@ void test_yolo_parser(void)
     BufferT output(read_inputs<BufferT>(out_fname));
     small::Tensor<BufferT> output_tensor({1, 1, 2535, 85}, std::move(output));
 
-    try {
-
+    try
+    {
         small::Darknet<BufferT> model(cfg, weights);
         if(model.get_input_shape() != input_tensor_dc.shape())
         {
             std::cerr << "ERROR: input shape mismatch" << std::endl;
             TEST_CHECK(false);
         }
+        small::Timer timer;
+        timer.start();
         std::vector<small::Tensor<BufferT>*> outs = model.inference({&input_tensor_dc});
+        timer.stop();
+        std::cout << "Elapsed time: " << timer.elapsed() << "ns.\n";
 
         // check number of yolo outputs
         if(outs.size() != 2)
@@ -138,11 +153,9 @@ void test_yolo_parser(void)
         std::cerr << "ERROR: " << e.what() << std::endl;
         TEST_CHECK(false);
     }
-
-
-
 }
 
+//****************************************************************************
 void test_bug_parser(void)
 {
 
@@ -164,7 +177,7 @@ void test_bug_parser(void)
 //****************************************************************************
 //****************************************************************************
 TEST_LIST = {
-    {"darknet_parser", test_yolo_parser},
     {"darknet_parser with bad cfg file", test_bug_parser},
+    {"darknet_parser", test_yolo_parser},
     {NULL, NULL}
 };

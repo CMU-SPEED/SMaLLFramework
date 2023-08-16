@@ -156,19 +156,19 @@ small::Tensor<BufferT> &model_inference(
     small::Tensor<BufferT>                                   &inter_1_dc)
 {
     size_t layer_num = 0;
-    layers[layer_num++]->compute_output({&input_dc}, {&inter_0_dc});   // Conv2D
-    layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_0_dc}); // ReLU
+    layers[layer_num++]->compute_output({&input_dc}, &inter_0_dc);   // Conv2D
+    layers[layer_num++]->compute_output({&inter_0_dc}, &inter_0_dc); // ReLU
 
     for (auto ix = 0U; ix < 4; ++ix)
     {
-        layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_1_dc}); // DWConv
-        layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_1_dc}); // ReLU
-        layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_0_dc}); // Conv2D
-        layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_0_dc}); // ReLU
+        layers[layer_num++]->compute_output({&inter_0_dc}, &inter_1_dc); // DWConv
+        layers[layer_num++]->compute_output({&inter_1_dc}, &inter_1_dc); // ReLU
+        layers[layer_num++]->compute_output({&inter_1_dc}, &inter_0_dc); // Conv2D
+        layers[layer_num++]->compute_output({&inter_0_dc}, &inter_0_dc); // ReLU
     }
 
-    layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_1_dc}); // MaxPool2D
-    layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_0_dc}); // Conv2D
+    layers[layer_num++]->compute_output({&inter_0_dc}, &inter_1_dc); // MaxPool2D
+    layers[layer_num++]->compute_output({&inter_1_dc}, &inter_0_dc); // Conv2D
     return inter_0_dc;
 }
 

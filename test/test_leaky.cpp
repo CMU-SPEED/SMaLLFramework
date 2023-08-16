@@ -22,7 +22,6 @@
 
 #include <small.h>
 #include <small/utils/Timer.hpp>
-#include <small/InputLayer.hpp>
 #include <small/LeakyReLULayer.hpp>
 
 #include "test_utils.hpp"
@@ -248,9 +247,9 @@ void test_leaky_large_tile(void)
 // {
 //     /// @todo add smart pointer to buffers
 //     //=========================================================================
-//     small::InputLayer<BufferT>  input_layer(
-//         {1UL, params.C_i, params.H, params.W});
-//     small::LeakyReLULayer<BufferT>   leaky_layer(input_layer);
+//     small::shape_type input_shape({1UL, params.C_i, params.H, params.W});
+//     size_t input_size = params.C_i*params.H*params.W;
+//     small::LeakyReLULayer<BufferT>   leaky_layer(input_size);
 //     //=========================================================================
 
 //     // Read input data

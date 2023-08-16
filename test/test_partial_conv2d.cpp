@@ -63,8 +63,8 @@ void test_partial_conv2d(void)
                                                     params.C_o,
                                                     filter_dc, false);
 
-    small::shape_type output_shape(conv2d_layer.output_shape(0));
-    size_t output_buffer_size(conv2d_layer.output_size(0));
+    small::shape_type output_shape(conv2d_layer.output_shape());
+    size_t output_buffer_size(conv2d_layer.output_size());
     //=========================================================================
 
     // Read input data
@@ -124,7 +124,7 @@ void test_partial_conv2d(void)
 
     // Compute layer
     conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
-    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size(0));
+    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     // Check answer
     bool passing = true;
@@ -185,8 +185,8 @@ void test_partial_conv2d_1s(void)
                                                     params.C_o,
                                                     filter_dc, false);
 
-    small::shape_type output_shape(conv2d_layer.output_shape(0));
-    size_t output_buffer_size(conv2d_layer.output_size(0));
+    small::shape_type output_shape(conv2d_layer.output_shape());
+    size_t output_buffer_size(conv2d_layer.output_size());
     //=========================================================================
 
     // Read input data
@@ -246,7 +246,7 @@ void test_partial_conv2d_1s(void)
 
     // Compute layer
     conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
-    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size(0));
+    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     // Check answer
     bool passing = true;
@@ -315,8 +315,8 @@ void test_partial_conv2d_bias(void)
                                                     params.C_o,
                                                     filter_dc, bias, false);
 
-    small::shape_type output_shape(conv2d_layer.output_shape(0));
-    size_t output_buffer_size(conv2d_layer.output_size(0));
+    small::shape_type output_shape(conv2d_layer.output_shape());
+    size_t output_buffer_size(conv2d_layer.output_size());
 
     //=========================================================================
 
@@ -377,7 +377,7 @@ void test_partial_conv2d_bias(void)
 
     // Compute layer
     conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
-    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size(0));
+    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     // Check answer
     bool passing = true;
@@ -446,8 +446,8 @@ void test_partial_conv2d_bias_1s(void)
                                                     params.C_o,
                                                     filter_dc, bias, false);
 
-    small::shape_type output_shape(conv2d_layer.output_shape(0));
-    size_t output_buffer_size(conv2d_layer.output_size(0));
+    small::shape_type output_shape(conv2d_layer.output_shape());
+    size_t output_buffer_size(conv2d_layer.output_size());
 
     //=========================================================================
 
@@ -508,7 +508,7 @@ void test_partial_conv2d_bias_1s(void)
 
     // Compute layer
     conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
-    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size(0));
+    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     // Check answer
     bool passing = true;
@@ -587,8 +587,8 @@ void test_partial_conv2d_batchnorm_identity(void)
                                                     bn_eps,
                                                     false);
 
-    small::shape_type output_shape(conv2d_layer.output_shape(0));
-    size_t output_buffer_size(conv2d_layer.output_size(0));
+    small::shape_type output_shape(conv2d_layer.output_shape());
+    size_t output_buffer_size(conv2d_layer.output_size());
 
     //=========================================================================
 
@@ -649,7 +649,7 @@ void test_partial_conv2d_batchnorm_identity(void)
 
     // Compute layer
     conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
-    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size(0));
+    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     // Check answer
     bool passing = true;
@@ -728,8 +728,8 @@ void test_partial_conv2d_batchnorm_identity_1s(void)
                                                     bn_eps,
                                                     false);
 
-    small::shape_type output_shape(conv2d_layer.output_shape(0));
-    size_t output_buffer_size(conv2d_layer.output_size(0));
+    small::shape_type output_shape(conv2d_layer.output_shape());
+    size_t output_buffer_size(conv2d_layer.output_size());
 
     //=========================================================================
 
@@ -790,7 +790,7 @@ void test_partial_conv2d_batchnorm_identity_1s(void)
 
     // Compute layer
     conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
-    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size(0));
+    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     // Check answer
     bool passing = true;
@@ -870,8 +870,8 @@ void test_partial_conv2d_batchnorm_bias_1(void)
                                                     bn_eps,
                                                     false);
 
-    small::shape_type output_shape(conv2d_layer.output_shape(0));
-    size_t output_buffer_size(conv2d_layer.output_size(0));
+    small::shape_type output_shape(conv2d_layer.output_shape());
+    size_t output_buffer_size(conv2d_layer.output_size());
 
     //=========================================================================
 
@@ -932,7 +932,7 @@ void test_partial_conv2d_batchnorm_bias_1(void)
 
     // Compute layer
     conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
-    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size(0));
+    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     // Check answer
     bool passing = true;
@@ -1012,8 +1012,8 @@ void test_partial_conv2d_batchnorm_bias_1_1s(void)
                                                     bn_eps,
                                                     false);
 
-    small::shape_type output_shape(conv2d_layer.output_shape(0));
-    size_t output_buffer_size(conv2d_layer.output_size(0));
+    small::shape_type output_shape(conv2d_layer.output_shape());
+    size_t output_buffer_size(conv2d_layer.output_size());
 
     //=========================================================================
 
@@ -1074,7 +1074,7 @@ void test_partial_conv2d_batchnorm_bias_1_1s(void)
 
     // Compute layer
     conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
-    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size(0));
+    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     // Check answer
     bool passing = true;
@@ -1154,8 +1154,8 @@ void test_partial_conv2d_batchnorm_mean_1(void)
                                                     bn_eps,
                                                     false);
 
-    small::shape_type output_shape(conv2d_layer.output_shape(0));
-    size_t output_buffer_size(conv2d_layer.output_size(0));
+    small::shape_type output_shape(conv2d_layer.output_shape());
+    size_t output_buffer_size(conv2d_layer.output_size());
 
     //=========================================================================
 
@@ -1216,7 +1216,7 @@ void test_partial_conv2d_batchnorm_mean_1(void)
 
     // Compute layer
     conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
-    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size(0));
+    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     // Check answer
     bool passing = true;
@@ -1300,8 +1300,8 @@ void test_partial_conv2d_batchnorm_mean_1_1s(void)
                                                     bn_eps,
                                                     false);
 
-    small::shape_type output_shape(conv2d_layer.output_shape(0));
-    size_t output_buffer_size(conv2d_layer.output_size(0));
+    small::shape_type output_shape(conv2d_layer.output_shape());
+    size_t output_buffer_size(conv2d_layer.output_size());
 
     //=========================================================================
 
@@ -1362,7 +1362,7 @@ void test_partial_conv2d_batchnorm_mean_1_1s(void)
 
     // Compute layer
     conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
-    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size(0));
+    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     // Check answer
     bool passing = true;
@@ -1504,8 +1504,8 @@ void test_partial_conv2d_batchnorm_mean_variance_1(void)
                                                     bn_eps,
                                                     false);
 
-    output_shape = conv2d_layer.output_shape(0);
-    output_buffer_size = conv2d_layer.output_size(0);
+    output_shape = conv2d_layer.output_shape();
+    output_buffer_size = conv2d_layer.output_size();
     //=========================================================================
 
     // Allocate output buffer
@@ -1521,7 +1521,7 @@ void test_partial_conv2d_batchnorm_mean_variance_1(void)
 
     // Compute layer
     conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
-    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size(0));
+    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     //=========================================================================
     BufferT unpacked_output_tensor(packed_output_tensor.size());
@@ -1673,8 +1673,8 @@ void test_partial_conv2d_batchnorm_mean_variance_1_1s(void)
                                                     bn_eps,
                                                     false);
 
-    output_shape = conv2d_layer.output_shape(0);
-    output_buffer_size = conv2d_layer.output_size(0);
+    output_shape = conv2d_layer.output_shape();
+    output_buffer_size = conv2d_layer.output_size();
     //=========================================================================
 
     // Allocate output buffer
@@ -1690,7 +1690,7 @@ void test_partial_conv2d_batchnorm_mean_variance_1_1s(void)
 
     // Compute layer
     conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
-    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size(0));
+    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     //=========================================================================
     BufferT unpacked_output_tensor(packed_output_tensor.size());

@@ -12,6 +12,11 @@
 
 #define PARALLEL 1
 
+//#define DAG_DEBUG
+//#define BUFFER_DEBUG
+//#define DEBUG_LAYERS
+//#define SUMMARY 1
+
 #include <acutest.h>
 #include <stdlib.h>
 
@@ -22,11 +27,12 @@
 
 #include <small.h>
 #include <small/models/Resnet8Tiny.hpp>
+#include <small/models/Resnet8TinyDAG.hpp>
 #include <small/utils/Timer.hpp>
 
 #include "test_utils.hpp"
 
-#define RUNS 100
+#define RUNS 20
 
 std::string const data_dir("../test/regression_data");
 
@@ -191,10 +197,10 @@ void build_baseline_resnet8(uint32_t C_i,         // 128, 1, 1, 16(8), ...
     num_outputs = num_classes;
 
 #if SUMMARY == 1
-    printf("Layer num total: %d", layer_num_total);
-    for (auto i = 0; i < layer_num_total; i++)
+    printf("Layer num total: %ld", layer_num_total);
+    for (auto i = 0UL; i < layer_num_total; i++)
     {
-        printf("layer %d: ", i);
+        printf("layer %ld: ", i);
         printf(" input_dims: %d %d ", I_HEIGHT(i), I_WIDTH(i));
         for (auto j = 0; j < 10; j++)
         {
@@ -474,7 +480,7 @@ void test_resnet8(void)
     //======================================================
     small::Timer my_timer;
 
-    std::cerr << "Warm up run (ORIG)" << std::endl;
+    std::cerr << "\nWarm up run (ORIG)" << std::endl;
     my_timer.start();
     auto &output_dc =
         model_inference(layer_num_total, layer_params,
@@ -485,6 +491,9 @@ void test_resnet8(void)
                         inter_1_dc,
                         inter_2_dc);
     my_timer.stop();
+
+    // copy the output for comparison in subsequent runs.
+    BufferT output_answers(output_dc);
     printf("\nElapsed time: %lf ns.\n", my_timer.elapsed());
 
     //======================================================
@@ -494,9 +503,10 @@ void test_resnet8(void)
 
     for (int r = 0; r < RUNS; r++)
     {
+        std::cout << "Baseline run: " << r;
         my_timer.start();
 
-        //auto &output_dc =
+        auto &output_dc =
             model_inference(layer_num_total, layer_params,
                             intermediate_dims,
                             filter_buf_ptrs,
@@ -508,59 +518,188 @@ void test_resnet8(void)
         my_timer.stop();
         auto diff = my_timer.elapsed();
         small_timing.push_back(diff);
+        std::cout << ": " << diff << " ns.\n";
+
+        // Test that the answer stays the same through multiple invocations
+        bool passed = true;
+        for (size_t ix = 0; ix < num_outputs; ++ix)
+        {
+            bool same_value = (output_answers[ix] == output_dc[ix]);
+
+#if SUMMARY == 1
+            std::cout << (same_value ? "pass: " : "FAIL: ")
+                      << "baseline (first run), baseline output " << ix
+                      << ": " << (float)output_answers[ix]
+                      << " ?= " << (float)output_dc[ix]
+                      << std::endl;
+#endif
+            passed &= same_value;
+        }
+        TEST_CHECK(passed);
     }
 
     //************************************************************************
     // Model class
     //************************************************************************
-
-    small::shape_type input_shape({1UL, C_i, N, M});
-
-    small::Resnet8Tiny<BufferT> model(input_shape,
-                                      filter_buf_ptrs, true);
-
-    small::Tensor<BufferT> input_tensor({1, C_i, N, M}, input_dc);
-
-    //***********
-    auto output_tensors = model.inference({&input_tensor});
-    //***********
-
-    TEST_CHECK(1 == output_tensors.size());
-    std::cerr << "Output sizes: " << num_outputs << " ?= "
-              <<  output_tensors[0]->size() << std::endl;
-    TEST_CHECK(num_outputs == output_tensors[0]->size());
-
-    // Compare outputs
-    bool passed = true;
-    for (size_t ix = 0; ix < num_outputs; ++ix)
-    {
-        bool same_value = (output_dc[ix] == output_tensors[0]->buffer()[ix]);
-
-        std::cout << (same_value ? "pass: " : "FAIL: ")
-                  << "baseline, Model output " << ix
-                  << ": " << (float)output_dc[ix]
-                  << " ?= " << (float)output_tensors[0]->buffer()[ix]
-                  << std::endl;
-        passed &= same_value;
-    }
-    TEST_CHECK(passed);
-
-    //======================================================
-    // Timing runs
-    //======================================================
     std::vector<double> layer_timing;
-
-    for (int r = 0; r < RUNS; r++)
     {
-        my_timer.start();
+        small::shape_type input_shape({1UL, C_i, N, M});
+
+        small::Resnet8Tiny<BufferT> model(input_shape,
+                                          filter_buf_ptrs, true);
+
+        small::Tensor<BufferT> input_tensor(input_shape, input_dc);
 
         //***********
-        model.inference({&input_tensor});
+        std::cerr << "\nWarm up run (LAYERS)" << std::endl;
+        auto output_tensors = model.inference(&input_tensor);
+        BufferT output_buffer = output_tensors[0]->buffer();
         //***********
 
-        my_timer.stop();
-        auto diff = my_timer.elapsed();
-        layer_timing.push_back(diff);
+        TEST_CHECK(1 == output_tensors.size());
+        std::cerr << "Output sizes: " << num_outputs << " ?= "
+                  <<  output_tensors[0]->size() << std::endl;
+        TEST_CHECK(num_outputs == output_tensors[0]->size());
+
+        // Compare outputs
+        bool passed = true;
+        std::cout << "\nCHECK RESULTS: Num output elements: "
+                  << num_outputs << std::endl;
+
+        for (size_t ix = 0; ix < num_outputs; ++ix)
+        {
+            bool same_value = (output_answers[ix] == output_tensors[0]->buffer()[ix]);
+
+#if SUMMARY == 1
+            std::cout << (same_value ? "pass: " : "FAIL: ")
+                      << "baseline, Model output " << ix
+                      << ": " << (float)output_answers[ix]
+                      << " ?= " << (float)output_tensors[0]->buffer()[ix]
+                      << std::endl;
+#endif
+            passed &= same_value;
+        }
+        TEST_CHECK(passed);
+
+        //======================================================
+        // Timing runs
+        //======================================================
+
+        for (int r = 0; r < RUNS; r++)
+        {
+            std::cout << "Layers run: " << r;
+            my_timer.start();
+
+            //***********
+            auto output_tensors = model.inference(&input_tensor);
+            //***********
+
+            my_timer.stop();
+            auto diff = my_timer.elapsed();
+            layer_timing.push_back(diff);
+            std::cout << ": " << diff << " ns.\n";
+
+            // Test that the answer stays the same through multiple invocations
+            bool passed = true;
+            for (size_t ix = 0; ix < num_outputs; ++ix)
+            {
+                bool same_value =
+                    (output_answers[ix] == output_tensors[0]->buffer()[ix]);
+
+#if SUMMARY == 1
+                std::cout << (same_value ? "pass: " : "FAIL: ")
+                          << "baseline (first run), Model output " << ix
+                          << ": " << (float)output_answers[ix]
+                          << " ?= " << (float)output_tensors[0]->buffer()[ix]
+                          << std::endl;
+#endif
+                passed &= same_value;
+            }
+            TEST_CHECK(passed);
+        }
+    }
+
+    //************************************************************************
+    // DAGModel class
+    //************************************************************************
+    std::vector<double> dag_timing;
+    {
+        small::shape_type input_shape({1UL, C_i, N, M});
+
+        small::Resnet8TinyDAG<BufferT> model(input_shape,
+                                             filter_buf_ptrs, true);
+
+        small::Tensor<BufferT> input_tensor(input_shape, input_dc);
+
+        //***********
+        std::cerr << "\nWarm up run (DAG)" << std::endl;
+        auto output_tensors = model.inference(&input_tensor);
+        BufferT output_buffer = output_tensors[0]->buffer();
+        //***********
+
+        TEST_CHECK(1 == output_tensors.size());
+        std::cerr << "Output sizes: " << num_outputs << " ?= "
+                  <<  output_tensors[0]->size() << std::endl;
+        TEST_CHECK(num_outputs == output_tensors[0]->size());
+
+        // Compare outputs
+        bool passed = true;
+        std::cout << "\nCHECK RESULTS: Num output elements: "
+                  << num_outputs << std::endl;
+
+        for (size_t ix = 0; ix < num_outputs; ++ix)
+        {
+            bool same_value = almost_equal(output_answers[ix],
+                                           output_tensors[0]->buffer()[ix]);
+
+#if SUMMARY == 1
+            std::cout << (same_value ? "pass: " : "FAIL: ")
+                      << "baseline, Model output " << ix
+                      << ": " << (float)output_answers[ix]
+                      << " ?= " << (float)output_tensors[0]->buffer()[ix]
+                      << std::endl;
+#endif
+            passed &= same_value;
+        }
+        TEST_CHECK(passed);
+
+        //======================================================
+        // Timing runs
+        //======================================================
+
+        for (int r = 0; r < RUNS; r++)
+        {
+            std::cout << "DAG run: " << r;
+            my_timer.start();
+
+            //***********
+            auto output_tensors = model.inference(&input_tensor);
+            //***********
+
+            my_timer.stop();
+            auto diff = my_timer.elapsed();
+            dag_timing.push_back(diff);
+            std::cout << ": " << diff << " ns.\n";
+
+            // Test that the answer stays the same through multiple invocations
+            bool passed = true;
+            for (size_t ix = 0; ix < num_outputs; ++ix)
+            {
+                bool same_value =
+                    almost_equal(output_answers[ix],
+                                 output_tensors[0]->buffer()[ix]);
+
+#if SUMMARY == 1
+                std::cout << (same_value ? "pass: " : "FAIL: ")
+                          << "baseline (first run), Model output " << ix
+                          << ": " << (float)output_answers[ix]
+                          << " ?= " << (float)output_tensors[0]->buffer()[ix]
+                          << std::endl;
+#endif
+                passed &= same_value;
+            }
+            TEST_CHECK(passed);
+        }
     }
 
     int num_th = 1;
@@ -571,13 +710,17 @@ void test_resnet8(void)
         num_th = atoi(std::getenv("OMP_NUM_THREADS"));
     }
 #endif
+    std::cout << "\nSUMMARY STATS:" << std::endl;
     std::cout << "Num Threads: " << num_th << std::endl;
-    print_stats(small_timing, "\nSMaLL:resnet8 Baseline");
-    print_stats(layer_timing, "\nSMaLL:resnet8 Layers  ");
+    print_stats(small_timing, "SMaLL:resnet8 Baseline");
+    print_stats(layer_timing, "SMaLL:resnet8 Layers  ");
+    print_stats(dag_timing,   "SMaLL:resnet8 DAGModel");
 
     // clean up
     for (auto filter : filter_buf_ptrs)
+    {
         small::free_buffer(filter);
+    }
 }
 
 //****************************************************************************

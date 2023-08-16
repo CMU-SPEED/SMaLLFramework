@@ -98,32 +98,32 @@ public:
 
         // yolo_block = 0
         this->m_layers[layer_num++]->compute_output({input_tensor},
-                                                    {m_buffer_1}); // Conv2D+ReLU
+                                                    m_buffer_1); // Conv2D+ReLU
         // std::cout << "ReLU(Y): " << (*m_buffer_1).buffer()[0]
         //           << "\t" << (*m_buffer_1).buffer()[1]
         //           << "\t" << (*m_buffer_1).buffer()[2]
         //           << "\t" << (*m_buffer_1).buffer()[3]
         //           << std::endl;
         this->m_layers[layer_num++]->compute_output({m_buffer_1},
-                                                    {m_buffer_0}); // MaxPool2D
+                                                    m_buffer_0); // MaxPool2D
 
         for (size_t yolo_block = 1; yolo_block < m_num_yolo_blocks; ++yolo_block)
         {
             this->m_layers[layer_num++]->compute_output({m_buffer_0},
-                                                        {m_buffer_1}); // Conv2D+ReLU
+                                                        m_buffer_1); // Conv2D+ReLU
             // std::cout << "ReLU(Y): " << (*m_buffer_1).buffer()[0]
             //           << "\t" << (*m_buffer_1).buffer()[1]
             //           << "\t" << (*m_buffer_1).buffer()[2]
             //           << "\t" << (*m_buffer_1).buffer()[3]
             //           << std::endl;
             this->m_layers[layer_num++]->compute_output({m_buffer_1},
-                                                        {m_buffer_0}); // MaxPool2D
+                                                        m_buffer_0); // MaxPool2D
         }
 
         for (size_t conv_block = 0; conv_block < 3; ++conv_block)
         {
             this->m_layers[layer_num++]->compute_output({m_buffer_0},
-                                                        {m_buffer_1}); // Conv2D+ReLU
+                                                        m_buffer_1); // Conv2D+ReLU
             // std::cout << "ReLU(C): " << (*m_buffer_1).buffer()[0]
             //           << "\t" << (*m_buffer_1).buffer()[1]
             //           << "\t" << (*m_buffer_1).buffer()[2]
@@ -170,7 +170,7 @@ private:
                     *filters[filter_num], filters_are_packed,
                     RELU));
             max_elt_1 = std::max<size_t>(max_elt_1,
-                                         this->m_layers.back()->output_size(0));
+                                         this->m_layers.back()->output_size());
             ++filter_num;
 
             kernel_size = 2;
@@ -182,7 +182,7 @@ private:
                     stride,
                     small::PADDING_F)); /// @todo check
             max_elt_0 = std::max<size_t>(max_elt_0,
-                                         this->m_layers.back()->output_size(0));
+                                         this->m_layers.back()->output_size());
 
             input_shape = this->m_layers.back()->output_shape();
             output_channels = 2*output_channels;
@@ -203,7 +203,7 @@ private:
                 filters_are_packed,
                 RELU));
         max_elt_1 = std::max<size_t>(max_elt_1,
-                                     this->m_layers.back()->output_size(0));
+                                     this->m_layers.back()->output_size());
         ++filter_num;
 
         max_elt_0 = std::max<size_t>(max_elt_0, max_elt_1);  // for the swap
@@ -220,7 +220,7 @@ private:
                 filters_are_packed,
                 RELU));
         max_elt_1 = std::max<size_t>(max_elt_1,
-                                     this->m_layers.back()->output_size(0));
+                                     this->m_layers.back()->output_size());
         ++filter_num;
 
         max_elt_0 = std::max<size_t>(max_elt_0, max_elt_1);  // for the swap
@@ -239,7 +239,7 @@ private:
                 filters_are_packed,
                 RELU));
         max_elt_1 = std::max<size_t>(max_elt_1,
-                                     this->m_layers.back()->output_size(0));
+                                     this->m_layers.back()->output_size());
         ++filter_num;
 
         max_elt_0 = std::max<size_t>(max_elt_0, max_elt_1);  // for the swap

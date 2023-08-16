@@ -43,30 +43,30 @@ public:
 
     virtual void compute_output(
         std::vector<Tensor<BufferT> const *> input,
-        std::vector<Tensor<BufferT>*>        output) const
+        Tensor<BufferT>*                     output) const
     {
-        if ((input.size() != 1) || (input[0]->shape() != this->output_shape(0)))
+        if ((input.size() != 1) || (input[0]->shape() != this->output_shape()))
         {
             throw std::invalid_argument(
                 "ReLULayer::compute_output() ERROR: "
                 "incorrect input buffer shape.");
         }
 
-        if ((output.size() != 1) || (output[0]->capacity() < this->output_size(0)))
+        if (output->capacity() < this->output_size())
         {
             throw std::invalid_argument(
                 "ReLULayer::compute_output() ERROR: "
                 "insufficient output buffer space.");
         }
 
-        auto const &output_shape(this->output_shape(0));
+        auto const &output_shape(this->output_shape());
 
         small::ReLUActivation(output_shape[CHANNEL],
                               output_shape[HEIGHT], output_shape[WIDTH],
                               input[0]->buffer(),
-                              output[0]->buffer());
+                              output->buffer());
 
-        output[0]->set_shape(output_shape);
+        output->set_shape(output_shape);
     }
 };
 

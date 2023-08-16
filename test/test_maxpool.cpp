@@ -153,8 +153,8 @@ bool run_maxpool_layer_config(LayerParams const &params)
         std::move(packed_input_dc));
 
     // Read output regression data
-    auto output_shape(maxpool_layer.output_shape(0));
-    size_t output_buffer_size(maxpool_layer.output_size(0));
+    auto output_shape(maxpool_layer.output_shape());
+    size_t output_buffer_size(maxpool_layer.output_size());
 
     std::cerr << "Output image dims: "
               << output_shape[small::HEIGHT] << "x" << output_shape[small::WIDTH]

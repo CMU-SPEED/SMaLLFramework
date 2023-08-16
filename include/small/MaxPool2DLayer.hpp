@@ -69,14 +69,14 @@ public:
                  << "," << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
 #endif
 
-        this->set_output_shapes({output_shape});
+        this->set_output_shape(output_shape);
     }
 
     virtual ~MaxPool2DLayer() {}
 
     virtual void compute_output(
         std::vector<Tensor<BufferT> const *> input,
-        std::vector<Tensor<BufferT>*>        output) const
+        Tensor<BufferT>*                     output) const
     {
         if ((input.size() != 1) || (input[0]->shape() != m_input_shape))
         {
@@ -85,7 +85,7 @@ public:
                 "incorrect input buffer shape.");
         }
 
-        if ((output.size() != 1) || (output[0]->capacity() < this->output_size(0)))
+        if (output->capacity() < this->output_size())
         {
             throw std::invalid_argument(
                 "MaxPool2DLayer::compute_output ERROR: "
@@ -100,7 +100,7 @@ public:
                       m_input_shape[CHANNEL],
                       m_input_shape[HEIGHT], m_input_shape[WIDTH],
                       input[0]->buffer(),
-                      output[0]->buffer());
+                      output->buffer());
         }
         else
         {
@@ -110,10 +110,10 @@ public:
                            m_input_shape[CHANNEL],
                            m_input_shape[HEIGHT], m_input_shape[WIDTH],
                            input[0]->buffer(),
-                           output[0]->buffer());
+                           output->buffer());
         }
 
-        output[0]->set_shape(this->output_shape(0));
+        output->set_shape(this->output_shape());
     }
 
 private:
