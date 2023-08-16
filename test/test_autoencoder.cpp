@@ -183,7 +183,7 @@ BufferT &model_inference(
     BufferT        &inter_1_dc)
 {
     auto layer_num = 0;
-    small::Conv2D(1, 1,
+    small::Conv2D(1, 1, 1,
                   0, 0, 0, 0,
                   GROUP_C(layer_num), REDUCTION_C(layer_num),
                   1, 1,
@@ -198,7 +198,7 @@ BufferT &model_inference(
     for (uint32_t cur_layer = 1; cur_layer < layer_num_total; cur_layer++)
     {
         layer_num++;
-        small::Conv2D(1, 1,
+        small::Conv2D(1, 1, 1,
                       0, 0, 0, 0,
                       GROUP_C(layer_num), REDUCTION_C(layer_num),
                       1, 1,

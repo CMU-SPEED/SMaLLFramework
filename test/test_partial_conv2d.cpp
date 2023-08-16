@@ -58,7 +58,7 @@ void test_partial_conv2d(void)
     size_t input_size = params.C_i*params.H*params.W;
 
     small::PartialConv2DLayer<BufferT> conv2d_layer(input_shape,
-                                                    params.k,
+                                                    params.k, params.k,
                                                     params.s, params.p,
                                                     params.C_o,
                                                     filter_dc, false);
@@ -123,7 +123,7 @@ void test_partial_conv2d(void)
                       packed_output_tensor.size());
 
     // Compute layer
-    conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
+    conv2d_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
     TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     // Check answer
@@ -180,7 +180,7 @@ void test_partial_conv2d_1s(void)
     size_t input_size = params.C_i*params.H*params.W;
 
     small::PartialConv2DLayer<BufferT> conv2d_layer(input_shape,
-                                                    params.k,
+                                                    params.k, params.k,
                                                     params.s, params.p,
                                                     params.C_o,
                                                     filter_dc, false);
@@ -245,7 +245,7 @@ void test_partial_conv2d_1s(void)
                      packed_output_tensor.size());
 
     // Compute layer
-    conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
+    conv2d_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
     TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     // Check answer
@@ -310,7 +310,7 @@ void test_partial_conv2d_bias(void)
     size_t input_size = params.C_i*params.H*params.W;
 
     small::PartialConv2DLayer<BufferT> conv2d_layer(input_shape,
-                                                    params.k,
+                                                    params.k, params.k,
                                                     params.s, params.p,
                                                     params.C_o,
                                                     filter_dc, bias, false);
@@ -376,7 +376,7 @@ void test_partial_conv2d_bias(void)
                       packed_output_tensor.size());
 
     // Compute layer
-    conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
+    conv2d_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
     TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     // Check answer
@@ -441,7 +441,7 @@ void test_partial_conv2d_bias_1s(void)
     size_t input_size = params.C_i*params.H*params.W;
 
     small::PartialConv2DLayer<BufferT> conv2d_layer(input_shape,
-                                                    params.k,
+                                                    params.k, params.k,
                                                     params.s, params.p,
                                                     params.C_o,
                                                     filter_dc, bias, false);
@@ -507,7 +507,7 @@ void test_partial_conv2d_bias_1s(void)
                      packed_output_tensor.size());
 
     // Compute layer
-    conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
+    conv2d_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
     TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     // Check answer
@@ -577,7 +577,7 @@ void test_partial_conv2d_batchnorm_identity(void)
     size_t input_size = params.C_i*params.H*params.W;
 
     small::PartialConv2DLayer<BufferT> conv2d_layer(input_shape,
-                                                    params.k,
+                                                    params.k, params.k,
                                                     params.s, params.p,
                                                     params.C_o,
                                                     filter_dc,
@@ -648,7 +648,7 @@ void test_partial_conv2d_batchnorm_identity(void)
                       packed_output_tensor.size());
 
     // Compute layer
-    conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
+    conv2d_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
     TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     // Check answer
@@ -718,7 +718,7 @@ void test_partial_conv2d_batchnorm_identity_1s(void)
     size_t input_size = params.C_i*params.H*params.W;
 
     small::PartialConv2DLayer<BufferT> conv2d_layer(input_shape,
-                                                    params.k,
+                                                    params.k, params.k,
                                                     params.s, params.p,
                                                     params.C_o,
                                                     filter_dc,
@@ -789,7 +789,7 @@ void test_partial_conv2d_batchnorm_identity_1s(void)
                      packed_output_tensor.size());
 
     // Compute layer
-    conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
+    conv2d_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
     TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     // Check answer
@@ -860,7 +860,7 @@ void test_partial_conv2d_batchnorm_bias_1(void)
     size_t input_size = params.C_i*params.H*params.W;
 
     small::PartialConv2DLayer<BufferT> conv2d_layer(input_shape,
-                                                    params.k,
+                                                    params.k, params.k,
                                                     params.s, params.p,
                                                     params.C_o,
                                                     filter_dc,
@@ -931,7 +931,7 @@ void test_partial_conv2d_batchnorm_bias_1(void)
                       packed_output_tensor.size());
 
     // Compute layer
-    conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
+    conv2d_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
     TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     // Check answer
@@ -1002,7 +1002,7 @@ void test_partial_conv2d_batchnorm_bias_1_1s(void)
     size_t input_size = params.C_i*params.H*params.W;
 
     small::PartialConv2DLayer<BufferT> conv2d_layer(input_shape,
-                                                    params.k,
+                                                    params.k, params.k,
                                                     params.s, params.p,
                                                     params.C_o,
                                                     filter_dc,
@@ -1073,7 +1073,7 @@ void test_partial_conv2d_batchnorm_bias_1_1s(void)
                      packed_output_tensor.size());
 
     // Compute layer
-    conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
+    conv2d_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
     TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     // Check answer
@@ -1144,7 +1144,7 @@ void test_partial_conv2d_batchnorm_mean_1(void)
     size_t input_size = params.C_i*params.H*params.W;
 
     small::PartialConv2DLayer<BufferT> conv2d_layer(input_shape,
-                                                    params.k,
+                                                    params.k, params.k,
                                                     params.s, params.p,
                                                     params.C_o,
                                                     filter_dc,
@@ -1215,7 +1215,7 @@ void test_partial_conv2d_batchnorm_mean_1(void)
                       packed_output_tensor.size());
 
     // Compute layer
-    conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
+    conv2d_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
     TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     // Check answer
@@ -1290,7 +1290,7 @@ void test_partial_conv2d_batchnorm_mean_1_1s(void)
     size_t input_size = params.C_i*params.H*params.W;
 
     small::PartialConv2DLayer<BufferT> conv2d_layer(input_shape,
-                                                    params.k,
+                                                    params.k, params.k,
                                                     params.s, params.p,
                                                     params.C_o,
                                                     filter_dc,
@@ -1361,7 +1361,7 @@ void test_partial_conv2d_batchnorm_mean_1_1s(void)
                      packed_output_tensor.size());
 
     // Compute layer
-    conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
+    conv2d_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
     TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     // Check answer
@@ -1494,7 +1494,7 @@ void test_partial_conv2d_batchnorm_mean_variance_1(void)
     }
 
     small::PartialConv2DLayer<BufferT> conv2d_layer(input_shape,
-                                                    params.k,
+                                                    params.k, params.k,
                                                     params.s, params.p,
                                                     params.C_o,
                                                     filter_dc,
@@ -1520,7 +1520,7 @@ void test_partial_conv2d_batchnorm_mean_variance_1(void)
                       packed_output_tensor.size());
 
     // Compute layer
-    conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
+    conv2d_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
     TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     //=========================================================================
@@ -1663,7 +1663,7 @@ void test_partial_conv2d_batchnorm_mean_variance_1_1s(void)
     }
 
     small::PartialConv2DLayer<BufferT> conv2d_layer(input_shape,
-                                                    params.k,
+                                                    params.k, params.k,
                                                     params.s, params.p,
                                                     params.C_o,
                                                     filter_dc,
@@ -1689,7 +1689,7 @@ void test_partial_conv2d_batchnorm_mean_variance_1_1s(void)
                      packed_output_tensor.size());
 
     // Compute layer
-    conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
+    conv2d_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
     TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     //=========================================================================

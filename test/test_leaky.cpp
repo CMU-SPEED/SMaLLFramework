@@ -307,7 +307,7 @@ void test_leaky_large_tile(void)
 //                                                 std::move(packed_output_dc));
 
 //     // Compute layer
-//     leaky_layer.compute_output(packed_input_tensor, packed_output_tensor);
+//     leaky_layer.compute_output({packed_input_tensor}, packed_output_tensor);
 
 //     // Check answer
 //     bool passing = true;
@@ -488,12 +488,12 @@ void measure_leaky_performance(void)
             double max_t = 0.;
 
             // Warm up
-            leaky_layer.compute_output({&input_dc}, {&output_dc});
+            leaky_layer.compute_output({&input_dc}, &output_dc);
 
             for (size_t iy = 0; iy < num_runs; ++iy)
             {
                 t.start();
-                leaky_layer.compute_output({&input_dc}, {&output_dc});
+                leaky_layer.compute_output({&input_dc}, &output_dc);
                 t.stop();
                 double ts = t.elapsed();
                 tx += ts;

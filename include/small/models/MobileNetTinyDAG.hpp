@@ -168,7 +168,7 @@ private:
 
             prev = new small::DepthwiseConv2DLayer<BufferT>(
                 prev->output_shape(),
-                kernel_size, block_strides[block_num],
+                kernel_size, kernel_size, block_strides[block_num],
                 small::PADDING_F,
                 *filters[filter_num++],
                 filters_are_packed,

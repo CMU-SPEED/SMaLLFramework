@@ -241,7 +241,7 @@ inline void dscnn_block(
     BufferT       &O_intermediate,
     BufferT       &O)
 {
-    small::DepthwiseConv2D(kernel_size, stride,
+    small::DepthwiseConv2D(kernel_size, kernel_size, stride,
                            t_pad, b_pad, l_pad, r_pad,
                            input_channels,
                            in_dims[1], in_dims[0],
@@ -255,7 +255,7 @@ inline void dscnn_block(
     small::ReLUActivation(input_channels,
                           o_h, o_w,
                           O_intermediate, O_intermediate);
-    small::Conv2D(1, 1,
+    small::Conv2D(1, 1, 1,
                   0, 0, 0, 0,
                   output_channels, input_channels,
                   o_h, o_w,
@@ -276,7 +276,7 @@ BufferT &model_inference(
 {
     auto layer_num = 0;
     int num_filters = layer_num_total - 1;
-    small::Conv2D_rect(
+    small::Conv2D(
         REDUCTION_H(layer_num), REDUCTION_W(layer_num),
         STRIDE(layer_num), PADDING(layer_num),
         GROUP_C(layer_num), REDUCTION_C(layer_num),
@@ -309,15 +309,15 @@ BufferT &model_inference(
     }
 
     /// @todo WARNING quantized version has "layer_num = layer_num_total - 2;"
-    small::MaxPool2D_rect(REDUCTION_H(layer_num), REDUCTION_W(layer_num),
-                          STRIDE(layer_num), PADDING(layer_num),
-                          GROUPS(layer_num),
-                          I_HEIGHT(layer_num), I_WIDTH(layer_num),
-                          inter_0_dc,
-                          inter_1_dc);
+    small::MaxPool2D(REDUCTION_H(layer_num), REDUCTION_W(layer_num),
+                     STRIDE(layer_num), PADDING(layer_num),
+                     GROUPS(layer_num),
+                     I_HEIGHT(layer_num), I_WIDTH(layer_num),
+                     inter_0_dc,
+                     inter_1_dc);
 
     layer_num++;
-    small::Conv2D(1, 1,
+    small::Conv2D(1, 1, 1,
                   0, 0, 0, 0,
                   GROUP_C(layer_num), REDUCTION_C(layer_num),
                   1, 1,

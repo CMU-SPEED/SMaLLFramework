@@ -289,7 +289,7 @@ bool run_relu_layer_config(LayerParams const &params)
                                                 std::move(packed_output_dc));
 
     // Compute layer
-    relu_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
+    relu_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
 
     // Check answer
     bool passing = true;
@@ -472,12 +472,12 @@ void measure_relu_performance(void)
             double max_t = 0.;
 
             // Warm up
-            relu_layer.compute_output({&input_dc}, {&output_dc});
+            relu_layer.compute_output({&input_dc}, &output_dc);
 
             for (size_t iy = 0; iy < num_runs; ++iy)
             {
                 t.start();
-                relu_layer.compute_output({&input_dc}, {&output_dc});
+                relu_layer.compute_output({&input_dc}, &output_dc);
                 t.stop();
                 double ts = t.elapsed();
                 tx += ts;

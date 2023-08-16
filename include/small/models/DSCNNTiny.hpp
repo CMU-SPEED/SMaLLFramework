@@ -147,7 +147,7 @@ private:
             kernel_size = 3;
             prev = new small::DepthwiseConv2DLayer<BufferT>(
                 prev->output_shape(),
-                kernel_size, stride, small::PADDING_F,
+                kernel_size, kernel_size, stride, small::PADDING_F,
                 *filters[filter_num], filters_are_packed,
                 RELU);
             this->m_layers.push_back(prev);

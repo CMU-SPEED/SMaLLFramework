@@ -107,10 +107,10 @@ bool run_conv2d_rect_config(LayerParams const &params)
     }
 
     // Compute layer
-    small::Conv2D_rect(params.k, params.k, params.s,
-                       t_pad, b_pad, l_pad, r_pad,
-                       params.C_o, params.C_i, params.H, params.W,
-                       packed_input_dc, packed_filter_dc, packed_output_dc);
+    small::Conv2D(params.k, params.k, params.s,
+                  t_pad, b_pad, l_pad, r_pad,
+                  params.C_o, params.C_i, params.H, params.W,
+                  packed_input_dc, packed_filter_dc, packed_output_dc);
 
     // Check answer
     bool passing = true;
@@ -125,7 +125,7 @@ bool run_conv2d_rect_config(LayerParams const &params)
         {
             passing = false;
 
-            std::cout << "FAIL: Conv2D_rect_out(" << ix << ")-->"
+            std::cout << "FAIL: Conv2D_out(" << ix << ")-->"
                       << std::setw(12) << std::setprecision(10)
                       << packed_output_dc[ix] << "(computed) != "
                       << std::setw(12) << std::setprecision(10)
@@ -263,16 +263,16 @@ void measure_conv2d_rect_performance(void)
             double max_t = 0.;
 
             // Warmup
-            small::Conv2D_rect(p.k, p.k, p.s, t_pad, b_pad, l_pad, r_pad,
-                               p.C_o, p.C_i, p.H, p.W,
-                               input_dc, filter_dc, output_dc);
+            small::Conv2D(p.k, p.k, p.s, t_pad, b_pad, l_pad, r_pad,
+                          p.C_o, p.C_i, p.H, p.W,
+                          input_dc, filter_dc, output_dc);
 
             for (size_t iy = 0; iy < num_runs; ++iy)
             {
                 t.start();
-                small::Conv2D_rect(p.k, p.k, p.s, t_pad, b_pad, l_pad, r_pad,
-                                   p.C_o, p.C_i, p.H, p.W,
-                                   input_dc, filter_dc, output_dc);
+                small::Conv2D(p.k, p.k, p.s, t_pad, b_pad, l_pad, r_pad,
+                              p.C_o, p.C_i, p.H, p.W,
+                              input_dc, filter_dc, output_dc);
                 t.stop();
                 double ts = t.elapsed();
                 tx += ts;

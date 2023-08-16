@@ -182,7 +182,7 @@ void test_conv2d_layer_odd_output_channels(void)
         small::Tensor<BufferT>  input(input_shape);
         small::Tensor<BufferT> output(conv2d.output_size());
 
-        conv2d.compute_output({&input}, {&output});
+        conv2d.compute_output({&input}, &output);
         for (size_t co = params.C_o;
              co < conv2d.output_shape()[small::CHANNEL]; ++co)
         {
@@ -307,7 +307,7 @@ void test_conv2d_bias(void)
                                                 std::move(packed_output_dc));
 
     // Compute layer
-    conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
+    conv2d_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
     TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     // Check answer
@@ -445,7 +445,7 @@ void test_conv2d_batchnorm_identity(void)
                                                 std::move(packed_output_dc));
 
     // Compute layer
-    conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
+    conv2d_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
     TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     // Check answer
@@ -584,7 +584,7 @@ void test_conv2d_batchnorm_bias_1(void)
                                                 std::move(packed_output_dc));
 
     // Compute layer
-    conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
+    conv2d_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
     TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     // Check answer
@@ -723,7 +723,7 @@ void test_conv2d_batchnorm_mean_1(void)
                                                 std::move(packed_output_dc));
 
     // Compute layer
-    conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
+    conv2d_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
     TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     // Check answer
@@ -880,7 +880,7 @@ void test_conv2d_batchnorm_mean_variance_1(void)
                                                 std::move(packed_output_dc));
 
     // Compute layer
-    conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
+    conv2d_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
     TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     //=========================================================================
@@ -1014,7 +1014,7 @@ void test_conv2d_batchnorm(void) {
     );
 
     small::Tensor<BufferT> output_tensor_ans(output_shape);
-    conv.compute_output({&input_tensor}, {&output_tensor_ans});
+    conv.compute_output({&input_tensor}, &output_tensor_ans);
 
     small::Tensor<BufferT> output_tensor_ans_unpacked(output_shape);
     small::unpack_buffer(output_tensor_ans.buffer(), small::OUTPUT,
@@ -1134,7 +1134,7 @@ bool run_conv2d_config(LayerParams const &params)
     }
 
     // Compute layer
-    small::Conv2D(params.k, params.s,
+    small::Conv2D(params.k, params.k, params.s,
                   t_pad, b_pad, l_pad, r_pad,
                   params.C_o, params.C_i, params.H, params.W,
                   packed_input_dc, packed_filter_dc, packed_output_dc);
@@ -1249,7 +1249,7 @@ bool run_conv2d_layer_config(LayerParams const &params)
                                                 std::move(packed_output_dc));
 
     // Compute layer
-    conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
+    conv2d_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
     TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     // Check answer
@@ -1458,14 +1458,14 @@ void measure_conv2d_performance(void)
             double max_t = 0.;
 
             // Warmup
-            small::Conv2D(p.k, p.s, t_pad, b_pad, l_pad, r_pad,
+            small::Conv2D(p.k, p.k, p.s, t_pad, b_pad, l_pad, r_pad,
                           p.C_o, p.C_i, p.H, p.W,
                           input_dc, filter_dc, output_dc);
 
             for (size_t iy = 0; iy < num_runs; ++iy)
             {
                 t.start();
-                small::Conv2D(p.k, p.s, t_pad, b_pad, l_pad, r_pad,
+                small::Conv2D(p.k, p.k, p.s, t_pad, b_pad, l_pad, r_pad,
                               p.C_o, p.C_i, p.H, p.W,
                               input_dc, filter_dc, output_dc);
                 t.stop();
@@ -1525,12 +1525,12 @@ void measure_conv2d_performance(void)
             double max_t = 0.;
 
             // Warm up
-            conv2d_layer.compute_output({&input_dc}, {&output_dc});
+            conv2d_layer.compute_output({&input_dc}, &output_dc);
 
             for (size_t iy = 0; iy < num_runs; ++iy)
             {
                 t.start();
-                conv2d_layer.compute_output({&input_dc}, {&output_dc});
+                conv2d_layer.compute_output({&input_dc}, &output_dc);
                 t.stop();
                 double ts = t.elapsed();
                 tx += ts;

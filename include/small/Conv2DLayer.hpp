@@ -353,8 +353,8 @@ Conv2DLayer<BufferT>::Conv2DLayer(
 {
 #if defined(DEBUG_LAYERS)
     std::cerr << "Conv2D(batches:" << m_input_shape[BATCH]
-              << ",k:" << kernel_height << "x" << kernel_width
-              << ",s:" << stride
+              << ",k:" << m_kernel_height << "x" << m_kernel_width
+              << ",s:" << m_stride
               << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
               << ",ichans:" << m_input_shape[CHANNEL]
               << ",ochans:" << num_output_channels
@@ -385,8 +385,8 @@ Conv2DLayer<BufferT>::Conv2DLayer(
 
     m_leaky_slope[0] = leaky_slope;
     compute_padding_output_shape(input_shape,
-                                 kernel_height, kernel_width,
-                                 stride,
+                                 m_kernel_height, m_kernel_width,
+                                 m_stride,
                                  padding_type,
                                  num_output_channels);
 
@@ -452,8 +452,8 @@ Conv2DLayer<BufferT>::Conv2DLayer(
 {
 #if defined(DEBUG_LAYERS)
     std::cerr << "Conv2D(batches:" << m_input_shape[BATCH]
-              << ",k:" << kernel_height << "x" << kernel_width
-              << ",s:" << stride
+              << ",k:" << m_kernel_height << "x" << m_kernel_width
+              << ",s:" << m_stride
               << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
               << ",ichans:" << m_input_shape[CHANNEL]
               << ",ochans:" << num_output_channels
@@ -485,8 +485,8 @@ Conv2DLayer<BufferT>::Conv2DLayer(
 
     m_leaky_slope[0] = leaky_slope;
     compute_padding_output_shape(input_shape,
-                                 kernel_height, kernel_width,
-                                 stride,
+                                 m_kernel_height, m_kernel_width,
+                                 m_stride,
                                  padding_type,
                                  num_output_channels);
 
@@ -558,8 +558,8 @@ Conv2DLayer<BufferT>::Conv2DLayer(
 {
 #if defined(DEBUG_LAYERS)
     std::cerr << "Conv2D(batches:" << m_input_shape[BATCH]
-              << ",k:" << kernel_height << "x" << kernel_width
-              << ",s:" << stride
+              << ",k:" << m_kernel_height << "x" << m_kernel_width
+              << ",s:" << m_stride
               << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
               << ",ichans:" << m_input_shape[CHANNEL]
               << ",ochans:" << num_output_channels
@@ -596,8 +596,8 @@ Conv2DLayer<BufferT>::Conv2DLayer(
 
     m_leaky_slope[0] = leaky_slope;
     compute_padding_output_shape(input_shape,
-                                 kernel_height, kernel_width,
-                                 stride,
+                                 m_kernel_height, m_kernel_width,
+                                 m_stride,
                                  padding_type,
                                  num_output_channels);
 
@@ -659,67 +659,34 @@ void Conv2DLayer<BufferT>::compute_output(
 
     auto& output_shape(this->output_shape());
 
-    if (m_kernel_width == m_kernel_height)
+    if (m_packed_bias.size() == output_shape[CHANNEL])
     {
-        if (m_packed_bias.size() == output_shape[CHANNEL])
-        {
-            small::Bias(output_shape[CHANNEL],
-                        output_shape[HEIGHT],
-                        output_shape[WIDTH],
-                        m_packed_bias, output->buffer());
-            small::PartialConv2D(m_kernel_width, m_stride,
-                                 m_t_pad, m_b_pad, m_l_pad, m_r_pad,
-                                 output_shape[CHANNEL],
-                                 m_input_shape[CHANNEL],
-                                 m_input_shape[HEIGHT],
-                                 m_input_shape[WIDTH],
-                                 input[0]->buffer(),
-                                 m_packed_filters,
-                                 output->buffer());
-        }
-        else
-        {
-            Conv2D(m_kernel_width, m_stride,
-                   m_t_pad, m_b_pad, m_l_pad, m_r_pad,
-                   output_shape[CHANNEL],
-                   m_input_shape[CHANNEL],
-                   m_input_shape[HEIGHT], m_input_shape[WIDTH],
-                   input[0]->buffer(),
-                   m_packed_filters,
-                   output->buffer());
-        }
+        small::Bias(output_shape[CHANNEL],
+                    output_shape[HEIGHT],
+                    output_shape[WIDTH],
+                    m_packed_bias, output->buffer());
+        small::PartialConv2D(m_kernel_height, m_kernel_width, m_stride,
+                             m_t_pad, m_b_pad, m_l_pad, m_r_pad,
+                             output_shape[CHANNEL],
+                             m_input_shape[CHANNEL],
+                             m_input_shape[HEIGHT],
+                             m_input_shape[WIDTH],
+                             input[0]->buffer(),
+                             m_packed_filters,
+                             output->buffer());
     }
     else
     {
-        Conv2D_rect(m_kernel_height, m_kernel_width, m_stride,
-                    m_t_pad, m_b_pad, m_l_pad, m_r_pad,
-                    output_shape[CHANNEL],
-                    m_input_shape[CHANNEL],
-                    m_input_shape[HEIGHT], m_input_shape[WIDTH],
-                    input[0]->buffer(),
-                    m_packed_filters,
-                    output->buffer());
-
-        // HACK: placeholder for bias term
-        if (m_packed_bias.size() == output_shape[CHANNEL])
-        {
-            for (size_t Co = 0; Co < output_shape[CHANNEL]; ++Co)
-            {
-                for (size_t h = 0; h < output_shape[HEIGHT]; ++h)
-                {
-                    for (size_t w = 0; w < output_shape[WIDTH]; ++w)
-                    {
-                        size_t idx = packed_buffer_index(output_shape[CHANNEL],
-                                                         output_shape[HEIGHT],
-                                                         output_shape[WIDTH],
-                                                         BufferT::C_ob,
-                                                         Co, h, w);
-                        output->buffer()[idx] += m_packed_bias[Co];
-                    }
-                }
-            }
-        }
+        small::Conv2D(m_kernel_height, m_kernel_width, m_stride,
+                      m_t_pad, m_b_pad, m_l_pad, m_r_pad,
+                      output_shape[CHANNEL],
+                      m_input_shape[CHANNEL],
+                      m_input_shape[HEIGHT], m_input_shape[WIDTH],
+                      input[0]->buffer(),
+                      m_packed_filters,
+                      output->buffer());
     }
+
     output->set_shape(output_shape);
 
     if (m_activation_type == RELU)
