@@ -24,7 +24,7 @@ jobs:
             mkdir /SMaLLFramework/build;
             cd /SMaLLFramework/build;
             cmake .. -DCMAKE_UARCH=ARM; 
-            cmake --build . -j;
+            cmake --build . -j1;
             ctest --rerun-failed --output-on-failure;
 
     
