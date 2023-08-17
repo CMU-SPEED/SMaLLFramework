@@ -2,8 +2,8 @@ name: Test ARM Build
 
 on: [push]
 
-env:
-  ACTIONS_RUNNER_DEBUG: true
+#env:
+#  ACTIONS_RUNNER_DEBUG: true
   
 jobs:
   build-and-test:
