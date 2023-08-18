@@ -17,6 +17,14 @@
 #include <stdexcept>
 #include <type_traits>
 
+//#define RECORD_CALLS
+
+#if defined(RECORD_CALLS)
+#include <iostream>
+#endif
+
+//****************************************************************************
+
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
 #include <small/abstract_layer.hpp>   /// @todo abstract_layer_float.hpp
 #endif
@@ -25,10 +33,8 @@
 #include <small/q_abstract_layer.hpp> /// @todo abstract_layer_quint8.hpp
 #endif
 
-//#define RECORD_CALLS
-
-#if defined(RECORD_CALLS)
-#include <iostream>
+#if defined(SMALL_HAS_CUDA_DOUBLE_SUPPORT)
+#include <small/cuda_layer.hpp>
 #endif
 
 /// @todo Consider replacing exceptions with debug asserts
