@@ -9,14 +9,14 @@ jobs:
   build-and-test:
 
     # The host should always be Linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
 
     steps:
       - uses: actions/checkout@v3
       - uses: uraimo/run-on-arch-action@v2
         id: runcmd
         with:
-          arch: armv7
+          arch: aarch64
           distro: ubuntu18.04
 
           # Not required, but speeds up builds by storing container images in
