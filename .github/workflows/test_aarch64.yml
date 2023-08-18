@@ -1,15 +1,15 @@
 name: Test aarch64 Build
 
-on: 
-  push:
-    paths:
-      - ./benchmark/**
-      - ./demo/**
-      - ./include/**
-      - ./lib/**
-      - ./test/**
-      - ./*
-      - ./.github/workflows/test_aarch64.yml
+on: [push]
+  # push:
+    # paths:
+    #   - ./benchmark/**
+    #   - ./demo/**
+    #   - ./include/**
+    #   - ./lib/**
+    #   - ./test/**
+    #   - ./*
+    #   - ./.github/workflows/test_aarch64.yml
 
 
 #env:
@@ -37,6 +37,7 @@ jobs:
           run: 
             apt-get update;
             apt-get install -y build-essential cmake;
+            echo ${{github.workspace}}
             mkdir ${{github.workspace}}/build;
             cd ${{github.workspace}}/build;
             cmake ${{github.workspace}} -DCMAKE_UARCH=REF; 
