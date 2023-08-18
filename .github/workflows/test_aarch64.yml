@@ -9,7 +9,7 @@ jobs:
   build-and-test:
 
     # The host should always be Linux
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3
@@ -17,7 +17,7 @@ jobs:
         id: runcmd
         with:
           arch: aarch64
-          distro: ubuntu18.04
+          distro: ubuntu_latest
 
           # Not required, but speeds up builds by storing container images in
           # a GitHub package registry.
