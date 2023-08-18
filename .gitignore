@@ -13,3 +13,7 @@ torch_*
 seq_torch_*
 .vscode/
 Results/
+*.so
+*.onnx
+*.mlir
+*.o
