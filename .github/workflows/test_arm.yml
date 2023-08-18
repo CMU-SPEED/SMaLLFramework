@@ -26,8 +26,3 @@ jobs:
             cmake .. -DCMAKE_UARCH=ARM; 
             cmake --build . -j;
             ctest --rerun-failed --output-on-failure;
-
-    
-      
-  
-  
