@@ -37,7 +37,9 @@ jobs:
           run: 
             apt-get update;
             apt-get install -y build-essential cmake;
-            echo ${{github.workspace}}
+            echo ${{github.workspace}};
+            echo "\n";
+            ls -al;
             mkdir ${{github.workspace}}/build;
             cd ${{github.workspace}}/build;
             cmake ${{github.workspace}} -DCMAKE_UARCH=REF; 
