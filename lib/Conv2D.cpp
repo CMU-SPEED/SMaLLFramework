@@ -95,6 +95,74 @@ small::Tensor<small::FloatBuffer> omtensor_to_smalltensor_unpacked(
     return small_tensor;
 }
 
+// //****************************************************************************
+void Conv2D(
+    OMTensor *output, 
+    OMTensor *input, 
+    OMTensor *filter
+){
+
+    // #ifdef WRAPPER_DEBUG
+    // printf("Entering Conv2D SMaLL wrapper\n");
+    // #endif
+
+    #ifdef WRAPPER_DEBUG
+    printf("Packing input\n");
+    #endif
+    
+    // small::Tensor<small::FloatBuffer> input_small = omtensor_to_smalltensor(input, small::INPUT);
+    small::Tensor<small::FloatBuffer> input_small({1,3,416,416});
+    // print_tensor(input_small);
+    size_t ci = input_small.shape()[1];
+    size_t h = input_small.shape()[2];
+    size_t w = input_small.shape()[3];
+
+    #ifdef WRAPPER_DEBUG
+    printf("Packing filter\n");
+    #endif
+
+    // small::Tensor<small::FloatBuffer> filter_small = omtensor_to_smalltensor(filter, small::FILTER_CONV);
+    small::Tensor<small::FloatBuffer> filter_small({64,3,3,3});
+    size_t co = filter_small.shape()[0];
+    size_t k = filter_small.shape()[2];
+
+    small::Tensor<small::FloatBuffer> output_small({1U, co, h, w});
+
+    #ifdef WRAPPER_DEBUG
+    printf("Running Conv2D\n");
+    #endif
+
+    small::Conv2DLayer<small::FloatBuffer> conv2d(
+        input_small.shape(),
+        k, k, 
+        1, 
+        small::PADDING_F,
+        co,
+        filter_small.buffer()
+    );
+
+    conv2d.compute_output({&input_small}, {&output_small});
+
+    #ifdef WRAPPER_DEBUG
+    printf("Copying output\n");
+    #endif
+
+    small::convert_dc2tensor(
+        output_small.buffer().data(),
+        small::INPUT,
+        1, co, h, w,
+        C_ib, C_ob,
+        (float*)omTensorGetDataPtr(output)
+    );
+
+    // memcpy(
+    //     omTensorGetDataPtr(output),
+    //     &output_small.buffer()[0],
+    //     output_small.capacity()
+    // );
+
+}
+
 //****************************************************************************
 // void Conv2D(
 //     OMTensor *output, 
@@ -102,102 +170,36 @@ small::Tensor<small::FloatBuffer> omtensor_to_smalltensor_unpacked(
 //     OMTensor *filter, OMTensor *bias
 // ){
 
-//     #ifdef WRAPPER_DEBUG
-//     printf("Entering Conv2D SMaLL wrapper\n");
-//     #endif
-
-//     #ifdef WRAPPER_DEBUG
-//     printf("Packing input\n");
-//     #endif
+//     const int64_t *shape;
+//     shape = omTensorGetShape(input);
+//     int64_t ci = shape[1];
+//     int64_t h = shape[2];
+//     int64_t w = shape[3];
     
-//     small::Tensor<small::FloatBuffer> input_small = omtensor_to_smalltensor(input, small::INPUT);
-//     // print_tensor(input_small);
-//     size_t ci = input_small.shape()[1];
-//     size_t h = input_small.shape()[2];
-//     size_t w = input_small.shape()[3];
+//     shape = omTensorGetShape(filter);
+//     int64_t co = shape[0];
+//     int64_t k = shape[2];
 
-//     #ifdef WRAPPER_DEBUG
-//     printf("Packing filter\n");
-//     #endif
+//     size_t input_elems = omTensorGetNumElems(input);
+//     size_t filter_elems = omTensorGetNumElems(filter);
+//     size_t output_elems = omTensorGetNumElems(output);
 
-//     small::Tensor<small::FloatBuffer> filter_small = omtensor_to_smalltensor(filter, small::FILTER_CONV);
-//     size_t co = filter_small.shape()[0];
-//     size_t k = filter_small.shape()[2];
+//     small::FloatBuffer input_buf(input_elems);
+//     small::FloatBuffer filter_buf(filter_elems);
+//     small::FloatBuffer output_buf(output_elems);
 
-//     small::Tensor<small::FloatBuffer> output_small({1U, co, h, w});
-
-//     #ifdef WRAPPER_DEBUG
-//     printf("Running Conv2D\n");
-//     #endif
-
-//     small::Conv2DLayer<small::FloatBuffer> conv2d(
-//         input_small.shape(),
-//         k, k, 
-//         1, 
-//         small::PADDING_F,
+//     small::Conv2D<small::FloatBuffer>(
+//         3, 1,
+//         1, 1, 1, 1,
 //         co,
-//         filter_small.buffer()
-//     );
-
-//     conv2d.compute_output({&input_small}, {&output_small});
-
-//     #ifdef WRAPPER_DEBUG
-//     printf("Copying output\n");
-//     #endif
-
-//     // small::convert_dc2tensor(
-//     //     output_small.buffer().data(),
-//     //     small::INPUT,
-//     //     1, co, h, w,
-//     //     C_ib, C_ob,
-//     //     (float*)omTensorGetDataPtr(output)
-//     // );
-
-//     memcpy(
-//         omTensorGetDataPtr(output),
-//         &output_small.buffer()[0],
-//         output_small.capacity()
+//         ci,
+//         h, w,
+//         input_buf,
+//         filter_buf,
+//         output_buf
 //     );
 
 // }
-
-//****************************************************************************
-void Conv2D(
-    OMTensor *output, 
-    OMTensor *input, 
-    OMTensor *filter, OMTensor *bias
-){
-
-    const int64_t *shape;
-    shape = omTensorGetShape(input);
-    int64_t ci = shape[1];
-    int64_t h = shape[2];
-    int64_t w = shape[3];
-    
-    shape = omTensorGetShape(filter);
-    int64_t co = shape[0];
-    int64_t k = shape[2];
-
-    size_t input_elems = omTensorGetNumElems(input);
-    size_t filter_elems = omTensorGetNumElems(filter);
-    size_t output_elems = omTensorGetNumElems(output);
-
-    small::FloatBuffer input_buf(input_elems);
-    small::FloatBuffer filter_buf(filter_elems);
-    small::FloatBuffer output_buf(output_elems);
-
-    small::Conv2D<small::FloatBuffer>(
-        3, 1,
-        0, 1, 0, 1,
-        co,
-        ci,
-        h, w,
-        input_buf,
-        filter_buf,
-        output_buf
-    );
-
-}
 
 //****************************************************************************
 void Conv2D_unpacked(

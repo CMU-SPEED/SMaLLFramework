@@ -19,6 +19,7 @@
     
 """
 
+from termcolor import colored
 import numpy as np
 import sys
 import time
@@ -27,47 +28,53 @@ import json
 import argparse
 
 # These are imported from onnx-mlir
-from PyCompile import OMCompileSession
 from PyRuntime import OMExecutionSession
 
-ONNX_MLIR_ROOT = "/workdir/onnx-mlir"
-
-def compile_model(onnx_model_path, small_lib_path):
+def compile_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, verbose=False):
     
-    compiler = OMCompileSession(onnx_model_path)
-    print(f"Compiling {onnx_model_path}")
+    onnx_model_o = onnx_model_path[:-5] + ".o"
+    onnx_model_so = onnx_model_path[:-5] + ".so"
     
-    # rc = compiler.compile(f"-O3 -L{small_lib_path} -lsmall")
-    rc = compiler.compile(f"-O3 -EmitObj")
+    onnx_mlir_exe = ONNX_MLIR_ROOT + "/build/Debug/bin/onnx-mlir"
+    os.system(f"{onnx_mlir_exe} -O3 --EmitObj {onnx_model_path}")
     
-    if (rc):
-        print(f"Failed to compile with error code {rc}")
-        exit(rc)
-        
-    onnx_model_o = compiler.get_compiled_file_name()
-    onnx_model_so = onnx_model_o[:-2] + ".so"
+    if(verbose):
+        os.system(f"{onnx_mlir_exe} -O3 --EmitLLVMIR {onnx_model_path}")
+   
     onnx_lib_link = f"-L{ONNX_MLIR_ROOT}/build/Debug/lib -lcruntime"
     small_lib_link = f"-L{small_lib_path} -lsmall"
 
     link_cmd = f"c++ {onnx_model_o} -o {onnx_model_so} -shared -fopenmp -fPIC {onnx_lib_link} {small_lib_link}"
     os.system(link_cmd)
 
-    print(f"{onnx_model_so} compiled!")
+    onnx_model_so_colored = colored(onnx_model_so, "light_cyan")
+    print(f"{onnx_model_so_colored} compiled!")
     
     return onnx_model_so
 
-def run_onnx_model(onnx_model_path, small_lib_path):
+def run_onnx_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT="", verbose=False):
     
-    onnx_model_so = compile_model(onnx_model_path, small_lib_path)
+    onnx_model_so = compile_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, verbose)
     
-    session = OMExecutionSession(shared_lib_path=onnx_model_so)
+    onnx_model_so_colored = colored(onnx_model_so, "light_cyan")
+    print(f"Running model {onnx_model_so_colored}\n")
     
+    session = None
+    try:
+        session = OMExecutionSession(shared_lib_path=onnx_model_so)
+    except Exception as E:
+        print(E)
+        print("Did you make sure LD_LIBRARY_PATH has the path to directory with libsmall.so?")
+        print("\tRun: export LD_LIBRARY_PATH=\"$LD_LIBRARY_PATH:<SMALL_ROOT_DIR>/lib\"")
+        exit(-1)
+
     input_sign = json.loads(session.input_signature())[0]
     input_dims = input_sign["dims"]
-    
-    # output_sign = json.loads(session.output_signature())[0]
-    # output_dims = output_sign["dims"]
-    
+    print(f"Input dims to {onnx_model_so_colored}: {input_dims}")
+    for i in range(len(input_dims)):
+        if(input_dims[i] < 1):
+            input_dims[i] = 1
+    print(f"Input dims to {onnx_model_so_colored}: {input_dims}")
     input_ = np.random.rand(*input_dims).astype(np.float32)
     
     total_time = 0
@@ -80,7 +87,8 @@ def run_onnx_model(onnx_model_path, small_lib_path):
         total_time += (e-s)
         best_time = min(best_time, e-s)
         
-    print(f"FPS = {input_dims[0]/best_time}")
+    fps = colored(str(input_dims[0]/best_time), "red")
+    print(f"FPS = {fps}")
         
     return input_, outputs
 
@@ -94,17 +102,20 @@ def get_args():
         type=str,
         help="Path to onnx model. TODO: Check Op set dependency."
     )
-    
     arg_parser.add_argument(
         "-l", "-L", "--lib", 
         type=str,
         default="../../lib",
         help="Path to SMaLL libray"
     )
-    
     arg_parser.add_argument(
         "-v", "--verbose",
         action='store_true'
+    )
+    arg_parser.add_argument(
+        "--ONNX_MLIR_ROOT",
+        default="/workdir/onnx-mlir",
+        help="Path to onnx-mlir"
     )
     
     return arg_parser.parse_args()
@@ -116,5 +127,10 @@ if __name__ == "__main__":
     
     onnx_model = args.model
     small_lib_path = args.lib
+    ONNX_MLIR_ROOT = args.ONNX_MLIR_ROOT
+    ONNX_MLIR_ROOT_COLORED = colored(ONNX_MLIR_ROOT, "green")
+    verbosity = args.verbose
     
-    run_onnx_model(onnx_model, small_lib_path)
+    print(f"\nUsing {ONNX_MLIR_ROOT_COLORED} to compile onnx models.\n")
+    
+    run_onnx_model(onnx_model, small_lib_path, ONNX_MLIR_ROOT, verbosity)

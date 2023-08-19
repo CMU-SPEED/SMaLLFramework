@@ -123,8 +123,10 @@ if __name__ == "__main__":
     else:
         padding = (0,0,0,0)
     
+    print("Conv parameters:")
     print(f"Input dims: {ic} x {ih} x {iw}")
     print(f"Filter dims: {oc} x {ic} x {k} x {k}")
     print(f"Output dims: {oc} x {oh} x {ow}")
+    print(f"Stride = 1 | Padding = {padding}\n")
     create_conv_model(ic, ih, iw, oc, oh, ow, k, padding)
     
