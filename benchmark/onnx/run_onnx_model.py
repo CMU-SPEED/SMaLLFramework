@@ -35,6 +35,10 @@ def compile_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, verbose=False
     onnx_model_o = onnx_model_path[:-5] + ".o"
     onnx_model_so = onnx_model_path[:-5] + ".so"
     
+    if(os.path.isfile(onnx_model_so)):
+        print(f"{onnx_model_so} exists. Skipping compilation step.")
+        return onnx_model_so
+    
     onnx_mlir_exe = ONNX_MLIR_ROOT + "/build/Debug/bin/onnx-mlir"
     os.system(f"{onnx_mlir_exe} -O3 --EmitObj {onnx_model_path}")
     
@@ -71,10 +75,28 @@ def run_onnx_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT="", verbose=F
     input_sign = json.loads(session.input_signature())[0]
     input_dims = input_sign["dims"]
     print(f"Input dims to {onnx_model_so_colored}: {input_dims}")
-    for i in range(len(input_dims)):
-        if(input_dims[i] < 1):
-            input_dims[i] = 1
-    print(f"Input dims to {onnx_model_so_colored}: {input_dims}")
+    
+    while(True):
+        c = input("Would you like to change the input dimensions? (y/n): ").lower()
+        if(c != "y" and c != "n"):
+            continue
+        else:
+            break
+        
+    new_input_dims_list = []
+    if(c == "y"):
+        while(True):
+            new_input_dims = input("Enter new input dimensions as space seperated list of integers: ")
+            new_input_dims_list = [int(x) for x in new_input_dims.split(" ")]
+            if(len(new_input_dims_list) != len(input_dims)):
+                print("[ERROR] Number of dimensions entered doesn't match expected number of dimension.")
+                continue
+            else:
+                break
+            
+        input_dims = new_input_dims_list
+        print(f"New Input dims to {onnx_model_so_colored}: {input_dims}")
+   
     input_ = np.random.rand(*input_dims).astype(np.float32)
     
     total_time = 0
