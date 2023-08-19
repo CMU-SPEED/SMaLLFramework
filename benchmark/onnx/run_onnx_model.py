@@ -15,7 +15,7 @@
 
 """
 
-    Automatically run ONNX models with SMaLL as the backend.
+    Automatically run ONNX models using onnx-mlir.
     
 """
 
@@ -39,7 +39,11 @@ def compile_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, verbose=False
         print(f"{onnx_model_so} exists. Skipping compilation step.")
         return onnx_model_so
     
-    onnx_mlir_exe = ONNX_MLIR_ROOT + "/build/Debug/bin/onnx-mlir"
+    if(ONNX_MLIR_ROOT != ""):
+        onnx_mlir_exe = ONNX_MLIR_ROOT + "/build/Debug/bin/onnx-mlir"
+    else:
+        onnx_mlir_exe = "onnx-mlir"
+        
     os.system(f"{onnx_mlir_exe} -O3 --EmitObj {onnx_model_path}")
     
     if(verbose):
@@ -136,7 +140,7 @@ def get_args():
     )
     arg_parser.add_argument(
         "--ONNX_MLIR_ROOT",
-        default="/workdir/onnx-mlir",
+        default="",
         help="Path to onnx-mlir"
     )
     
