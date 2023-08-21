@@ -14,7 +14,7 @@
 
 //****************************************************************************
 
-__global__ void ReLU_ker(int N, value_type* in, value_type* out)
+__global__ void ReLU_ker(int N, value_type const* in, value_type* out)
 {
     for (int i = blockIdx.x * blockDim.x + threadIdx.x;
          i < N;

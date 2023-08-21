@@ -16,7 +16,7 @@
 
 include_directories ( ${CMAKE_SOURCE_DIR}/cuda_demo )
 
-set(SOURCES cuda_relu.cpp)
+set(SOURCES cuda_relu.cu)
 message("In cuda_demo/CMakeLists.txt: ${SOURCES}")
 
 foreach( source_file ${SOURCES} )

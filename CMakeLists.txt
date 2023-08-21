@@ -46,11 +46,20 @@ include(CTest)
 
 if(CMAKE_UARCH STREQUAL "ORIN")
   message("Configuring nvcc compiler")
+  option(ENABLE_CUDA "Enable building CUDA components" ON)
+  enable_language(CUDA)
   set(CMAKE_VERBOSE_MAKEFILE on)
-  SET(CMAKE_CXX_COMPILER /usr/local/cuda/bin/nvcc)
-  SET(CMAKE_C_COMPILER /usr/local/cuda/bin/nvcc)
+  SET(CMAKE_CUDA_COMPILER /usr/local/cuda/bin/nvcc)
+  #SET(CMAKE_CXX_COMPILER /usr/local/cuda/bin/nvcc)
+  #SET(CMAKE_C_COMPILER /usr/local/cuda/bin/nvcc)
+  SET(CMAKE_CUDA_ARCHITECTURES 87)
   #set(CMAKE_CXX_STANDARD 17)
-  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+  set(CMAKE_CUDA_STANDARD 17)
+  #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+  SET(CMAKE_CUDA_FLAGS "${CMAKE_CXX_FLAGS} -arch=sm_87 -std=c++17")
+  #set_target_properties(<target_name>  PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+  # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/
+  # -arch=sm_30  for Kepler
 else()
   message("Configuring gnu compilers")
   set(CMAKE_VERBOSE_MAKEFILE off)
@@ -73,9 +82,7 @@ endif()
 set(CMAKE_PLATFORM_DIR ${CMAKE_SOURCE_DIR}/include/small/platforms/)
 
 if(CMAKE_UARCH STREQUAL "ORIN")
-  #set_target_properties(<target_name>  PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-  # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/
-  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DORIN -DUARCH_ORIN -arch=sm_87") # -arch=sm_30  for Kepler
+  SET(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -DORIN -DUARCH_ORIN")
   message("Microarchitecture target: ORIN (GPU)")
   include_directories ( ${CMAKE_PLATFORM_DIR}/cuda_orin )
   include_directories ( /usr/local/cuda/include )
@@ -125,9 +132,14 @@ endif()
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_C_FLAGS}")
 
-message("CXX_FLAGS:\t${CMAKE_CXX_FLAGS}")
+if(CMAKE_UARCH STREQUAL "ORIN")
+  message("CMAKE_CUDA_FLAGS:\t${CMAKE_CUDA_FLAGS}")
+else()
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_C_FLAGS}")
+  message("CXX_FLAGS:\t${CMAKE_CXX_FLAGS}")
+endif()
+
 
 if(CMAKE_UARCH STREQUAL "ORIN")
   # Temporary until more complete integration is achieved
