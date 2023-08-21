@@ -16,7 +16,7 @@ jobs:
         with:
           base_image: https://dietpi.com/downloads/images/DietPi_RPi-ARMv8-Bullseye.7z
           cpu: cortex-a53
-          image_additional_mb: 10240
+          image_additional_mb: 4000
           copy_repository_path: /SMaLLFramework
           commands:
             sudo apt-get update;
@@ -24,5 +24,10 @@ jobs:
             mkdir /SMaLLFramework/build;
             cd /SMaLLFramework/build;
             cmake .. -DCMAKE_UARCH=ARM; 
-            cmake --build . -j;
+            cmake --build . -j1;
             ctest --rerun-failed --output-on-failure;
+
+    
+      
+  
+  
