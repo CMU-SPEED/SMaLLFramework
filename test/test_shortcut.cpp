@@ -45,7 +45,7 @@ void test_shortcut(size_t C_i, size_t H, size_t W)
 
     small::AddLayer<small::FloatBuffer> add(input.shape(), output.shape());
 
-    add.compute_output({&input}, {&output});
+    add.compute_output({&input}, &output);
 
     for (size_t ix = 0; ix < num_input_elts; ++ix)
     {

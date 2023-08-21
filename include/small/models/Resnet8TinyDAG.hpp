@@ -318,7 +318,7 @@ private:
 
         ++filter_num;
         prev = new small::PartialConv2DLayer<BufferT>(prev->output_shape(),
-                                                      3U,
+                                                      3U, 3U,
                                                       stride, small::PADDING_F,
                                                       output_channels,
                                                       *filters[filter_num],
@@ -386,7 +386,7 @@ private:
             // Performs computation:  ReLU(input0 + Conv2D(input1))
             prev = new small::PartialConv2DLayer<BufferT>(
                 prev->output_shape(),
-                3U, 1U, // 3x3, s:1
+                3U, 3U, 1U, // 3x3, s:1
                 small::PADDING_F,
                 output_channels,
                 *filters[filter_num + 2],

@@ -260,7 +260,7 @@ inline void yolo_block(
     BufferT       &O_intermediate,
     BufferT       &O)
 {
-    small::Conv2D(kernel_size, stride,
+    small::Conv2D(kernel_size, kernel_size, stride,
                   t_pad, b_pad, l_pad, r_pad,
                   output_channels, input_channels,
                   in_dims[0], in_dims[1],
@@ -274,7 +274,7 @@ inline void yolo_block(
     small::ReLUActivation(output_channels,   /// @todo should this be input_channels?
                           o_h, o_w,
                           O_intermediate, O_intermediate);
-    small::MaxPool2D(kernel_size_pool, stride_pool,
+    small::MaxPool2D(kernel_size_pool, kernel_size_pool, stride_pool,
                      t_pad_pool, b_pad_pool, l_pad_pool, r_pad_pool,
                      output_channels,
                      o_h, o_w,
@@ -298,7 +298,7 @@ inline void conv_block(
     BufferT       &O_intermediate,
     BufferT       &O)  /// @todo not used
 {
-    small::Conv2D(kernel_size, stride,
+    small::Conv2D(kernel_size, kernel_size, stride,
                   t_pad, b_pad, l_pad, r_pad,
                   output_channels, input_channels,
                   in_dims[0], in_dims[1],

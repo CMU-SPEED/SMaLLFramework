@@ -288,7 +288,7 @@ std::vector<small::Layer<BufferT>*> create_model(
 
     ++filter_num;
     prev = new small::PartialConv2DLayer<BufferT>(prev->output_shape(),
-                                                  kernel_size,
+                                                  kernel_size, kernel_size,
                                                   stride, small::PADDING_F,
                                                   output_channels,
                                                   *filters[filter_num], true);
@@ -329,7 +329,7 @@ std::vector<small::Layer<BufferT>*> create_model(
 
         stride = 1;
         prev = new small::PartialConv2DLayer<BufferT>(prev->output_shape(),
-                                                      kernel_size,
+                                                      kernel_size, kernel_size,
                                                       stride, small::PADDING_F,
                                                       output_channels,
                                                       *filters[filter_num], true);
@@ -455,7 +455,7 @@ inline void resnet_block(
 {
     // printf("before: %d, %.2f %.2f %.2f %.2f\n", 0, I[0], I[1], I[2], I[3]);
 
-    small::Conv2D(kernel_size, stride,
+    small::Conv2D(kernel_size, kernel_size, stride,
                   t_pad_0, b_pad_0, l_pad_0, r_pad_0,
                   output_channels, input_channels,
                   in_dims[0], in_dims[1],
@@ -470,13 +470,13 @@ inline void resnet_block(
                           o_h, o_w,
                           O_intermediate, O_intermediate);
 
-    small::Conv2D(1, stride,
+    small::Conv2D(1, 1, stride,
                   0, 0, 0, 0,
                   output_channels, input_channels,
                   in_dims[0], in_dims[1],
                   I, F_conv_1x1, O);
 
-    small::PartialConv2D(kernel_size, 1,
+    small::PartialConv2D(kernel_size, kernel_size, 1,
                          t_pad_1, b_pad_1, l_pad_1, r_pad_1,
                          output_channels, output_channels,
                          o_h, o_w,
@@ -507,7 +507,7 @@ inline void resnet_block(
     BufferT       &O_intermediate,
     BufferT       &O)
 {
-    small::Conv2D(kernel_size, stride,
+    small::Conv2D(kernel_size, kernel_size, stride,
                   t_pad_0, b_pad_0, l_pad_0, r_pad_0,
                   output_channels, input_channels,
                   in_dims[0], in_dims[1],
@@ -523,7 +523,7 @@ inline void resnet_block(
                           O_intermediate, O_intermediate);
 
     /// @todo Should this really be Partial Conv2D if no 1x1?
-    small::PartialConv2D(kernel_size, 1,
+    small::PartialConv2D(kernel_size, kernel_size, 1,
                          t_pad_1, b_pad_1, l_pad_1, r_pad_1,
                          output_channels, output_channels,
                          o_h, o_w,
@@ -544,7 +544,7 @@ model_inference(uint32_t layer_num_total,
                 BufferT       &inter_2_dc)
 {
     auto layer_num = 0;
-    small::Conv2D(REDUCTION_HW(layer_num),
+    small::Conv2D(REDUCTION_HW(layer_num), REDUCTION_HW(layer_num),
                   STRIDE(layer_num), PADDING(layer_num),
                   GROUP_C(layer_num), REDUCTION_C(layer_num),
                   I_HEIGHT(layer_num), I_WIDTH(layer_num),
@@ -593,13 +593,14 @@ model_inference(uint32_t layer_num_total,
         inter_0_dc.swap(inter_2_dc);
     }
 
-    small::MaxPool2D(REDUCTION_HW(layer_num), STRIDE(layer_num),
+    small::MaxPool2D(REDUCTION_HW(layer_num), REDUCTION_HW(layer_num),
+                     STRIDE(layer_num),
                      PADDING(layer_num),
                      GROUPS(layer_num),
                      I_HEIGHT(layer_num), I_WIDTH(layer_num),
                      inter_0_dc,
                      inter_1_dc);
-    small::Conv2D(1, 1,
+    small::Conv2D(1, 1, 1,
                   0, 0, 0, 0,
                   GROUP_C(layer_num_total - 1), REDUCTION_C(layer_num_total - 1),
                   1, 1,

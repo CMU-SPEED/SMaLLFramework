@@ -92,26 +92,13 @@ public:
                 "insufficient output buffer space.");
         }
 
-        if (m_kernel_width == m_kernel_height)
-        {
-            MaxPool2D(m_kernel_width,
-                      m_stride,
-                      m_t_pad, m_b_pad, m_l_pad, m_r_pad,
-                      m_input_shape[CHANNEL],
-                      m_input_shape[HEIGHT], m_input_shape[WIDTH],
-                      input[0]->buffer(),
-                      output->buffer());
-        }
-        else
-        {
-            MaxPool2D_rect(m_kernel_height, m_kernel_width,
-                           m_stride,
-                           m_t_pad, m_b_pad, m_l_pad, m_r_pad,
-                           m_input_shape[CHANNEL],
-                           m_input_shape[HEIGHT], m_input_shape[WIDTH],
-                           input[0]->buffer(),
-                           output->buffer());
-        }
+        MaxPool2D(m_kernel_height, m_kernel_width,
+                  m_stride,
+                  m_t_pad, m_b_pad, m_l_pad, m_r_pad,
+                  m_input_shape[CHANNEL],
+                  m_input_shape[HEIGHT], m_input_shape[WIDTH],
+                  input[0]->buffer(),
+                  output->buffer());
 
         output->set_shape(this->output_shape());
     }

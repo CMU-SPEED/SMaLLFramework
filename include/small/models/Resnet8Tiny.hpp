@@ -347,7 +347,7 @@ private:
 
         ++filter_num;
         prev = new small::PartialConv2DLayer<BufferT>(prev->output_shape(),
-                                                      kernel_size,
+                                                      kernel_size, kernel_size,
                                                       stride, small::PADDING_F,
                                                       output_channels,
                                                       *filters[filter_num],
@@ -390,7 +390,7 @@ private:
 
             stride = 1;
             prev = new small::PartialConv2DLayer<BufferT>(prev->output_shape(),
-                                                          kernel_size,
+                                                          kernel_size, kernel_size,
                                                           stride, small::PADDING_F,
                                                           output_channels,
                                                           *filters[filter_num],

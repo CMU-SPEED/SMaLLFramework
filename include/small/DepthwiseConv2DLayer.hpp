@@ -25,7 +25,8 @@ namespace detail
     template <class BufferT>
     void initialize_dw_conv2d_buffers(
         uint32_t          num_channels,
-        uint32_t          m_kernel_size,
+        uint32_t          kernel_height,
+        uint32_t          kernel_width,
         BufferT    const &filters,
         BufferT    const &bias,
         BufferT    const &bn_weight,            // gamma
@@ -39,7 +40,7 @@ namespace detail
     {
         // ============ Filter weights ===========
         if (filters.size() !=   /// @todo consider allowing larger filter buffers??
-            num_channels*m_kernel_size*m_kernel_size)
+            num_channels*kernel_height*kernel_width)
         {
             throw std::invalid_argument(
                 "DepthwiseConv2DLayer::ctor ERROR: "
@@ -52,7 +53,7 @@ namespace detail
             small::pack_buffer(filters,
                                FILTER_DW,
                                num_channels, 1U,
-                               m_kernel_size, m_kernel_size,
+                               kernel_height, kernel_width,
                                BufferT::C_ib, BufferT::C_ob,
                                m_packed_filters);
         }
@@ -149,15 +150,15 @@ namespace detail
                 //          << m_packed_bias[ochan]
                 //          << std::endl;
 
-                for (size_t fh = 0; fh < m_kernel_size; ++fh)
+                for (size_t fh = 0; fh < kernel_height; ++fh)
                 {
-                    for (size_t fw = 0; fw < m_kernel_size; ++fw)
+                    for (size_t fw = 0; fw < kernel_width; ++fw)
                     {
                         size_t packed_index =
                             packed_weight_index(num_channels,  // # output chans
                                                 1U,            // # input chans
-                                                m_kernel_size,
-                                                m_kernel_size,
+                                                kernel_height,
+                                                kernel_width,
                                                 BufferT::C_ob,
                                                 1U,            //BufferT::C_ib,
                                                 ochan, 0U, fh, fw);
@@ -185,7 +186,8 @@ public:
     ///                     {in_chans, out_chans, kern_h, kern_w}
     ///
     DepthwiseConv2DLayer(shape_type const &input_shape,
-                         uint32_t          kernel_size,
+                         uint32_t          kernel_height,
+                         uint32_t          kernel_width,
                          uint32_t          stride,
                          PaddingEnum       padding_type,
                          BufferT    const &filters,      /// @todo support move
@@ -194,16 +196,17 @@ public:
                          float             leaky_slope = 1.e-2)
         : Layer<BufferT>(),
           m_input_shape(input_shape),
-          m_kernel_size(kernel_size),
+          m_kernel_height(kernel_height),
+          m_kernel_width(kernel_width),
           m_stride(stride),
           m_activation_type(activation_type),
           m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0),
           m_leaky_slope(1),  /// @note Allocating 1-element buffer
-          m_packed_filters(input_shape[CHANNEL]*kernel_size*kernel_size)
+          m_packed_filters(input_shape[CHANNEL]*kernel_height*kernel_width)
     {
 #if defined(DEBUG_LAYERS)
         std::cerr << "DWConv(batches:" << m_input_shape[BATCH]
-                  << ",k:" << kernel_size
+                  << ",k:" << kernel_height << "x" << kernel_width
                   << ",s:" << stride
                   << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
                   << ",chans:" << m_input_shape[CHANNEL]
@@ -214,11 +217,13 @@ public:
 
         m_leaky_slope[0] = leaky_slope;
         compute_padding_output_shape(input_shape,
-                                     kernel_size, stride, padding_type);
+                                     kernel_height, kernel_width,
+                                     stride, padding_type);
 
         detail::initialize_dw_conv2d_buffers(
             input_shape[CHANNEL],
-            m_kernel_size,
+            m_kernel_height,
+            m_kernel_width,
             filters,
             BufferT(),  // empty bias
             BufferT(), BufferT(), BufferT(), BufferT(), 0.f, // no BN
@@ -249,7 +254,8 @@ public:
     }
 
     DepthwiseConv2DLayer(shape_type const &input_shape,
-                         uint32_t          kernel_size,
+                         uint32_t          kernel_height,
+                         uint32_t          kernel_width,
                          uint32_t          stride,
                          PaddingEnum       padding_type,
                          BufferT    const &filters,
@@ -259,17 +265,18 @@ public:
                          float             leaky_slope = 1.e-2)
         : Layer<BufferT>(),
           m_input_shape(input_shape),
-          m_kernel_size(kernel_size),
+          m_kernel_height(kernel_height),
+          m_kernel_width(kernel_width),
           m_stride(stride),
           m_activation_type(activation_type),
           m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0),
           m_leaky_slope(1),  /// @note Allocating 1-element buffer
-          m_packed_filters(input_shape[CHANNEL]*kernel_size*kernel_size)
+          m_packed_filters(input_shape[CHANNEL]*kernel_height*kernel_width)
     {
 #if defined(DEBUG_LAYERS)
         std::cerr << "DWConv(batches:" << m_input_shape[BATCH]
-                  << ",k:" << kernel_size
-                  << ",s:" << stride
+                  << ",k:" << m_kernel_height << "x" << m_kernel_width
+                  << ",s:" << m_stride
                   << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
                   << ",chans:" << m_input_shape[CHANNEL]
                   << ",img:" << m_input_shape[HEIGHT]
@@ -279,12 +286,14 @@ public:
 #endif
 
         m_leaky_slope[0] = leaky_slope;
-        compute_padding_output_shape(input_shape,
-                                     kernel_size, stride, padding_type);
+        compute_padding_output_shape(m_input_shape,
+                                     m_kernel_height, m_kernel_width,
+                                     m_stride, padding_type);
 
         detail::initialize_dw_conv2d_buffers(
-            input_shape[CHANNEL],
-            m_kernel_size,
+            m_input_shape[CHANNEL],
+            m_kernel_height,
+            m_kernel_width,
             filters,
             bias,
             BufferT(), BufferT(), BufferT(), BufferT(), 0.f, // no BN
@@ -316,7 +325,8 @@ public:
 
     DepthwiseConv2DLayer(
         shape_type const &input_shape,
-        uint32_t          kernel_size,
+        uint32_t          kernel_height,
+        uint32_t          kernel_width,
         uint32_t          stride,
         PaddingEnum       padding_type,
         BufferT    const &filters,
@@ -330,17 +340,18 @@ public:
         float             leaky_slope = 1.e-2)
         : Layer<BufferT>(),
           m_input_shape(input_shape),
-          m_kernel_size(kernel_size),
+          m_kernel_height(kernel_height),
+          m_kernel_width(kernel_width),
           m_stride(stride),
           m_activation_type(activation_type),
           m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0),
           m_leaky_slope(1),  /// @note Allocating 1-element buffer
-          m_packed_filters(input_shape[CHANNEL]*kernel_size*kernel_size)
+          m_packed_filters(input_shape[CHANNEL]*kernel_height*kernel_width)
     {
 #if defined(DEBUG_LAYERS)
         std::cerr << "DWConv(batches:" << m_input_shape[BATCH]
-                  << ",k:" << kernel_size
-                  << ",s:" << stride
+                  << ",k:" << m_kernel_height << "x" << m_kernel_width
+                  << ",s:" << m_stride
                   << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
                   << ",chans:" << m_input_shape[CHANNEL]
                   << ",img:" << m_input_shape[HEIGHT]
@@ -355,12 +366,14 @@ public:
 #endif
 
         m_leaky_slope[0] = leaky_slope;
-        compute_padding_output_shape(input_shape,
-                                     kernel_size, stride, padding_type);
+        compute_padding_output_shape(m_input_shape,
+                                     m_kernel_height, m_kernel_width,
+                                     m_stride, padding_type);
 
         detail::initialize_dw_conv2d_buffers(
-            input_shape[CHANNEL],
-            m_kernel_size,
+            m_input_shape[CHANNEL],
+            m_kernel_height,
+            m_kernel_width,
             filters,
             BufferT(), // no bias
             bn_weight, bn_bias,
@@ -413,7 +426,7 @@ public:
 
         auto& output_shape(this->output_shape());
 
-        DepthwiseConv2D(m_kernel_size, m_stride,
+        DepthwiseConv2D(m_kernel_height, m_kernel_width, m_stride,
                         m_t_pad, m_b_pad, m_l_pad, m_r_pad,
                         m_input_shape[CHANNEL],
                         m_input_shape[HEIGHT], m_input_shape[WIDTH],
@@ -465,7 +478,8 @@ private:
 
     //************************************************************************
     void compute_padding_output_shape(shape_type const &input_shape,
-                                      uint32_t          kernel_size,
+                                      uint32_t          kernel_height,
+                                      uint32_t          kernel_width,
                                       uint32_t          stride,
                                       PaddingEnum       padding_type)
     {
@@ -476,11 +490,11 @@ private:
         ///       this moves to compute output?
         output_shape[BATCH] = input_shape[BATCH];
         output_shape[CHANNEL] = input_shape[CHANNEL];
-        small::compute_padding_output_dim(input_shape[HEIGHT], kernel_size,
+        small::compute_padding_output_dim(input_shape[HEIGHT], kernel_height,
                                           stride, padding_type,
                                           m_t_pad, m_b_pad,
                                           output_shape[HEIGHT]);
-        small::compute_padding_output_dim(input_shape[WIDTH], kernel_size,
+        small::compute_padding_output_dim(input_shape[WIDTH], kernel_width,
                                           stride, padding_type,
                                           m_l_pad, m_r_pad,
                                           output_shape[WIDTH]);
@@ -497,7 +511,8 @@ private:
 private:
     shape_type const m_input_shape;
 
-    uint32_t   const m_kernel_size;
+    uint32_t   const m_kernel_height;
+    uint32_t   const m_kernel_width;
     uint32_t   const m_stride;
 
     ActivationType const m_activation_type;

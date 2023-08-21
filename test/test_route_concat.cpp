@@ -138,17 +138,17 @@ void test_route_1_buffer(void)
 
     small::RouteLayer<Buffer> route(shape);
 
-    route.compute_output({&input}, {&output});
+    route.compute_output({&input}, &output);
     TEST_CHECK(shape == output.shape());
     TEST_CHECK(check_buffer_contents(shape, output.buffer()));
 
-    route.compute_output({&input}, {&input});
+    route.compute_output({&input}, &input);
     TEST_CHECK(shape == input.shape());
     TEST_CHECK(check_buffer_contents(shape, input.buffer()));
 
     try
     {
-        route.compute_output({&input, &input}, {&output});
+        route.compute_output({&input, &input}, &output);
         TEST_CHECK(false);
     }
     catch (std::invalid_argument &e_obj)
@@ -174,13 +174,13 @@ void test_route_2_buffers(void)
     small::RouteLayer<Buffer> route(shape0, shape1);
 
     std::cerr << "FIRST TEST\n";
-    route.compute_output({&input0, &input1}, {&output});
+    route.compute_output({&input0, &input1}, &output);
     TEST_CHECK(output_shape == output.shape());
     TEST_CHECK(check_buffer_contents(output_shape, output.buffer()));
 
     try
     {
-        route.compute_output({&input0}, {&output});
+        route.compute_output({&input0}, &output);
         TEST_CHECK(false);
     }
     catch (std::invalid_argument &e_obj)
@@ -191,7 +191,7 @@ void test_route_2_buffers(void)
 
     try
     {
-        route.compute_output({&input0, &input0}, {&output});
+        route.compute_output({&input0, &input0}, &output);
         TEST_CHECK(false);
     }
     catch (std::invalid_argument &e_obj)
@@ -202,7 +202,7 @@ void test_route_2_buffers(void)
 
     try
     {
-        route.compute_output({&input1, &input0}, {&output});
+        route.compute_output({&input1, &input0}, &output);
         TEST_CHECK(false);
     }
     catch (std::invalid_argument &e_obj)
