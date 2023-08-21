@@ -48,18 +48,14 @@ if(CMAKE_UARCH STREQUAL "ORIN")
   message("Configuring nvcc compiler")
   option(ENABLE_CUDA "Enable building CUDA components" ON)
   enable_language(CUDA)
-  set(CMAKE_VERBOSE_MAKEFILE on)
+  #set(CMAKE_VERBOSE_MAKEFILE on)
   SET(CMAKE_CUDA_COMPILER /usr/local/cuda/bin/nvcc)
-  #SET(CMAKE_CXX_COMPILER /usr/local/cuda/bin/nvcc)
-  #SET(CMAKE_C_COMPILER /usr/local/cuda/bin/nvcc)
   SET(CMAKE_CUDA_ARCHITECTURES 87)
-  #set(CMAKE_CXX_STANDARD 17)
   set(CMAKE_CUDA_STANDARD 17)
-  #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
   SET(CMAKE_CUDA_FLAGS "${CMAKE_CXX_FLAGS} -arch=sm_87 -std=c++17")
-  #set_target_properties(<target_name>  PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+
   # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/
-  # -arch=sm_30  for Kepler
+
 else()
   message("Configuring gnu compilers")
   set(CMAKE_VERBOSE_MAKEFILE off)

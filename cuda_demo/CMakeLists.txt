@@ -21,11 +21,17 @@ message("In cuda_demo/CMakeLists.txt: ${SOURCES}")
 
 foreach( source_file ${SOURCES} )
     get_filename_component(justname ${source_file} NAME)
-    string( REPLACE ".cpp" ".exe" exename ${justname} )
+    string( REPLACE ".cu" ".x" exename ${justname} )
     set(exename "${exename}")
     message("Adding: ${exename}")
     add_executable(${exename} ${source_file})
     target_link_libraries(${exename} /usr/local/cuda/lib64/libcudart.so)
+
+    # The following is only necessary if cuda code is making calls to other
+    # kernel functions defined and compiled in different .cu files
+    # It should be unnecessary with the current organization
+    
+    #set_target_properties(<target_name>  PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 endforeach( source_file ${SOURCES} )
 
 message("Leaving cuda_demo/CMakeLists.txt: ${SOURCES}")

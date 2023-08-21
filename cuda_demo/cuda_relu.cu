@@ -44,10 +44,16 @@ int main()
     small::ReLUActivation(num_channels, image_height, image_width,
                           in, out);
 
+    std::cout << "Checking correctness:\n";
     bool correct = true;
     for (size_t i = 0; i != num_elts; ++i)
     {
         correct &= (fabs(out[i] - check[i]) < 1e-15);
+        if (i < 20)
+        {
+            std::cout << i << ": ReLU(" << in[i] << ") = "
+                      << out[i] << std::endl;
+        }
     }
 
     std::cout << (correct ? "PASSED" : "FAILED") << std::endl;
