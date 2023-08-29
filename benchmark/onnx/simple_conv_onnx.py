@@ -92,7 +92,7 @@ def get_args():
 
 def compute_output_dims(p, ih, iw, k):
     
-    if(p == "same"):
+    if(p == "same" or k == 1):
         return ih, iw
     elif(p == "valid"):
         oh, ow = (ih-k-1), (iw-k-1)

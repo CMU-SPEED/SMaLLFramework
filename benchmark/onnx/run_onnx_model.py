@@ -35,9 +35,9 @@ def compile_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, verbose=False
     onnx_model_o = onnx_model_path[:-5] + ".o"
     onnx_model_so = onnx_model_path[:-5] + ".so"
     
-    if(os.path.isfile(onnx_model_so)):
-        print(f"{onnx_model_so} exists. Skipping compilation step.")
-        return onnx_model_so
+    # if(os.path.isfile(onnx_model_so)):
+    #     print(f"{onnx_model_so} exists. Skipping compilation step.")
+    #     return onnx_model_so
     
     if(ONNX_MLIR_ROOT != ""):
         onnx_mlir_exe = ONNX_MLIR_ROOT + "/build/Debug/bin/onnx-mlir"
@@ -139,7 +139,7 @@ def get_args():
         action='store_true'
     )
     arg_parser.add_argument(
-        "--ONNX_MLIR_ROOT",
+        "-o", "--ONNX_MLIR_ROOT",
         default="",
         help="Path to onnx-mlir"
     )
