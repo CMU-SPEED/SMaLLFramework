@@ -163,33 +163,56 @@ void Conv2D(
     OMTensor *filter
 ){
     
-    small::Tensor<small::FloatBuffer> input_small = omtensor_to_smalltensor(input);
-    size_t ci = input_small.shape()[1];
-    size_t h = input_small.shape()[2];
-    size_t w = input_small.shape()[3];
+    // small::Tensor<small::FloatBuffer> input_small = omtensor_to_smalltensor(input);
+    // size_t ci = input_small.shape()[1];
+    // size_t h = input_small.shape()[2];
+    // size_t w = input_small.shape()[3];
 
-    small::Tensor<small::FloatBuffer> filter_small = omtensor_to_smalltensor(filter);
-    size_t co = filter_small.shape()[0];
-    size_t k = filter_small.shape()[2];
+    // small::Tensor<small::FloatBuffer> filter_small = omtensor_to_smalltensor(filter);
+    // size_t co = filter_small.shape()[0];
+    // size_t k = filter_small.shape()[2];
 
-    small::Tensor<small::FloatBuffer> output_small({1U, co, h, w});
+    // small::Tensor<small::FloatBuffer> output_small({1U, co, h, w});
 
-    small::Conv2DLayer<small::FloatBuffer> conv2d(
-        input_small.shape(),
-        k, k, 
-        1, 
-        small::PADDING_F,
-        co,
-        filter_small.buffer()
+    // small::Conv2DLayer<small::FloatBuffer> conv2d(
+    //     input_small.shape(),
+    //     k, k, 
+    //     1, 
+    //     small::PADDING_F,
+    //     co,
+    //     filter_small.buffer()
+    // );
+
+    int oc = omTensorGetShape(filter)[0];
+    int ic = omTensorGetShape(filter)[1];
+    int k = omTensorGetShape(filter)[2];
+
+    int ih = omTensorGetShape(input)[2];
+    int iw = omTensorGetShape(input)[3];
+
+    small::FloatBuffer in(omTensorGetNumElems(input), (float*)omTensorGetDataPtr(input));
+    small::FloatBuffer filt(omTensorGetNumElems(filter), (float*)omTensorGetDataPtr(filter));
+    small::FloatBuffer out(omTensorGetNumElems(output), (float*)omTensorGetDataPtr(output));
+
+    uint8_t pad = k==3 ? 1 : 0;
+    small::Conv2D(
+        k, 1,
+        pad, pad, pad, pad,
+        oc,
+        ic,
+        ih, iw,
+        in,
+        filt,
+        out
     );
 
-    conv2d.compute_output({&input_small}, {&output_small});
+    // conv2d.compute_output({&input_small}, {&output_small});
 
-    memcpy(
-        omTensorGetDataPtr(output),
-        &output_small.buffer()[0],
-        output_small.capacity()
-    );
+    // memcpy(
+    //     omTensorGetDataPtr(output),
+    //     &output_small.buffer()[0],
+    //     output_small.capacity()
+    // );
 
 }
 

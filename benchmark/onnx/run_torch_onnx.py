@@ -27,7 +27,7 @@ import os
 import json
 import argparse
 import torch
-torch.set_num_threads(4)
+torch.set_num_threads(1)
 import onnx
 from onnx2pytorch import ConvertModel
 
@@ -43,7 +43,7 @@ def run_onnx_model(onnx_model_path, verbosity):
     
     total_time = 0
     best_time = 1e9
-    RUNS = 10
+    RUNS = 1000
     for _ in range(RUNS):
         s = time.time()
         outputs = pytorch_model(input_)

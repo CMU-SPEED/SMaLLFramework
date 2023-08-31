@@ -105,7 +105,7 @@ def run_onnx_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT="", verbose=F
     
     total_time = 0
     best_time = 1e9
-    RUNS = 10
+    RUNS = 1000
     for _ in range(RUNS):
         s = time.time()
         outputs = session.run(input=[input_])
