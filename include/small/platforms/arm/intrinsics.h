@@ -677,10 +677,10 @@ typedef float32x4_t c_tile_t;
         c_pixel += C_ob;                                \
     }
 #else
-#define FLOAT_ACCUM_END_C(norm, W_last, C_ob)                 \
+#define FLOAT_DIV_END_C(norm, W_last, C_ob)                 \
      float32x4_t av;                                     \
      av = vld1q_dup_f32(&norm);\
-    float * c_cur= c_tile;\
+    float32x4_t * c_cur= c_tile;\
     for (uint32_t kk = 0; kk < W_last; kk++)                            \
     {                                                                   \
         for (uint32_t jj = 0; jj < C_ob / FLOAT_SIMD; jj++)             \
