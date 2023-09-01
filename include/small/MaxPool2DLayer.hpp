@@ -27,10 +27,10 @@ public:
     typedef typename BufferT::value_type value_type;
 
     MaxPool2DLayer(shape_type const &input_shape,
-                   uint32_t    kernel_height,
-                   uint32_t    kernel_width,
-                   uint32_t    stride,
-                   PaddingEnum padding_type)
+                   uint32_t          kernel_height,
+                   uint32_t          kernel_width,
+                   uint32_t          stride,
+                   PaddingEnum       padding_type)
         : Layer<BufferT>(),
           m_input_shape(input_shape),
           m_kernel_height(kernel_height),

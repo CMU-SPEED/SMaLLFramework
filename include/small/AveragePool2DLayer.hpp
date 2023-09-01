@@ -21,16 +21,16 @@ namespace small
 
 //****************************************************************************
 template <typename BufferT>
-class AveragePool2D : public Layer<BufferT>
+class AveragePool2DLayer : public Layer<BufferT>
 {
 public:
     typedef typename BufferT::value_type value_type;
 
-    AveragePool2D(shape_type const &input_shape,
-                   uint32_t    kernel_height,
-                   uint32_t    kernel_width,
-                   uint32_t    stride,
-                   PaddingEnum padding_type)
+    AveragePool2DLayer(shape_type const &input_shape,
+                       uint32_t          kernel_height,
+                       uint32_t          kernel_width,
+                       uint32_t          stride,
+                       PaddingEnum       padding_type)
         : Layer<BufferT>(),
           m_input_shape(input_shape),
           m_kernel_height(kernel_height),
@@ -45,7 +45,7 @@ public:
                   << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
                   << ",chans:" << m_input_shape[CHANNEL]
                   << ",img:" << m_input_shape[HEIGHT]
-                  << "x" << m_input_shape[WIDTH]
+                  << "x" << m_input_shape[WIDTH] << ")"
                   << std::endl;
 #endif
 
@@ -63,42 +63,44 @@ public:
                                           stride, padding_type,
                                           m_l_pad, m_r_pad,
                                           output_shape[WIDTH]);
-        // std::cerr << "AveragePool2D padding: "
-        //           << (int)m_t_pad << "," << (int)m_b_pad
-        //          << "," << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
+#if defined(DEBUG_LAYERS)
+        std::cerr << "AveragePool2D padding: "
+                  << (int)m_t_pad << "," << (int)m_b_pad
+                  << "," << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
+#endif
 
-        this->set_output_shapes({output_shape});
+        this->set_output_shape(output_shape);
     }
 
-    virtual ~AveragePool2D() {}
+    virtual ~AveragePool2DLayer() {}
 
     virtual void compute_output(
         std::vector<Tensor<BufferT> const *> input,
-        std::vector<Tensor<BufferT>*>        output) const
+        Tensor<BufferT>*                     output) const
     {
         if ((input.size() != 1) || (input[0]->shape() != m_input_shape))
         {
             throw std::invalid_argument(
-                "AveragePool2D::compute_output() ERROR: "
+                "AveragePool2DLayer::compute_output() ERROR: "
                 "incorrect input buffer shape.");
         }
 
-        if ((output.size() != 1) || (output[0]->capacity() < this->output_size(0)))
+        if (output->capacity() < this->output_size())
         {
             throw std::invalid_argument(
-                "AveragePool2D::compute_output ERROR: "
+                "AveragePool2DLayer::compute_output ERROR: "
                 "insufficient output buffer space.");
         }
 
-        AveragePool2D_rect(m_kernel_height, m_kernel_width,
-                        m_stride,
-                        m_t_pad, m_b_pad, m_l_pad, m_r_pad,
-                        m_input_shape[CHANNEL],
-                        m_input_shape[HEIGHT], m_input_shape[WIDTH],
-                        input[0]->buffer(),
-                        output[0]->buffer());
-        
-        output[0]->set_shape(this->output_shape(0));
+        AveragePool2D(m_kernel_height, m_kernel_width,
+                      m_stride,
+                      m_t_pad, m_b_pad, m_l_pad, m_r_pad,
+                      m_input_shape[CHANNEL],
+                      m_input_shape[HEIGHT], m_input_shape[WIDTH],
+                      input[0]->buffer(),
+                      output->buffer());
+
+        output->set_shape(this->output_shape());
     }
 
 private:

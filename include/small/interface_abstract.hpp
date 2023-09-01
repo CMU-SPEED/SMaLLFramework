@@ -632,43 +632,43 @@ void MaxPool2D<QUInt8Buffer>(
 //****************************************************************************
 template <class BufferT>
 void AveragePool2D(int kernel_height, int kernel_width, int stride,
-               uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
-               int input_channels,
-               int input_height, int input_width,
-               BufferT const &input_buf,
-               BufferT &output_buf)
+                   uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
+                   int input_channels,
+                   int input_height, int input_width,
+                   BufferT const &input_buf,
+                   BufferT &output_buf)
 {
     BufferT::unimplemented_function();
 }
 
 //============================================================================
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
-    template <>
-    void AveragePool2D<FloatBuffer>(
-        int kernel_height, int kernel_width, int stride,
-        uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
-        int input_channels,
-        int input_height, int input_width,
-        FloatBuffer const &input_buf,
-        FloatBuffer &output_buf)
-    {
+template <>
+void AveragePool2D<FloatBuffer>(
+    int kernel_height, int kernel_width, int stride,
+    uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
+    int input_channels,
+    int input_height, int input_width,
+    FloatBuffer const &input_buf,
+    FloatBuffer &output_buf)
+{
 #if defined(RECORD_CALLS)
-        std::cout << "AveragePool2D<float>(k:"
-                  << kernel_height << "x" << kernel_width
-                  << ",s:" << stride
-                  << ",pad:[" << (int)t_pad << "," << (int)b_pad
-                  << "," << (int)l_pad << "," << (int)r_pad
-                  << "],chans:" << input_channels
-                  << ",img:" << input_height << "x" << input_width
-                  << ",I,O)\n";
+    std::cout << "AveragePool2D<float>(k:"
+              << kernel_height << "x" << kernel_width
+              << ",s:" << stride
+              << ",pad:[" << (int)t_pad << "," << (int)b_pad
+              << "," << (int)l_pad << "," << (int)r_pad
+              << "],chans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I,O)\n";
 #endif
 
-        if (input_channels % FLOAT_C_ib == 0)
+    if (input_channels % FLOAT_C_ib == 0)
+    {
+        if (stride == 1)
         {
-            if (stride == 1)
-            {
-                detail::abstract_layer<
-                    FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, 's', 1, 1>(
+            detail::abstract_layer<
+                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, 's', 1, 1>(
                     input_channels, // Output Channel Grouping
                     1,              // Output Channels per group
                     1,
@@ -676,11 +676,11 @@ void AveragePool2D(int kernel_height, int kernel_width, int stride,
                     kernel_height, kernel_width,
                     t_pad, l_pad, r_pad, b_pad,
                     &input_buf, (FloatBuffer *)nullptr, &output_buf);
-            }
-            else if (stride == 2)
-            {
-                detail::abstract_layer<
-                    FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, 's', 1, 1>(
+        }
+        else if (stride == 2)
+        {
+            detail::abstract_layer<
+                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, 's', 1, 1>(
                     input_channels, // Output Channel Grouping
                     1,              // Output Channels per group
                     1,
@@ -688,19 +688,19 @@ void AveragePool2D(int kernel_height, int kernel_width, int stride,
                     kernel_height, kernel_width,
                     t_pad, l_pad, r_pad, b_pad,
                     &input_buf, (FloatBuffer *)nullptr, &output_buf);
-            }
-            else
-            {
-                throw std::invalid_argument(
-                    "AveragePool2D<float> ERROR: stride unsupported.");
-            }
         }
         else
         {
             throw std::invalid_argument(
-                "AveragePool2D<float> ERROR: in_channels unsupported.");
+                "AveragePool2D<float> ERROR: stride unsupported.");
         }
     }
+    else
+    {
+        throw std::invalid_argument(
+            "AveragePool2D<float> ERROR: in_channels unsupported.");
+    }
+}
 
 #endif
 
@@ -708,17 +708,17 @@ void AveragePool2D(int kernel_height, int kernel_width, int stride,
 
 //****************************************************************************
 //****************************************************************************
-    template <class BufferT>
-    void DepthwiseConv2D(int kernel_size, int stride,
-                         uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
-                         int input_channels,
-                         int input_height, int input_width,
-                         BufferT const &input_buf,
-                         BufferT const &filter_buf,
-                         BufferT &output_buf)
-    {
-        BufferT::unimplemented_function();
-    }
+template <class BufferT>
+void DepthwiseConv2D(int kernel_size, int stride,
+                     uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
+                     int input_channels,
+                     int input_height, int input_width,
+                     BufferT const &input_buf,
+                     BufferT const &filter_buf,
+                     BufferT &output_buf)
+{
+    BufferT::unimplemented_function();
+}
 
 //============================================================================
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
