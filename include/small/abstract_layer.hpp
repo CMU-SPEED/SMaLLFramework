@@ -59,6 +59,11 @@ namespace detail
     else if constexpr (op_type == 'd' || op_type =='s')                                  \
     {                                                                   \
         FLOAT_ACCUM_TILE_C(step, a_cur, _O_wb, _C_ob);                  \
+    }\
+    else if constexpr( op_type == 'm')\
+    {\
+        float drop_out_rate = b_cur[0];\
+        FLOAT_DIV_TILE_C(drop_out_rate, _O_wb, _C_ob)\
     }
 
 //****************************************************************************
@@ -86,6 +91,11 @@ namespace detail
     else if constexpr (op_type == 'd' || op_type == 's')                      \
     {                                                                         \
         FLOAT_ACCUM_END_C(step, a_cur, c_cur, W_elements, _C_ob);             \
+    }
+    else if constexpr( op_type == 'm')\
+    {\
+        float drop_out_rate = b_cur[0];\
+        FLOAT_DIV_END_C(drop_out_rate, W_elements, _C_ob)\
     }
 
         //****************************************************************************
@@ -179,6 +189,12 @@ namespace detail
             if (first)
             {
                 FLOAT_ZERO_END_C(l_pad_el, _C_ob);
+
+                //@note padding  should always be 'v' for pointwise operations, so this code path should not be used
+                if (op_type=='m')
+                {
+                    FLOAT_LOAD_END_C_strided(I_ptr, step, l_pad_el, _C_ob);
+                }
             }
             else
             {
@@ -252,7 +268,7 @@ namespace detail
             if (first)
             {
                 FLOAT_ZERO_TILE_C(_O_wb, _C_ob);
-                if (op_type == 'p')
+                if (op_type == 'p' || op_type == 'm')
                 {
                     /// @note using platform C_ob
                     FLOAT_LOAD_TILE_C_strided(I, step, _O_wb, FLOAT_C_ob);
@@ -334,6 +350,12 @@ namespace detail
             if (first)
             {
                 FLOAT_ZERO_TILE_C(_O_wb, _C_ob);
+
+                //@note padding  should always be 'v' for pointwise operations, so this code path should not be used
+                if(op_type == 'm')
+                {
+                    FLOAT_LOAD_TILE_C_strided(I, step, _O_wb, _C_ob);
+                }
             }
             else
             {
@@ -371,6 +393,11 @@ namespace detail
             if (op_type == 's')
             {
                 float norm = 1.0 / (1.0 * F_h * F_w);
+                FLOAT_DIV_TILE_C(norm, _O_wb, _C_ob)
+            }
+            if (op_type == 'm')
+            {
+                float norm = drop_out_rate;
                 FLOAT_DIV_TILE_C(norm, _O_wb, _C_ob)
             }
             FLOAT_STORE_TILE_C(O, _O_wb, _C_ob);
@@ -413,7 +440,7 @@ namespace detail
                 {
                     FLOAT_ZERO_END_C(O_w_left, _C_ob);
 
-                    if (op_type == 'p' && H_lb == 0 && H_ub == 0)
+                    if ( (op_type == 'm')|| (op_type == 'p' && H_lb == 0 && H_ub == 0))
                     {
                         FLOAT_LOAD_END_C_strided(I, step, O_w_left, _C_ob);
                     }
@@ -444,6 +471,7 @@ namespace detail
                     float norm = 1.0 / (1.0 * F_h * F_w);
                     FLOAT_DIV_END_C(norm, O_w_left, _C_ob)
                 }
+                
 
                 FLOAT_STORE_END_C(O, O_w_left, _C_ob);
             }
@@ -459,10 +487,11 @@ namespace detail
 
                 // Initialize with 0 for the padding elements
 
-                // if (op_type=='p')
-                // {
-                //     LOAD_END_C_strided(I_ptr, step, r_pad_el, _C_ob);
-                // }
+                //@note padding  should always be 'v' for pointwise operations, so this code path should not be used
+                if (op_type=='m')
+                {
+                    FLOAT_LOAD_END_C_strided(I_ptr, step, r_pad_el, _C_ob);
+                }
             }
             else
             {
@@ -495,6 +524,7 @@ namespace detail
                 float norm = 1.0 / (1.0 * F_h * F_w);
                 FLOAT_DIV_END_C(norm, r_pad_el, _C_ob)
             }
+
             FLOAT_STORE_END_C(O_ptr, r_pad_el, _C_ob);
         }
 
