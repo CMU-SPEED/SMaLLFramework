@@ -214,6 +214,39 @@ BufferT read_inputs(std::string const &input_data_fname)
     return in_buf;
 }
 
+//****************************************************************************
+///   - first 4 bytes is num_elements as uint32_t in network order
+///   - the rest of file are the 4 byte floating point numbers
+///
+template <class BufferT>
+void write_outputs(std::string const &output_data_fname,
+                   BufferT const &out_buf,
+                   uint32_t num_elts)
+{
+    std::ofstream ofs(output_data_fname, std::ios::binary);
+    if (!ofs)
+    {
+        std::cerr << "ERROR: failed to open file: " << output_data_fname
+                  << std::endl;
+        throw std::invalid_argument("write_outputs ERROR: failed to open file.");
+    }
+
+    // TODO: check if there are endian issues for cross platform
+    uint32_t out_n;
+    out_n = htonl(num_elts);
+    ofs.write(reinterpret_cast<char*>(&out_n), sizeof(uint32_t));
+
+    if (num_elts < 1)
+    {
+        std::cerr << "ERROR: invalid number of elements in "
+                  << output_data_fname << std::endl;
+        throw std::invalid_argument("write_outputs ERROR: invalid num elements.");
+    }
+
+    ofs.write(reinterpret_cast<char const*>(out_buf.data()),
+              num_elts*sizeof(typename BufferT::value_type));
+}
+
 #if 0
 //****************************************************************************
 /// Read a binary file in the following format:

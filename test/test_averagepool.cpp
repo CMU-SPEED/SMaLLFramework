@@ -29,13 +29,154 @@
 std::string const data_dir("../test/regression_data");
 
 //****************************************************************************
+// Generate AveragePool output regression data from unpack MaxPool input data.
+//****************************************************************************
+template <class BufferT>
+bool compute_averagepool_output(LayerParams const &params)
+{
+    /// @todo add smart pointer to buffers
+    // Read input data
+    std::string in_fname =
+        get_pathname(data_dir, "in", "pool",
+                     params,
+                     params.C_i*params.H*params.W);
+    std::cout << "\nAveragePool: input file = " << in_fname << std::endl;
+
+    BufferT input_dc = read_inputs<BufferT>(in_fname);
+    TEST_ASSERT(input_dc.size() == params.C_i*params.H*params.W);
+
+    // Read output regression data
+    size_t Ho(small::compute_output_dim(
+                  params.H, params.k, params.s, params.p));
+    size_t Wo(small::compute_output_dim(
+                  params.W, params.k, params.s, params.p));
+    std::cerr << "Output image dims: " << Ho << ", " << Wo << std::endl;
+    std::string out_fname =
+        get_pathname(data_dir, "out", "averagepool",
+                     params,
+                     params.C_i*Ho*Wo);
+    std::cout << "AveragePool: output file= " << out_fname << std::endl;
+
+    BufferT output_dc_answers(params.C_i*Ho*Wo);
+
+    uint8_t t_pad=0, b_pad=0, l_pad=0, r_pad=0;
+    if (params.p == small::PADDING_F)
+    {
+        small::calc_padding(params.H, params.k, params.s, t_pad, b_pad);
+        small::calc_padding(params.W, params.k, params.s, l_pad, r_pad);
+    }
+
+    std::cout << "Padding t,b,l,r: " << (int)t_pad << "," << (int)b_pad
+              << "," << (int)l_pad << "," << (int)r_pad << std::endl;
+
+    // Compute padded input
+    size_t padded_H = (params.H + t_pad + b_pad);
+    size_t padded_W = (params.W + r_pad + l_pad);
+
+    BufferT padded_input(params.C_i*padded_H*padded_W);
+    for (size_t ix = 0; ix < (params.C_i*padded_H*padded_W); ++ix)
+    {
+        padded_input[ix] = 0.f;
+    }
+
+    for (size_t c = 0; c < params.C_i; ++c)
+    {
+        for (size_t h = 0; h < params.H; ++h)
+        {
+            for (size_t w = 0; w < params.W; ++w)
+            {
+                padded_input[c*(padded_H*padded_W)+(h+t_pad)*padded_W+(w+l_pad)]
+                    = input_dc[c*(params.H*params.W) + h*params.W + w];
+            }
+        }
+    }
+
+    // small::AveragePool2D(params.k, params.k, params.s,
+    //                  t_pad, b_pad, l_pad, r_pad,
+    //                  params.C_i, params.H, params.W,
+    //                  packed_input_dc, packed_output_dc);
+
+    // Compute average pool outputs
+    size_t num_outputs = 0;
+
+    for (size_t c = 0; c < params.C_i; ++c)
+    {
+        for (size_t h = 0; h < padded_H; h += params.s)
+        {
+            if ((h + params.k) > padded_H) break;
+
+            for (size_t w = 0; w < padded_W; w += params.s)
+            {
+                if ((w + params.k) > padded_W) break;
+
+                std::cout << "kernel upper-left (c,h,w): " << c << ","
+                          << h << "," << w << std::endl;
+                typename BufferT::value_type val = 0.f;
+                for (size_t ih = h; ih < (h + params.k); ++ih)
+                {
+                    for (size_t iw = w; iw < (w + params.k); ++iw)
+                    {
+                        //std::cout << "accessing: h,w: " << ih << ","
+                        //          << iw << std::endl;
+                        size_t idx =
+                            c*padded_H*padded_W +
+                            ih*padded_W +
+                            iw;
+                        TEST_CHECK(idx < (c+1)*padded_H*padded_W);
+                        val += padded_input[idx];
+                    }
+                }
+
+                output_dc_answers[c*Ho*Wo + (h/params.s)*Wo + (w/params.s)] =
+                    val/((float)(params.k*params.k));
+                ++num_outputs;
+            }
+        }
+    }
+
+    std::cerr << "num_outputs = " << num_outputs << std::endl;
+    std::cerr << "..should be = " << (params.C_i*Ho*Wo) << std::endl;
+    TEST_CHECK(num_outputs == params.C_i*Ho*Wo);
+    write_outputs(out_fname, output_dc_answers, num_outputs);
+
+    return true;
+}
+
+//****************************************************************************
+void test_compute_averagepool_output(void)
+{
+    std::vector<LayerParams> params =
+    {
+        {16,  3,  3, 3, 2, small::PADDING_V, 0},  //Ci,Hi,Wi,k,s,p,Co
+        {16,  3, 13, 3, 2, small::PADDING_V, 0},
+
+        {16, 30, 30, 3, 2, small::PADDING_V, 0},
+        {96, 30, 30, 3, 2, small::PADDING_V, 0},
+        {96,  3, 13, 3, 2, small::PADDING_V, 0},
+
+        {16,  3,  3, 3, 2, small::PADDING_F, 0},  //Ci,Hi,Wi,k,s,p,Co
+        {16,  3, 13, 3, 2, small::PADDING_F, 0},
+        {96, 30, 30, 3, 2, small::PADDING_F, 0},
+        {96,  3, 13, 3, 2, small::PADDING_F, 0}
+    };
+    for (LayerParams const &p: params)
+    {
+#if defined(QUANTIZED)
+        TEST_CHECK(true == compute_averagepool_output<small::QUInt8Buffer>(p));
+#else
+        TEST_CHECK(true == compute_averagepool_output<small::FloatBuffer>(p));
+#endif
+    }
+}
+
+//****************************************************************************
 template <class BufferT>
 bool run_averagepool_config(LayerParams const &params)
 {
     /// @todo add smart pointer to buffers
     // Read input data
     std::string in_fname =
-        get_pathname(data_dir, "in", "avgpool",
+        get_pathname(data_dir, "in", "pool",
                      params,
                      params.C_i*params.H*params.W);
     std::cout << "\nAveragePool: input file = " << in_fname << std::endl;
@@ -58,7 +199,7 @@ bool run_averagepool_config(LayerParams const &params)
                   params.W, params.k, params.s, params.p));
     std::cerr << "Output image dims: " << Ho << ", " << Wo << std::endl;
     std::string out_fname =
-        get_pathname(data_dir, "out", "pool",
+        get_pathname(data_dir, "out", "averagepool",
                      params,
                      params.C_i*Ho*Wo);
     std::cout << "AveragePool: output file= " << out_fname << std::endl;
@@ -98,7 +239,8 @@ bool run_averagepool_config(LayerParams const &params)
     bool passing = true;
     for (size_t ix = 0; ix < packed_output_dc_answers.size(); ++ix)
     {
-        if (packed_output_dc[ix] != packed_output_dc_answers[ix])
+        //if (packed_output_dc[ix] != packed_output_dc_answers[ix])
+        if (!almost_equal(packed_output_dc[ix], packed_output_dc_answers[ix]))
         {
             passing = false;
 
@@ -131,7 +273,7 @@ bool run_averagepool_layer_config(LayerParams const &params)
 
     // Read input data
     std::string in_fname =
-        get_pathname(data_dir, "in", "avgpool",
+        get_pathname(data_dir, "in", "pool",
                      params,
                      input_size);
     std::cout << "\nAveragePool: input file = " << in_fname << std::endl;
@@ -161,7 +303,7 @@ bool run_averagepool_layer_config(LayerParams const &params)
               << output_shape[small::HEIGHT] << "x" << output_shape[small::WIDTH]
               << std::endl;
     std::string out_fname =
-        get_pathname(data_dir, "out", "pool",
+        get_pathname(data_dir, "out", "averagepool",
                      params,
                      output_buffer_size);
     std::cout << "AveragePool: output file= " << out_fname << std::endl;
@@ -195,7 +337,8 @@ bool run_averagepool_layer_config(LayerParams const &params)
     BufferT &buf(packed_output_tensor.buffer());
     for (size_t ix = 0; ix < packed_output_tensor.size(); ++ix)
     {
-        if (buf[ix] != packed_output_dc_answers[ix])
+        //if (buf[ix] != packed_output_dc_answers[ix])
+        if (!almost_equal(buf[ix], packed_output_dc_answers[ix]))
         {
             passing = false;
             std::cout << "FAIL: Averagepool_out(" << ix << ")--> "
@@ -433,6 +576,7 @@ void measure_averagepool_performance(void)
 //****************************************************************************
 //****************************************************************************
 TEST_LIST = {
+    //{"compute_output", test_compute_averagepool_output},
     {"averagepool_regression_data",       test_averagepool_regression_data},
     {"averagepool_layer_regression_data", test_averagepool_layer_regression_data},
     // {"averagepool_performance", measure_averagepool_performance},
