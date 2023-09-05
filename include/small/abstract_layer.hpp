@@ -907,7 +907,7 @@ enum OP_TYPE
     const dim_t O_w_full = (O_w / _O_wb) * _O_wb;
     const dim_t O_w_left = O_w - O_w_full;
     const dim_t O_hxO_w = O_h_w_pad * O_w_w_pad;
-    printf("%d %d\n", F_h, F_w);
+    // printf("%d %d\n", F_h, F_w);
 #if DEBUG == 1
     printf("\t\t I_h %d I_w %d F_C %d G %d \n", I_h, I_w, F_c, G);
     printf("\t\t O_h_pad: %d O_w_w_pad %d \n", O_h_w_pad, O_w_w_pad);
@@ -948,6 +948,8 @@ enum OP_TYPE
         T_group = N;
     }
 
+
+//@todo redo parallelism to be block cyclic instead of elemental
     // create parallel region with all threads
 #if PARALLEL == 1
 #pragma omp parallel num_threads(N)
@@ -990,6 +992,7 @@ enum OP_TYPE
             // resuse O_group as a uint32_t array
             for (index_t k = channel_tid; k < K / _K_b; k += T_channel)
             {
+
                 ScalarT const *I_channel_block_output =
                     I_group + 0;
                 ScalarT const *F_channel_block_output =
@@ -997,6 +1000,7 @@ enum OP_TYPE
                 ScalarT       *O_channel_block_output =
                     O_group + k * (O_hxO_w * _G_b * _K_b);
 
+                //if(! last block )
                 //************************************************************
                 // Loop over input channel reduction
                 for (index_t i = 0; i < (F_c / _F_cb); i++)
@@ -1181,8 +1185,17 @@ enum OP_TYPE
                                       F_row_bot,
                                       O_row_bot);
                 }
+               
+               
+                //else()
+                //     
+                // cleanup F_c
             }
+            // cleanup K remainder
+            //
         }
+        // cleanup G remainder
+
     }
 }
 
