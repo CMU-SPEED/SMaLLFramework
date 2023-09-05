@@ -33,11 +33,24 @@ namespace small
 namespace detail
 {
 
+enum OP_TYPE
+{
+    CONV = 0,
+    RELU = 1,
+    MAX_POOL = 2,
+    LEAKY_RELU = 3,
+    ADD = 4,
+    AVERAGE_POOL = 5,
+    DROPOUT = 6,
+    UPSAMPLE = 7
+
+};
+
 //****************************************************************************
 /// @todo add parameters: step, _O_wb, _C_ob
 /// @todo use constexpr if on op_type and op_class in calling code
 #define FLOAT_ABSTRACT_OP(op_type, op_class, a_cur, b_cur)              \
-    if constexpr (op_type == 'c')                                       \
+    if constexpr (op_type == CONV)                                       \
     {                                                                   \
         if constexpr (op_class == 1)                                    \
         {                                                               \
@@ -48,19 +61,19 @@ namespace detail
             FLOAT_CONV_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob);        \
         }                                                               \
     }                                                                   \
-    else if constexpr (op_type == 'a' || op_type == 'p')                \
+    else if constexpr (op_type == RELU || op_type == MAX_POOL)                \
     {                                                                   \
         FLOAT_MAX_TILE_C(step, a_cur, _O_wb, _C_ob);                    \
     }                                                                   \
-    else if constexpr (op_type == 'l')                                  \
+    else if constexpr (op_type == LEAKY_RELU)                                  \
     {                                                                   \
         FLOAT_COND_SCALE_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob);      \
     }                                                                   \
-    else if constexpr (op_type == 'd' || op_type =='s')                                  \
+    else if constexpr (op_type == ADD || op_type == AVERAGE_POOL)                                  \
     {                                                                   \
         FLOAT_ACCUM_TILE_C(step, a_cur, _O_wb, _C_ob);                  \
     }\
-    else if constexpr( op_type == 'm')\
+    else if constexpr( op_type == DROPOUT)\
     {\
         float drop_out_rate = b_cur[0];\
         FLOAT_DIV_TILE_C(drop_out_rate, _O_wb, _C_ob)\
@@ -69,7 +82,7 @@ namespace detail
 //****************************************************************************
 /// @todo add parameters: step, W_elements, _C_ob
 #define FLOAT_ABSTRACT_OP_END(op_type, op_class, a_cur, b_cur, c_cur)         \
-    if constexpr (op_type == 'c')                                             \
+    if constexpr (op_type == CONV)                                             \
     {                                                                         \
         if constexpr (op_class == 1)                                          \
         {                                                                     \
@@ -80,22 +93,22 @@ namespace detail
             FLOAT_CONV_END_C(step, a_cur, b_cur, c_cur, W_elements, _C_ob);   \
         }                                                                     \
     }                                                                         \
-    else if constexpr (op_type == 'a' || op_type == 'p')                      \
+    else if constexpr (op_type == RELU || op_type == MAX_POOL)                      \
     {                                                                         \
         FLOAT_MAX_END_C(step, a_cur, c_cur, W_elements, _C_ob);               \
     }                                                                         \
-    else if constexpr (op_type == 'l')                                        \
+    else if constexpr (op_type == LEAKY_RELU)                                        \
     {                                                                         \
         FLOAT_COND_SCALE_END_C(step, a_cur, b_cur, c_cur, W_elements, _C_ob); \
     }                                                                         \
-    else if constexpr (op_type == 'd' || op_type == 's')                      \
+    else if constexpr (op_type == ADD || op_type == AVERAGE_POOL)                      \
     {                                                                         \
         FLOAT_ACCUM_END_C(step, a_cur, c_cur, W_elements, _C_ob);             \
-    }
-    else if constexpr( op_type == 'm')\
+    }\
+    else if constexpr( op_type == DROPOUT)\
     {\
         float drop_out_rate = b_cur[0];\
-        FLOAT_DIV_END_C(drop_out_rate, W_elements, _C_ob)\
+        FLOAT_DIV_END_C(c_cur, drop_out_rate, W_elements, _C_ob)\
     }
 
         //****************************************************************************
@@ -109,7 +122,7 @@ namespace detail
                   dim_t _UNROLL,
                   // TODO: add a bool to switch between microkernel and default imp
                   // Leaf to describe abstract operation
-                  char op_type,
+                  OP_TYPE op_type,
                   int8_t op_class>
         void inline compute_with_padding(dim_t H_lb, dim_t H_ub,
                                          dim_t W_lb, dim_t W_ub,
@@ -158,7 +171,7 @@ namespace detail
                   dim_t _O_wb,
                   dim_t _stride,
                   dim_t _UNROLL,
-                  char op_type,
+                  OP_TYPE op_type,
                   int8_t op_class>
         void inline kernel_left(
             bool first,
@@ -174,8 +187,8 @@ namespace detail
             dim_t H_ub = 0)
         {
             constexpr dim_t _C_ob = _G_b * _K_b;
-            // constexpr dim_t _C_ib = _G_b * _F_cb;
-            // constexpr dim_t step = _stride * _C_ib;
+            constexpr dim_t _C_ib = _G_b * _F_cb;
+            constexpr dim_t step = _stride * _C_ib;
 
             const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
             FLOAT_DEF_END_C(_O_wb, _C_ob);
@@ -191,7 +204,7 @@ namespace detail
                 FLOAT_ZERO_END_C(l_pad_el, _C_ob);
 
                 //@note padding  should always be 'v' for pointwise operations, so this code path should not be used
-                if (op_type=='m')
+                if (op_type == DROPOUT)
                 {
                     FLOAT_LOAD_END_C_strided(I_ptr, step, l_pad_el, _C_ob);
                 }
@@ -224,10 +237,10 @@ namespace detail
             }
             //Fusion Slot # 1
             // Include division for Average Pooling
-            if(op_type == 's')
+            if(op_type == AVERAGE_POOL)
             {
                 float norm = 1.0/(1.0*F_h*F_w);
-                FLOAT_DIV_END_C(norm, l_pad_el, _C_ob)
+                FLOAT_DIV_END_C(c_tile, norm, l_pad_el, _C_ob)
             }
             FLOAT_STORE_END_C(O_ptr, l_pad_el, _C_ob);
             O_ptr += _G_b * _K_b;
@@ -242,7 +255,7 @@ namespace detail
                   dim_t _O_wb,
                   dim_t _stride,
                   dim_t _UNROLL,
-                  char op_type,
+                  OP_TYPE op_type,
                   int8_t op_class>
         void inline kernel(
             bool first,
@@ -268,12 +281,12 @@ namespace detail
             if (first)
             {
                 FLOAT_ZERO_TILE_C(_O_wb, _C_ob);
-                if (op_type == 'p' || op_type == 'm')
+                if (op_type == MAX_POOL || op_type == DROPOUT)
                 {
                     /// @note using platform C_ob
                     FLOAT_LOAD_TILE_C_strided(I, step, _O_wb, FLOAT_C_ob);
                 }
-                else if (op_type == 'u')
+                else if (op_type == UPSAMPLE)
                 {
                     FLOAT_LOAD_TILE_C_upsample(I, _stride, _C_ib, _O_wb, _C_ob);
                 }
@@ -306,7 +319,7 @@ namespace detail
                 }
             }
 
-            if (op_type == 's')
+            if (op_type == AVERAGE_POOL)
             {
                 float norm = 1.0 / (1.0 * F_h * F_w);
                 FLOAT_DIV_TILE_C(norm, _O_wb, _C_ob)
@@ -324,7 +337,7 @@ namespace detail
                   dim_t _O_wb,
                   dim_t _stride,
                   dim_t _UNROLL,
-                  char op_type,
+                  OP_TYPE op_type,
                   int8_t op_class>
         void inline kernel_pad(
             bool first,
@@ -352,7 +365,7 @@ namespace detail
                 FLOAT_ZERO_TILE_C(_O_wb, _C_ob);
 
                 //@note padding  should always be 'v' for pointwise operations, so this code path should not be used
-                if(op_type == 'm')
+                if(op_type == DROPOUT)
                 {
                     FLOAT_LOAD_TILE_C_strided(I, step, _O_wb, _C_ob);
                 }
@@ -390,16 +403,12 @@ namespace detail
                     }
                 }
             }
-            if (op_type == 's')
+            if (op_type == AVERAGE_POOL)
             {
                 float norm = 1.0 / (1.0 * F_h * F_w);
                 FLOAT_DIV_TILE_C(norm, _O_wb, _C_ob)
             }
-            if (op_type == 'm')
-            {
-                float norm = drop_out_rate;
-                FLOAT_DIV_TILE_C(norm, _O_wb, _C_ob)
-            }
+
             FLOAT_STORE_TILE_C(O, _O_wb, _C_ob);
         }
 
@@ -412,7 +421,7 @@ namespace detail
                   dim_t _O_wb,
                   dim_t _stride,
                   dim_t _UNROLL,
-                  char op_type,
+                  OP_TYPE op_type,
                   int8_t op_class>
         void inline kernel_right(
             bool first,
@@ -440,11 +449,11 @@ namespace detail
                 {
                     FLOAT_ZERO_END_C(O_w_left, _C_ob);
 
-                    if ( (op_type == 'm')|| (op_type == 'p' && H_lb == 0 && H_ub == 0))
+                    if ( (op_type == DROPOUT)|| (op_type == MAX_POOL && H_lb == 0 && H_ub == 0))
                     {
                         FLOAT_LOAD_END_C_strided(I, step, O_w_left, _C_ob);
                     }
-                    else if (op_type == 'u')
+                    else if (op_type == UPSAMPLE)
                     {
                         FLOAT_LOAD_END_C_upsample(I, _stride, _C_ib, O_w_left, _C_ob);
                     }
@@ -466,10 +475,10 @@ namespace detail
                     I,
                     c_tile);
 
-                if (op_type == 's')
+                if (op_type == AVERAGE_POOL)
                 {
                     float norm = 1.0 / (1.0 * F_h * F_w);
-                    FLOAT_DIV_END_C(norm, O_w_left, _C_ob)
+                    FLOAT_DIV_END_C(c_tile, norm, O_w_left, _C_ob)
                 }
                 
 
@@ -488,7 +497,7 @@ namespace detail
                 // Initialize with 0 for the padding elements
 
                 //@note padding  should always be 'v' for pointwise operations, so this code path should not be used
-                if (op_type=='m')
+                if (op_type == DROPOUT)
                 {
                     FLOAT_LOAD_END_C_strided(I_ptr, step, r_pad_el, _C_ob);
                 }
@@ -519,10 +528,10 @@ namespace detail
                 I_ptr += _stride * _F_cb * _G_b;
             }
 
-            if (op_type == 's')
+            if (op_type == AVERAGE_POOL)
             {
                 float norm = 1.0 / (1.0 * F_h * F_w);
-                FLOAT_DIV_END_C(norm, r_pad_el, _C_ob)
+                FLOAT_DIV_END_C(c_tile, norm, r_pad_el, _C_ob)
             }
 
             FLOAT_STORE_END_C(O_ptr, r_pad_el, _C_ob);
@@ -537,7 +546,7 @@ namespace detail
                   dim_t _O_wb,
                   dim_t _stride,
                   dim_t _UNROLL,
-                  char op_type,
+                  OP_TYPE op_type,
                   int8_t op_class>
         void inline kernel_bottom(
             bool first,
@@ -644,7 +653,7 @@ namespace detail
                   dim_t _O_wb,
                   dim_t _stride,
                   dim_t _UNROLL,
-                  char op_type,
+                  OP_TYPE op_type,
                   int8_t op_class>
         void inline kernel_top(
             bool first,
@@ -755,7 +764,7 @@ namespace detail
                   dim_t _O_wb,
                   dim_t _stride,
                   dim_t _UNROLL,
-                  char op_type,        // 'c' (conv,dense), 'p' (pool), 'u' (upsample), a' (relu activation), 'l' (leaky relu activation), or 'd' (accumulate)
+                  OP_TYPE op_type,        // 'c' (conv,dense), 'p' (pool), 'u' (upsample), a' (relu activation), 'l' (leaky relu activation), or 'd' (accumulate)
                   int8_t op_class,     //  2  (conv),  1  (dense,pool), or '0' (activation, upsample)
                   bool rewrite_output> // 0 (partial conv, accum), 1 (otherwise)
         void abstract_layer(
@@ -784,7 +793,7 @@ namespace detail
             ScalarT const *I_buf = I->data(); //__restrict__ ?
 
             ScalarT const *F_buf = nullptr;
-            if constexpr (op_type == 'c' || op_type == 'l') // if (F != nullptr)
+            if constexpr (op_type == CONV || op_type == LEAKY_RELU || op_type == DROPOUT) // if (F != nullptr)
             {
                 F_buf = F->data();
             }
@@ -792,15 +801,15 @@ namespace detail
             ScalarT *O_buf = O->data(); //__restrict__ ?
 
 #if DEBUG == 1
-    if (op_type == 'c')
+    if (op_type == CONV)
     {
         printf("conv class: %d \n", op_class);
     }
-    else if (op_type == 'p')
+    else if (op_type == MAX_POOL)
     {
         printf("pool class: %d \n", op_class);
     }
-    else if (op_type == 'a')
+    else if (op_type == RELU)
     {
         printf("activation class: %d \n", op_class);
     }
@@ -830,7 +839,7 @@ namespace detail
     //  To calculate offsets to next output row, next output block
     // @todo fix this in small::output_dim
     dim_t H_o_w_pad, W_o_w_pad;
-    if constexpr (op_type == 'u')
+    if constexpr (op_type == UPSAMPLE)
     {
         if constexpr(_stride == std::numeric_limits<dim_t>::max())
         {
@@ -861,7 +870,7 @@ namespace detail
 
     // Full kernel output elements
     dim_t H_o, W_o_full;
-    if constexpr (op_type == 'u')
+    if constexpr (op_type == UPSAMPLE)
     {
         H_o = H_o_w_pad;
         W_o_full = W_o_w_pad;
@@ -876,7 +885,7 @@ namespace detail
     dim_t H_back_index = H_full_index + _stride * (H_o);
     dim_t W_back_index = W_full_index + _stride * (W_o_full);
     dim_t b_pad_el, r_pad_el;
-    if constexpr (op_type == 'u')
+    if constexpr (op_type == UPSAMPLE)
     {
         b_pad_el = 0;
         r_pad_el = 0;
@@ -898,7 +907,7 @@ namespace detail
     const dim_t O_w_full = (O_w / _O_wb) * _O_wb;
     const dim_t O_w_left = O_w - O_w_full;
     const dim_t O_hxO_w = O_h_w_pad * O_w_w_pad;
-
+    printf("%d %d\n", F_h, F_w);
 #if DEBUG == 1
     printf("\t\t I_h %d I_w %d F_C %d G %d \n", I_h, I_w, F_c, G);
     printf("\t\t O_h_pad: %d O_w_w_pad %d \n", O_h_w_pad, O_w_w_pad);
@@ -957,7 +966,7 @@ namespace detail
         for (index_t g = group_tid; g < G / _G_b; g += T_group)
         {
             ScalarT const *I_group;
-            if constexpr (op_type == 'u' && _stride == std::numeric_limits<dim_t>::max())
+            if constexpr (op_type == UPSAMPLE && _stride == std::numeric_limits<dim_t>::max())
             {
                 I_group = I_buf + g * (F_c * 1 * 1* _G_b);
             }
@@ -969,7 +978,7 @@ namespace detail
             //if leaky relu, the weight pointer does not change with the group id
 
             ScalarT const *F_group ;
-            if constexpr (op_type == 'l')
+            if constexpr ((op_type == LEAKY_RELU) || (op_type == DROPOUT))
             {
                 F_group = F_buf;
             }
@@ -1040,7 +1049,7 @@ namespace detail
                         ScalarT const *I_row;
                         // @todo cast index calculation as int and make stride a float value.
                         //I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
-                        if constexpr (op_type == 'u')
+                        if constexpr (op_type == UPSAMPLE)
                         {
                             I_row = I_row_full + (j / _stride) * (I_w * _F_cb * _G_b);
                         }
@@ -1076,7 +1085,7 @@ namespace detail
                             ScalarT const *I_col;
                             // @todo cast index calculation as int and make stride a float value.
                             //I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
-                            if constexpr (op_type == 'u')
+                            if constexpr (op_type == UPSAMPLE)
                             {
                                 I_col = I_col_full + (l / _stride) * (_F_cb * _G_b);
                             }
@@ -1105,7 +1114,7 @@ namespace detail
 
                         // Epilogue for microkernel + right padding elements
                         ScalarT const *I_col_left;
-                        if constexpr (op_type == 'u')
+                        if constexpr (op_type == UPSAMPLE)
                         {
                             I_col_left =
                                 I_col_full + (O_w_full / _stride) * (_F_cb * _G_b);
@@ -1138,7 +1147,7 @@ namespace detail
                     ScalarT const *I_row_bot;
                     // @todo cast index calculation as int and make stride a float value.
                     //I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
-                    if constexpr (op_type == 'u')
+                    if constexpr (op_type == UPSAMPLE)
                     {
                         I_row_bot =
                             I_row_full + (O_h * _stride) * (I_w * _F_cb * _G_b);
