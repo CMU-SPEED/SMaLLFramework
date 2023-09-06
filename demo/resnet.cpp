@@ -288,7 +288,7 @@ std::vector<small::Layer<BufferT>*> create_model(
 
     ++filter_num;
     prev = new small::PartialConv2DLayer<BufferT>(prev->output_shape(),
-                                                  kernel_size,
+                                                  kernel_size, kernel_size,
                                                   stride, small::PADDING_F,
                                                   output_channels,
                                                   *filters[filter_num], true);
@@ -329,7 +329,7 @@ std::vector<small::Layer<BufferT>*> create_model(
 
         stride = 1;
         prev = new small::PartialConv2DLayer<BufferT>(prev->output_shape(),
-                                                      kernel_size,
+                                                      kernel_size, kernel_size,
                                                       stride, small::PADDING_F,
                                                       output_channels,
                                                       *filters[filter_num], true);
@@ -374,29 +374,29 @@ small::Tensor<BufferT> &model_inference(
     small::Tensor<BufferT>                                   &inter_2_dc)
 {
     size_t layer_num = 0;
-    layers[layer_num++]->compute_output({&input_dc}, {&inter_0_dc});   //Conv2D
-    layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_0_dc}); //ReLU
+    layers[layer_num++]->compute_output({&input_dc}, &inter_0_dc);   //Conv2D
+    layers[layer_num++]->compute_output({&inter_0_dc}, &inter_0_dc); //ReLU
 
-    layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_1_dc}); // Conv2D
-    layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_1_dc}); // ReLU
-    layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_0_dc}); // buf0+=Conv2D(buf1)
-    layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_0_dc}); // ReLU
+    layers[layer_num++]->compute_output({&inter_0_dc}, &inter_1_dc); // Conv2D
+    layers[layer_num++]->compute_output({&inter_1_dc}, &inter_1_dc); // ReLU
+    layers[layer_num++]->compute_output({&inter_1_dc}, &inter_0_dc); // buf0+=Conv2D(buf1)
+    layers[layer_num++]->compute_output({&inter_0_dc}, &inter_0_dc); // ReLU
 
     for (auto ix = 0U; ix < 2; ++ix)
     {
-        layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_1_dc}); // Conv2D
-        layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_1_dc}); // ReLU
+        layers[layer_num++]->compute_output({&inter_0_dc}, &inter_1_dc); // Conv2D
+        layers[layer_num++]->compute_output({&inter_1_dc}, &inter_1_dc); // ReLU
 
-        layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_2_dc}); // Conv2D
+        layers[layer_num++]->compute_output({&inter_0_dc}, &inter_2_dc); // Conv2D
 
-        layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_2_dc}); // buf2+=Conv2D(buf1)
-        layers[layer_num++]->compute_output({&inter_2_dc}, {&inter_2_dc}); // ReLU
+        layers[layer_num++]->compute_output({&inter_1_dc}, &inter_2_dc); // buf2+=Conv2D(buf1)
+        layers[layer_num++]->compute_output({&inter_2_dc}, &inter_2_dc); // ReLU
 
         inter_0_dc.swap(inter_2_dc);
     }
 
-    layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_1_dc});
-    layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_0_dc});
+    layers[layer_num++]->compute_output({&inter_0_dc}, &inter_1_dc);
+    layers[layer_num++]->compute_output({&inter_1_dc}, &inter_0_dc);
 
     return inter_0_dc;
 }
@@ -455,7 +455,7 @@ inline void resnet_block(
 {
     // printf("before: %d, %.2f %.2f %.2f %.2f\n", 0, I[0], I[1], I[2], I[3]);
 
-    small::Conv2D(kernel_size, stride,
+    small::Conv2D(kernel_size, kernel_size, stride,
                   t_pad_0, b_pad_0, l_pad_0, r_pad_0,
                   output_channels, input_channels,
                   in_dims[0], in_dims[1],
@@ -470,13 +470,13 @@ inline void resnet_block(
                           o_h, o_w,
                           O_intermediate, O_intermediate);
 
-    small::Conv2D(1, stride,
+    small::Conv2D(1, 1, stride,
                   0, 0, 0, 0,
                   output_channels, input_channels,
                   in_dims[0], in_dims[1],
                   I, F_conv_1x1, O);
 
-    small::PartialConv2D(kernel_size, 1,
+    small::PartialConv2D(kernel_size, kernel_size, 1,
                          t_pad_1, b_pad_1, l_pad_1, r_pad_1,
                          output_channels, output_channels,
                          o_h, o_w,
@@ -507,7 +507,7 @@ inline void resnet_block(
     BufferT       &O_intermediate,
     BufferT       &O)
 {
-    small::Conv2D(kernel_size, stride,
+    small::Conv2D(kernel_size, kernel_size, stride,
                   t_pad_0, b_pad_0, l_pad_0, r_pad_0,
                   output_channels, input_channels,
                   in_dims[0], in_dims[1],
@@ -523,7 +523,7 @@ inline void resnet_block(
                           O_intermediate, O_intermediate);
 
     /// @todo Should this really be Partial Conv2D if no 1x1?
-    small::PartialConv2D(kernel_size, 1,
+    small::PartialConv2D(kernel_size, kernel_size, 1,
                          t_pad_1, b_pad_1, l_pad_1, r_pad_1,
                          output_channels, output_channels,
                          o_h, o_w,
@@ -544,7 +544,7 @@ model_inference(uint32_t layer_num_total,
                 BufferT       &inter_2_dc)
 {
     auto layer_num = 0;
-    small::Conv2D(REDUCTION_HW(layer_num),
+    small::Conv2D(REDUCTION_HW(layer_num), REDUCTION_HW(layer_num),
                   STRIDE(layer_num), PADDING(layer_num),
                   GROUP_C(layer_num), REDUCTION_C(layer_num),
                   I_HEIGHT(layer_num), I_WIDTH(layer_num),
@@ -593,13 +593,14 @@ model_inference(uint32_t layer_num_total,
         inter_0_dc.swap(inter_2_dc);
     }
 
-    small::MaxPool2D(REDUCTION_HW(layer_num), STRIDE(layer_num),
+    small::MaxPool2D(REDUCTION_HW(layer_num), REDUCTION_HW(layer_num),
+                     STRIDE(layer_num),
                      PADDING(layer_num),
                      GROUPS(layer_num),
                      I_HEIGHT(layer_num), I_WIDTH(layer_num),
                      inter_0_dc,
                      inter_1_dc);
-    small::Conv2D(1, 1,
+    small::Conv2D(1, 1, 1,
                   0, 0, 0, 0,
                   GROUP_C(layer_num_total - 1), REDUCTION_C(layer_num_total - 1),
                   1, 1,
@@ -769,7 +770,7 @@ void inference()
             GROUP_C(l) * GROUPS(l);
 
         BufferT *filter_buf_ptr =
-            small::alloc_buffer(filter_dimensions);
+            small::alloc_buffer<BufferT>(filter_dimensions);
         init(*filter_buf_ptr, filter_dimensions);
         filter_buf_ptrs.push_back(filter_buf_ptr);
     }
@@ -777,7 +778,7 @@ void inference()
     uint32_t filter_dimensions =
         GROUP_C(layer_num_total - 1) * REDUCTION_C(layer_num_total - 1);
     BufferT *filter_fc_dc_ptr =
-        small::alloc_buffer(filter_dimensions);
+        small::alloc_buffer<BufferT>(filter_dimensions);
     init(*filter_fc_dc_ptr, filter_dimensions);
     filter_buf_ptrs.push_back(filter_fc_dc_ptr);
     /// @todo assert(filter_buf_ptrs.size() == num_filters)
@@ -785,9 +786,9 @@ void inference()
     // allocate space for intermediate outputs
     // (use the max sizes calculated previously)
 #if defined(QUANTIZED)
-    BufferT inter_0_dc(max_numel_inter_0 + C_ob*16*16*32); // HACK
-    BufferT inter_1_dc(max_numel_inter_1 + C_ob*16*16*32); // HACK
-    BufferT inter_2_dc((max_numel_inter_0 / 2) + C_ob*16*16*3);
+    BufferT inter_0_dc(max_numel_inter_0 + QUINT8_C_ob*16*16*32); // HACK
+    BufferT inter_1_dc(max_numel_inter_1 + QUINT8_C_ob*16*16*32); // HACK
+    BufferT inter_2_dc((max_numel_inter_0 / 2) + QUINT8_C_ob*16*16*3);
 #else
     BufferT inter_0_dc(max_numel_inter_0);
     BufferT inter_1_dc(max_numel_inter_1);
@@ -850,9 +851,9 @@ void inference()
 
     small::Tensor<BufferT> input_tensor({1, 3, 32, 32}, input_dc); // B, C_i, N, M
 #if defined(QUANTIZED)
-    small::Tensor<BufferT> inter_0_tensor(max_numel_inter_0 + C_ob*16*16*32);
-    small::Tensor<BufferT> inter_1_tensor(max_numel_inter_1 + C_ob*16*16*32);
-    small::Tensor<BufferT> inter_2_tensor((max_numel_inter_0 / 2) + C_ob*16*16*3);
+    small::Tensor<BufferT> inter_0_tensor(max_numel_inter_0 + QUINT8_C_ob*16*16*32);
+    small::Tensor<BufferT> inter_1_tensor(max_numel_inter_1 + QUINT8_C_ob*16*16*32);
+    small::Tensor<BufferT> inter_2_tensor((max_numel_inter_0 / 2) + QUINT8_C_ob*16*16*3);
 #else
     small::Tensor<BufferT> inter_0_tensor(max_numel_inter_0);
     small::Tensor<BufferT> inter_1_tensor(max_numel_inter_1);

@@ -27,9 +27,8 @@ public:
     typedef typename BufferT::value_type value_type;
 
     AddLayer(shape_type const &input1_shape,
-             shape_type const &input2_shape,
-             std::vector<int> const &parents_idxs)
-        : Layer<BufferT>(), m_parents_idxs(parents_idxs)
+             shape_type const &input2_shape)
+        : Layer<BufferT>(input1_shape)
     {
 #if defined(DEBUG_LAYERS)
         std::cerr << "Add(batches:" << input1_shape[BATCH]
@@ -45,15 +44,13 @@ public:
                 "AddLayer ctor ERROR: "
                 "predecessors do not have same output shape.");
         }
-
-        this->set_output_shapes({input1_shape});
     }
 
     virtual ~AddLayer() {}
 
     virtual void compute_output(
         std::vector<Tensor<BufferT> const *> input,
-        std::vector<Tensor<BufferT>*>        output) const
+        Tensor<BufferT>*                     output) const
     {
         auto const &output_shape(this->output_shape());
 
@@ -61,7 +58,7 @@ public:
         // must have the correct shape when this function is called.
         // No need to check capacity directly or set shape at end.
         if ((input.size()  != 1) || (input[0]->shape()  != output_shape) ||
-            (output.size() != 1) || (output[0]->shape() != output_shape))
+            (output->shape() != output_shape))
         {
             throw std::invalid_argument(
                 "AddLayer::compute_output() ERROR: "
@@ -72,18 +69,13 @@ public:
         small::Accum(output_shape[CHANNEL],
                      output_shape[HEIGHT], output_shape[WIDTH],
                      input[0]->buffer(),
-                     output[0]->buffer());
+                     output->buffer());
 
         // No need to reset the shape of the output buffer.
         //output.set_shape(this->output_shape());
     }
 
-    std::vector<int> const &parents() const { return m_parents_idxs; }
-
 private:
-
-    std::vector<int> const m_parents_idxs;
-
 };
 
 }

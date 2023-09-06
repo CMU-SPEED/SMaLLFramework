@@ -12,16 +12,16 @@
 
 #pragma once
 
-//#define QUANTIZED 1
+#define SMALL_HAS_QUINT8_SUPPORT  1
 
-#define W_ob 2
-#define C_ob 1
-#define SIMD 1
-#define UNROLL 1
-#define C_ib C_ob
+#define QUINT8_W_ob 2
+#define QUINT8_C_ob 1
+#define QUINT8_SIMD 1
+#define QUINT8_UNROLL 1
+#define QUINT8_C_ib QUINT8_C_ob
 
 //Potential blocking parameters for packing
-#define NUM_FMA 1
-#define NUM_MAX 1
-#define NUM_LOAD 1
-#define NUM_STORE 1
+#define QUINT8_NUM_FMA 1
+#define QUINT8_NUM_MAX 1
+#define QUINT8_NUM_LOAD 1
+#define QUINT8_NUM_STORE 1

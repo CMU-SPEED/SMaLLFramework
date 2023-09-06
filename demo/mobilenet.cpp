@@ -148,7 +148,7 @@ std::vector<small::Layer<BufferT>*> create_model(
 
         prev = new small::DepthwiseConv2DLayer<BufferT>(
             prev->output_shape(),
-            kernel_size, block_strides[block_num],
+            kernel_size, kernel_size, block_strides[block_num],
             small::PADDING_F,
             *filters[filter_num], true);
         layers.push_back(prev);
@@ -205,19 +205,19 @@ small::Tensor<BufferT> &model_inference(
     small::Tensor<BufferT>                    &inter_1_dc)
 {
     size_t layer_num = 0;
-    layers[layer_num++]->compute_output({&input_dc}, {&inter_0_dc});   // Conv2D
-    layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_0_dc}); // ReLU
+    layers[layer_num++]->compute_output({&input_dc}, &inter_0_dc);   // Conv2D
+    layers[layer_num++]->compute_output({&inter_0_dc}, &inter_0_dc); // ReLU
 
     for (auto ix = 0U; ix < 13; ++ix)
     {
-        layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_1_dc}); // DWConv
-        layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_1_dc}); // ReLU
-        layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_0_dc}); // Conv2D
-        layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_0_dc}); // ReLU
+        layers[layer_num++]->compute_output({&inter_0_dc}, &inter_1_dc); // DWConv
+        layers[layer_num++]->compute_output({&inter_1_dc}, &inter_1_dc); // ReLU
+        layers[layer_num++]->compute_output({&inter_1_dc}, &inter_0_dc); // Conv2D
+        layers[layer_num++]->compute_output({&inter_0_dc}, &inter_0_dc); // ReLU
     }
 
-    layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_1_dc}); // MaxPool2D
-    layers[layer_num++]->compute_output({&inter_1_dc}, {&inter_0_dc}); // Conv2D
+    layers[layer_num++]->compute_output({&inter_0_dc}, &inter_1_dc); // MaxPool2D
+    layers[layer_num++]->compute_output({&inter_1_dc}, &inter_0_dc); // Conv2D
     return inter_0_dc;
 }
 
@@ -272,7 +272,7 @@ inline void dscnn_block(
     BufferT       &O_intermediate,
     BufferT       &O)
 {
-    small::DepthwiseConv2D(kernel_size, stride,
+    small::DepthwiseConv2D(kernel_size, kernel_size, stride,
                            t_pad, b_pad, l_pad, r_pad,
                            input_channels,
                            in_dims[1], in_dims[0],
@@ -286,7 +286,7 @@ inline void dscnn_block(
     small::ReLUActivation(input_channels,
                           o_h, o_w,
                           O_intermediate, O_intermediate);
-    small::Conv2D(1, 1,
+    small::Conv2D(1, 1, 1,
                   0, 0, 0, 0,
                   output_channels, input_channels,
                   o_h, o_w,
@@ -306,7 +306,7 @@ model_inference(uint32_t layer_num_total,
                 BufferT       &inter_1_dc)
 {
     auto layer_num = 0;
-    small::Conv2D(REDUCTION_HW(layer_num),
+    small::Conv2D(REDUCTION_HW(layer_num), REDUCTION_HW(layer_num),
                   STRIDE(layer_num), PADDING(layer_num),
                   GROUP_C(layer_num), REDUCTION_C(layer_num),
                   I_HEIGHT(layer_num), I_WIDTH(layer_num),
@@ -338,7 +338,7 @@ model_inference(uint32_t layer_num_total,
     }
 
     // printf("calling pool %d %d \n", layer_num, layer_num_total);
-    small::MaxPool2D(REDUCTION_HW(layer_num),
+    small::MaxPool2D(REDUCTION_HW(layer_num), REDUCTION_HW(layer_num),
                      STRIDE(layer_num), PADDING(layer_num),
                      GROUPS(layer_num),
                      I_HEIGHT(layer_num), I_WIDTH(layer_num),
@@ -346,7 +346,7 @@ model_inference(uint32_t layer_num_total,
                      inter_1_dc);
     // Dense(num_classes, GROUP_C(layer_num - 1), inter_1_dc, filter_fc_dc, output_dc);
     uint32_t num_classes = 16;  /// @todo get from layer params
-    small::Conv2D(1, 1,
+    small::Conv2D(1, 1, 1,
                   0, 0, 0, 0,
                   num_classes, 1024,  /// @todo get from layer params
                   1, 1,

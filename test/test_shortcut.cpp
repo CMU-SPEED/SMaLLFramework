@@ -26,29 +26,31 @@
 
 #include "test_utils.hpp"
 
-void test_shortcut(size_t C_i, size_t H, size_t W) {
-
+//****************************************************************************
+void test_shortcut(size_t C_i, size_t H, size_t W)
+{
     size_t const num_input_elts = C_i*H*W;
 
     small::FloatBuffer input_buf(num_input_elts);
     small::init(input_buf, num_input_elts);
     small::Tensor<small::FloatBuffer> input({1, C_i, H, W}, input_buf);
-    
+
     small::FloatBuffer output_ref_buf(num_input_elts);
     small::FloatBuffer output_res_buf(num_input_elts);
 
     small::init(output_res_buf, num_input_elts);
     std::copy(&output_res_buf[0], &output_res_buf[num_input_elts], &output_ref_buf[0]);
-    
+
     small::Tensor<small::FloatBuffer> output({1, C_i, H, W}, output_res_buf);
 
-    small::AddLayer<small::FloatBuffer> add(input.shape(), output.shape(), {-1});
+    small::AddLayer<small::FloatBuffer> add(input.shape(), output.shape());
 
-    add.compute_output({&input}, {&output});
+    add.compute_output({&input}, &output);
 
     for (size_t ix = 0; ix < num_input_elts; ++ix)
     {
-        if(output.buffer()[ix] != input_buf[ix] + output_ref_buf[ix]){
+        if (output.buffer()[ix] != input_buf[ix] + output_ref_buf[ix])
+        {
             std::cout << "Error at index " << ix << std::endl;
             std::cout << "Expected: " << input_buf[ix] + output_ref_buf[ix] << std::endl;
             std::cout << "Actual: " << output.buffer()[ix] << std::endl;
@@ -67,7 +69,7 @@ void test_shortcut_single_element(void)
     size_t const W = 1;
 
     test_shortcut(C_i, H, W);
-    
+
 }
 
 //****************************************************************************
@@ -76,7 +78,7 @@ void test_shortcut_single_tile(void)
     size_t const C_i = 16;
     size_t const H = 1;
     size_t const W = 6;
-    
+
     test_shortcut(C_i, H, W);
 }
 

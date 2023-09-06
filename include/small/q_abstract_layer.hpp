@@ -30,46 +30,69 @@
 
 namespace small
 {
-namespace detail
+/// @note the following namespace is tied to the buffer type because c_tile_t
+///       and c_tile_out_t are tied to typedefs within the buffer class but
+///       the buffer templat has been stripped from the signatures
+namespace quint8_detail
 {
 
 //****************************************************************************
 /// @todo add parameters: step, _O_wb, _C_ob
 /// @todo use constexpr if on op_type and op_class in calling code
-#define ABSTRACT_Q_OP(op_type, op_class, a_cur, b_cur, a_offset, b_offset)     \
-    if (op_type == 'c')                                                        \
-    {                                                                          \
-        if (op_class == 1)                                                     \
-        {                                                                      \
-            DW_Q_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob, a_offset, b_offset); \
-        }                                                                      \
-        else if (op_class == 2)                                                \
-        {                                                                      \
-            CONV_Q_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob, a_offset, b_offset); \
-        }                                                                      \
-    }                                                                          \
-    else if (op_type == 'a' || op_type == 'p')                                 \
-    {                                                                          \
-        MAX_Q_TILE_C(step, a_cur, _O_wb, _C_ob, a_offset);                     \
+#define QUINT8_ABSTRACT_OP(op_type, op_class, a_cur, b_cur, a_offset, b_offset) \
+    if constexpr (op_type == 'c')                                       \
+    {                                                                   \
+        if constexpr (op_class == 1)                                    \
+        {                                                               \
+            QUINT8_DW_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob, a_offset, b_offset); \
+        }                                                               \
+        else if constexpr (op_class == 2)                               \
+        {                                                               \
+            QUINT8_CONV_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob, a_offset, b_offset); \
+        }                                                               \
+    }                                                                   \
+    else if constexpr (op_type == 'a' || op_type == 'p')                \
+    {                                                                   \
+        QUINT8_MAX_TILE_C(step, a_cur, _O_wb, _C_ob, a_offset);         \
+    }                                                                   \
+    else if constexpr (op_type == 'l')                                  \
+    {                                                                   \
+        /*QUINT8_COND_SCALE_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob);*/ \
+        throw std::invalid_argument("*_ABSTRACT_OP ERROR: no support for op_type 'l'"); \
+    }                                                                   \
+    else if constexpr (op_type == 'd')                                  \
+    {                                                                   \
+        /*QUINT8_ACCUM_TILE_C(step, a_cur, _O_wb, _C_ob);*/             \
+        throw std::invalid_argument("*_ABSTRACT_OP ERROR: no support for op_type 'd'"); \
     }
 
 //****************************************************************************
 /// @todo add parameters: step, W_elements, _C_ob
-#define ABSTRACT_Q_OP_END(op_type, op_class, a_cur, b_cur, c_cur, a_offset, b_offset)     \
-    if (op_type == 'c')                                                                   \
-    {                                                                                     \
-        if (op_class == 1)                                                                \
-        {                                                                                 \
-            DW_Q_END_C(step, a_cur, b_cur, c_cur, W_elements, _C_ob, a_offset, b_offset); \
-        }                                                                                 \
-        else if (op_class == 2)                                                           \
-        {                                                                                 \
-            CONV_Q_END_C(step, a_cur, b_cur, c_cur, W_elements, _C_ob, a_offset, b_offset); \
-        }                                                                                 \
-    }                                                                                     \
-    else if (op_type == 'a' || op_type == 'p')                                            \
-    {                                                                                     \
-        MAX_Q_END_C(step, a_cur, c_cur, W_elements, _C_ob, a_offset);                     \
+#define QUINT8_ABSTRACT_OP_END(op_type, op_class, a_cur, b_cur, c_cur, a_offset, b_offset) \
+    if constexpr (op_type == 'c')                                       \
+    {                                                                   \
+        if constexpr (op_class == 1)                                    \
+        {                                                               \
+            QUINT8_DW_END_C(step, a_cur, b_cur, c_cur, W_elements, _C_ob, a_offset, b_offset); \
+        }                                                               \
+        else if constexpr (op_class == 2)                               \
+        {                                                               \
+            QUINT8_CONV_END_C(step, a_cur, b_cur, c_cur, W_elements, _C_ob, a_offset, b_offset); \
+        }                                                               \
+    }                                                                   \
+    else if constexpr (op_type == 'a' || op_type == 'p')                \
+    {                                                                   \
+        QUINT8_MAX_END_C(step, a_cur, c_cur, W_elements, _C_ob, a_offset); \
+    }                                                                   \
+    else if constexpr (op_type == 'l')                                  \
+    {                                                                   \
+        /*QUINT8_COND_SCALE_END_C(step, a_cur, b_cur, c_cur, W_elements, _C_ob, a_offset, b_offset);*/ \
+        throw std::invalid_argument("*_ABSTRACT_OP_END ERROR: no support for op_type 'l'"); \
+    }                                                                   \
+    else if constexpr (op_type == 'd')                                  \
+    {                                                                   \
+        /*QUINT8_ACCUM_END_C(step, a_cur, c_cur, W_elements, _C_ob, a_offset);*/ \
+        throw std::invalid_argument("*_ABSTRACT_OP_END ERROR: no support for op_type 'd'"); \
     }
 
 //****************************************************************************
@@ -94,8 +117,7 @@ void inline compute_with_padding(dim_t H_lb, dim_t H_ub,
                                  ScalarT const *I,
                                  c_tile_t *c_cur, /// @todo need to deal with type
                                  AccumT I_offset = 0,
-                                 AccumT F_offset = 0
-    )
+                                 AccumT F_offset = 0)
 {
     constexpr dim_t _C_ob = _G_b * _K_b;
     constexpr dim_t _C_ib = _G_b * _F_cb;
@@ -117,10 +139,11 @@ void inline compute_with_padding(dim_t H_lb, dim_t H_ub,
             // TODO: reintroduce convolution
             for (uint32_t ii = 0; ii < _F_cb / _UNROLL; ii++)
             {
-                ScalarT const *b_cur = b + ii * _UNROLL * C_ob;
+                /// @note using platform C_ob
+                ScalarT const *b_cur = b + ii * _UNROLL * QUINT8_C_ob;
                 ScalarT const *a_cur = a + ii * _UNROLL;
-                ABSTRACT_Q_OP_END(op_type, op_class, a_cur, b_cur, c_cur,
-                                  I_offset, F_offset);
+                QUINT8_ABSTRACT_OP_END(op_type, op_class, a_cur, b_cur, c_cur,
+                                       I_offset, F_offset);
             }
         }
     }
@@ -145,8 +168,8 @@ void inline kernel_left(
     dim_t F_h,
     dim_t F_w,
     dim_t input_col_stride,
-    dim_t r_pad_el,
-    dim_t r_pad,
+    dim_t l_pad_el,
+    dim_t l_pad,
     ScalarT const *I,
     ScalarT const *F,
     AccumT        *O,  // ScalarT -> AccumT
@@ -166,42 +189,42 @@ void inline kernel_left(
     // constexpr dim_t step = _stride * _C_ib;
 
     const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
-    DEF_END_C(_O_wb, _C_ob);
+    QUINT8_DEF_END_C(_O_wb, _C_ob);
 
     // left padding elements
     AccumT        *O_ptr = O;  // ScalarT -> AccumT
     ScalarT const *I_ptr = I;
 
-    int W_i_valid = r_pad;
+    int W_i_valid = l_pad;
 
     if (first)
     {
-        ZERO_END_C(r_pad_el, _C_ob, k_zero);
+        QUINT8_ZERO_END_C(l_pad_el, _C_ob, k_zero);
     }
     else
     {
-        LOAD_END_C(O_ptr, r_pad_el, _C_ob);
+        QUINT8_LOAD_END_C(O_ptr, l_pad_el, _C_ob);
     }
 
     c_tile_t *c_cur = c_tile;
     // dim_t c_cur = 0;
-    for (uint32_t k_p = 0; k_p < r_pad_el; k_p++)
+    for (uint32_t k_p = 0; k_p < l_pad_el; k_p++)
     {
         compute_with_padding<ScalarT, AccumT,
                              _G_b, _K_b, _F_cb, _O_wb, _stride,
                              _UNROLL, op_type, op_class>(
-            H_lb, H_UPPER,
-            W_i_valid, F_w,
-            F_w,
-            1,
-            input_col_stride,
-            F,
-            I_ptr,
-            c_cur,
-            I_offset,
-            F_offset);
+                                 H_lb, H_UPPER,
+                                 W_i_valid, F_w,
+                                 F_w,
+                                 1,
+                                 input_col_stride,
+                                 F,
+                                 I_ptr,
+                                 c_cur,
+                                 I_offset,
+                                 F_offset);
 
-        c_cur += (_K_b * _G_b) / (SIMD_EPILOGUE);
+        c_cur += (_K_b * _G_b) / (QUINT8_SIMD_EPILOGUE);
         // c_cur += 1;
         W_i_valid -= _stride;
         // I_ptr += ()*(_stride * _F_cb * _G_b);
@@ -210,14 +233,14 @@ void inline kernel_left(
     if constexpr (quantize)
     {
         ScalarT *O_out_ptr = O_out;
-        QUANTIZE_END_C(r_pad_el, _C_ob, lshift, rshift, q_mul, zero, max_val, min_val);
-        STORE_Q_END_C(O_out_ptr, r_pad_el, _C_ob);
+        QUINT8_QUANTIZE_END_C(l_pad_el, _C_ob, lshift, rshift, q_mul, zero, max_val, min_val);
+        QUINT8_STORE_Q_END_C(O_out_ptr, l_pad_el, _C_ob);
     }
     else
     {
-        STORE_END_C(O_ptr, r_pad_el, _C_ob);
+        QUINT8_STORE_END_C(O_ptr, l_pad_el, _C_ob);
     }
-    // STORE_END_C(O_ptr, r_pad_el, _C_ob);
+
     O_ptr += _G_b * _K_b;
 }
 
@@ -263,18 +286,26 @@ void inline kernel(
     const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
     // const dim_t W_UPPER = ((!W_ub) * (F_w)) + (W_ub);
 
-    DEF_TILE_C(_O_wb, _C_ob);
+    QUINT8_DEF_TILE_C(_O_wb, _C_ob);
     if (first)
     {
-        ZERO_TILE_C(_O_wb, _C_ob, k_zero);
+        QUINT8_ZERO_TILE_C(_O_wb, _C_ob, k_zero);
         if (op_type == 'p')
         {
-            LOAD_TILE_C_strided(I, step, _O_wb, C_ob);
+            /// @note using platform C_ob
+            QUINT8_LOAD_TILE_C_strided(I, step, _O_wb, QUINT8_C_ob);
+        }
+        else if (op_type == 'u')
+        {
+            //QUINT8_LOAD_TILE_C_upsample(I, _stride, _C_ib, _O_wb, _C_ob);
+            throw std::invalid_argument("*kernel ERROR: "
+                                        "no support for op_type 'u'.");
+
         }
     }
     else
     {
-        LOAD_TILE_C(O, _O_wb, _C_ob);
+        QUINT8_LOAD_TILE_C(O, _O_wb, _C_ob);
     }
 
     for (uint32_t n = H_lb; n < H_UPPER; n++)
@@ -292,10 +323,11 @@ void inline kernel(
             ScalarT const *a = I + input_stencil_w;
             for (uint32_t ii = 0; ii < _F_cb / _UNROLL; ii++)
             {
-                ScalarT const *b_cur = b + ii * _UNROLL * C_ob;
+                /// @note using platform C_ob
+                ScalarT const *b_cur = b + ii * _UNROLL * QUINT8_C_ob;
                 ScalarT const *a_cur = a + ii * _UNROLL;
-                ABSTRACT_Q_OP(op_type, op_class, a_cur, b_cur,
-                            I_offset, F_offset); /// @todo pass _C_ob
+                QUINT8_ABSTRACT_OP(op_type, op_class, a_cur, b_cur,
+                                   I_offset, F_offset); /// @todo pass _C_ob
             }
         }
     }
@@ -303,12 +335,12 @@ void inline kernel(
     if constexpr(quantize)
     {
         ScalarT *O_out_ptr = O_out;
-        QUANTIZE_TILE_C(_O_wb, _C_ob, lshift, rshift, q_mul, zero, max_val, min_val);
-        STORE_Q_TILE_C(O_out_ptr, _O_wb, _C_ob);
+        QUINT8_QUANTIZE_TILE_C(_O_wb, _C_ob, lshift, rshift, q_mul, zero, max_val, min_val);
+        QUINT8_STORE_Q_TILE_C(O_out_ptr, _O_wb, _C_ob);
     }
     else
     {
-        STORE_TILE_C(O, _O_wb, _C_ob);
+        QUINT8_STORE_TILE_C(O, _O_wb, _C_ob);
     }
 }
 
@@ -339,7 +371,7 @@ void inline kernel_pad(
     dim_t H_ub = 0,
     dim_t W_lb = 0,
     dim_t W_ub = 0,
-    int k_zero = 0,
+    int k_zero = 0,  /// @todo why both zero and k_zero?  Should this be AccumT?
     AccumT I_offset = 0,
     AccumT F_offset = 0,
     ScalarT *O_out = NULL,
@@ -355,14 +387,14 @@ void inline kernel_pad(
     const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
     // const dim_t W_UPPER = ((!W_ub) * (F_w)) + (W_ub);
 
-    DEF_TILE_C(_O_wb, _C_ob);
+    QUINT8_DEF_TILE_C(_O_wb, _C_ob);
     if (first)
     {
-        ZERO_TILE_C(_O_wb, _C_ob, k_zero);
+        QUINT8_ZERO_TILE_C(_O_wb, _C_ob, k_zero);
     }
     else
     {
-        LOAD_TILE_C(O, _O_wb, _C_ob);
+        QUINT8_LOAD_TILE_C(O, _O_wb, _C_ob);
     }
 
     // int updates = 0;
@@ -385,23 +417,25 @@ void inline kernel_pad(
 
             for (uint32_t ii = 0; ii < _F_cb / _UNROLL; ii++)
             {
-                ScalarT const *b_cur = b + ii * _UNROLL * C_ob;
+                /// @note using platform C_ob
+                ScalarT const *b_cur = b + ii * _UNROLL * QUINT8_C_ob;
                 ScalarT const *a_cur = a + ii * _UNROLL;
 
-                ABSTRACT_Q_OP(op_type, op_class, a_cur, b_cur,
-                              I_offset, F_offset);
+                QUINT8_ABSTRACT_OP(op_type, op_class, a_cur, b_cur,
+                                   I_offset, F_offset);
             }
         }
     }
+
     if constexpr (quantize)
     {
         ScalarT *O_out_ptr = O_out;
-        QUANTIZE_TILE_C(_O_wb, _C_ob, lshift, rshift, q_mul, zero, max_val, min_val);
-        STORE_Q_TILE_C(O_out_ptr, _O_wb, _C_ob);
+        QUINT8_QUANTIZE_TILE_C(_O_wb, _C_ob, lshift, rshift, q_mul, zero, max_val, min_val);
+        QUINT8_STORE_Q_TILE_C(O_out_ptr, _O_wb, _C_ob);
     }
     else
     {
-        STORE_TILE_C(O, _O_wb, _C_ob);
+        QUINT8_STORE_TILE_C(O, _O_wb, _C_ob);
     }
 }
 
@@ -444,49 +478,54 @@ void inline kernel_right(
     constexpr dim_t _C_ob = _G_b * _K_b;
     constexpr dim_t _C_ib = _G_b * _F_cb;
     constexpr dim_t step = _stride * _C_ib;
-
     const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
-    DEF_END_C(_O_wb, _C_ob);
+    QUINT8_DEF_END_C(_O_wb, _C_ob);
 
     if (O_w_left)
     {
         if (first)
         {
-            ZERO_END_C(O_w_left, _C_ob, k_zero);
+            QUINT8_ZERO_END_C(O_w_left, _C_ob, k_zero);
 
             if (op_type == 'p' && H_lb == 0 && H_ub == 0)
             {
-                LOAD_END_C_strided(I, step, O_w_left, _C_ob);
+                QUINT8_LOAD_END_C_strided(I, step, O_w_left, _C_ob);
+            }
+            else if (op_type == 'u')
+            {
+                //QUINT8_LOAD_END_C_upsample(I, _stride, _C_ib, O_w_left, _C_ob);
+                throw std::invalid_argument("*kernel_right ERROR: "
+                                            "no support for op_type 'u'.");
             }
         }
         else
         {
-            LOAD_END_C(O, O_w_left, _C_ob);
+            QUINT8_LOAD_END_C(O, O_w_left, _C_ob);
         }
 
         compute_with_padding<ScalarT, AccumT,
                              _G_b, _K_b, _F_cb, _O_wb, _stride,
                              _UNROLL, op_type, op_class>(
-            H_lb, H_UPPER,
-            0, F_w,
-            F_w,
-            O_w_left,
-            input_col_stride,
-            F,
-            I,
-            c_tile,
-            I_offset,
-            F_offset);
+                                 H_lb, H_UPPER,
+                                 0, F_w,
+                                 F_w,
+                                 O_w_left,
+                                 input_col_stride,
+                                 F,
+                                 I,
+                                 c_tile,
+                                 I_offset,
+                                 F_offset);
 
         if constexpr(quantize)
         {
             ScalarT * O_out_ptr = O_out;
-            QUANTIZE_END_C(O_w_left, _C_ob, lshift, rshift, q_mul, zero, max_val, min_val);
-            STORE_Q_END_C(O_out_ptr, O_w_left, _C_ob);
+            QUINT8_QUANTIZE_END_C(O_w_left, _C_ob, lshift, rshift, q_mul, zero, max_val, min_val);
+            QUINT8_STORE_Q_END_C(O_out_ptr, O_w_left, _C_ob);
         }
         else
         {
-            STORE_END_C(O, O_w_left, _C_ob);
+            QUINT8_STORE_END_C(O, O_w_left, _C_ob);
         }
     }
 
@@ -497,7 +536,7 @@ void inline kernel_right(
 
     if (first)
     {
-        ZERO_END_C(r_pad_el, _C_ob, k_zero);
+        QUINT8_ZERO_END_C(r_pad_el, _C_ob, k_zero);
 
         // Initialize with 0 for the padding elements
 
@@ -508,7 +547,7 @@ void inline kernel_right(
     }
     else
     {
-        LOAD_END_C(O_ptr, r_pad_el, _C_ob);
+        QUINT8_LOAD_END_C(O_ptr, r_pad_el, _C_ob);
     }
 
     c_tile_t *c_cur = c_tile;
@@ -518,18 +557,18 @@ void inline kernel_right(
         compute_with_padding<ScalarT, AccumT,
                              _G_b, _K_b, _F_cb, _O_wb, _stride,
                              _UNROLL, op_type, op_class>(
-            H_lb, H_UPPER,
-            0, W_i_valid,
-            F_w,
-            1,
-            input_col_stride,
-            F,
-            I_ptr,
-            c_cur,
-            I_offset,
-            F_offset);
+                                 H_lb, H_UPPER,
+                                 0, W_i_valid,
+                                 F_w,
+                                 1,
+                                 input_col_stride,
+                                 F,
+                                 I_ptr,
+                                 c_cur,
+                                 I_offset,
+                                 F_offset);
 
-        c_cur += (_K_b * _G_b) / (SIMD_EPILOGUE);
+        c_cur += (_K_b * _G_b) / (QUINT8_SIMD_EPILOGUE);
         W_i_valid -= _stride;
         I_ptr += _stride * _F_cb * _G_b;
     }
@@ -537,12 +576,12 @@ void inline kernel_right(
     if constexpr (quantize)
     {
         ScalarT *O_out_ptr = O_out + O_w_left * _C_ob;
-        QUANTIZE_END_C(r_pad_el, _C_ob, lshift, rshift, q_mul, zero, max_val, min_val);
-        STORE_Q_END_C(O_out_ptr, r_pad_el, _C_ob);
+        QUINT8_QUANTIZE_END_C(r_pad_el, _C_ob, lshift, rshift, q_mul, zero, max_val, min_val);
+        QUINT8_STORE_Q_END_C(O_out_ptr, r_pad_el, _C_ob);
     }
     else
     {
-        STORE_END_C(O_ptr, r_pad_el, _C_ob);
+        QUINT8_STORE_END_C(O_ptr, r_pad_el, _C_ob);
     }
 
 
@@ -601,25 +640,25 @@ void inline kernel_bottom(
         kernel_left<ScalarT, AccumT,
                     _G_b, _K_b, _F_cb, _O_wb, _stride,
                     _UNROLL, op_type, op_class, quantize, max_val, min_val>(
-            first,
-            F_h,
-            F_w,
-            input_col_stride,
-            l_pad_el,
-            l_pad,
-            I_ptr,
-            F,
-            O_ptr,
-            0,
-            H_i_valid,
-            k_zero,
-            I_offset,
-            F_offset,
-            O_ptr_out,
-            lshift,
-            rshift,
-            q_mul,
-            zero);
+                        first,
+                        F_h,
+                        F_w,
+                        input_col_stride,
+                        l_pad_el,
+                        l_pad,
+                        I_ptr,
+                        F,
+                        O_ptr,
+                        0,
+                        H_i_valid,
+                        k_zero,
+                        I_offset,
+                        F_offset,
+                        O_ptr_out,
+                        lshift,
+                        rshift,
+                        q_mul,
+                        zero);
 
         ScalarT const *I_row_full = I + W_full_index * (_F_cb * _G_b);
         AccumT        *O_row_full = O + l_pad_el * (_G_b * _K_b);  // ScalarT -> AccumT
@@ -635,25 +674,25 @@ void inline kernel_bottom(
             kernel_pad<ScalarT, AccumT,
                        _G_b, _K_b, _F_cb, _O_wb, _stride,
                        _UNROLL, op_type, op_class, quantize, max_val, min_val>(
-                first,
-                F_h,
-                F_w,
-                input_col_stride,
-                I_col,
-                F_col,
-                O_col,
-                0,
-                H_i_valid,
-                0,
-                F_w,
-                k_zero,
-                I_offset,
-                F_offset,
-                O_col_out,
-                lshift,
-                rshift,
-                q_mul,
-                zero);
+                           first,
+                           F_h,
+                           F_w,
+                           input_col_stride,
+                           I_col,
+                           F_col,
+                           O_col,
+                           0,
+                           H_i_valid,
+                           0,
+                           F_w,
+                           k_zero,
+                           I_offset,
+                           F_offset,
+                           O_col_out,
+                           lshift,
+                           rshift,
+                           q_mul,
+                           zero);
         }
 
         // Epilogue for microkernel + right padding elements
@@ -666,26 +705,26 @@ void inline kernel_bottom(
         kernel_right<ScalarT, AccumT,
                      _G_b, _K_b, _F_cb, _O_wb, _stride,
                      _UNROLL, op_type, op_class, quantize, max_val, min_val>(
-            first,
-            F_h,
-            F_w,
-            input_col_stride,
-            O_w_left,
-            r_pad_el,
-            r_pad,
-            I_col_left,
-            F_col_left,
-            O_col_left,
-            0,
-            H_i_valid,
-            k_zero,
-            I_offset,
-            F_offset,
-            O_col_left_out,
-            lshift,
-            rshift,
-            q_mul,
-            zero);
+                         first,
+                         F_h,
+                         F_w,
+                         input_col_stride,
+                         O_w_left,
+                         r_pad_el,
+                         r_pad,
+                         I_col_left,
+                         F_col_left,
+                         O_col_left,
+                         0,
+                         H_i_valid,
+                         k_zero,
+                         I_offset,
+                         F_offset,
+                         O_col_left_out,
+                         lshift,
+                         rshift,
+                         q_mul,
+                         zero);
 
         O_ptr += O_w_w_pad * _K_b * _G_b;
         O_ptr_out += O_w_w_pad * _K_b * _G_b;
@@ -747,25 +786,25 @@ void inline kernel_top(
         kernel_left<ScalarT, AccumT,
                     _G_b, _K_b, _F_cb, _O_wb, _stride,
                     _UNROLL, op_type, op_class, quantize, max_val, min_val>(
-            first,
-            F_h,
-            F_w,
-            input_col_stride,
-            l_pad_el,
-            l_pad,
-            I_ptr,
-            F,
-            O_ptr,
-            H_i_valid,
-            F_h,
-            k_zero,
-            I_offset,
-            F_offset,
-            O_ptr_out,
-            lshift,
-            rshift,
-            q_mul,
-            zero);
+                        first,
+                        F_h,
+                        F_w,
+                        input_col_stride,
+                        l_pad_el,
+                        l_pad,
+                        I_ptr,
+                        F,
+                        O_ptr,
+                        H_i_valid,
+                        F_h,
+                        k_zero,
+                        I_offset,
+                        F_offset,
+                        O_ptr_out,
+                        lshift,
+                        rshift,
+                        q_mul,
+                        zero);
 
         ScalarT const *I_row_full = I + W_full_index * (_F_cb * _G_b);
         AccumT        *O_row_full = O + l_pad_el * (_G_b * _K_b);  // ScalarT --> AccumT
@@ -783,25 +822,25 @@ void inline kernel_top(
             kernel_pad<ScalarT, AccumT,
                        _G_b, _K_b, _F_cb, _O_wb, _stride,
                        _UNROLL, op_type, op_class, quantize, max_val, min_val>(
-                first,
-                F_h,
-                F_w,
-                input_col_stride,
-                I_col,
-                F_col,
-                O_col,
-                H_i_valid,  // H_lb
-                F_h,        // H_ub
-                0,          // W_lb
-                F_w,        // W_ub
-                k_zero,
-                I_offset,
-                F_offset,
-                O_col_out,
-                lshift,
-                rshift,
-                q_mul,
-                zero);
+                           first,
+                           F_h,
+                           F_w,
+                           input_col_stride,
+                           I_col,
+                           F_col,
+                           O_col,
+                           H_i_valid,  // H_lb
+                           F_h,        // H_ub
+                           0,          // W_lb
+                           F_w,        // W_ub
+                           k_zero,
+                           I_offset,
+                           F_offset,
+                           O_col_out,
+                           lshift,
+                           rshift,
+                           q_mul,
+                           zero);
         }
 
         // Epilogue for microkernel + right padding elements
@@ -816,26 +855,26 @@ void inline kernel_top(
         kernel_right<ScalarT, AccumT,
                      _G_b, _K_b, _F_cb, _O_wb, _stride,
                      _UNROLL, op_type, op_class, quantize, max_val, min_val>(
-            first,
-            F_h,
-            F_w,
-            input_col_stride,
-            O_w_left,
-            r_pad_el,
-            r_pad,
-            I_col_left,
-            F_col_left,
-            O_col_left,
-            H_i_valid,
-            F_h,
-            k_zero,
-            I_offset,
-            F_offset,
-            O_col_left_out,
-            lshift,
-            rshift,
-            q_mul,
-            zero);
+                         first,
+                         F_h,
+                         F_w,
+                         input_col_stride,
+                         O_w_left,
+                         r_pad_el,
+                         r_pad,
+                         I_col_left,
+                         F_col_left,
+                         O_col_left,
+                         H_i_valid,
+                         F_h,
+                         k_zero,
+                         I_offset,
+                         F_offset,
+                         O_col_left_out,
+                         lshift,
+                         rshift,
+                         q_mul,
+                         zero);
 
         O_ptr += O_w_w_pad * _K_b * _G_b;
         O_ptr_out += O_w_w_pad * _K_b * _G_b;
@@ -877,24 +916,26 @@ void abstract_layer(
     BufferT const *__restrict__ F,
     BufferT       *__restrict__ O,
 
+    /// @todo should this type be 'typename BufferT::accum_type'?
+    /// @todo should this be moved inside function and access BufferT::zero?
     int k_zero = 0)
 {
     using ScalarT = typename BufferT::value_type;
     using AccumT  = typename BufferT::accum_type;
 
-    //Pointers to buffers inside Buffer class
+    // Pointers to buffers inside Buffer class
     ScalarT const *I_buf = I->data();  //__restrict__ ?
     AccumT         I_offset = I->zero();
 
     ScalarT const *F_buf = nullptr;
     AccumT         F_offset(0);
-    if constexpr(op_type == 'c')  // if (F != nullptr)
+    if constexpr (op_type == 'c' ||  op_type == 'l')  // if (F != nullptr)
     {
-        F_buf    = F->data();
+        F_buf = F->data();
         F_offset = F->zero();
     }
 
-    ScalarT       *O_buf = O->data();  //__restrict__ ?
+    ScalarT *O_buf = O->data();  //__restrict__ ?
 
     //============QUANTIZED==============
     AccumT        lshift = O->lshift;
@@ -940,11 +981,29 @@ void abstract_layer(
     // Deriving padding parameters
 
     //  To calculate offsets to next output row, next output block
-    dim_t H_o_w_pad = small::output_dim((I_h + pad_top + pad_bottom),
-                                        _stride, F_h);
-    dim_t W_o_w_pad = small::output_dim((I_w + pad_left + pad_right),
-                                        _stride, F_w);
-
+    // @todo fix this in small::output_dim
+    dim_t H_o_w_pad, W_o_w_pad;
+    if constexpr (op_type == 'u')
+    {
+        /// @todo VERIFY Copied from float version
+        if constexpr(_stride == std::numeric_limits<dim_t>::max())
+        {
+            H_o_w_pad = I_h;
+            W_o_w_pad = I_w;
+        }
+        else
+        {
+            H_o_w_pad = I_h * _stride;
+            W_o_w_pad = I_w * _stride;
+        }
+    }
+    else
+    {
+        H_o_w_pad = small::output_dim((I_h + pad_top + pad_bottom),
+                                      _stride, F_h);
+        W_o_w_pad = small::output_dim((I_w + pad_left + pad_right),
+                                      _stride, F_w);
+    }
     const dim_t O_h_w_pad = H_o_w_pad;
     const dim_t O_w_w_pad = W_o_w_pad;
 
@@ -955,17 +1014,37 @@ void abstract_layer(
     dim_t W_full_index = l_pad_el * _stride - pad_left;
 
     // Full kernel output elements
-    dim_t H_o =      small::output_dim((I_h - H_full_index), _stride, F_h);
-    dim_t W_o_full = small::output_dim((I_w - W_full_index), _stride, F_w);
+    dim_t H_o, W_o_full;
+    if constexpr (op_type == 'u')
+    {
+        /// @todo VERIFY Copied from float version
+        H_o = H_o_w_pad;
+        W_o_full = W_o_w_pad;
+    }
+    else
+    {
+        H_o      = small::output_dim((I_h - H_full_index), _stride, F_h);
+        W_o_full = small::output_dim((I_w - W_full_index), _stride, F_w);
+    }
 
     // back padding elements
     dim_t H_back_index = H_full_index + _stride * (H_o);
     dim_t W_back_index = W_full_index + _stride * (W_o_full);
+    dim_t b_pad_el, r_pad_el;
+    if constexpr (op_type == 'u')
+    {
+        /// @todo VERIFY Copied from float version
+        b_pad_el = 0;
+        r_pad_el = 0;
+    }
+    else
+    {
+        b_pad_el = small::output_dim((I_h + pad_bottom - H_back_index),
+                                     _stride, F_h);
+        r_pad_el = small::output_dim((I_w + pad_right - W_back_index),
+                                     _stride, F_w);
+    }
 
-    dim_t b_pad_el = small::output_dim((I_h + pad_bottom - H_back_index),
-                                       _stride, F_h);
-    dim_t r_pad_el = small::output_dim((I_w + pad_right - W_back_index),
-                                       _stride, F_w);
 
     const dim_t O_h = H_o;
     const dim_t O_w = W_o_full;
@@ -1033,9 +1112,29 @@ void abstract_layer(
         // loops over output channels
         for (index_t g = group_tid; g < G / _G_b; g += T_group)
         {
-            ScalarT const *I_group = I_buf + g * (F_c * I_h * I_w * _G_b);
-            ScalarT const *F_group = F_buf + g * (K * F_c * F_h * F_w * _G_b);
+            ScalarT const *I_group;
+            if constexpr (op_type == 'u' && _stride == std::numeric_limits<dim_t>::max())
+            {
+                /// @todo VERIFY Copied from float version
+                I_group = I_buf + g * (F_c * 1 * 1* _G_b);
+            }
+            else
+            {
+                I_group = I_buf + g * (F_c * I_h * I_w * _G_b);
+            }
             ScalarT       *O_group = O_buf + g * (K * O_hxO_w * _G_b);
+            //if leaky relu, the weight pointer does not change with the group id
+
+            ScalarT const *F_group ;
+            if constexpr (op_type == 'l')
+            {
+                /// @todo VERIFY Copied from float version
+                F_group = F_buf;
+            }
+            else
+            {
+                F_group = F_buf + g * (K * F_c * F_h * F_w * _G_b);
+            }
 
             // resuse O_group as a uint32_t array
             for (index_t k = channel_tid; k < K / _K_b; k += T_channel)
@@ -1103,8 +1202,18 @@ void abstract_layer(
                     // Steady State over rows
                     for (index_t j = height_tid; j < O_h; j += T_height)
                     {
-                        ScalarT const *I_row =
-                            I_row_full + (j * _stride) * (I_w * _F_cb * _G_b);
+                        ScalarT const *I_row;
+                        // @todo cast index calculation as int and make stride a float value.
+                        //I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
+                        if constexpr (op_type == 'u')
+                        {
+                            /// @todo VERIFY Copied from float version
+                            I_row = I_row_full + (j / _stride) * (I_w * _F_cb * _G_b);
+                        }
+                        else
+                        {
+                            I_row = I_row_full + (j * _stride) * (I_w * _F_cb * _G_b);
+                        }
                         ScalarT const *F_row = F_channel_block_input + 0;
                         AccumT        *O_row =
                             O_row_full + j * (O_w_w_pad * _G_b * _K_b); // ScalarT --> AccumT
@@ -1133,8 +1242,18 @@ void abstract_layer(
                         // Steady State with microkernel
                         for (index_t l = 0; l < O_w_full; l += _O_wb)
                         {
-                            ScalarT const *I_col =
-                                I_col_full + (l * _stride) * (_F_cb * _G_b);
+                            ScalarT const *I_col;
+                            // @todo cast index calculation as int and make stride a float value.
+                            //I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
+                            if constexpr (op_type == 'u')
+                            {
+                                /// @todo VERIFY Copied from float version
+                                I_col = I_col_full + (l / _stride) * (_F_cb * _G_b);
+                            }
+                            else
+                            {
+                                I_col = I_col_full + (l * _stride) * (_F_cb * _G_b);
+                            }
                             ScalarT const *F_col = F_row + 0;
                             AccumT        *O_col = O_col_full + l * (_G_b * _K_b); // ScalarT --> AccumT
 
@@ -1158,10 +1277,22 @@ void abstract_layer(
                         }
 
                         // Epilogue for microkernel + right padding elements
-                        ScalarT const *I_col_left =
-                            I_col_full + (O_w_full * _stride) * (_F_cb * _G_b);
+                        ScalarT const *I_col_left;
+                        if constexpr (op_type == 'u')
+                        {
+                            /// @todo VERIFY Copied from float version
+                            I_col_left =
+                                I_col_full + (O_w_full / _stride) * (_F_cb * _G_b);
+                        }
+                        else
+                        {
+                            I_col_left =
+                                I_col_full + (O_w_full * _stride) * (_F_cb * _G_b);
+                        }
+
                         ScalarT const *F_col_left = F_row + 0;
                         AccumT        *O_col_left = O_col_full + O_w_full * (_G_b * _K_b); // ScalarT --> AccumT
+
                         kernel_right<ScalarT, AccumT,
                                      _G_b, _K_b, _F_cb, _O_wb, _stride,
                                      _UNROLL, op_type, op_class>(
@@ -1275,8 +1406,16 @@ void abstract_layer(
                     // Steady State over rows
                     for (index_t j = height_tid; j < O_h; j += T_height)
                     {
-                        ScalarT const *I_row =
-                            I_row_full + (j * _stride) * (I_w * _F_cb * _G_b);
+                        ScalarT const *I_row;
+                        if constexpr (op_type == 'u')
+                        {
+                            /// @todo VERIFY Copied from float version
+                            I_row = I_row_full + (j / _stride) * (I_w * _F_cb * _G_b);
+                        }
+                        else
+                        {
+                            I_row = I_row_full + (j * _stride) * (I_w * _F_cb * _G_b);
+                        }
                         ScalarT const *F_row = F_channel_block_input + 0;
                         AccumT        *O_row =
                             O_row_full + j * (O_w_w_pad * _G_b * _K_b); // ScalarT --> AccumT
@@ -1316,8 +1455,18 @@ void abstract_layer(
                         // Steady State with microkernel
                         for (index_t l = 0; l < O_w_full; l += _O_wb)
                         {
-                            ScalarT const *I_col =
-                                I_col_full + (l * _stride) * (_F_cb * _G_b);
+                            ScalarT const *I_col;
+                            // @todo cast index calculation as int and make stride a float value.
+                            //I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
+                            if constexpr (op_type == 'u')
+                            {
+                                /// @todo VERIFY Copied from float version
+                                I_col = I_col_full + (l / _stride) * (_F_cb * _G_b);
+                            }
+                            else
+                            {
+                                I_col = I_col_full + (l * _stride) * (_F_cb * _G_b);
+                            }
                             ScalarT const *F_col = F_row + 0;
                             AccumT        *O_col = O_col_full + l * (_G_b * _K_b); // ScalarT --> AccumT
                             ScalarT       *O_col_out = O_col_full_out + l * (_G_b * _K_b);
@@ -1347,12 +1496,20 @@ void abstract_layer(
                         }
 
                         // Epilogue for microkernel + right padding elements
-                        ScalarT const *I_col_left =
-                            I_col_full + (O_w_full * _stride) * (_F_cb * _G_b);
+                        ScalarT const *I_col_left;
+                        if constexpr (op_type == 'u')
+                        {
+                            /// @todo VERIFY Copied from float version
+                            I_col_left = I_col_full + (O_w_full / _stride) * (_F_cb * _G_b);
+                        }
+                        else
+                        {
+                            I_col_left = I_col_full + (O_w_full * _stride) * (_F_cb * _G_b);
+                        }
+
                         ScalarT const *F_col_left = F_row + 0;
                         AccumT        *O_col_left = O_col_full + O_w_full * (_G_b * _K_b);  // ScalarT --> AccumT
                         ScalarT       *O_col_left_out = O_col_full_out + O_w_full * (_G_b * _K_b);
-
 
                         kernel_right<ScalarT, AccumT,
                                      _G_b, _K_b, _F_cb, _O_wb, _stride,

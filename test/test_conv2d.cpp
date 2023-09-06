@@ -52,11 +52,11 @@ void test_conv2d_layer_odd_output_channels(void)
                                   filters,
                                   true);
 
-        TEST_ASSERT(params.C_o % C_ob == 0);
+        TEST_ASSERT(params.C_o % BufferT::C_ob == 0);
     }
     catch (std::invalid_argument &e_obj)
     {
-        TEST_CHECK(params.C_o % C_ob != 0);
+        TEST_CHECK(params.C_o % BufferT::C_ob != 0);
     }
 
     // Odd unpacked buffers should not fail
@@ -74,14 +74,14 @@ void test_conv2d_layer_odd_output_channels(void)
                                   false);
 
         TEST_ASSERT(conv2d.get_effective_output_channels() == params.C_o);
-        if (params.C_o % C_ob == 0)
+        if (params.C_o % BufferT::C_ob == 0)
         {
-            TEST_ASSERT(conv2d.output_shape(0)[small::CHANNEL] == params.C_o);
+            TEST_ASSERT(conv2d.output_shape()[small::CHANNEL] == params.C_o);
         }
         else
         {
-            TEST_ASSERT(conv2d.output_shape(0)[small::CHANNEL] ==
-                        (params.C_o + (C_ob - params.C_o % C_ob)));
+            TEST_ASSERT(conv2d.output_shape()[small::CHANNEL] ==
+                        (params.C_o + (BufferT::C_ob - params.C_o % BufferT::C_ob)));
         }
     }
     catch (std::invalid_argument &e_obj)
@@ -106,14 +106,14 @@ void test_conv2d_layer_odd_output_channels(void)
                                   false);
 
         TEST_ASSERT(conv2d.get_effective_output_channels() == params.C_o);
-        if (params.C_o % C_ob == 0)
+        if (params.C_o % BufferT::C_ob == 0)
         {
-            TEST_ASSERT(conv2d.output_shape(0)[small::CHANNEL] == params.C_o);
+            TEST_ASSERT(conv2d.output_shape()[small::CHANNEL] == params.C_o);
         }
         else
         {
-            TEST_ASSERT(conv2d.output_shape(0)[small::CHANNEL] ==
-                        (params.C_o + (C_ob - params.C_o % C_ob)));
+            TEST_ASSERT(conv2d.output_shape()[small::CHANNEL] ==
+                        (params.C_o + (BufferT::C_ob - params.C_o % BufferT::C_ob)));
         }
     }
     catch (std::invalid_argument &e_obj)
@@ -145,14 +145,14 @@ void test_conv2d_layer_odd_output_channels(void)
                                   false);
 
         TEST_ASSERT(conv2d.get_effective_output_channels() == params.C_o);
-        if (params.C_o % C_ob == 0)
+        if (params.C_o % BufferT::C_ob == 0)
         {
-            TEST_ASSERT(conv2d.output_shape(0)[small::CHANNEL] == params.C_o);
+            TEST_ASSERT(conv2d.output_shape()[small::CHANNEL] == params.C_o);
         }
         else
         {
-            TEST_ASSERT(conv2d.output_shape(0)[small::CHANNEL] ==
-                        (params.C_o + (C_ob - params.C_o % C_ob)));
+            TEST_ASSERT(conv2d.output_shape()[small::CHANNEL] ==
+                        (params.C_o + (BufferT::C_ob - params.C_o % BufferT::C_ob)));
         }
     }
     catch (std::invalid_argument &e_obj)
@@ -182,20 +182,20 @@ void test_conv2d_layer_odd_output_channels(void)
         small::Tensor<BufferT>  input(input_shape);
         small::Tensor<BufferT> output(conv2d.output_size());
 
-        conv2d.compute_output({&input}, {&output});
+        conv2d.compute_output({&input}, &output);
         for (size_t co = params.C_o;
-             co < conv2d.output_shape(0)[small::CHANNEL]; ++co)
+             co < conv2d.output_shape()[small::CHANNEL]; ++co)
         {
-            for (size_t h = 0; h < conv2d.output_shape(0)[small::HEIGHT]; ++h)
+            for (size_t h = 0; h < conv2d.output_shape()[small::HEIGHT]; ++h)
             {
-                for (size_t w = 0; w < conv2d.output_shape(0)[small::WIDTH]; ++w)
+                for (size_t w = 0; w < conv2d.output_shape()[small::WIDTH]; ++w)
                 {
                     size_t packed_index =
                         small::packed_buffer_index(
-                            conv2d.output_shape(0)[small::CHANNEL],
-                            conv2d.output_shape(0)[small::HEIGHT],
-                            conv2d.output_shape(0)[small::WIDTH],
-                            C_ob,
+                            conv2d.output_shape()[small::CHANNEL],
+                            conv2d.output_shape()[small::HEIGHT],
+                            conv2d.output_shape()[small::WIDTH],
+                            BufferT::C_ob,
                             co, h, w);
                     TEST_ASSERT(0.f == output.buffer()[packed_index]);
                 }
@@ -249,8 +249,8 @@ void test_conv2d_bias(void)
                                              params.C_o,
                                              filter_dc, bias, false);
 
-    small::shape_type output_shape(conv2d_layer.output_shape(0));
-    size_t output_buffer_size(conv2d_layer.output_size(0));
+    small::shape_type output_shape(conv2d_layer.output_shape());
+    size_t output_buffer_size(conv2d_layer.output_size());
     //=========================================================================
 
     // Read input data
@@ -268,7 +268,7 @@ void test_conv2d_bias(void)
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_input_dc);
 
     small::Tensor<BufferT> packed_input_tensor(
@@ -294,7 +294,7 @@ void test_conv2d_bias(void)
                        small::OUTPUT,
                        1U, output_shape[small::CHANNEL],
                        output_shape[small::HEIGHT], output_shape[small::WIDTH],
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_output_dc_answers);
 
     // Allocate output buffer
@@ -307,8 +307,8 @@ void test_conv2d_bias(void)
                                                 std::move(packed_output_dc));
 
     // Compute layer
-    conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
-    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size(0));
+    conv2d_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
+    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     // Check answer
     bool passing = true;
@@ -387,8 +387,8 @@ void test_conv2d_batchnorm_identity(void)
                                              bn_eps,
                                              false);
 
-    small::shape_type output_shape(conv2d_layer.output_shape(0));
-    size_t output_buffer_size(conv2d_layer.output_size(0));
+    small::shape_type output_shape(conv2d_layer.output_shape());
+    size_t output_buffer_size(conv2d_layer.output_size());
     //=========================================================================
 
     // Read input data
@@ -406,7 +406,7 @@ void test_conv2d_batchnorm_identity(void)
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_input_dc);
 
     small::Tensor<BufferT> packed_input_tensor(
@@ -432,7 +432,7 @@ void test_conv2d_batchnorm_identity(void)
                        small::OUTPUT,
                        1U, output_shape[small::CHANNEL],
                        output_shape[small::HEIGHT], output_shape[small::WIDTH],
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_output_dc_answers);
 
     // Allocate output buffer
@@ -445,8 +445,8 @@ void test_conv2d_batchnorm_identity(void)
                                                 std::move(packed_output_dc));
 
     // Compute layer
-    conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
-    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size(0));
+    conv2d_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
+    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     // Check answer
     bool passing = true;
@@ -526,8 +526,8 @@ void test_conv2d_batchnorm_bias_1(void)
                                              bn_eps,
                                              false);
 
-    small::shape_type output_shape(conv2d_layer.output_shape(0));
-    size_t output_buffer_size(conv2d_layer.output_size(0));
+    small::shape_type output_shape(conv2d_layer.output_shape());
+    size_t output_buffer_size(conv2d_layer.output_size());
     //=========================================================================
 
     // Read input data
@@ -545,7 +545,7 @@ void test_conv2d_batchnorm_bias_1(void)
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_input_dc);
 
     small::Tensor<BufferT> packed_input_tensor(
@@ -571,7 +571,7 @@ void test_conv2d_batchnorm_bias_1(void)
                        small::OUTPUT,
                        1U, output_shape[small::CHANNEL],
                        output_shape[small::HEIGHT], output_shape[small::WIDTH],
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_output_dc_answers);
 
     // Allocate output buffer
@@ -584,8 +584,8 @@ void test_conv2d_batchnorm_bias_1(void)
                                                 std::move(packed_output_dc));
 
     // Compute layer
-    conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
-    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size(0));
+    conv2d_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
+    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     // Check answer
     bool passing = true;
@@ -665,8 +665,8 @@ void test_conv2d_batchnorm_mean_1(void)
                                              bn_eps,
                                              false);
 
-    small::shape_type output_shape(conv2d_layer.output_shape(0));
-    size_t output_buffer_size(conv2d_layer.output_size(0));
+    small::shape_type output_shape(conv2d_layer.output_shape());
+    size_t output_buffer_size(conv2d_layer.output_size());
     //=========================================================================
 
     // Read input data
@@ -684,7 +684,7 @@ void test_conv2d_batchnorm_mean_1(void)
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_input_dc);
 
     small::Tensor<BufferT> packed_input_tensor(
@@ -710,7 +710,7 @@ void test_conv2d_batchnorm_mean_1(void)
                        small::OUTPUT,
                        1U, output_shape[small::CHANNEL],
                        output_shape[small::HEIGHT], output_shape[small::WIDTH],
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_output_dc_answers);
 
     // Allocate output buffer
@@ -723,8 +723,8 @@ void test_conv2d_batchnorm_mean_1(void)
                                                 std::move(packed_output_dc));
 
     // Compute layer
-    conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
-    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size(0));
+    conv2d_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
+    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     // Check answer
     bool passing = true;
@@ -799,7 +799,7 @@ void test_conv2d_batchnorm_mean_variance_1(void)
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_input_dc);
 
     small::Tensor<BufferT> packed_input_tensor(
@@ -834,7 +834,7 @@ void test_conv2d_batchnorm_mean_variance_1(void)
                        small::OUTPUT,
                        1U, output_shape[small::CHANNEL],
                        output_shape[small::HEIGHT], output_shape[small::WIDTH],
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_output_dc_answers);
 
     //=========================================================================
@@ -866,8 +866,8 @@ void test_conv2d_batchnorm_mean_variance_1(void)
                                              bn_eps,
                                              false);
 
-    output_shape = conv2d_layer.output_shape(0);
-    output_buffer_size = conv2d_layer.output_size(0);
+    output_shape = conv2d_layer.output_shape();
+    output_buffer_size = conv2d_layer.output_size();
     //=========================================================================
 
     // Allocate output buffer
@@ -880,8 +880,8 @@ void test_conv2d_batchnorm_mean_variance_1(void)
                                                 std::move(packed_output_dc));
 
     // Compute layer
-    conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
-    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size(0));
+    conv2d_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
+    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     //=========================================================================
     BufferT unpacked_output_tensor(packed_output_tensor.size());
@@ -889,7 +889,7 @@ void test_conv2d_batchnorm_mean_variance_1(void)
                          small::OUTPUT,
                          1U, output_shape[small::CHANNEL],
                          output_shape[small::HEIGHT], output_shape[small::WIDTH],
-                         C_ib, C_ob,
+                         BufferT::C_ib, BufferT::C_ob,
                          unpacked_output_tensor);
 
     BufferT output_mean(params.C_o);
@@ -964,7 +964,7 @@ void test_conv2d_batchnorm(void) {
     BufferT input_dc(input.size());
     small::pack_buffer(input, small::INPUT,
                        1U, params.C_i, params.H, params.W,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        input_dc);
     small::Tensor<BufferT> input_tensor(input_shape, input_dc);
 
@@ -1014,12 +1014,12 @@ void test_conv2d_batchnorm(void) {
     );
 
     small::Tensor<BufferT> output_tensor_ans(output_shape);
-    conv.compute_output({&input_tensor}, {&output_tensor_ans});
+    conv.compute_output({&input_tensor}, &output_tensor_ans);
 
     small::Tensor<BufferT> output_tensor_ans_unpacked(output_shape);
     small::unpack_buffer(output_tensor_ans.buffer(), small::OUTPUT,
                        1U, params.C_o, params.H, params.W,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        output_tensor_ans_unpacked.buffer());
 
 
@@ -1075,7 +1075,7 @@ bool run_conv2d_config(LayerParams const &params)
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_input_dc);
 
     // Read filter data
@@ -1093,7 +1093,7 @@ bool run_conv2d_config(LayerParams const &params)
     small::pack_buffer(filter_dc,
                        small::FILTER_CONV,
                        params.C_o, params.C_i, params.k, params.k,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_filter_dc);
 
     // Read output regression data
@@ -1116,7 +1116,7 @@ bool run_conv2d_config(LayerParams const &params)
     small::pack_buffer(output_dc_answers,
                        small::OUTPUT,
                        1U, params.C_o, Ho, Wo,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_output_dc_answers);
 
     // Allocate output buffer
@@ -1134,7 +1134,7 @@ bool run_conv2d_config(LayerParams const &params)
     }
 
     // Compute layer
-    small::Conv2D(params.k, params.s,
+    small::Conv2D(params.k, params.k, params.s,
                   t_pad, b_pad, l_pad, r_pad,
                   params.C_o, params.C_i, params.H, params.W,
                   packed_input_dc, packed_filter_dc, packed_output_dc);
@@ -1207,7 +1207,7 @@ bool run_conv2d_layer_config(LayerParams const &params)
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_input_dc);
 
     small::Tensor<BufferT> packed_input_tensor(
@@ -1215,8 +1215,8 @@ bool run_conv2d_layer_config(LayerParams const &params)
         std::move(packed_input_dc));
 
     // Read output regression data
-    auto output_shape(conv2d_layer.output_shape(0));
-    size_t output_buffer_size(conv2d_layer.output_size(0));
+    auto output_shape(conv2d_layer.output_shape());
+    size_t output_buffer_size(conv2d_layer.output_size());
 
     std::cerr << "Output image dims: "
               << output_shape[small::HEIGHT] << "x" << output_shape[small::WIDTH]
@@ -1236,7 +1236,7 @@ bool run_conv2d_layer_config(LayerParams const &params)
                        small::OUTPUT,
                        1U, output_shape[small::CHANNEL],
                        output_shape[small::HEIGHT], output_shape[small::WIDTH],
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_output_dc_answers);
 
     // Allocate output buffer
@@ -1249,8 +1249,8 @@ bool run_conv2d_layer_config(LayerParams const &params)
                                                 std::move(packed_output_dc));
 
     // Compute layer
-    conv2d_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
-    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size(0));
+    conv2d_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
+    TEST_ASSERT(packed_output_tensor.size() == conv2d_layer.output_size());
 
     // Check answer
     bool passing = true;
@@ -1458,14 +1458,14 @@ void measure_conv2d_performance(void)
             double max_t = 0.;
 
             // Warmup
-            small::Conv2D(p.k, p.s, t_pad, b_pad, l_pad, r_pad,
+            small::Conv2D(p.k, p.k, p.s, t_pad, b_pad, l_pad, r_pad,
                           p.C_o, p.C_i, p.H, p.W,
                           input_dc, filter_dc, output_dc);
 
             for (size_t iy = 0; iy < num_runs; ++iy)
             {
                 t.start();
-                small::Conv2D(p.k, p.s, t_pad, b_pad, l_pad, r_pad,
+                small::Conv2D(p.k, p.k, p.s, t_pad, b_pad, l_pad, r_pad,
                               p.C_o, p.C_i, p.H, p.W,
                               input_dc, filter_dc, output_dc);
                 t.stop();
@@ -1525,12 +1525,12 @@ void measure_conv2d_performance(void)
             double max_t = 0.;
 
             // Warm up
-            conv2d_layer.compute_output({&input_dc}, {&output_dc});
+            conv2d_layer.compute_output({&input_dc}, &output_dc);
 
             for (size_t iy = 0; iy < num_runs; ++iy)
             {
                 t.start();
-                conv2d_layer.compute_output({&input_dc}, {&output_dc});
+                conv2d_layer.compute_output({&input_dc}, &output_dc);
                 t.stop();
                 double ts = t.elapsed();
                 tx += ts;

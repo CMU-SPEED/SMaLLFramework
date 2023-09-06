@@ -17,3 +17,4 @@ Results/
 *.onnx
 *.mlir
 *.o
+benchmark/regression_data

@@ -52,7 +52,11 @@ public:
               std::vector<std::pair<uint32_t, uint32_t>> masked_anchors,
               size_t num_classes,
               size_t input_img_size) /// @todo assumes square image
-        : m_stride(input_img_size / input_shape[HEIGHT]),
+        : Layer<BufferT>(),
+          m_input_shape(input_shape),
+          m_unpacked_input(
+              input_shape[CHANNEL]*input_shape[HEIGHT]*input_shape[WIDTH]),
+          m_stride(input_img_size / input_shape[HEIGHT]),
           m_anchors(masked_anchors),
           m_num_anchors(masked_anchors.size()),
           m_num_classes(num_classes),
@@ -77,8 +81,8 @@ public:
         // - m_padded_channels    is the number of channels that are actually
         //                        allocated in the buffer (i.e., padded)
 
-        this->set_output_shapes(
-            {{input_shape[BATCH], 1U, m_num_pred, m_num_outputs}});
+        this->set_output_shape(
+            {input_shape[BATCH], 1U, m_num_pred, m_num_outputs});
     }
 
     virtual ~YOLOLayer() {}
@@ -93,22 +97,34 @@ public:
     // unpacked it is [1, C, H, W]
     virtual void compute_output(
         std::vector<Tensor<BufferT> const *> input,
-        std::vector<Tensor<BufferT>*>        output) const
+        Tensor<BufferT>*                     output) const
     {
+        if ((input.size() != 1) || (input[0]->shape() != m_input_shape))
+        {
+            throw std::invalid_argument(
+                "YOLOLayer::compute_output() ERROR: "
+                "incorrect input buffer shape.");
+        }
+
+        if (output->capacity() < this->output_size())
+        {
+            throw std::invalid_argument(
+                "YOLOLayer::compute_output() ERROR: "
+                "insufficient output buffer space.");
+        }
+
         using ScalarT = typename BufferT::value_type;
 
         size_t h = input[0]->shape()[HEIGHT];
         size_t w = input[0]->shape()[WIDTH];
 
         /// @todo profile pulling directly from the packed input buffer
-        ///       to avoid construction of this unpacked buffer. Or preallocate
-        ///       a member buffer and assert that input is the correct size.
-        BufferT unpacked_input(input[0]->size());
+        ///       to avoid construction of this unpacked buffer.
         small::unpack_buffer(
             input[0]->buffer(), small::INPUT,
             1U, m_padded_channels, h, w,
-            C_ib, C_ob,
-            unpacked_input
+            BufferT::C_ib, BufferT::C_ob,
+            m_unpacked_input
         );
 
         // For now, assume input is unpacked (i.e. [1, C, H, W])
@@ -126,7 +142,8 @@ public:
         // num_pred = num_anchors * H * W
 
         // alias outputs
-        Tensor <BufferT> *bbox_n_conf = output[0];
+        Tensor<BufferT> *bbox_n_conf = output;
+        bbox_n_conf->set_shape(this->output_shape());
 
         // check to make sure the output buffer is the right size
         // if(m_num_pred != bbox_n_conf->shape()[2]) {
@@ -169,44 +186,45 @@ public:
                         if (i3 == 0)
                         {
                             bbox_n_conf->buffer()[out_off + i3] = m_stride *
-                                (sigmoid<ScalarT>(unpacked_input[offset])+i2);
+                                (sigmoid<ScalarT>(m_unpacked_input[offset])+i2);
                         }
                         // compute y
                         else if (i3 == 1)
                         {
                             bbox_n_conf->buffer()[out_off + i3] = m_stride *
-                                (sigmoid<ScalarT>(unpacked_input[offset]) + i1);
+                                (sigmoid<ScalarT>(m_unpacked_input[offset]) + i1);
                         }
                         // compute w
                         else if (i3 == 2)
                         {
                             bbox_n_conf->buffer()[out_off + i3] =
-                                std::exp(unpacked_input[offset]) *
+                                std::exp(m_unpacked_input[offset]) *
                                 m_anchors[i0].first;
                         }
                         // compute h
                         else if (i3 == 3)
                         {
                             bbox_n_conf->buffer()[out_off + i3] =
-                                std::exp(unpacked_input[offset]) *
+                                std::exp(m_unpacked_input[offset]) *
                                 m_anchors[i0].second;
                         }
                         // compute obj and class conf
                         else
                         {
                             bbox_n_conf->buffer()[out_off + i3] =
-                                sigmoid<ScalarT>(unpacked_input[offset]);
+                                sigmoid<ScalarT>(m_unpacked_input[offset]);
                         }
                     }
                     pred_idx++;
                 }
             }
         }
-
-        // destructing unpacked_input;
     }
 
 private:
+    shape_type const m_input_shape;
+    mutable BufferT  m_unpacked_input;  /// @todo remove; use packed buffer directly
+
     size_t       m_stride;
     std::vector<std::pair<uint32_t,uint32_t>> const m_anchors;
     size_t       m_num_anchors;

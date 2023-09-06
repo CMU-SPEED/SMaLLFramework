@@ -14,26 +14,34 @@
 
 #include <small.h>
 
-/// @todo test both float and quantized integer buffers eventually
-#if !defined(QUANTIZED)
-using Buffer = small::FloatBuffer;
-#else
-using Buffer = small::QUInt8Buffer;
-#endif
-
 //****************************************************************************
-void test_ctor_default(void)
+template <class BufferT>
+void ctor_default()
 {
-    Buffer buf;
+    BufferT buf;
 
     TEST_CHECK(buf.size() == 0);
     TEST_CHECK(buf.data() == nullptr);
 }
 
-//****************************************************************************
-void test_ctor_size(void)
+void test_ctor_default(void)
 {
-    Buffer buf(42);
+#if defined(SMALL_HAS_FLOAT_SUPPORT)
+    std::cout << "\nTesting FloatBuffer\n";
+    ctor_default<small::FloatBuffer>();
+#endif
+
+#if defined(SMALL_HAS_QUINT8_SUPPORT)
+    std::cout << "\nTesting QUInt8Buffer\n";
+    ctor_default<small::QUInt8Buffer>();
+#endif
+}
+
+//****************************************************************************
+template <class BufferT>
+void ctor_size()
+{
+    BufferT buf(42);
     TEST_CHECK(42 == buf.size());
     TEST_CHECK(nullptr != buf.data());
 
@@ -41,69 +49,111 @@ void test_ctor_size(void)
     TEST_CHECK(42 == buf[21]);
 }
 
-//****************************************************************************
-void test_ctor_copy(void)
+void test_ctor_size(void)
 {
+#if defined(SMALL_HAS_FLOAT_SUPPORT)
+    ctor_size<small::FloatBuffer>();
+#endif
+
+#if defined(SMALL_HAS_QUINT8_SUPPORT)
+    ctor_size<small::QUInt8Buffer>();
+#endif
+}
+
+//****************************************************************************
+template <class BufferT>
+void ctor_copy(void)
+{
+    using ScalarT = typename BufferT::value_type;
+
     size_t const SIZE{10UL};
-    Buffer buf(SIZE);
+    BufferT buf(SIZE);
     for (size_t ix = 0; ix < SIZE; ++ix)
     {
-        buf[ix] = static_cast<Buffer::value_type>(ix);
+        buf[ix] = static_cast<ScalarT>(ix);
     }
 
     TEST_CHECK(10 == buf.size());
-    TEST_CHECK(buf[5] == 5.f);
+    TEST_CHECK(buf[5] == static_cast<ScalarT>(5));
 
-    Buffer buf2(buf);
+    BufferT buf2(buf);
     TEST_CHECK(10 == buf2.size());
     TEST_CHECK(10 == buf.size());
 
     for (size_t ix = 0; ix < SIZE; ++ix)
     {
-        TEST_CHECK(buf[ix] == static_cast<Buffer::value_type>(ix));
-        buf[ix] = 0.f;
-        TEST_CHECK(buf2[ix] == static_cast<Buffer::value_type>(ix));
+        TEST_CHECK(buf[ix] == static_cast<ScalarT>(ix));
+        buf[ix] = 0;
+        TEST_CHECK(buf2[ix] == static_cast<ScalarT>(ix));
     }
 }
 
-//****************************************************************************
-void test_ctor_move(void)
+void test_ctor_copy(void)
 {
+#if defined(SMALL_HAS_FLOAT_SUPPORT)
+    ctor_copy<small::FloatBuffer>();
+#endif
+
+#if defined(SMALL_HAS_QUINT8_SUPPORT)
+    ctor_copy<small::QUInt8Buffer>();
+#endif
+}
+
+//****************************************************************************
+template <class BufferT>
+void ctor_move(void)
+{
+    using ScalarT = typename BufferT::value_type;
+
     size_t const SIZE{10UL};
-    Buffer buf(SIZE);
+    BufferT buf(SIZE);
     for (size_t ix = 0; ix < SIZE; ++ix)
     {
-        buf[ix] = static_cast<Buffer::value_type>(ix);
+        buf[ix] = static_cast<ScalarT>(ix);
     }
 
     TEST_CHECK(10 == buf.size());
-    TEST_CHECK(buf[5] == 5.f);
+    TEST_CHECK(buf[5] == static_cast<ScalarT>(5));
 
-    Buffer buf2(std::move(buf));
+    BufferT buf2(std::move(buf));
 
     TEST_CHECK(10 == buf2.size());
     TEST_CHECK(0 == buf.size());
 
     for (size_t ix = 0; ix < SIZE; ++ix)
     {
-        TEST_CHECK(buf2[ix] == static_cast<Buffer::value_type>(ix));
+        TEST_CHECK(buf2[ix] == static_cast<ScalarT>(ix));
     }
 }
 
-//****************************************************************************
-void test_copy_assignment(void)
+void test_ctor_move(void)
 {
+#if defined(SMALL_HAS_FLOAT_SUPPORT)
+    ctor_move<small::FloatBuffer>();
+#endif
+
+#if defined(SMALL_HAS_QUINT8_SUPPORT)
+    ctor_move<small::QUInt8Buffer>();
+#endif
+}
+
+//****************************************************************************
+template <class BufferT>
+void copy_assignment(void)
+{
+    using ScalarT = typename BufferT::value_type;
+
     size_t const SIZE{10UL};
-    Buffer buf(SIZE);
+    BufferT buf(SIZE);
     for (size_t ix = 0; ix < SIZE; ++ix)
     {
-        buf[ix] = static_cast<Buffer::value_type>(ix);
+        buf[ix] = static_cast<ScalarT>(ix);
     }
 
     TEST_CHECK(10 == buf.size());
-    TEST_CHECK(buf[5] == 5.f);
+    TEST_CHECK(buf[5] == static_cast<ScalarT>(5));
 
-    Buffer buf2;
+    BufferT buf2;
     TEST_CHECK(0 == buf2.size());
     buf2 = buf;
     TEST_CHECK(10 == buf2.size());
@@ -111,26 +161,40 @@ void test_copy_assignment(void)
 
     for (size_t ix = 0; ix < SIZE; ++ix)
     {
-        TEST_CHECK(buf[ix] == static_cast<Buffer::value_type>(ix));
-        buf[ix] = 0.f;
-        TEST_CHECK(buf2[ix] == static_cast<Buffer::value_type>(ix));
+        TEST_CHECK(buf[ix] == static_cast<ScalarT>(ix));
+        buf[ix] = 0;
+        TEST_CHECK(buf2[ix] == static_cast<ScalarT>(ix));
     }
 }
 
-//****************************************************************************
-void test_move_assignment(void)
+void test_copy_assignment(void)
 {
+#if defined(SMALL_HAS_FLOAT_SUPPORT)
+    copy_assignment<small::FloatBuffer>();
+#endif
+
+#if defined(SMALL_HAS_QUINT8_SUPPORT)
+    copy_assignment<small::QUInt8Buffer>();
+#endif
+}
+
+//****************************************************************************
+template <class BufferT>
+void move_assignment(void)
+{
+    using ScalarT = typename BufferT::value_type;
+
     size_t const SIZE{10UL};
-    Buffer buf(SIZE);
+    BufferT buf(SIZE);
     for (size_t ix = 0; ix < SIZE; ++ix)
     {
-        buf[ix] = static_cast<Buffer::value_type>(ix);
+        buf[ix] = static_cast<ScalarT>(ix);
     }
 
     TEST_CHECK(10 == buf.size());
     TEST_CHECK(buf[5] == 5.f);
 
-    Buffer buf2;
+    BufferT buf2;
     TEST_CHECK(0 == buf2.size());
     buf2 = std::move(buf);
     TEST_CHECK(10 == buf2.size());
@@ -138,28 +202,42 @@ void test_move_assignment(void)
 
     for (size_t ix = 0; ix < SIZE; ++ix)
     {
-        TEST_CHECK(buf2[ix] == static_cast<Buffer::value_type>(ix));
+        TEST_CHECK(buf2[ix] == static_cast<ScalarT>(ix));
     }
 }
 
-//****************************************************************************
-void test_swap(void)
+void test_move_assignment(void)
 {
+#if defined(SMALL_HAS_FLOAT_SUPPORT)
+    move_assignment<small::FloatBuffer>();
+#endif
+
+#if defined(SMALL_HAS_QUINT8_SUPPORT)
+    move_assignment<small::QUInt8Buffer>();
+#endif
+}
+
+//****************************************************************************
+template <class BufferT>
+void swap_buffers(void)
+{
+    using ScalarT = typename BufferT::value_type;
+
     size_t const SIZE{10UL};
-    Buffer buf(SIZE);
-    Buffer buf2(2*SIZE);
+    BufferT buf(SIZE);
+    BufferT buf2(2*SIZE);
     for (size_t ix = 0; ix < SIZE; ++ix)
     {
-        buf[ix]       =  static_cast<Buffer::value_type>(ix);
-        buf2[ix]      =  static_cast<Buffer::value_type>(ix)/2;
-        buf2[ix+SIZE] =  static_cast<Buffer::value_type>(ix);
+        buf[ix]       =  static_cast<ScalarT>(ix);
+        buf2[ix]      =  static_cast<ScalarT>(ix)/2;
+        buf2[ix+SIZE] =  static_cast<ScalarT>(ix);
     }
 
     TEST_CHECK(SIZE == buf.size());
     TEST_CHECK(2*SIZE == buf2.size());
 
     TEST_CHECK(buf[5] == 5);
-    TEST_CHECK(buf2[5] == static_cast<Buffer::value_type>(5UL)/2);
+    TEST_CHECK(buf2[5] == static_cast<ScalarT>(5UL)/2);
     TEST_CHECK(buf2[5+SIZE] == 5);
 
     buf.swap(buf2);
@@ -169,10 +247,21 @@ void test_swap(void)
 
     for (size_t ix = 0; ix < SIZE; ++ix)
     {
-        TEST_CHECK(buf2[ix] == static_cast<Buffer::value_type>(ix));
-        TEST_CHECK(buf[ix] == static_cast<Buffer::value_type>(ix)/2);
-        TEST_CHECK(buf[ix+SIZE] == static_cast<Buffer::value_type>(ix));
+        TEST_CHECK(buf2[ix] == static_cast<ScalarT>(ix));
+        TEST_CHECK(buf[ix] == static_cast<ScalarT>(ix)/2);
+        TEST_CHECK(buf[ix+SIZE] == static_cast<ScalarT>(ix));
     }
+}
+
+void test_swap(void)
+{
+#if defined(SMALL_HAS_FLOAT_SUPPORT)
+    swap_buffers<small::FloatBuffer>();
+#endif
+
+#if defined(SMALL_HAS_QUINT8_SUPPORT)
+    swap_buffers<small::QUInt8Buffer>();
+#endif
 }
 
 //****************************************************************************

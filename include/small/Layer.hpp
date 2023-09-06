@@ -37,59 +37,39 @@ public:
 
     Layer(shape_type const &output_shape)
     {
-        set_output_shapes({output_shape});
+        set_output_shape(output_shape);
     }
 
-
-    Layer(std::vector<shape_type> const &output_shapes)
-    {
-        if (output_shapes.size() == 0)
-        {
-            throw std::invalid_argument(
-                "Layer::ctor ERROR: output_shapes empty.");
-        }
-
-        set_output_shapes(output_shapes);
-    }
 
     virtual ~Layer() {}
 
-    inline size_t get_num_outputs() const { return m_output_sizes.size(); }
-
-    inline size_t output_size(size_t idx = 0) const
+    inline size_t output_size() const
     {
-        return m_output_sizes[idx];
+        return m_output_size;
     }
 
-    inline shape_type const &output_shape(size_t idx = 0) const
+    inline shape_type const &output_shape() const
     {
-        return m_output_shapes[idx];
+        return m_output_shape;
     }
 
-    /// @todo Revisit this interface: are all layers restricted producing
-    //        a single output buffer?
     /// @todo Revisit this interface, recently switched to taking copies
     ///       so that I could call with initializer lists; i.e.,
     ///          compute_output({&input_tensor}, {&output_tensor});
     virtual void compute_output(
         std::vector<Tensor<BufferT> const *> input,
-        std::vector<Tensor<BufferT>*>        output) const = 0;
+        Tensor<BufferT>*                     output) const = 0;
 
 protected:
-    inline void set_output_shapes(std::vector<shape_type> const &output_shapes)
+    inline void set_output_shape(shape_type const &output_shape)
     {
-        m_output_shapes.clear();
-        m_output_sizes.clear();
-        for (auto& output_shape : output_shapes)
-        {
-            m_output_shapes.push_back(output_shape);
-            m_output_sizes.push_back(output_shape[0]*output_shape[1]*
-                                     output_shape[2]*output_shape[3]);
-        }
+        m_output_shape = output_shape;
+        m_output_size = (output_shape[0]*output_shape[1]*
+                         output_shape[2]*output_shape[3]);
     }
 
-    std::vector<shape_type> m_output_shapes;
-    std::vector<size_t>     m_output_sizes;
+    shape_type m_output_shape;
+    size_t     m_output_size;
 };
 
 }

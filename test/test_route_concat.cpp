@@ -37,7 +37,7 @@ BufferT create_packed_data(small::shape_type            shape,
                     small::packed_buffer_index(shape[small::CHANNEL],
                                                shape[small::HEIGHT],
                                                shape[small::WIDTH],
-                                               C_ib,
+                                               BufferT::C_ib,
                                                c, h, w);
                 buf[index] = offset + (typename BufferT::value_type)c;
             }
@@ -59,7 +59,7 @@ bool check_buffer_contents(small::shape_type const &shape,
                     small::packed_buffer_index(shape[small::CHANNEL],
                                                shape[small::HEIGHT],
                                                shape[small::WIDTH],
-                                               C_ib,
+                                               BufferT::C_ib,
                                                c, h, w);
                 if (buf[index] != (typename BufferT::value_type)c)
                 {
@@ -83,7 +83,7 @@ void test_route_bad_shapes(void)
 
     try {
         small::RouteLayer<small::FloatBuffer> route(input1_shape,
-                                                    input2_shape, {0, 0});
+                                                    input2_shape);
         TEST_CHECK(false);
     }
     catch (std::invalid_argument const &e) {
@@ -93,7 +93,7 @@ void test_route_bad_shapes(void)
 
     try {
         small::RouteLayer<small::FloatBuffer> route(input1_shape,
-                                                    input3_shape, {0, 0});
+                                                    input3_shape);
         TEST_CHECK(false);
     }
     catch (std::invalid_argument const &e) {
@@ -103,7 +103,7 @@ void test_route_bad_shapes(void)
 
     try {
         small::RouteLayer<small::FloatBuffer> route(input1_shape,
-                                                    input4_shape, {0, 0});
+                                                    input4_shape);
         TEST_CHECK(false);
     }
     catch (std::invalid_argument const &e) {
@@ -119,10 +119,9 @@ void test_route_concat(void)
     small::shape_type input2_shape({1, 32, 52, 52});
 
     small::RouteLayer<small::FloatBuffer> route(input1_shape,
-                                                input2_shape, {0, 0});
+                                                input2_shape);
 
-    TEST_CHECK(1 == route.get_num_outputs());
-    auto const &output_shape(route.output_shape(0));
+    auto const &output_shape(route.output_shape());
 
     TEST_CHECK( 1 == output_shape[small::BATCH]);
     TEST_CHECK(48 == output_shape[small::CHANNEL]);
@@ -137,19 +136,19 @@ void test_route_1_buffer(void)
     small::Tensor<Buffer> input(shape, (create_packed_data<Buffer>(shape, 0.f)));
     small::Tensor<Buffer> output(input.size());
 
-    small::RouteLayer<Buffer> route(shape, {0});
+    small::RouteLayer<Buffer> route(shape);
 
-    route.compute_output({&input}, {&output});
+    route.compute_output({&input}, &output);
     TEST_CHECK(shape == output.shape());
     TEST_CHECK(check_buffer_contents(shape, output.buffer()));
 
-    route.compute_output({&input}, {&input});
+    route.compute_output({&input}, &input);
     TEST_CHECK(shape == input.shape());
     TEST_CHECK(check_buffer_contents(shape, input.buffer()));
 
     try
     {
-        route.compute_output({&input, &input}, {&output});
+        route.compute_output({&input, &input}, &output);
         TEST_CHECK(false);
     }
     catch (std::invalid_argument &e_obj)
@@ -172,16 +171,16 @@ void test_route_2_buffers(void)
     small::shape_type output_shape({1, 48, 13, 13});
     small::Tensor<Buffer> output(input0.size() + input1.size());
 
-    small::RouteLayer<Buffer> route(shape0, shape1, {0, 0});
+    small::RouteLayer<Buffer> route(shape0, shape1);
 
     std::cerr << "FIRST TEST\n";
-    route.compute_output({&input0, &input1}, {&output});
+    route.compute_output({&input0, &input1}, &output);
     TEST_CHECK(output_shape == output.shape());
     TEST_CHECK(check_buffer_contents(output_shape, output.buffer()));
 
     try
     {
-        route.compute_output({&input0}, {&output});
+        route.compute_output({&input0}, &output);
         TEST_CHECK(false);
     }
     catch (std::invalid_argument &e_obj)
@@ -192,7 +191,7 @@ void test_route_2_buffers(void)
 
     try
     {
-        route.compute_output({&input0, &input0}, {&output});
+        route.compute_output({&input0, &input0}, &output);
         TEST_CHECK(false);
     }
     catch (std::invalid_argument &e_obj)
@@ -203,7 +202,7 @@ void test_route_2_buffers(void)
 
     try
     {
-        route.compute_output({&input1, &input0}, {&output});
+        route.compute_output({&input1, &input0}, &output);
         TEST_CHECK(false);
     }
     catch (std::invalid_argument &e_obj)

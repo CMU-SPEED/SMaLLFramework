@@ -22,7 +22,6 @@
 
 #include <small.h>
 #include <small/utils/Timer.hpp>
-#include <small/InputLayer.hpp>
 #include <small/LeakyReLULayer.hpp>
 
 #include "test_utils.hpp"
@@ -76,7 +75,7 @@ void test_leaky_single_element(void)
 #endif
 
     small::LeakyReLUActivation(
-        C_i, H, W, 
+        C_i, H, W,
         input_dc,
         negative_dc,
         output_dc
@@ -84,7 +83,7 @@ void test_leaky_single_element(void)
 
     for (size_t ix = 0; ix < num_input_elts; ++ix)
     {
-        
+
         TEST_CHECK((input_dc[ix] >= 0) ?
                    (output_dc[ix] == input_dc[ix]) :
                    (output_dc[ix] == negative_slope*input_dc[ix]));
@@ -185,7 +184,7 @@ void test_leaky_large_tile(void)
 //     small::pack_buffer(input_dc,
 //                        small::INPUT,
 //                        1U, params.C_i, params.H, params.W,
-//                        C_ib, C_ob,
+//                        BufferT::C_ib, BufferT::C_ob,
 //                        packed_input_dc);
 
 //     // Read output regression data
@@ -208,7 +207,7 @@ void test_leaky_large_tile(void)
 //     small::pack_buffer(output_dc_answers,
 //                        small::OUTPUT,
 //                        1U, params.C_i, Ho, Wo,
-//                        C_ib, C_ob,
+//                        BufferT::C_ib, BufferT::C_ob,
 //                        packed_output_dc_answers);
 
 //     // Allocate output buffer
@@ -248,9 +247,9 @@ void test_leaky_large_tile(void)
 // {
 //     /// @todo add smart pointer to buffers
 //     //=========================================================================
-//     small::InputLayer<BufferT>  input_layer(
-//         {1UL, params.C_i, params.H, params.W});
-//     small::LeakyReLULayer<BufferT>   leaky_layer(input_layer);
+//     small::shape_type input_shape({1UL, params.C_i, params.H, params.W});
+//     size_t input_size = params.C_i*params.H*params.W;
+//     small::LeakyReLULayer<BufferT>   leaky_layer(input_size);
 //     //=========================================================================
 
 //     // Read input data
@@ -270,7 +269,7 @@ void test_leaky_large_tile(void)
 //     small::pack_buffer(input_dc,
 //                        small::INPUT,
 //                        1U, params.C_i, params.H, params.W,
-//                        C_ib, C_ob,
+//                        BufferT::C_ib, BufferT::C_ob,
 //                        packed_input_dc);
 
 //     small::Tensor<BufferT> packed_input_tensor(
@@ -299,7 +298,7 @@ void test_leaky_large_tile(void)
 //                        small::OUTPUT,
 //                        1U, output_shape[small::CHANNEL],
 //                        output_shape[small::HEIGHT], output_shape[small::WIDTH],
-//                        C_ib, C_ob,
+//                        BufferT::C_ib, BufferT::C_ob,
 //                        packed_output_dc_answers);
 
 //     // Allocate output buffer
@@ -308,7 +307,7 @@ void test_leaky_large_tile(void)
 //                                                 std::move(packed_output_dc));
 
 //     // Compute layer
-//     leaky_layer.compute_output(packed_input_tensor, packed_output_tensor);
+//     leaky_layer.compute_output({packed_input_tensor}, packed_output_tensor);
 
 //     // Check answer
 //     bool passing = true;
@@ -489,12 +488,12 @@ void measure_leaky_performance(void)
             double max_t = 0.;
 
             // Warm up
-            leaky_layer.compute_output({&input_dc}, {&output_dc});
+            leaky_layer.compute_output({&input_dc}, &output_dc);
 
             for (size_t iy = 0; iy < num_runs; ++iy)
             {
                 t.start();
-                leaky_layer.compute_output({&input_dc}, {&output_dc});
+                leaky_layer.compute_output({&input_dc}, &output_dc);
                 t.stop();
                 double ts = t.elapsed();
                 tx += ts;

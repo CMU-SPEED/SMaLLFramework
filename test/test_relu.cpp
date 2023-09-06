@@ -169,7 +169,7 @@ bool run_relu_config(LayerParams const &params)
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_input_dc);
 
     // Read output regression data
@@ -192,7 +192,7 @@ bool run_relu_config(LayerParams const &params)
     small::pack_buffer(output_dc_answers,
                        small::OUTPUT,
                        1U, params.C_i, Ho, Wo,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_output_dc_answers);
 
     // Allocate output buffer
@@ -251,7 +251,7 @@ bool run_relu_layer_config(LayerParams const &params)
     small::pack_buffer(input_dc,
                        small::INPUT,
                        1U, params.C_i, params.H, params.W,
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_input_dc);
 
     small::Tensor<BufferT> packed_input_tensor(
@@ -259,8 +259,8 @@ bool run_relu_layer_config(LayerParams const &params)
         std::move(packed_input_dc));
 
     // Read output regression data
-    auto output_shape(relu_layer.output_shape(0));
-    size_t output_buffer_size(relu_layer.output_size(0));
+    auto output_shape(relu_layer.output_shape());
+    size_t output_buffer_size(relu_layer.output_size());
 
     std::cerr << "Output image dims: "
               << output_shape[small::HEIGHT] << "x" << output_shape[small::WIDTH]
@@ -280,16 +280,16 @@ bool run_relu_layer_config(LayerParams const &params)
                        small::OUTPUT,
                        1U, output_shape[small::CHANNEL],
                        output_shape[small::HEIGHT], output_shape[small::WIDTH],
-                       C_ib, C_ob,
+                       BufferT::C_ib, BufferT::C_ob,
                        packed_output_dc_answers);
 
     // Allocate output buffer
-    BufferT packed_output_dc(relu_layer.output_size(0));
+    BufferT packed_output_dc(relu_layer.output_size());
     small::Tensor<BufferT> packed_output_tensor(output_shape,
                                                 std::move(packed_output_dc));
 
     // Compute layer
-    relu_layer.compute_output({&packed_input_tensor}, {&packed_output_tensor});
+    relu_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
 
     // Check answer
     bool passing = true;
@@ -472,12 +472,12 @@ void measure_relu_performance(void)
             double max_t = 0.;
 
             // Warm up
-            relu_layer.compute_output({&input_dc}, {&output_dc});
+            relu_layer.compute_output({&input_dc}, &output_dc);
 
             for (size_t iy = 0; iy < num_runs; ++iy)
             {
                 t.start();
-                relu_layer.compute_output({&input_dc}, {&output_dc});
+                relu_layer.compute_output({&input_dc}, &output_dc);
                 t.stop();
                 double ts = t.elapsed();
                 tx += ts;

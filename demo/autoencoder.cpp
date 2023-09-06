@@ -154,13 +154,13 @@ small::Tensor<BufferT> &model_inference(
     small::Tensor<BufferT>                                   &inter_1_dc)
 {
     size_t layer_num = 0;
-    layers[layer_num++]->compute_output({&input_dc}, {&inter_0_dc});   // Conv2D
-    layers[layer_num++]->compute_output({&inter_0_dc}, {&inter_0_dc}); // ReLU
+    layers[layer_num++]->compute_output({&input_dc}, &inter_0_dc);   // Conv2D
+    layers[layer_num++]->compute_output({&inter_0_dc}, &inter_0_dc); // ReLU
 
     while (layer_num < layers.size() - 1)
     {
-        layers[layer_num]->compute_output({&inter_0_dc}, {&inter_1_dc});
-        layers[layer_num + 1]->compute_output({&inter_1_dc}, {&inter_1_dc});
+        layers[layer_num]->compute_output({&inter_0_dc}, &inter_1_dc);
+        layers[layer_num + 1]->compute_output({&inter_1_dc}, &inter_1_dc);
         layer_num += 2;
 
         inter_0_dc.swap(inter_1_dc);
@@ -215,7 +215,7 @@ BufferT &model_inference(
     BufferT        &inter_1_dc)
 {
     auto layer_num = 0;
-    small::Conv2D(1, 1,
+    small::Conv2D(1, 1, 1,
                   0, 0, 0, 0,
                   GROUP_C(layer_num), REDUCTION_C(layer_num),
                   1, 1,
@@ -230,7 +230,7 @@ BufferT &model_inference(
     for (uint32_t cur_layer = 1; cur_layer < layer_num_total; cur_layer++)
     {
         layer_num++;
-        small::Conv2D(1, 1,
+        small::Conv2D(1, 1, 1,
                       0, 0, 0, 0,
                       GROUP_C(layer_num), REDUCTION_C(layer_num),
                       1, 1,
@@ -337,7 +337,7 @@ void inference()
             REDUCTION_HW(l) * REDUCTION_HW(l) * REDUCTION_C(l) *
             GROUP_C(l) * GROUPS(l);
         BufferT *filter_buf_ptr =
-            small::alloc_buffer(filter_dimensions);
+            small::alloc_buffer<BufferT>(filter_dimensions);
         init(*filter_buf_ptr, filter_dimensions);
         filter_buf_ptrs.push_back(filter_buf_ptr);
     }

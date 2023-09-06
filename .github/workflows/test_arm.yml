@@ -2,6 +2,9 @@ name: Test ARM Build
 
 on: [push]
 
+#env:
+#  ACTIONS_RUNNER_DEBUG: true
+  
 jobs:
   build-and-test:
 
@@ -9,7 +12,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - uses: pguyot/arm-runner-action@HEAD
+      - uses: pguyot/arm-runner-action@v2.5.2
         with:
           base_image: https://dietpi.com/downloads/images/DietPi_RPi-ARMv8-Bullseye.7z
           cpu: cortex-a53
@@ -21,7 +24,7 @@ jobs:
             mkdir /SMaLLFramework/build;
             cd /SMaLLFramework/build;
             cmake .. -DCMAKE_UARCH=ARM; 
-            cmake --build . -j;
+            cmake --build . -j1;
             ctest --rerun-failed --output-on-failure;
 
     
