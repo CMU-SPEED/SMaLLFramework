@@ -12,7 +12,7 @@ jobs:
       - run: mkdir ${{github.workspace}}/build
       - run: cd ${{github.workspace}}/build
       - run: cmake ${{github.workspace}} -DCMAKE_UARCH=ZEN2 
-      - run: cmake --build . -j
+      - run: cmake --build . -j1
       - run: ctest --rerun-failed --output-on-failure
 
     
