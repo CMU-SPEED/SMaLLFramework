@@ -110,14 +110,14 @@ def run_onnx_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT="", verbose=F
    
     input_ = np.random.rand(*input_dims).astype(np.float32)
     input_2 = np.copy(input_)
-    input_file = "input.bin"
-    save_numpy_to_file(input_, input_file)
-    cmd_str = f"python run_torch_onnx.py {onnx_model_path} {input_dims[1]} {input_dims[2]} {input_dims[3]}"
-    print(cmd_str)
-    proc = subprocess.Popen(list(cmd_str.split(" ")), stdout=subprocess.PIPE)
-    print(str(proc.stdout.readline().rstrip(), encoding='utf-8'))
-    pytorch_fps = float(proc.stdout.readline().rstrip().decode())
-    # pytorch_fps = 1
+    # input_file = "input.bin"
+    # save_numpy_to_file(input_, input_file)
+    # cmd_str = f"python run_torch_onnx.py {onnx_model_path} {input_dims[1]} {input_dims[2]} {input_dims[3]}"
+    # print(cmd_str)
+    # proc = subprocess.Popen(list(cmd_str.split(" ")), stdout=subprocess.PIPE)
+    # print(str(proc.stdout.readline().rstrip(), encoding='utf-8'))
+    # pytorch_fps = float(proc.stdout.readline().rstrip().decode())
+    pytorch_fps = 1
 
     # input_packed = input_2.transpose(0, 2, 3, 1)
     
