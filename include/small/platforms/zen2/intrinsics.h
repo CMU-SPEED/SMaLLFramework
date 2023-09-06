@@ -508,6 +508,37 @@ typedef small::FloatBuffer::value_type c_tile_t;
         c_pixel += C_ob;                                \
     }
 
+//****************************************************************************
+// Broadcast multiplication kernels
+//****************************************************************************
+
+#define FLOAT_DIV_TILE_C(norm, W_ob, C_ob)        \
+    b0 = _mm256_broadcast_ss(&norm);             \
+    c0 = _mm256_mul_ps(b0, c0);                        \
+    c1 = _mm256_mul_ps(b0, c1);                        \
+    c2 = _mm256_mul_ps(b0, c2);                     \
+    c3 = _mm256_mul_ps(b0, c3);                       \
+    c4 = _mm256_mul_ps(b0, c4);                        \
+    c5 = _mm256_mul_ps(b0, c5);                        \
+    c6 = _mm256_mul_ps(b0, c6);                     \
+    c7 = _mm256_mul_ps(b0, c7);                       \
+    c8 = _mm256_mul_ps(b0, c8);                        \
+    c9 = _mm256_mul_ps(b0, c9);                        \
+    c10 = _mm256_mul_ps(b0, c10);                   \
+    c11 = _mm256_mul_ps(b0, c11);
+
+#define FLOAT_DIV_END_C(norm,  W_last, C_ob) \
+    float *c_pixel = c_tile;                             \
+    for (uint32_t kk = 0; kk < W_last; kk++)            \
+    {                                                   \
+        float *c_channel = c_pixel;                     \
+        for (uint32_t jj = 0; jj < C_ob; jj++)          \
+        {                                               \
+            *(c_channel) *= norm;               \
+            c_channel++;                                \
+        }                                               \
+        c_pixel += C_ob;                                \
+    }
 
 //****************************************************************************
 // FMA unused?

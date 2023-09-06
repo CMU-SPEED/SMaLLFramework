@@ -21,16 +21,16 @@ namespace small
 
 //****************************************************************************
 template <typename BufferT>
-class MaxPool2DLayer : public Layer<BufferT>
+class AveragePool2DLayer : public Layer<BufferT>
 {
 public:
     typedef typename BufferT::value_type value_type;
 
-    MaxPool2DLayer(shape_type const &input_shape,
-                   uint32_t          kernel_height,
-                   uint32_t          kernel_width,
-                   uint32_t          stride,
-                   PaddingEnum       padding_type)
+    AveragePool2DLayer(shape_type const &input_shape,
+                       uint32_t          kernel_height,
+                       uint32_t          kernel_width,
+                       uint32_t          stride,
+                       PaddingEnum       padding_type)
         : Layer<BufferT>(),
           m_input_shape(input_shape),
           m_kernel_height(kernel_height),
@@ -39,7 +39,7 @@ public:
           m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0)
     {
 #if defined(DEBUG_LAYERS)
-        std::cerr << "MaxPool2D(batches:" << m_input_shape[BATCH]
+        std::cerr << "AveragePool2D(batches:" << m_input_shape[BATCH]
                   << ",k:" << kernel_height << "x" << kernel_width
                   << ",s:" << stride
                   << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
@@ -64,15 +64,15 @@ public:
                                           m_l_pad, m_r_pad,
                                           output_shape[WIDTH]);
 #if defined(DEBUG_LAYERS)
-        std::cerr << "MaxPool2D padding: "
+        std::cerr << "AveragePool2D padding: "
                   << (int)m_t_pad << "," << (int)m_b_pad
-                 << "," << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
+                  << "," << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
 #endif
 
         this->set_output_shape(output_shape);
     }
 
-    virtual ~MaxPool2DLayer() {}
+    virtual ~AveragePool2DLayer() {}
 
     virtual void compute_output(
         std::vector<Tensor<BufferT> const *> input,
@@ -81,24 +81,24 @@ public:
         if ((input.size() != 1) || (input[0]->shape() != m_input_shape))
         {
             throw std::invalid_argument(
-                "MaxPool2DLayer::compute_output() ERROR: "
+                "AveragePool2DLayer::compute_output() ERROR: "
                 "incorrect input buffer shape.");
         }
 
         if (output->capacity() < this->output_size())
         {
             throw std::invalid_argument(
-                "MaxPool2DLayer::compute_output ERROR: "
+                "AveragePool2DLayer::compute_output ERROR: "
                 "insufficient output buffer space.");
         }
 
-        MaxPool2D(m_kernel_height, m_kernel_width,
-                  m_stride,
-                  m_t_pad, m_b_pad, m_l_pad, m_r_pad,
-                  m_input_shape[CHANNEL],
-                  m_input_shape[HEIGHT], m_input_shape[WIDTH],
-                  input[0]->buffer(),
-                  output->buffer());
+        AveragePool2D(m_kernel_height, m_kernel_width,
+                      m_stride,
+                      m_t_pad, m_b_pad, m_l_pad, m_r_pad,
+                      m_input_shape[CHANNEL],
+                      m_input_shape[HEIGHT], m_input_shape[WIDTH],
+                      input[0]->buffer(),
+                      output->buffer());
 
         output->set_shape(this->output_shape());
     }

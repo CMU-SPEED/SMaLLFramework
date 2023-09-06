@@ -632,6 +632,65 @@ typedef float32x4_t c_tile_t;
 
 
 //****************************************************************************
+// Broadcast multiplication kernels
+//****************************************************************************
+
+#define FLOAT_DIV_TILE_C(norm, W_ob, C_ob)        \
+     float32x4_t av;                                     \
+     av = vld1q_dup_f32(&norm);\
+    c_0_0 = vmulq_f32(c_0_0, av);                       \
+    c_0_1 = vmulq_f32(c_0_1, av);                       \
+    c_0_2 = vmulq_f32(c_0_2, av);                       \
+    c_0_3 = vmulq_f32(c_0_3, av);                       \
+    c_1_0 = vmulq_f32(c_1_0, av);                       \
+    c_1_1 = vmulq_f32(c_1_1, av);                       \
+    c_1_2 = vmulq_f32(c_1_2, av);                       \
+    c_1_3 = vmulq_f32(c_1_3, av);                       \
+    c_2_0 = vmulq_f32(c_2_0, av);                       \
+    c_2_1 = vmulq_f32(c_2_1, av);                       \
+    c_2_2 = vmulq_f32(c_2_2, av);                       \
+    c_2_3 = vmulq_f32(c_2_3, av);                       \
+    c_3_0 = vmulq_f32(c_3_0, av);                       \
+    c_3_1 = vmulq_f32(c_3_1, av);                       \
+    c_3_2 = vmulq_f32(c_3_2, av);                       \
+    c_3_3 = vmulq_f32(c_3_3, av);                       \
+    c_4_0 = vmulq_f32(c_4_0, av);                       \
+    c_4_1 = vmulq_f32(c_4_1, av);                       \
+    c_4_2 = vmulq_f32(c_4_2, av);                       \
+    c_4_3 = vmulq_f32(c_4_3, av);                       \
+    c_5_0 = vmulq_f32(c_5_0, av);                       \
+    c_5_1 = vmulq_f32(c_5_1, av);                       \
+    c_5_2 = vmulq_f32(c_5_2, av);                       \
+    c_5_3 = vmulq_f32(c_5_3, av);
+
+#if FLOAT_SIMD_EPILOGUE == 1
+#define FLOAT_DIV_END_C(norm,  W_last, C_ob) \
+    float *c_pixel = c_tile;                             \
+    for (uint32_t kk = 0; kk < W_last; kk++)            \
+    {                                                   \
+        float *c_channel = c_pixel;                     \
+        for (uint32_t jj = 0; jj < C_ob; jj++)          \
+        {                                               \
+            *(c_channel) *= norm;               \
+            c_channel++;                                \
+        }                                               \
+        c_pixel += C_ob;                                \
+    }
+#else
+#define FLOAT_DIV_END_C(norm, W_last, C_ob)                 \
+     float32x4_t av;                                     \
+     av = vld1q_dup_f32(&norm);\
+    float32x4_t * c_cur= c_tile;\
+    for (uint32_t kk = 0; kk < W_last; kk++)                            \
+    {                                                                   \
+        for (uint32_t jj = 0; jj < C_ob / FLOAT_SIMD; jj++)             \
+        {                                                               \
+            c_cur[(kk) * (C_ob / FLOAT_SIMD) + jj] =                    \
+                vmulq_f32(c_cur[(kk) * (C_ob / FLOAT_SIMD) + jj], av);  \
+        }                                                               \
+    }
+#endif
+//****************************************************************************
 // AVG Pooling
 //****************************************************************************
 // TODO: is this tested?
@@ -644,6 +703,8 @@ typedef float32x4_t c_tile_t;
             c_tile[mm * C_ob + kk] += I[mm * C_ob + kk];        \
         }                                                       \
     }
+
+
 
 #define FLOAT_ADD_LAST_C_G(I, W_last, C_ob)     \
     float *i_pixel = I;                         \

@@ -153,6 +153,36 @@ void MaxPool2D(int kernel_height, int kernel_width, int stride,
 
 //****************************************************************************
 /**
+ * Perform the computation for a 2D average pool layer with a rectangular window
+ *
+ * @param[in]  kernel_height   Height dimension of convolution window
+ * @param[in]  kernel_width    Width dimension of convolution window
+ * @param[in]  stride          Number of pixels to skip in height and width
+ *                             dimensions of the input between convolutions
+ * @param[in]  t_pad           number of pixels of top padding
+ * @param[in]  b_pad           number of pixels of bottom padding
+ * @param[in]  l_pad           number of pixels of left padding
+ * @param[in]  r_pad           number of pixels of right padding
+ * @param[in]  input_channels  Number of channels associated with input image
+ * @param[in]  input_height    Height of input image in pixels
+ * @param[in]  input_width     Width of input image in pixels
+ * @param[in]  input_buf       Buffer of input (image x channels) data
+ *                             size = Ci x iH x iW
+ * @param[out] output_buf      Buffer of output data computed for layer
+ *                             size = oH x oW x Co where the output image size
+ *                             depends on input image size, kernel, padding
+ *                             and stride parameters.
+ */
+template <class BufferT>
+void AveragePool2D(int kernel_height, int kernel_width, int stride,
+                   uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
+                   int input_channels,
+                   int input_height, int input_width,
+                   BufferT const &input_buf,
+                   BufferT       &output_buf);
+
+//****************************************************************************
+/**
  * Perform the nearest neighbor upsampling to increase image sizes
  *
  * @param[in]  scale_factor    Multiplying factor in both width and height;
