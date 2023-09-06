@@ -383,8 +383,8 @@ typedef small::FloatBuffer::value_type c_tile_t;
         c_pixel += C_ob;                       \
     }
 
-#define FLOAT_DIV_END_C(norm, W_last, C_ob)    \
-    float *c_pixel = c_tile;                   \
+#define FLOAT_DIV_END_C(c_cur, norm, W_last, C_ob)    \
+    float *c_pixel = c_cur;                   \
     for (uint32_t kk = 0; kk < W_last; kk++)   \
     {                                          \
         float *c_channel = c_pixel;            \
