@@ -26,9 +26,16 @@ import time
 import os
 import json
 import argparse
+import subprocess
 
 # These are imported from onnx-mlir
 from PyRuntime import OMExecutionSession
+
+print(os.getcwd())
+
+def save_numpy_to_file(arr, filename):
+    with open(filename, 'wb') as f:
+        f.write(arr.tobytes())
 
 def compile_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, verbose=False):
     
@@ -77,7 +84,7 @@ def run_onnx_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT="", verbose=F
         exit(-1)
 
     input_sign = json.loads(session.input_signature())[0]
-    input_dims = input_sign["dims"]
+    input_dims = [1 if x==-1 else x for x in input_sign["dims"]]
     print(f"Input dims to {onnx_model_so_colored}: {input_dims}")
     
     while(True):
@@ -102,21 +109,35 @@ def run_onnx_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT="", verbose=F
         print(f"New Input dims to {onnx_model_so_colored}: {input_dims}")
    
     input_ = np.random.rand(*input_dims).astype(np.float32)
+    input_2 = np.copy(input_)
+    input_file = "input.bin"
+    save_numpy_to_file(input_, input_file)
+    cmd_str = f"python run_torch_onnx.py {onnx_model_path} {input_dims[1]} {input_dims[2]} {input_dims[3]}"
+    print(cmd_str)
+    proc = subprocess.Popen(list(cmd_str.split(" ")), stdout=subprocess.PIPE)
+    print(str(proc.stdout.readline().rstrip(), encoding='utf-8'))
+    pytorch_fps = float(proc.stdout.readline().rstrip().decode())
+    # pytorch_fps = 1
+
+    # input_packed = input_2.transpose(0, 2, 3, 1)
     
     total_time = 0
     best_time = 1e9
-    RUNS = 1000
+    RUNS = 1
     for _ in range(RUNS):
         s = time.time()
-        outputs = session.run(input=[input_])
+        outputs = session.run(input=[input_2])
         e = time.time()
         total_time += (e-s)
         best_time = min(best_time, e-s)
         
-    fps = colored(str(input_dims[0]/best_time), "red")
-    print(f"FPS = {fps}")
+    
+    small_fps = input_dims[0]/best_time
+    print("small, pytorch")
+    # small_fps = 1
+    print(f"{small_fps}, {pytorch_fps}, {small_fps/pytorch_fps}")
         
-    return input_, outputs
+    # return input_, outputs
 
     
 def get_args(): 

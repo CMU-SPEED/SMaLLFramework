@@ -156,32 +156,19 @@ small::Tensor<small::FloatBuffer> omtensor_to_smalltensor_unpacked(
 
 // }
 
-// //****************************************************************************
-void Conv2D(
+//****************************************************************************
+int conv2D_w_bias_cnt = 0;
+void Conv2D_w_bias(
     OMTensor *output, 
-    OMTensor *input, 
-    OMTensor *filter
-){
-    
-    // small::Tensor<small::FloatBuffer> input_small = omtensor_to_smalltensor(input);
-    // size_t ci = input_small.shape()[1];
-    // size_t h = input_small.shape()[2];
-    // size_t w = input_small.shape()[3];
+    OMTensor *input,
+    OMTensor *filter,
+    OMTensor *bias,
+    uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
+    uint8_t stride_x, uint8_t stride_y
+    // ,uint8_t k_x, uint8_t k_y
+) {
 
-    // small::Tensor<small::FloatBuffer> filter_small = omtensor_to_smalltensor(filter);
-    // size_t co = filter_small.shape()[0];
-    // size_t k = filter_small.shape()[2];
-
-    // small::Tensor<small::FloatBuffer> output_small({1U, co, h, w});
-
-    // small::Conv2DLayer<small::FloatBuffer> conv2d(
-    //     input_small.shape(),
-    //     k, k, 
-    //     1, 
-    //     small::PADDING_F,
-    //     co,
-    //     filter_small.buffer()
-    // );
+    printf("entering Conv2D_w_bias %d\n", conv2D_w_bias_cnt++);
 
     int oc = omTensorGetShape(filter)[0];
     int ic = omTensorGetShape(filter)[1];
@@ -190,14 +177,31 @@ void Conv2D(
     int ih = omTensorGetShape(input)[2];
     int iw = omTensorGetShape(input)[3];
 
+    int oh = omTensorGetShape(output)[2];
+    int ow = omTensorGetShape(output)[3];
+
+    // printf("t_pad = %d | b_pad = %d | l_pad = %d | r_pad = %d\n", t_pad, b_pad, l_pad, r_pad);
+    // printf("stride_x = %d | stride_y = %d\n", stride_x, stride_y);
+    // exit(-1);
+    
     small::FloatBuffer in(omTensorGetNumElems(input), (float*)omTensorGetDataPtr(input));
     small::FloatBuffer filt(omTensorGetNumElems(filter), (float*)omTensorGetDataPtr(filter));
     small::FloatBuffer out(omTensorGetNumElems(output), (float*)omTensorGetDataPtr(output));
+    small::FloatBuffer bias_buffer(omTensorGetNumElems(bias), (float*)omTensorGetDataPtr(bias));
 
-    uint8_t pad = k==3 ? 1 : 0;
-    small::Conv2D(
-        k, 1,
-        pad, pad, pad, pad,
+    // printf("oc=%d, ic=%d, k=%d, ih=%d, iw=%d, oh=%d, ow=%d\n", oc, ic, k, ih, iw, oh, ow);
+
+    small::Bias(
+        oc,
+        oh,
+        ow,
+        bias_buffer, 
+        out
+    );
+
+    small::PartialConv2D(
+        k, stride_x,
+        t_pad, b_pad, l_pad, r_pad,
         oc,
         ic,
         ih, iw,
@@ -206,14 +210,132 @@ void Conv2D(
         out
     );
 
-    // conv2d.compute_output({&input_small}, {&output_small});
+}
 
-    // memcpy(
-    //     omTensorGetDataPtr(output),
-    //     &output_small.buffer()[0],
-    //     output_small.capacity()
-    // );
 
+
+//****************************************************************************
+int conv2D_wo_bias_cnt = 0;
+void Conv2D_wo_bias(
+    OMTensor *output, 
+    OMTensor *input,
+    OMTensor *filter,
+    uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
+    uint8_t stride_x, uint8_t stride_y
+    // ,uint8_t k_x, uint8_t k_y
+) {
+
+    printf("entering Conv2D_wo_bias %d\n", conv2D_wo_bias_cnt++);
+
+    int oc = omTensorGetShape(filter)[0];
+    int ic = omTensorGetShape(filter)[1];
+    int k = omTensorGetShape(filter)[2];
+
+    int ih = omTensorGetShape(input)[2];
+    int iw = omTensorGetShape(input)[3];
+
+    int oh = omTensorGetShape(output)[2];
+    int ow = omTensorGetShape(output)[3];
+
+    // printf("t_pad = %d | b_pad = %d | l_pad = %d | r_pad = %d\n", t_pad, b_pad, l_pad, r_pad);
+    // printf("stride_x = %d | stride_y = %d\n", stride_x, stride_y);
+    // exit(-1);
+    
+    small::FloatBuffer in(omTensorGetNumElems(input), (float*)omTensorGetDataPtr(input));
+    small::FloatBuffer filt(omTensorGetNumElems(filter), (float*)omTensorGetDataPtr(filter));
+    small::FloatBuffer out(omTensorGetNumElems(output), (float*)omTensorGetDataPtr(output));
+
+    // printf("oc=%d, ic=%d, k=%d, ih=%d, iw=%d, oh=%d, ow=%d\n", oc, ic, k, ih, iw, oh, ow);
+
+    small::Conv2D(
+        k, stride_x,
+        t_pad, b_pad, l_pad, r_pad,
+        oc,
+        ic,
+        ih, iw,
+        in,
+        filt,
+        out
+    );
+
+}
+
+void MaxPool2D(
+    OMTensor *output,
+    OMTensor *input
+)
+{
+    printf("MaxPool2D\n");
+
+    int ic = omTensorGetShape(input)[1];
+    int ih = omTensorGetShape(input)[2];
+    int iw = omTensorGetShape(input)[3];
+
+    small::FloatBuffer in(omTensorGetNumElems(input), (float*)omTensorGetDataPtr(input));
+    small::FloatBuffer out(omTensorGetNumElems(output), (float*)omTensorGetDataPtr(output));
+
+    int k = 2;
+    uint8_t pad = 0;
+    small::MaxPool2D<small::FloatBuffer>(
+        k, 1,
+        pad, pad, pad, pad,
+        ic,
+        ih, iw,
+        in,
+        out
+    );
+}
+
+void MaxPool2D(
+    OMTensor *output,
+    OMTensor *input
+)
+{
+    printf("MaxPool2D\n");
+
+    int ic = omTensorGetShape(input)[1];
+    int ih = omTensorGetShape(input)[2];
+    int iw = omTensorGetShape(input)[3];
+
+    small::FloatBuffer in(omTensorGetNumElems(input), (float*)omTensorGetDataPtr(input));
+    small::FloatBuffer out(omTensorGetNumElems(output), (float*)omTensorGetDataPtr(output));
+
+    int k = 2;
+    uint8_t pad = 0;
+    small::MaxPool2D<small::FloatBuffer>(
+        k, 1,
+        pad, pad, pad, pad,
+        ic,
+        ih, iw,
+        in,
+        out
+    );
+}
+
+int relu_cnt = 0;
+
+void Relu(
+    OMTensor *image,
+    OMTensor *output
+)
+{
+    printf("entering Relu %d\n", relu_cnt++);
+
+    int ic = omTensorGetShape(image)[1];
+    int ih = omTensorGetShape(image)[2];
+    int iw = omTensorGetShape(image)[3];
+
+    // printf("ic=%d, ih=%d, iw=%d\n", ic, ih, iw);
+
+    small::FloatBuffer in(omTensorGetNumElems(image), (float*)omTensorGetDataPtr(image));
+    small::FloatBuffer out(omTensorGetNumElems(output), (float*)omTensorGetDataPtr(output));
+
+    small::ReLUActivation<small::FloatBuffer>(
+        ic,
+        ih, iw,
+        in,
+        out
+    );
 }
 
 //****************************************************************************

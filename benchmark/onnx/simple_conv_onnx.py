@@ -29,7 +29,8 @@ def create_conv_model(ic, ih, iw, oc, oh, ow, k, p, conv_id="0"):
             "O"
         ],
         kernel_shape=(k, k),
-        pads=p
+        pads=p,
+        strides=(1, 1)
     )
     # print(conv_node)
     

@@ -47,6 +47,13 @@ public:
     {
     }
 
+    FloatBuffer(size_t num_elts, float *buffer)
+        : m_num_elts(num_elts),
+          m_buffer(buffer),
+          m_buffer_created(false)
+    {
+    }
+
     FloatBuffer(size_t num_elts) : m_num_elts(num_elts)
     {
         if (0 != posix_memalign((void**)&m_buffer,
@@ -80,6 +87,7 @@ public:
     {
         std::swap(m_num_elts, other.m_num_elts);
         std::swap(m_buffer,   other.m_buffer);
+        
     }
 
     FloatBuffer &operator=(FloatBuffer const &other)
@@ -115,7 +123,7 @@ public:
         // std::cerr << "FloatBuffer::dtor " << (void*)this
         //           << ", data_ptr = " << (void*)m_buffer.data()
         //           << ", size = " << m_buffer.size() << std::endl;
-        if (m_buffer != nullptr)
+        if (m_buffer_created && m_buffer != nullptr)
         {
             free(m_buffer);
         }
@@ -144,6 +152,7 @@ public:
 private:
     size_t      m_num_elts;
     value_type *m_buffer;
+    bool        m_buffer_created = true;
 };
 
 //**********************************************************************
