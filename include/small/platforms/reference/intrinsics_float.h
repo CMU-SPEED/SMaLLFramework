@@ -13,6 +13,7 @@
 #pragma once
 
 #include <FloatBuffer.hpp>
+#include<cmath>
 
 // scalar versions of all the float microkernels for platform portability
 // Use the FLOAT_ prefix for all macros in this file.
@@ -461,4 +462,42 @@ typedef small::FloatBuffer::value_type c_tile_t;
             }                                           \
             c_pixel += C_ob;                            \
         }                                               \
+    }
+
+//****************************************************************************
+// Softmax  (Ewise exponentiation)
+//****************************************************************************
+
+#define FLOAT_EXP_TILE_C(step, a, W_ob, C_ob)                                           \
+    c_tile_t *c_pixel = c_tile;                                                         \
+    c_tile_t const *a_pixel = a;                                                        \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                                              \
+    {                                                                                   \
+        c_tile_t *c_channel = c_pixel;                                                  \
+        c_tile_t const *a_channel = a_pixel;                                            \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                                          \
+        {                                                                               \
+            *(c_channel) = std::exp(*a_channel); \
+            c_channel++;                                                                \
+            a_channel++;                                                                \
+        }                                                                               \
+        a_pixel += step;                                                                \
+        c_pixel += C_ob;                                                                \
+    }
+
+#define FLOAT_EXP_END_C(step, a, c_cur, W_last, C_ob) \
+    c_tile_t *c_pixel = c_cur;                        \
+    c_tile_t const *a_pixel = a;                      \
+    for (uint32_t kk = 0; kk < W_last; kk++)          \
+    {                                                 \
+        c_tile_t *c_channel = c_pixel;                \
+        c_tile_t const *a_channel = a_pixel;          \
+        for (uint32_t jj = 0; jj < C_ob; jj++)        \
+        {                                             \
+            *(c_channel) = std::exp(*a_channel);      \
+            c_channel++;                              \
+            a_channel++;                              \
+        }                                             \
+        a_pixel += step;                              \
+        c_pixel += C_ob;                              \
     }
