@@ -36,8 +36,16 @@ print(os.getcwd())
 def save_numpy_to_file(arr, filename):
     with open(filename, 'wb') as f:
         f.write(arr.tobytes())
+        
+def repack_weights(onnx_model_path):
+    os.system(f"python3 repack_weights.py {onnx_model_path}")
+    # exit()
+    
 
 def compile_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, verbose=False):
+    
+    repack_weights(onnx_model_path)
+    onnx_model_path = onnx_model_path[:-5] + "_repacked.onnx"
     
     onnx_model_o = onnx_model_path[:-5] + ".o"
     onnx_model_so = onnx_model_path[:-5] + ".so"
@@ -51,7 +59,7 @@ def compile_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, verbose=False
     else:
         onnx_mlir_exe = "onnx-mlir"
         
-    os.system(f"{onnx_mlir_exe} -O3 --EmitObj {onnx_model_path}")
+    os.system(f"{onnx_mlir_exe} --enable-conv-opt-pass=false --EmitObj {onnx_model_path}")
     
     if(verbose):
         os.system(f"{onnx_mlir_exe} -O3 --EmitLLVMIR {onnx_model_path}")
@@ -110,14 +118,14 @@ def run_onnx_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT="", verbose=F
    
     input_ = np.random.rand(*input_dims).astype(np.float32)
     input_2 = np.copy(input_)
-    # input_file = "input.bin"
-    # save_numpy_to_file(input_, input_file)
-    # cmd_str = f"python run_torch_onnx.py {onnx_model_path} {input_dims[1]} {input_dims[2]} {input_dims[3]}"
-    # print(cmd_str)
-    # proc = subprocess.Popen(list(cmd_str.split(" ")), stdout=subprocess.PIPE)
-    # print(str(proc.stdout.readline().rstrip(), encoding='utf-8'))
-    # pytorch_fps = float(proc.stdout.readline().rstrip().decode())
-    pytorch_fps = 1
+    input_file = "input.bin"
+    save_numpy_to_file(input_, input_file)
+    cmd_str = f"python run_torch_onnx.py {onnx_model_path} {input_dims[1]} {input_dims[2]} {input_dims[3]}"
+    print(cmd_str)
+    proc = subprocess.Popen(list(cmd_str.split(" ")), stdout=subprocess.PIPE)
+    print(str(proc.stdout.readline().rstrip(), encoding='utf-8'))
+    pytorch_fps = float(proc.stdout.readline().rstrip().decode())
+    # pytorch_fps = 1
 
     # input_packed = input_2.transpose(0, 2, 3, 1)
     

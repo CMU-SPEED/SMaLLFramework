@@ -195,6 +195,7 @@ void AveragePool(
 
     assert(stride_h == stride_w && "[ERROR in AveragePool2D] stride_h != stride_w\n");
 
+    printf("k_h = %d | k_w = %d | stride_h = %d | stride_w = %d\n", k_h, k_w, stride_h, stride_w);
 
     uint8_t t_pad = 0, b_pad = 0, l_pad = 0, r_pad = 0;
     small::AveragePool2D<small::FloatBuffer>(
