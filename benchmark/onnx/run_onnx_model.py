@@ -21,7 +21,6 @@
 
 from termcolor import colored
 import numpy as np
-import sys
 import time
 import os
 import json
@@ -30,70 +29,32 @@ import subprocess
 
 # These are imported from onnx-mlir
 from PyRuntime import OMExecutionSession
-
-print(os.getcwd())
-
-def save_numpy_to_file(arr, filename):
-    with open(filename, 'wb') as f:
-        f.write(arr.tobytes())
         
-def repack_weights(onnx_model_path):
-    os.system(f"python3 repack_weights.py {onnx_model_path}")
-    # exit()
+#*-------------------------------------------------------------------------------
+# Repack weights for a given platform
+# Assumes all filter weights are in CO, CI, H, W format
+# Assumes filter weights contain a string "const_fold" in their name
+def repack_weights(onnx_model_path, platform):
+    os.system(f"python3 repack_weights.py {onnx_model_path} {platform}")
     
-
-def compile_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, verbose=False):
-    
-    repack_weights(onnx_model_path)
-    onnx_model_path = onnx_model_path[:-5] + "_repacked.onnx"
-    
-    onnx_model_o = onnx_model_path[:-5] + ".o"
-    onnx_model_so = onnx_model_path[:-5] + ".so"
-    
-    # if(os.path.isfile(onnx_model_so)):
-    #     print(f"{onnx_model_so} exists. Skipping compilation step.")
-    #     return onnx_model_so
-    
-    if(ONNX_MLIR_ROOT != ""):
-        onnx_mlir_exe = ONNX_MLIR_ROOT + "/build/Debug/bin/onnx-mlir"
+#*-------------------------------------------------------------------------------
+# return cob, cib
+def get_platform_params(platform):
+    if(platform == "ref"):
+        return 1, 1
+    elif(platform == "zen2"):
+        return 16, 16
+    elif(platform == "arm"):
+        return 16, 16
     else:
-        onnx_mlir_exe = "onnx-mlir"
-        
-    os.system(f"{onnx_mlir_exe} --enable-conv-opt-pass=false --EmitObj {onnx_model_path}")
-    
-    if(verbose):
-        os.system(f"{onnx_mlir_exe} -O3 --EmitLLVMIR {onnx_model_path}")
-   
-    onnx_lib_link = f"-L{ONNX_MLIR_ROOT}/build/Debug/lib -lcruntime"
-    small_lib_link = f"-L{small_lib_path} -lsmall"
-
-    link_cmd = f"c++ {onnx_model_o} -o {onnx_model_so} -shared -fopenmp -fPIC {onnx_lib_link} {small_lib_link}"
-    os.system(link_cmd)
-
-    onnx_model_so_colored = colored(onnx_model_so, "light_cyan")
-    print(f"{onnx_model_so_colored} compiled!")
-    
-    return onnx_model_so
-
-def run_onnx_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT="", verbose=False):
-    
-    onnx_model_so = compile_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, verbose)
-    
-    onnx_model_so_colored = colored(onnx_model_so, "light_cyan")
-    print(f"Running model {onnx_model_so_colored}\n")
-    
-    session = None
-    try:
-        session = OMExecutionSession(shared_lib_path=onnx_model_so)
-    except Exception as E:
-        print(E)
-        print("Did you make sure LD_LIBRARY_PATH has the path to directory with libsmall.so?")
-        print("\tRun: export LD_LIBRARY_PATH=\"$LD_LIBRARY_PATH:<SMALL_ROOT_DIR>/lib\"")
+        print(f"[ERROR] Invalid platform {platform}")
         exit(-1)
 
-    input_sign = json.loads(session.input_signature())[0]
+#*-------------------------------------------------------------------------------
+# helper function to get input dimensions
+def get_input_dims(input_sign):
     input_dims = [1 if x==-1 else x for x in input_sign["dims"]]
-    print(f"Input dims to {onnx_model_so_colored}: {input_dims}")
+    print(f"Input dims: {input_dims}")
     
     while(True):
         c = input("Would you like to change the input dimensions? (y/n): ").lower()
@@ -112,42 +73,171 @@ def run_onnx_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT="", verbose=F
                 continue
             else:
                 break
-            
         input_dims = new_input_dims_list
-        print(f"New Input dims to {onnx_model_so_colored}: {input_dims}")
-   
-    input_ = np.random.rand(*input_dims).astype(np.float32)
-    input_2 = np.copy(input_)
-    input_file = "input.bin"
-    save_numpy_to_file(input_, input_file)
-    cmd_str = f"python run_torch_onnx.py {onnx_model_path} {input_dims[1]} {input_dims[2]} {input_dims[3]}"
-    print(cmd_str)
-    proc = subprocess.Popen(list(cmd_str.split(" ")), stdout=subprocess.PIPE)
-    print(str(proc.stdout.readline().rstrip(), encoding='utf-8'))
-    pytorch_fps = float(proc.stdout.readline().rstrip().decode())
-    # pytorch_fps = 1
+        
+    return input_dims
 
-    # input_packed = input_2.transpose(0, 2, 3, 1)
+#*-------------------------------------------------------------------------------
+# use os.system to run pytorch model
+# if correctness is true, run pytorch model and save output to pytorch_output.npy
+# else, run pytorch model and return fps
+def run_pytorch_model(onnx_model_path, input_file, correctness):
+    cmd_str = ""
+    if(correctness):
+        cmd_str = f"python run_torch_onnx.py {onnx_model_path} {input_file} --correctness"
+        os.system(cmd_str)
+        return 0
+    else:
+        cmd_str = f"python run_torch_onnx.py {onnx_model_path} {input_file}"
+        proc = subprocess.Popen(list(cmd_str.split(" ")), stdout=subprocess.PIPE)
+        print(str(proc.stdout.readline().rstrip(), encoding='utf-8'))
+        return float(proc.stdout.readline().rstrip().decode())
+        
+
+#*-------------------------------------------------------------------------------
+# compiles an onnx model using onnx-mlir
+# returns path to shared library that contains the model
+def compile_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, platform):
     
+    repack_weights(onnx_model_path, platform)
+    onnx_model_path = onnx_model_path[:-5] + "_repacked.onnx"
+    
+    onnx_model_o = onnx_model_path[:-5] + ".o"
+    onnx_model_so = onnx_model_path[:-5] + ".so"
+    
+    if(ONNX_MLIR_ROOT != ""):
+        onnx_mlir_exe = ONNX_MLIR_ROOT + "/build/Debug/bin/onnx-mlir"
+    else:
+        onnx_mlir_exe = "onnx-mlir"
+        
+    # --enable-conv-opt-pass=false must be passed to onnx-mlir to avoid a bug
+    # add more passes here if needed
+    os.system(f"{onnx_mlir_exe} --enable-conv-opt-pass=false --EmitObj {onnx_model_path}")
+   
+    # link small to the compiled model
+    onnx_lib_link = f"-L{ONNX_MLIR_ROOT}/build/Debug/lib -lcruntime"
+    small_lib_link = f"-L{small_lib_path} -lsmall"
+    link_cmd = f"c++ {onnx_model_o} -o {onnx_model_so} -shared -fopenmp -fPIC {onnx_lib_link} {small_lib_link}"
+    os.system(link_cmd)
+
+    onnx_model_so_colored = colored(onnx_model_so, "light_cyan")
+    print(f"{onnx_model_so_colored} compiled!")
+    return onnx_model_so
+
+#*-------------------------------------------------------------------------------
+# compiles and executes an onnx model using onnx-mlir
+# also runs the same model using pytorch
+# prints fps results for small and pytorch
+def run_onnx_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, platform):
+    
+    # compile model using onnx-mlir
+    onnx_model_so = compile_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, platform)
+    onnx_model_so_colored = colored(onnx_model_so, "light_cyan")
+    print(f"Running model {onnx_model_so_colored}\n")
+    
+    # use the PyRuntime module provided by onnx-mlir to execute the model
+    session = None
+    try:
+        session = OMExecutionSession(shared_lib_path=onnx_model_so)
+    except Exception as E:
+        print(E)
+        print("Did you make sure LD_LIBRARY_PATH has the path to directory with libsmall.so?")
+        print("\tRun: export LD_LIBRARY_PATH=\"$LD_LIBRARY_PATH:<SMALL_ROOT_DIR>/lib\"")
+        exit(-1)
+
+    # create input data and store it in a file for pytorch to use
+    # input data is assumed to be in NCHW format
+    input_sign = json.loads(session.input_signature())[0]
+    input_dims = get_input_dims(input_sign)
+    model_input = np.random.rand(*input_dims).astype(np.float32)
+    np.save("input.npy", model_input)
+    
+    # run pytorch model and get fps
+    pytorch_fps = run_pytorch_model(onnx_model_path, "input.npy", False)
+
+    # the following is commented out since correctness results are not needed, but is left in to show what the data layout for small is
+    # b, c, h, w = input_dims
+    # _, cib = get_platform_params(platform)
+    # model_input_packed = model_input.reshape(b, c//cib, cib, h, w).transpose(0, 1, 3, 4, 2).reshape(b, h, w, c)
+    
+    
+    # run small model and get fps out of 10000 runs
+    # it is assumed that pytorch will also get the best fps out of 10000 runs
     total_time = 0
     best_time = 1e9
-    RUNS = 1
+    RUNS = 10000
     for _ in range(RUNS):
         s = time.time()
-        outputs = session.run(input=[input_2])
+        outputs = session.run(input=[model_input])
         e = time.time()
         total_time += (e-s)
         best_time = min(best_time, e-s)
-        
     
     small_fps = input_dims[0]/best_time
     print("small, pytorch")
-    # small_fps = 1
     print(f"{small_fps}, {pytorch_fps}, {small_fps/pytorch_fps}")
         
-    # return input_, outputs
 
+
+#*-------------------------------------------------------------------------------
+# compiles and executes an onnx model using onnx-mlir
+# also runs the same model using pytorch
+# prints correctness results by comparing outputs from small and pytorch
+def run_onnx_model_correctness(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, platform):
     
+    # get platform params for packing data
+    cob, cib = get_platform_params(platform)
+    
+    # compile model
+    onnx_model_so = compile_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, platform)
+    onnx_model_so_colored = colored(onnx_model_so, "light_cyan")
+    print(f"Running model {onnx_model_so_colored}\n")
+    
+    # use the PyRuntime module provided by onnx-mlir to execute the model
+    session = None
+    try:
+        session = OMExecutionSession(shared_lib_path=onnx_model_so)
+    except Exception as E:
+        print(E)
+        print("Did you make sure LD_LIBRARY_PATH has the path to directory with libsmall.so?")
+        print("\tRun: export LD_LIBRARY_PATH=\"$LD_LIBRARY_PATH:<SMALL_ROOT_DIR>/lib\"")
+        exit(-1)
+
+    # create input data and store it in a file for pytorch to use
+    # input data is assumed to be in NCHW format
+    input_sign = json.loads(session.input_signature())[0]
+    input_dims = get_input_dims(input_sign)
+    model_input = np.random.rand(*input_dims).astype(np.float32)
+    np.save("input.npy", model_input)
+    
+    # run pytorch model and get outputs
+    # outputs are assumed to be in NCHW format and are stored in pytorch_output.npy
+    # once the outputs are loaded, they need to be packed into the same format as small for comparison
+    os.system("rm -rf pytorch_output.npy")
+    pytorch_fps = run_pytorch_model(onnx_model_path, "input.npy", True)
+    outputs_torch = np.load("pytorch_output.npy")
+    ob, oc, oh, ow = outputs_torch.shape
+    outputs_torch_packed = np.ravel(outputs_torch.reshape(ob, oc//cob, cob, oh, ow).transpose(0, 1, 3, 4, 2), order='C').reshape(ob, oc, oh, ow)
+    assert(pytorch_fps == 0 and "Pytorch failed to run model correctly.")
+    
+    # pack inpout data for small
+    b, c, h, w = input_dims
+    model_input_packed = np.ravel(model_input.reshape(b, c//cib, cib, h, w).transpose(0, 1, 3, 4, 2), order='C').reshape(b, c, h, w)
+
+    # run small model and get outputs
+    outputs = session.run(input=[model_input_packed])
+    
+    # compare outputs
+    passed = np.allclose(outputs[0], outputs_torch_packed)
+    passed_str = colored("PASSED", "green") if passed else colored("FAILED", "red")
+    print(f"{onnx_model_so_colored} {passed_str}")
+    if not passed:
+        print("small: ")
+        print(outputs[0], outputs[0].shape)
+        print("pytorch: ")
+        print(outputs_torch, outputs_torch.shape)
+
+#*------------------------------------------------------------------------------- 
 def get_args(): 
     
     arg_parser = argparse.ArgumentParser()
@@ -164,28 +254,39 @@ def get_args():
         help="Path to SMaLL libray"
     )
     arg_parser.add_argument(
-        "-v", "--verbose",
-        action='store_true'
+        "--platform",
+        type=str,
+        default="ref",
+        help="Platform to run on. Options: ref, zen2, arm"
     )
     arg_parser.add_argument(
         "-o", "--ONNX_MLIR_ROOT",
         default="",
         help="Path to onnx-mlir"
     )
+    arg_parser.add_argument(
+        "--correctness",
+        action='store_true',
+        help="Run correctness test."
+    )
     
     return arg_parser.parse_args()
     
-
+#*-------------------------------------------------------------------------------
 if __name__ == "__main__":
     
     args = get_args()
     
     onnx_model = args.model
     small_lib_path = args.lib
+    platform = args.platform
     ONNX_MLIR_ROOT = args.ONNX_MLIR_ROOT
     ONNX_MLIR_ROOT_COLORED = colored(ONNX_MLIR_ROOT, "green")
-    verbosity = args.verbose
+    correctness = args.correctness
     
     print(f"\nUsing {ONNX_MLIR_ROOT_COLORED} to compile onnx models.\n")
     
-    run_onnx_model(onnx_model, small_lib_path, ONNX_MLIR_ROOT, verbosity)
+    if(correctness):
+        run_onnx_model_correctness(onnx_model, small_lib_path, ONNX_MLIR_ROOT, platform)
+    else:
+        run_onnx_model(onnx_model, small_lib_path, ONNX_MLIR_ROOT, platform)

@@ -1,21 +1,20 @@
 import onnx
 import numpy as np
-from onnx import helper
-from onnx import AttributeProto, TensorProto, GraphProto
-import sys
+from onnx import TensorProto
 import argparse
 
-def save_numpy_to_file(arr, filename):
-    with open(filename, 'wb') as f:
-        f.write(arr.tobytes())
-        
+#*------------------------------------------------------------------------------- 
+# create an onnx model that contains a single conv node
+# assumes that the input is NCHW
+# assumes that the filter is OIHW
+# assumes that the output is NCHW
 def create_conv_model(ic, ih, iw, oc, oh, ow, k, p, conv_id="0"):
     
     # todo: make types more flexible and maybe add batch?
     conv_input = onnx.helper.make_tensor_value_info("I", TensorProto.FLOAT, [1, ic, ih, iw])
     
     weights_np = np.random.rand(oc, ic, k, k).astype(np.float32)
-    conv_weights = onnx.helper.make_tensor(name="W", data_type=TensorProto.FLOAT, dims=weights_np.shape, vals=weights_np.flatten().tolist())
+    conv_weights = onnx.helper.make_tensor(name="const_fold_conv2d_0_W", data_type=TensorProto.FLOAT, dims=weights_np.shape, vals=weights_np.flatten().tolist())
     
     conv_output = onnx.helper.make_tensor_value_info("O", TensorProto.FLOAT, [1, oc, oh, ow])
     
@@ -23,7 +22,7 @@ def create_conv_model(ic, ih, iw, oc, oh, ow, k, p, conv_id="0"):
         name="conv2d",
         op_type="Conv",
         inputs=[
-           "I", "W"
+           "I", "const_fold_conv2d_0_W"
         ],
         outputs=[
             "O"
@@ -54,6 +53,7 @@ def create_conv_model(ic, ih, iw, oc, oh, ow, k, p, conv_id="0"):
     onnx.save(conv_model, conv_model_name)
     print(f"{conv_model_name} is checked!")
     
+#*-------------------------------------------------------------------------------
 def get_args():
     
     arg_parser = argparse.ArgumentParser()
@@ -91,6 +91,7 @@ def get_args():
     
     return arg_parser.parse_args()
 
+#*-------------------------------------------------------------------------------
 def compute_output_dims(p, ih, iw, k):
     
     if(p == "same" or k == 1):
@@ -104,6 +105,7 @@ def compute_output_dims(p, ih, iw, k):
         print("Only valid and same are supported.")
         exit()
     
+#*-------------------------------------------------------------------------------
 if __name__ == "__main__":
     
     args = get_args()

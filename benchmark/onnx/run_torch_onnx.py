@@ -19,39 +19,30 @@
     
 """
 
-from termcolor import colored
 import numpy as np
-import sys
 import time
-import os
-import json
 import argparse
 import torch
-device = torch.device("cpu")
-total_physical_cores = torch.get_num_threads()
-torch.set_num_threads(total_physical_cores)
-print(f"Using {total_physical_cores} threads for PyTorch")
+from torch import nn
 import onnx
 from onnx2pytorch import ConvertModel
 
-def save_numpy_to_file(arr, filename):
-    with open(filename, 'wb') as f:
-        f.write(arr.tobytes())
-        
-def read_numpy_from_file(filename, shape):
-    arr = np.fromfile(filename, dtype=np.float32)
-    return arr.reshape(shape)
-
-def run_onnx_model(onnx_model_path, ic, ih, iw):
-    
+#*-------------------------------------------------------------------------------
+# Convert ONNX model to PyTorch model
+# assumes dependency on onnx2pytorch
+def convert_onnx_2_pytorch(onnx_model_path):
     onnx_model_loaded = onnx.load(onnx_model_path)
     pytorch_model = ConvertModel(onnx_model_loaded)
+    return pytorch_model
+
+#*-------------------------------------------------------------------------------
+# Run ONNX model for performance
+# return the best fps for 10000 runs
+def run_onnx_model_performance(onnx_model_path, input_file):
     
-    input_shape = (1, int(ic), int(ih), int(iw))
-    input_ = np.random.rand(*input_shape).astype(np.float32)
-    # if(input_file != ""):
-    #     input_ = read_numpy_from_file(input_file, input_shape)
-    input_torch = torch.from_numpy(input_)
+    pytorch_model = convert_onnx_2_pytorch(onnx_model_path)
+    input_np = np.load(input_file)
+    input_torch = torch.from_numpy(input_np)
 
     total_time = 0
     best_time = 1e9
@@ -63,16 +54,29 @@ def run_onnx_model(onnx_model_path, ic, ih, iw):
         total_time += (e-s)
         best_time = min(best_time, e-s)
         
-    fps = colored(str(input_shape[0]/best_time), "red")
-    print(f"{fps}")
+    print(f"{input_np.shape[0]/best_time}")
+
+#*-------------------------------------------------------------------------------
+# Run ONNX model for correctness
+# save outputs to pytorch_output.npy
+def run_onnx_model_correctness(onnx_model_path, input_file):
+    
+    onnx_model_loaded = onnx.load(onnx_model_path)
+    pytorch_model = ConvertModel(onnx_model_loaded)
+    
+    l = [module for module in pytorch_model.modules() if not isinstance(module, nn.Sequential)]
+    # print(l)
+    
+    input_np = np.load(input_file)
+    
+    input_torch = torch.from_numpy(input_np)
+   
+    outputs = pytorch_model(input_torch)
     
     outputs = outputs.detach().numpy()
-    # save_numpy_to_file(outputs, f"out_{onnx_model_path[:-5]}.bin")
-    
-        
-    return input_, outputs
+    np.save("pytorch_output.npy", outputs)
 
-    
+#*-------------------------------------------------------------------------------
 def get_args(): 
     
     arg_parser = argparse.ArgumentParser()
@@ -83,41 +87,33 @@ def get_args():
         help="Path to onnx model. TODO: Check Op set dependency."
     )
     arg_parser.add_argument(
-        "ic", 
+        "input_file", 
         type=str,
-        help="input channels."
+        help="numpy array of the input data."
     )
     arg_parser.add_argument(
-        "ih", 
-        type=str,
-        help="input height."
-    )
-    arg_parser.add_argument(
-        "iw", 
-        type=str,
-        help="input width."
-    )
-    arg_parser.add_argument(
-        "-i", "--input_file", 
-        type=str,
-        default="",
-        help="binary input data."
-    )
-    arg_parser.add_argument(
-        "-v", "--verbose",
-        action='store_true'
+        "--correctness",
+        action='store_true',
+        help="Run correctness test."
     )
     
     return arg_parser.parse_args()
     
-
+#*-------------------------------------------------------------------------------
 if __name__ == "__main__":
+    
+    device = torch.device("cpu")
+    total_physical_cores = torch.get_num_threads()
+    torch.set_num_threads(total_physical_cores)
+    print(f"Using {total_physical_cores} threads for PyTorch")
     
     args = get_args()
     
     onnx_model = args.model
-    ic = args.ic
-    ih = args.ih
-    iw = args.iw
+    input_file = args.input_file
+    correctness = args.correctness
     
-    run_onnx_model(onnx_model, ic, ih, iw)
+    if(correctness):
+        run_onnx_model_correctness(onnx_model, input_file)
+    else:
+        run_onnx_model_performance(onnx_model, input_file)

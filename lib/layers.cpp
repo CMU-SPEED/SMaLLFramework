@@ -30,9 +30,9 @@ void print_shape(const int64_t *shape, int64_t shape_size) {
 }
 
 //****************************************************************************
-void print_tensor(small::Tensor<small::FloatBuffer> tensor) {
-    float *data = tensor.buffer().data();
-    size_t elems = tensor.capacity();
+void print_buffer(small::FloatBuffer buf, int n, int c, int h, int w) {
+    float *data = buf.data();
+    size_t elems = buf.size();
 
     printf(" [%f", data[0]);
     for(int i=1; i<10; i++) {
@@ -131,6 +131,10 @@ void Conv2D(
 
     // printf("oc=%d, ic=%d, k=%d, ih=%d, iw=%d, oh=%d, ow=%d\n", oc, ic, k, ih, iw, oh, ow);
 
+    // print_buffer(in, 1, ic, ih, iw);
+    // print_buffer(filt, oc, ic, kh, kw);
+    // print_buffer(out, 1, oc, oh, ow);
+
     small::Conv2D<small::FloatBuffer>(
         kh, kw, stride_x,
         t_pad, b_pad, l_pad, r_pad,
@@ -141,6 +145,8 @@ void Conv2D(
         filt,
         out
     );
+
+    // print_buffer(out, 1, oc, oh, ow);
 
 }
 
@@ -267,5 +273,76 @@ void MatMul(
     //     out
     // );
 }
+
+
+//****************************************************************************
+int gemm = 0;
+void Gemm(
+    OMTensor *C,
+    OMTensor *A,
+    OMTensor *B,
+    OMTensor *bias,
+    float alpha,
+    float beta
+)
+{
+    printf("entering %s %d\n", __func__, gemm++);
+
+    printf("A is %ld x %ld\n", omTensorGetShape(A)[0], omTensorGetShape(A)[1]);
+    printf("B is %ld x %ld\n", omTensorGetShape(B)[0], omTensorGetShape(B)[1]);
+    printf("C is %ld x %ld\n", omTensorGetShape(C)[0], omTensorGetShape(C)[1]);
+    printf("bias is %ld x %ld\n", omTensorGetShape(bias)[0], omTensorGetShape(bias)[1]);
+    printf("alpha = %f | beta = %f\n", alpha, beta);
+
+    // int ic = omTensorGetShape(image)[1];
+    // int ih = omTensorGetShape(image)[2];
+    // int iw = omTensorGetShape(image)[3];
+
+    // // printf("ic=%d, ih=%d, iw=%d\n", ic, ih, iw);
+
+    // small::FloatBuffer in(omTensorGetNumElems(image), (float*)omTensorGetDataPtr(image));
+    // small::FloatBuffer out(omTensorGetNumElems(output), (float*)omTensorGetDataPtr(output));
+
+    // small::ReLUActivation<small::FloatBuffer>(
+    //     ic,
+    //     ih, iw,
+    //     in,
+    //     out
+    // );
+}
+
+
+//****************************************************************************
+int softmax = 0;
+void Softmax(
+    OMTensor *output,
+    OMTensor *input,
+    int axis
+)
+{
+    printf("entering %s %d\n", __func__, softmax++);
+
+    // printf("A is %ld x %ld\n", omTensorGetShape(A)[0], omTensorGetShape(A)[1]);
+    // printf("B is %ld x %ld\n", omTensorGetShape(B)[0], omTensorGetShape(B)[1]);
+    // printf("C is %ld x %ld\n", omTensorGetShape(C)[0], omTensorGetShape(C)[1]);
+    // printf("alpha = %f | beta = %f\n", alpha, beta);
+
+    // int ic = omTensorGetShape(image)[1];
+    // int ih = omTensorGetShape(image)[2];
+    // int iw = omTensorGetShape(image)[3];
+
+    // // printf("ic=%d, ih=%d, iw=%d\n", ic, ih, iw);
+
+    // small::FloatBuffer in(omTensorGetNumElems(image), (float*)omTensorGetDataPtr(image));
+    // small::FloatBuffer out(omTensorGetNumElems(output), (float*)omTensorGetDataPtr(output));
+
+    // small::ReLUActivation<small::FloatBuffer>(
+    //     ic,
+    //     ih, iw,
+    //     in,
+    //     out
+    // );
+}
+
 
 } // extern
