@@ -45,6 +45,7 @@ typedef small::FloatBuffer::value_type c_tile_t;
 //****************************************************************************
 
 #define FLOAT_DEF_TILE_C(_W_ob, _C_ob)                                  \
+    c_tile_t c_tile[FLOAT_W_ob*FLOAT_C_ob];\
     __m256 a_reg, b0, b1, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13; \
 
 /// @todo VERIFY this. Args are _W_ob/_C_ob but does not use them
@@ -80,7 +81,19 @@ typedef small::FloatBuffer::value_type c_tile_t;
 // Loads
 //****************************************************************************
 
-#define FLOAT_LOAD_TILE_C(O, _W_ob, C_ob)               \
+#define FLOAT_LOAD_TILE_C(O, _W_ob, C_ob)                     \
+if constexpr (op_type == EXP)                             \
+{                                                         \
+        for (uint32_t kk = 0; kk < _W_ob; kk++)               \
+        {                                                     \
+            for (uint32_t jj = 0; jj < _C_ob; jj++)           \
+            {                                                 \
+                c_tile[kk * _C_ob + jj] = O[kk * _C_ob + jj]; \
+            }                                                 \
+        }\
+}\
+else\
+{\
     c0 = _mm256_load_ps(O + (0 * C_ob));                \
     c1 = _mm256_load_ps(O + (0 * C_ob) + FLOAT_SIMD);   \
     c2 = _mm256_load_ps(O + (1 * C_ob));                \
@@ -92,7 +105,8 @@ typedef small::FloatBuffer::value_type c_tile_t;
     c8 = _mm256_load_ps(O + (4 * C_ob));                \
     c9 = _mm256_load_ps(O + (4 * C_ob) + FLOAT_SIMD);   \
     c10 = _mm256_load_ps(O + (5 * C_ob));               \
-    c11 = _mm256_load_ps(O + (5 * C_ob) + FLOAT_SIMD);
+    c11 = _mm256_load_ps(O + (5 * C_ob) + FLOAT_SIMD);\
+}
 
 #define FLOAT_LOAD_END_C(O, _W_ob, _C_ob)                       \
     for (uint32_t kk = 0; kk < _W_ob; kk++)                     \
@@ -109,6 +123,7 @@ typedef small::FloatBuffer::value_type c_tile_t;
 //****************************************************************************
 
 //  strided loads
+// @todo: make this asm 
 #define FLOAT_LOAD_TILE_C_strided(O, step, _W_ob, _C_ob)        \
     c0 = _mm256_load_ps(O + (0 * step));                        \
     c1 = _mm256_load_ps(O + (0 * step) + FLOAT_SIMD);           \
@@ -166,7 +181,19 @@ typedef small::FloatBuffer::value_type c_tile_t;
 // Stores
 //****************************************************************************
 
-#define FLOAT_STORE_TILE_C(O, W_ob, C_ob)               \
+#define FLOAT_STORE_TILE_C(O, W_ob, C_ob)                     \
+if constexpr (op_type == EXP)                             \
+{                                                         \
+    for (uint32_t kk = 0; kk < W_ob; kk++)               \
+    {                                                     \
+        for (uint32_t jj = 0; jj < C_ob; jj++)           \
+        {                                                 \
+            O[kk * _C_ob + jj] = c_tile[kk * _C_ob + jj]; \
+        }                                                 \
+    }\
+}\
+else\
+{\
     _mm256_store_ps(O + (0 * C_ob), c0);                \
     _mm256_store_ps(O + (0 * C_ob) + FLOAT_SIMD, c1);   \
     _mm256_store_ps(O + (1 * C_ob), c2);                \
@@ -178,7 +205,8 @@ typedef small::FloatBuffer::value_type c_tile_t;
     _mm256_store_ps(O + (4 * C_ob), c8);                \
     _mm256_store_ps(O + (4 * C_ob + FLOAT_SIMD), c9);   \
     _mm256_store_ps(O + (5 * C_ob), c10);               \
-    _mm256_store_ps(O + (5 * C_ob + FLOAT_SIMD), c11);
+    _mm256_store_ps(O + (5 * C_ob + FLOAT_SIMD), c11);\
+}
 
 #define FLOAT_STORE_END_C(O, _W_ob, _C_ob)                      \
     for (uint32_t kk = 0; kk < _W_ob; kk++)                     \
@@ -588,6 +616,43 @@ typedef small::FloatBuffer::value_type c_tile_t;
         a_channel += step;                                      \
     }
 
+//****************************************************************************
+// Softmax  (Ewise exponentiation)
+//****************************************************************************
+
+#define FLOAT_EXP_TILE_C(step, a, W_ob, C_ob)    \
+    c_tile_t *c_pixel = c_tile;                   \
+    c_tile_t const *a_pixel = a;                 \
+    for (uint32_t kk = 0; kk < W_ob; kk++)     \
+    {                                            \
+        c_tile_t *c_channel = c_pixel;           \
+        c_tile_t const *a_channel = a_pixel;     \
+        for (uint32_t jj = 0; jj < C_ob; jj++)   \
+        {                                        \
+            *(c_channel) = std::exp(*a_channel); \
+            c_channel++;                         \
+            a_channel++;                         \
+        }                                        \
+        a_pixel += step;                         \
+        c_pixel += C_ob;                         \
+    }
+
+#define FLOAT_EXP_END_C(step, a, c_cur, W_last, C_ob) \
+    c_tile_t *c_pixel = c_cur;                        \
+    c_tile_t const *a_pixel = a;                      \
+    for (uint32_t kk = 0; kk < W_last; kk++)          \
+    {                                                 \
+        c_tile_t *c_channel = c_pixel;                \
+        c_tile_t const *a_channel = a_pixel;          \
+        for (uint32_t jj = 0; jj < C_ob; jj++)        \
+        {                                             \
+            *(c_channel) = std::exp(*a_channel);      \
+            c_channel++;                              \
+            a_channel++;                              \
+        }                                             \
+        a_pixel += step;                              \
+        c_pixel += C_ob;                              \
+    }
 
 //****************************************************************************
 // Fusion Kernels
