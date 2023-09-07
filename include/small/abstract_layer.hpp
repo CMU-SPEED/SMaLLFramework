@@ -27,7 +27,6 @@
 // #define stride 1
 
 #define DEBUG 0
-
 namespace small
 {
 namespace detail
@@ -41,7 +40,7 @@ enum OP_TYPE
     LEAKY_RELU = 3,
     ADD = 4,
     AVERAGE_POOL = 5,
-    DROPOUT = 6,
+    MUL = 6,
     UPSAMPLE = 7
 
 };
@@ -73,7 +72,7 @@ enum OP_TYPE
     {                                                                   \
         FLOAT_ACCUM_TILE_C(step, a_cur, _O_wb, _C_ob);                  \
     }\
-    else if constexpr( op_type == DROPOUT)\
+    else if constexpr( op_type == MUL)\
     {\
         float drop_out_rate = b_cur[0];\
         FLOAT_DIV_TILE_C(drop_out_rate, _O_wb, _C_ob)\
@@ -105,7 +104,7 @@ enum OP_TYPE
     {                                                                         \
         FLOAT_ACCUM_END_C(step, a_cur, c_cur, W_elements, _C_ob);             \
     }\
-    else if constexpr( op_type == DROPOUT)\
+    else if constexpr( op_type == MUL)\
     {\
         float drop_out_rate = b_cur[0];\
         FLOAT_DIV_END_C(c_cur, drop_out_rate, W_elements, _C_ob)\
@@ -275,7 +274,7 @@ enum OP_TYPE
             if (first)
             {
                 FLOAT_ZERO_TILE_C(_O_wb, _C_ob);
-                if (op_type == MAX_POOL || op_type == DROPOUT)
+                if (op_type == MAX_POOL || op_type == MUL)
                 {
                     /// @note using platform C_ob
                     FLOAT_LOAD_TILE_C_strided(I, step, _O_wb, FLOAT_C_ob);
@@ -359,7 +358,7 @@ enum OP_TYPE
                 FLOAT_ZERO_TILE_C(_O_wb, _C_ob);
 
                 //@note padding  should always be 'v' for pointwise operations, so this code path should not be used
-                if(op_type == DROPOUT)
+                if(op_type == MUL)
                 {
                     FLOAT_LOAD_TILE_C_strided(I, step, _O_wb, _C_ob);
                 }
@@ -436,14 +435,17 @@ enum OP_TYPE
             constexpr dim_t step = _stride * _C_ib;
             const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
             FLOAT_DEF_END_C(_O_wb, _C_ob);
+            #if DEBUG
+            printf("O_W_left %d r_pad_el %d\n", O_w_left, r_pad_el);
 
+            #endif
             if (O_w_left)
             {
                 if (first)
                 {
                     FLOAT_ZERO_END_C(O_w_left, _C_ob);
 
-                    if ( (op_type == DROPOUT)|| (op_type == MAX_POOL && H_lb == 0 && H_ub == 0))
+                    if ( (op_type == MUL)|| (op_type == MAX_POOL && H_lb == 0 && H_ub == 0))
                     {
                         FLOAT_LOAD_END_C_strided(I, step, O_w_left, _C_ob);
                     }
@@ -491,7 +493,7 @@ enum OP_TYPE
                 // Initialize with 0 for the padding elements
 
                 //@note padding  should always be 'v' for pointwise operations, so this code path should not be used
-                if (op_type == DROPOUT)
+                if (op_type == MUL)
                 {
                     FLOAT_LOAD_END_C_strided(I_ptr, step, r_pad_el, _C_ob);
                 }
@@ -787,7 +789,7 @@ enum OP_TYPE
             ScalarT const *I_buf = I->data(); //__restrict__ ?
 
             ScalarT const *F_buf = nullptr;
-            if constexpr (op_type == CONV || op_type == LEAKY_RELU || op_type == DROPOUT) // if (F != nullptr)
+            if constexpr (op_type == CONV || op_type == LEAKY_RELU || op_type == MUL) // if (F != nullptr)
             {
                 F_buf = F->data();
             }
@@ -921,7 +923,7 @@ enum OP_TYPE
            W_full_index, l_pad_el);
     printf("O_w_full: %d O_w_left: %d \n", O_w_full, O_w_left);
     printf("params: F_Cb %d G_b %d K_b %d\n", _F_cb, _G_b, _K_b);
-    printf("rewrite output?: %d, op type/class:  %c/%d\n",
+    printf("rewrite output?: %d, op type/class:  %d/%d\n",
            rewrite_output, op_type, op_class);
 #endif
 
@@ -976,7 +978,7 @@ enum OP_TYPE
             //if leaky relu, the weight pointer does not change with the group id
 
             ScalarT const *F_group ;
-            if constexpr ((op_type == LEAKY_RELU) || (op_type == DROPOUT))
+            if constexpr ((op_type == LEAKY_RELU) || (op_type == MUL))
             {
                 F_group = F_buf;
             }
@@ -1111,6 +1113,10 @@ enum OP_TYPE
                                        0);
                         }
 
+#if DEBUG
+                        printf(" end  kernel\n");
+#endif
+
                         // Epilogue for microkernel + right padding elements
                         ScalarT const *I_col_left;
                         if constexpr (op_type == UPSAMPLE)
@@ -1126,6 +1132,10 @@ enum OP_TYPE
 
                         ScalarT const *F_col_left = F_row + 0;
                         AccumT        *O_col_left = O_col_full + O_w_full * (_G_b * _K_b); // ScalarT --> AccumT
+
+                        #if DEBUG
+                        printf(" calling right\n");
+                        #endif
                         kernel_right<ScalarT, AccumT,
                                      _G_b, _K_b, _F_cb, _O_wb, _stride,
                                      _UNROLL, op_type, op_class>(
