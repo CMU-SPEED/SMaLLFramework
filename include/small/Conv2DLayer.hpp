@@ -224,7 +224,6 @@ namespace detail
             (bn_running_mean.size() > 0) ||
             (bn_running_variance.size() > 0))
         {
-
             if ((bn_weight.size() != num_effective_output_channels) ||
                 (bn_bias.size() != num_effective_output_channels) ||
                 (bn_running_mean.size() != num_effective_output_channels) ||
@@ -262,7 +261,7 @@ namespace detail
             if (packed_bias.size() == 0)
             {
                 packed_bias = std::move(BufferT(num_output_channels));
-                small::init_zeros(packed_bias, packed_bias.size());  // optional
+                small::init_zeros(packed_bias, packed_bias.size());
                 no_bias = true;
             }
 
@@ -329,7 +328,7 @@ namespace detail
 ///
 template <class BufferT>
 Conv2DLayer<BufferT>::Conv2DLayer(
-    shape_type const &input_shape,    //pred.output_shape()
+    shape_type const &input_shape,
     uint32_t          kernel_height,
     uint32_t          kernel_width,
     uint32_t          stride,
@@ -427,7 +426,7 @@ Conv2DLayer<BufferT>::Conv2DLayer(
 //****************************************************************************
 template <class BufferT>
 Conv2DLayer<BufferT>::Conv2DLayer(
-    shape_type const &input_shape,    //pred.output_shape()
+    shape_type const &input_shape,
     uint32_t          kernel_height,
     uint32_t          kernel_width,
     uint32_t          stride,
@@ -529,7 +528,7 @@ Conv2DLayer<BufferT>::Conv2DLayer(
 //****************************************************************************
 template <class BufferT>
 Conv2DLayer<BufferT>::Conv2DLayer(
-    shape_type const &input_shape,    //pred.output_shape()
+    shape_type const &input_shape,
     uint32_t          kernel_height,
     uint32_t          kernel_width,
     uint32_t          stride,
@@ -595,7 +594,7 @@ Conv2DLayer<BufferT>::Conv2DLayer(
     }
 
     m_leaky_slope[0] = leaky_slope;
-    compute_padding_output_shape(input_shape,
+    compute_padding_output_shape(m_input_shape,
                                  m_kernel_height, m_kernel_width,
                                  m_stride,
                                  padding_type,
@@ -706,7 +705,7 @@ void Conv2DLayer<BufferT>::compute_output(
     }
 }
 
-//************************************************************************
+//****************************************************************************
 template <class BufferT>
 void Conv2DLayer<BufferT>::compute_padding_output_shape(
     shape_type const &input_shape,
