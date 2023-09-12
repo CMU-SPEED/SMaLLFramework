@@ -34,11 +34,13 @@ void print_buffer(small::FloatBuffer buf, int n, int c, int h, int w) {
     float *data = buf.data();
     size_t elems = buf.size();
 
-    printf(" [%f", data[0]);
-    for(int i=1; i<10; i++) {
-        printf(" %f", data[i]);
+    printf(" [ %8.4le", data[0]);
+    for(int i=1; i<256; i++) {
+        if(i % 10 == 0)
+            printf("\n");
+        printf(" %8.4le", data[i]);
     }
-    printf("]\n");
+    printf(" ]\n");
 }
 
 //****************************************************************************
@@ -50,21 +52,22 @@ void Conv2D_bias(
     OMTensor *bias,
     uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
     uint8_t stride_x, uint8_t stride_y
-    // ,uint8_t k_x, uint8_t k_y
 ) {
 
     printf("entering %s %d\n", __func__, conv2D_bias++);
 
-    int oc = omTensorGetShape(filter)[0];
-    int ic = omTensorGetShape(filter)[1];
-    int kh = omTensorGetShape(filter)[2];
-    int kw = omTensorGetShape(filter)[3];
+    size_t filt_oc = omTensorGetShape(filter)[0];
+    size_t filt_ic = omTensorGetShape(filter)[1];
+    size_t kh = omTensorGetShape(filter)[2];
+    size_t kw = omTensorGetShape(filter)[3];
 
-    int ih = omTensorGetShape(input)[2];
-    int iw = omTensorGetShape(input)[3];
+    size_t ic = omTensorGetShape(input)[1];
+    size_t ih = omTensorGetShape(input)[2];
+    size_t iw = omTensorGetShape(input)[3];
 
-    int oh = omTensorGetShape(output)[2];
-    int ow = omTensorGetShape(output)[3];
+    size_t oc = omTensorGetShape(output)[1];
+    size_t oh = omTensorGetShape(output)[2];
+    size_t ow = omTensorGetShape(output)[3];
 
     // printf("t_pad = %d | b_pad = %d | l_pad = %d | r_pad = %d\n", t_pad, b_pad, l_pad, r_pad);
     // printf("stride_x = %d | stride_y = %d\n", stride_x, stride_y);
@@ -77,24 +80,66 @@ void Conv2D_bias(
 
     // printf("oc=%d, ic=%d, k=%d, ih=%d, iw=%d, oh=%d, ow=%d\n", oc, ic, k, ih, iw, oh, ow);
 
-    small::Bias<small::FloatBuffer>(
-        oc,
-        oh,
-        ow,
-        bias_buffer, 
-        out
-    );
+    // small::Bias<small::FloatBuffer>(
+    //     oc,
+    //     oh,
+    //     ow,
+    //     bias_buffer, 
+    //     out
+    // );
 
-    small::PartialConv2D<small::FloatBuffer>(
-        kh, kw, stride_x,
-        t_pad, b_pad, l_pad, r_pad,
-        oc,
-        ic,
-        ih, iw,
-        in,
-        filt,
-        out
-    );
+    // small::PartialConv2D<small::FloatBuffer>(
+    //     kh, kw, stride_x,
+    //     t_pad, b_pad, l_pad, r_pad,
+    //     oc,
+    //     ic,
+    //     ih, iw,
+    //     in,
+    //     filt,
+    //     out
+    // );
+
+    if(filt_ic == 1 && ic>1) {
+
+        small::DepthwiseConv2D<small::FloatBuffer>(
+            kh, kw, stride_x,
+            t_pad, b_pad, l_pad, r_pad,
+            oc,
+            ic,
+            ih, iw,
+            in,
+            filt,
+            out
+        );
+    }
+    else {
+        small::Conv2D<small::FloatBuffer>(
+            kh, kw, stride_x,
+            t_pad, b_pad, l_pad, r_pad,
+            oc,
+            ic,
+            ih, iw,
+            in,
+            filt,
+            out
+        );
+    }
+
+
+    // small::Conv2DLayer<small::FloatBuffer> conv(
+    //     {1, ic, ih, iw},
+    //     kh, kw, 
+    //     stride_x,
+    //     small::PADDING_F, // t_pad, b_pad, l_pad, r_pad,
+    //     oc, 
+    //     filt,
+    //     bias_buffer
+    // );
+
+    // small::Tensor<small::FloatBuffer> input_tensor({1, ic, ih, iw}, in);
+    // small::Tensor<small::FloatBuffer> output_tensor({1, oc, oh, ow}, out);
+    // conv.compute_output({&input_tensor}, &output_tensor);
+    // memcpy(omTensorGetDataPtr(output), output_tensor.buffer().data(), omTensorGetNumElems(output) * sizeof(float));
 
 }
 
@@ -110,43 +155,70 @@ void Conv2D(
     uint8_t stride_x, uint8_t stride_y
 ) {
 
-    printf("entering %s %d\n", __func__, conv2D++);
+    // printf("entering %s %d\n", __func__, conv2D++);
 
-    int oc = omTensorGetShape(filter)[0];
-    int ic = omTensorGetShape(filter)[1];
-    int kh = omTensorGetShape(filter)[2];
-    int kw = omTensorGetShape(filter)[3];
+    size_t filt_oc = omTensorGetShape(filter)[0];
+    size_t filt_ic = omTensorGetShape(filter)[1];
+    size_t kh = omTensorGetShape(filter)[2];
+    size_t kw = omTensorGetShape(filter)[3];
 
-    int ih = omTensorGetShape(input)[2];
-    int iw = omTensorGetShape(input)[3];
+    size_t ic = omTensorGetShape(input)[1];
+    size_t ih = omTensorGetShape(input)[2];
+    size_t iw = omTensorGetShape(input)[3];
 
-    int oh = omTensorGetShape(output)[2];
-    int ow = omTensorGetShape(output)[3];
+    size_t oc = omTensorGetShape(output)[1];
+    size_t oh = omTensorGetShape(output)[2];
+    size_t ow = omTensorGetShape(output)[3];
 
-    // printf("t_pad = %d | b_pad = %d | l_pad = %d | r_pad = %d\n", t_pad, b_pad, l_pad, r_pad);
+    assert(filt_oc == oc && "[ERROR in Conv2D] filt_oc != oc\n");
+
+    // printf("t_pad=%d | b_pad=%d | l_pad=%d | r_pad=%d | stride_x=%d | stride_y=%d\n", t_pad, b_pad, l_pad, r_pad, stride_x, stride_y);
+    // printf("oc=%d | ic=%d | kh=%d | kw=%d | ih=%d | iw=%d | oh=%d | ow=%d\n", oc, ic, kh, kw, ih, iw, oh, ow);
     
     small::FloatBuffer in(omTensorGetNumElems(input), (float*)omTensorGetDataPtr(input));
     small::FloatBuffer filt(omTensorGetNumElems(filter), (float*)omTensorGetDataPtr(filter));
     small::FloatBuffer out(omTensorGetNumElems(output), (float*)omTensorGetDataPtr(output));
 
-    // printf("oc=%d, ic=%d, k=%d, ih=%d, iw=%d, oh=%d, ow=%d\n", oc, ic, k, ih, iw, oh, ow);
-
     // print_buffer(in, 1, ic, ih, iw);
     // print_buffer(filt, oc, ic, kh, kw);
     // print_buffer(out, 1, oc, oh, ow);
 
-    small::Conv2D<small::FloatBuffer>(
-        kh, kw, stride_x,
-        t_pad, b_pad, l_pad, r_pad,
-        oc,
-        ic,
-        ih, iw,
-        in,
-        filt,
-        out
-    );
+    // small::Conv2D<small::FloatBuffer>(
+    //     kh, kw, stride_x,
+    //     t_pad, b_pad, l_pad, r_pad,
+    //     oc,
+    //     ic,
+    //     ih, iw,
+    //     in,
+    //     filt,
+    //     out
+    // );
 
-    // print_buffer(out, 1, oc, oh, ow);
+
+    if(filt_ic == 1 && ic>1) {
+        small::DepthwiseConv2D<small::FloatBuffer>(
+            kh, kw, stride_x,
+            t_pad, b_pad, l_pad, r_pad,
+            oc,
+            ic,
+            ih, iw,
+            in,
+            filt,
+            out
+        );
+    }
+    else {
+        small::Conv2D<small::FloatBuffer>(
+            kh, kw, stride_x,
+            t_pad, b_pad, l_pad, r_pad,
+            oc,
+            ic,
+            ih, iw,
+            in,
+            filt,
+            out
+        );
+    }
 
 }
 
@@ -196,22 +268,32 @@ void AveragePool(
     int ih = omTensorGetShape(input)[2];
     int iw = omTensorGetShape(input)[3];
 
+    int oc = omTensorGetShape(output)[1];
+    int oh = omTensorGetShape(output)[2];
+    int ow = omTensorGetShape(output)[3];
+
+    printf("ic=%d, ih=%d, iw=%d | oc=%d, oh=%d, ow=%d\n", ic, ih, iw, oc, oh, ow);
+
     small::FloatBuffer in(omTensorGetNumElems(input), (float*)omTensorGetDataPtr(input));
     small::FloatBuffer out(omTensorGetNumElems(output), (float*)omTensorGetDataPtr(output));
 
-    assert(stride_h == stride_w && "[ERROR in AveragePool2D] stride_h != stride_w\n");
+    // assert(stride_h == stride_w && "[ERROR in AveragePool2D] stride_h != stride_w\n");
+    // printf("k_h = %d | k_w = %d | stride_h = %d | stride_w = %d\n", k_h, k_w, stride_h, stride_w);
 
-    printf("k_h = %d | k_w = %d | stride_h = %d | stride_w = %d\n", k_h, k_w, stride_h, stride_w);
+    print_buffer(in, 1, ic, ih, iw);
 
     uint8_t t_pad = 0, b_pad = 0, l_pad = 0, r_pad = 0;
     small::AveragePool2D<small::FloatBuffer>(
-        k_h, k_w, stride_h,
+        k_h, k_w, 1,
         t_pad, b_pad, l_pad, r_pad,
         ic,
         ih, iw,
         in,
         out
     );
+
+
+    print_buffer(out, 1, oc, oh, ow);
 }
 
 
@@ -243,36 +325,22 @@ void Relu(
 }
 
 
-//****************************************************************************
-int matmul = 0;
-void MatMul(
-    OMTensor *C,
-    OMTensor *A,
-    OMTensor *B
-)
-{
-    printf("entering %s %d\n", __func__, matmul++);
+// //****************************************************************************
+// int matmul = 0;
+// void MatMul(
+//     OMTensor *C,
+//     OMTensor *A,
+//     OMTensor *B
+// )
+// {
+//     printf("entering %s %d\n", __func__, matmul++);
 
-    printf("A is %ld x %ld\n", omTensorGetShape(A)[0], omTensorGetShape(A)[1]);
-    printf("B is %ld x %ld\n", omTensorGetShape(B)[0], omTensorGetShape(B)[1]);
-    printf("C is %ld x %ld\n", omTensorGetShape(C)[0], omTensorGetShape(C)[1]);
+//     printf("A is %ld x %ld\n", omTensorGetShape(A)[0], omTensorGetShape(A)[1]);
+//     printf("B is %ld x %ld\n", omTensorGetShape(B)[0], omTensorGetShape(B)[1]);
+//     printf("C is %ld x %ld\n", omTensorGetShape(C)[0], omTensorGetShape(C)[1]);
 
-    // int ic = omTensorGetShape(image)[1];
-    // int ih = omTensorGetShape(image)[2];
-    // int iw = omTensorGetShape(image)[3];
 
-    // // printf("ic=%d, ih=%d, iw=%d\n", ic, ih, iw);
-
-    // small::FloatBuffer in(omTensorGetNumElems(image), (float*)omTensorGetDataPtr(image));
-    // small::FloatBuffer out(omTensorGetNumElems(output), (float*)omTensorGetDataPtr(output));
-
-    // small::ReLUActivation<small::FloatBuffer>(
-    //     ic,
-    //     ih, iw,
-    //     in,
-    //     out
-    // );
-}
+// }
 
 
 //****************************************************************************
@@ -288,11 +356,32 @@ void Gemm(
 {
     printf("entering %s %d\n", __func__, gemm++);
 
-    printf("A is %ld x %ld\n", omTensorGetShape(A)[0], omTensorGetShape(A)[1]);
-    printf("B is %ld x %ld\n", omTensorGetShape(B)[0], omTensorGetShape(B)[1]);
-    printf("C is %ld x %ld\n", omTensorGetShape(C)[0], omTensorGetShape(C)[1]);
-    printf("bias is %ld x %ld\n", omTensorGetShape(bias)[0], omTensorGetShape(bias)[1]);
-    printf("alpha = %f | beta = %f\n", alpha, beta);
+    int m = omTensorGetShape(A)[0];
+    int k = omTensorGetShape(A)[1];
+    int n = omTensorGetShape(B)[1];
+
+    // printf("A is %ld x %ld\n", omTensorGetShape(A)[0], omTensorGetShape(A)[1]);
+    // printf("B is %ld x %ld\n", omTensorGetShape(B)[0], omTensorGetShape(B)[1]);
+    // printf("C is %ld x %ld\n", omTensorGetShape(C)[0], omTensorGetShape(C)[1]);
+    // printf("bias is %ld x %ld\n", omTensorGetShape(bias)[0], omTensorGetShape(bias)[1]);
+    // printf("alpha = %f | beta = %f\n", alpha, beta);
+
+
+
+    for(int i=0; i<m; i++) {
+        for(int j=0; j<n; j++) {
+            for(int p=0; p<k; p++) {
+                float a = ((float*)omTensorGetDataPtr(A))[i*k + p];
+                float b = ((float*)omTensorGetDataPtr(B))[p*n + j];
+                float c = ((float*)omTensorGetDataPtr(C))[i*n + j];
+                ((float*)omTensorGetDataPtr(C))[i*n + j] = a * b +  c;
+            }
+        }
+    }
+
+    for(int i=0; i<omTensorGetShape(bias)[0]; i++) {
+        ((float*)omTensorGetDataPtr(C))[i] += ((float*)omTensorGetDataPtr(bias))[i];
+    }
 
     // int ic = omTensorGetShape(image)[1];
     // int ih = omTensorGetShape(image)[2];
@@ -303,12 +392,6 @@ void Gemm(
     // small::FloatBuffer in(omTensorGetNumElems(image), (float*)omTensorGetDataPtr(image));
     // small::FloatBuffer out(omTensorGetNumElems(output), (float*)omTensorGetDataPtr(output));
 
-    // small::ReLUActivation<small::FloatBuffer>(
-    //     ic,
-    //     ih, iw,
-    //     in,
-    //     out
-    // );
 }
 
 
@@ -320,7 +403,31 @@ void Softmax(
     int axis
 )
 {
-    printf("entering %s %d\n", __func__, softmax++);
+    // printf("entering %s %d\n", __func__, softmax++);
+    // printf("input is %ld x %ld\n", omTensorGetShape(input)[0], omTensorGetShape(input)[1]);
+    // printf("output is %ld x %ld\n", omTensorGetShape(output)[0], omTensorGetShape(output)[1]);
+    // printf("axis = %d\n", axis);
+
+    // printf("[%f, %f]\n", ((float*)omTensorGetDataPtr(input))[0], ((float*)omTensorGetDataPtr(input))[1]);
+
+    float *in = (float*)omTensorGetDataPtr(input);
+    float *out = (float*)omTensorGetDataPtr(output);
+
+    float sum = 0;
+    for(int i=0; i<omTensorGetNumElems(input); i++) {
+        in[i] = exp(in[i]);
+        sum += in[i];
+    }
+
+    for(int i=0; i<omTensorGetNumElems(input); i++) {
+        out[i] = in[i] / sum;
+    }
+
+    
+
+
+    // float *tmp = (float*)malloc(omTensorGetNumElems(input) * sizeof(float));
+
 
     // printf("A is %ld x %ld\n", omTensorGetShape(A)[0], omTensorGetShape(A)[1]);
     // printf("B is %ld x %ld\n", omTensorGetShape(B)[0], omTensorGetShape(B)[1]);

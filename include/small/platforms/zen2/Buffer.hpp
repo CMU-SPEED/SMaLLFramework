@@ -143,9 +143,11 @@ public:
         // std::cerr << "FloatBuffer::dtor " << (void*)this
         //           << ", data_ptr = " << (void*)m_buffer.data()
         //           << ", size = " << m_buffer.size() << std::endl;
-        if (m_buffer_created && m_buffer != nullptr)
-        {
-            free(m_buffer);
+        if (m_buffer_created) 
+        {   
+            // printf("freeing buffer that has %d elems\n", m_num_elts);
+            if(m_buffer != nullptr);
+                free(m_buffer);
         }
     }
 

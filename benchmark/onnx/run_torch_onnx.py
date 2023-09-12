@@ -54,7 +54,7 @@ def run_onnx_model_performance(onnx_model_path, input_file):
         total_time += (e-s)
         best_time = min(best_time, e-s)
         
-    print(f"{input_np.shape[0]/best_time}")
+    print(f"{best_time}")
 
 #*-------------------------------------------------------------------------------
 # Run ONNX model for correctness
@@ -70,11 +70,19 @@ def run_onnx_model_correctness(onnx_model_path, input_file):
     input_np = np.load(input_file)
     
     input_torch = torch.from_numpy(input_np)
-   
+    
+    # warm up run
+    for _ in range(50):
+        outputs = pytorch_model(input_torch)
+    
+    s = time.time()
     outputs = pytorch_model(input_torch)
+    e = time.time()
     
     outputs = outputs.detach().numpy()
     np.save("pytorch_output.npy", outputs)
+    
+    print(f"{e-s}")
 
 #*-------------------------------------------------------------------------------
 def get_args(): 

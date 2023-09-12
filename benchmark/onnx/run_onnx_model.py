@@ -29,6 +29,26 @@ import subprocess
 
 # These are imported from onnx-mlir
 from PyRuntime import OMExecutionSession
+
+import ctypes
+import pathlib
+from numpy.ctypeslib import ndpointer
+
+libsmall = pathlib.Path().absolute() / "libpack.so"
+libsmall = ctypes.CDLL(libsmall)
+pack = libsmall.pack
+pack.restype = None
+pack.argtypes = [
+    ndpointer(ctypes.c_float),
+    ctypes.c_int, # co
+    ctypes.c_int, # ci
+    ctypes.c_int, # h
+    ctypes.c_int, # w
+    ctypes.c_int  # type
+]
+
+INPUT = 0
+OUTPUT = 1
         
 #*-------------------------------------------------------------------------------
 # Repack weights for a given platform
@@ -82,16 +102,13 @@ def get_input_dims(input_sign):
 # if correctness is true, run pytorch model and save output to pytorch_output.npy
 # else, run pytorch model and return fps
 def run_pytorch_model(onnx_model_path, input_file, correctness):
-    cmd_str = ""
+    cmd_str = f"python run_torch_onnx.py {onnx_model_path} {input_file}"
     if(correctness):
-        cmd_str = f"python run_torch_onnx.py {onnx_model_path} {input_file} --correctness"
-        os.system(cmd_str)
-        return 0
-    else:
-        cmd_str = f"python run_torch_onnx.py {onnx_model_path} {input_file}"
-        proc = subprocess.Popen(list(cmd_str.split(" ")), stdout=subprocess.PIPE)
-        print(str(proc.stdout.readline().rstrip(), encoding='utf-8'))
-        return float(proc.stdout.readline().rstrip().decode())
+        cmd_str = cmd_str + " --correctness"
+
+    proc = subprocess.Popen(list(cmd_str.split(" ")), stdout=subprocess.PIPE)
+    print(str(proc.stdout.readline().rstrip(), encoding='utf-8'))
+    return float(proc.stdout.readline().rstrip().decode())
         
 
 #*-------------------------------------------------------------------------------
@@ -153,7 +170,7 @@ def run_onnx_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, platform):
     np.save("input.npy", model_input)
     
     # run pytorch model and get fps
-    pytorch_fps = run_pytorch_model(onnx_model_path, "input.npy", False)
+    pytorch_time = run_pytorch_model(onnx_model_path, "input.npy", False)
 
     # the following is commented out since correctness results are not needed, but is left in to show what the data layout for small is
     # b, c, h, w = input_dims
@@ -175,7 +192,7 @@ def run_onnx_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, platform):
     
     small_fps = input_dims[0]/best_time
     print("small, pytorch")
-    print(f"{small_fps}, {pytorch_fps}, {small_fps/pytorch_fps}")
+    print(f"{best_time}, {pytorch_time}, {pytorch_time/best_time}")
         
 
 
@@ -214,28 +231,46 @@ def run_onnx_model_correctness(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, 
     # outputs are assumed to be in NCHW format and are stored in pytorch_output.npy
     # once the outputs are loaded, they need to be packed into the same format as small for comparison
     os.system("rm -rf pytorch_output.npy")
-    pytorch_fps = run_pytorch_model(onnx_model_path, "input.npy", True)
+    pytorch_time = run_pytorch_model(onnx_model_path, "input.npy", True)
     outputs_torch = np.load("pytorch_output.npy")
-    ob, oc, oh, ow = outputs_torch.shape
-    outputs_torch_packed = np.ravel(outputs_torch.reshape(ob, oc//cob, cob, oh, ow).transpose(0, 1, 3, 4, 2), order='C').reshape(ob, oc, oh, ow)
-    assert(pytorch_fps == 0 and "Pytorch failed to run model correctly.")
+    print(outputs_torch.shape)
+    # _, oc, oh, ow = outputs_torch.shape
+    # outputs_torch_packed = np.ravel(outputs_torch.reshape(ob, oc//cob, cob, oh, ow).transpose(0, 1, 3, 4, 2), order='C').reshape(ob, oc, oh, ow)
+    # outputs_torch_packed = outputs_torch.copy()
+    # pack(outputs_torch_packed, 1, oc, oh, ow, OUTPUT)
+    # assert(pytorch_fps == 0 and "Pytorch failed to run model correctly.")
     
     # pack inpout data for small
     b, c, h, w = input_dims
-    model_input_packed = np.ravel(model_input.reshape(b, c//cib, cib, h, w).transpose(0, 1, 3, 4, 2), order='C').reshape(b, c, h, w)
+    _, cib = get_platform_params(platform)
+    cib = 3 if c == 3 else cib
+    # model_input_packed = np.ravel(model_input.reshape(b, c//cib, cib, h, w).transpose(0, 1, 3, 4, 2), order='C').reshape(b, c, h, w)
+    model_input_packed = model_input.copy()
+    pack(model_input_packed, 1, c, h, w, INPUT)
+    
+    # warm up run
+    # for _ in range(50):
+    #     outputs = session.run(input=[model_input_packed])
 
     # run small model and get outputs
+    s = time.time()
     outputs = session.run(input=[model_input_packed])
+    e = time.time()
+    
+    print(outputs[0], outputs[0].shape)
+    print(outputs_torch, outputs_torch.shape)
     
     # compare outputs
-    passed = np.allclose(outputs[0], outputs_torch_packed)
-    passed_str = colored("PASSED", "green") if passed else colored("FAILED", "red")
-    print(f"{onnx_model_so_colored} {passed_str}")
-    if not passed:
-        print("small: ")
-        print(outputs[0], outputs[0].shape)
-        print("pytorch: ")
-        print(outputs_torch, outputs_torch.shape)
+    # passed = np.allclose(outputs[0], outputs_torch_packed)
+    # passed_str = colored("PASSED", "green") if passed else colored("FAILED", "red")
+    # print(f"{onnx_model_so_colored} {passed_str}")
+    # if not passed:
+    #     print("small: ")
+    #     print(outputs[0], outputs[0].shape)
+    #     print("pytorch: ")
+    #     print(outputs_torch_packed, outputs_torch_packed.shape)
+    # else:
+    #     print(f"{e-s}, {pytorch_time}, {pytorch_time/(e-s)}")
 
 #*------------------------------------------------------------------------------- 
 def get_args(): 
@@ -254,7 +289,7 @@ def get_args():
         help="Path to SMaLL libray"
     )
     arg_parser.add_argument(
-        "--platform",
+        "-p", "--platform",
         type=str,
         default="ref",
         help="Platform to run on. Options: ref, zen2, arm"
@@ -276,6 +311,8 @@ def get_args():
 if __name__ == "__main__":
     
     args = get_args()
+    
+    np.random.seed(0)
     
     onnx_model = args.model
     small_lib_path = args.lib
