@@ -46,7 +46,7 @@ void pack(float *input, int oc, int ic, int h, int w, int type) {
     );
     memcpy(input, input_packed, oc * ic * h * w * sizeof(float));
 
-    printf("pack: %d %d %d %d %d %d\n", oc, ic, h, w, type, ret);
+    printf("pack: %d %d %d %d | %d %d\n", oc, ic, h, w, type, ret);
 }
 
 void unpack(float *input, int oc, int ic, int h, int w, int type) {
@@ -83,7 +83,7 @@ void unpack(float *input, int oc, int ic, int h, int w, int type) {
         input_unpacked
     );
     memcpy(input, input_unpacked, oc * ic * h * w * sizeof(float));
-    printf("unpack: %d %d %d %d %d %d\n", oc, ic, h, w, type, ret);
+    printf("unpack: %d %d %d %d | %d %d\n", oc, ic, h, w, type, ret);
 }
 
 } // extern "C"

@@ -33,6 +33,8 @@ from onnx2pytorch import ConvertModel
 def convert_onnx_2_pytorch(onnx_model_path):
     onnx_model_loaded = onnx.load(onnx_model_path)
     pytorch_model = ConvertModel(onnx_model_loaded)
+    print(pytorch_model)
+    exit(-1)
     return pytorch_model
 
 #*-------------------------------------------------------------------------------
@@ -63,6 +65,7 @@ def run_onnx_model_correctness(onnx_model_path, input_file):
     
     onnx_model_loaded = onnx.load(onnx_model_path)
     pytorch_model = ConvertModel(onnx_model_loaded)
+    # print(pytorch_model)
     
     l = [module for module in pytorch_model.modules() if not isinstance(module, nn.Sequential)]
     # print(l)
@@ -79,7 +82,9 @@ def run_onnx_model_correctness(onnx_model_path, input_file):
     outputs = pytorch_model(input_torch)
     e = time.time()
     
-    outputs = outputs.detach().numpy()
+    # print(outputs)
+    
+    outputs = outputs.detach().numpy() 
     np.save("pytorch_output.npy", outputs)
     
     print(f"{e-s}")

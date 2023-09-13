@@ -34,7 +34,7 @@ import ctypes
 import pathlib
 from numpy.ctypeslib import ndpointer
 
-libsmall = pathlib.Path().absolute() / "libpack.so"
+libsmall = pathlib.Path().absolute() / "../../lib/libpack.so"
 libsmall = ctypes.CDLL(libsmall)
 pack = libsmall.pack
 pack.restype = None
@@ -59,16 +59,16 @@ def repack_weights(onnx_model_path, platform):
     
 #*-------------------------------------------------------------------------------
 # return cob, cib
-def get_platform_params(platform):
-    if(platform == "ref"):
-        return 1, 1
-    elif(platform == "zen2"):
-        return 16, 16
-    elif(platform == "arm"):
-        return 16, 16
-    else:
-        print(f"[ERROR] Invalid platform {platform}")
-        exit(-1)
+# def get_platform_params(platform):
+#     if(platform == "ref"):
+#         return 1, 1
+#     elif(platform == "zen2"):
+#         return 16, 16
+#     elif(platform == "arm"):
+#         return 16, 16
+#     else:
+#         print(f"[ERROR] Invalid platform {platform}")
+#         exit(-1)
 
 #*-------------------------------------------------------------------------------
 # helper function to get input dimensions
@@ -106,6 +106,7 @@ def run_pytorch_model(onnx_model_path, input_file, correctness):
     if(correctness):
         cmd_str = cmd_str + " --correctness"
 
+    print(f"Running {cmd_str}")
     proc = subprocess.Popen(list(cmd_str.split(" ")), stdout=subprocess.PIPE)
     print(str(proc.stdout.readline().rstrip(), encoding='utf-8'))
     return float(proc.stdout.readline().rstrip().decode())
@@ -117,6 +118,7 @@ def run_pytorch_model(onnx_model_path, input_file, correctness):
 def compile_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, platform):
     
     repack_weights(onnx_model_path, platform)
+    print("Repacked weights!")
     onnx_model_path = onnx_model_path[:-5] + "_repacked.onnx"
     
     onnx_model_o = onnx_model_path[:-5] + ".o"
@@ -129,6 +131,7 @@ def compile_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, platform):
         
     # --enable-conv-opt-pass=false must be passed to onnx-mlir to avoid a bug
     # add more passes here if needed
+    print("Compiling model...\n")
     os.system(f"{onnx_mlir_exe} --enable-conv-opt-pass=false --EmitObj {onnx_model_path}")
    
     # link small to the compiled model
@@ -203,7 +206,7 @@ def run_onnx_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, platform):
 def run_onnx_model_correctness(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, platform):
     
     # get platform params for packing data
-    cob, cib = get_platform_params(platform)
+    # cob, cib = get_platform_params(platform)
     
     # compile model
     onnx_model_so = compile_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, platform)
@@ -233,44 +236,41 @@ def run_onnx_model_correctness(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, 
     os.system("rm -rf pytorch_output.npy")
     pytorch_time = run_pytorch_model(onnx_model_path, "input.npy", True)
     outputs_torch = np.load("pytorch_output.npy")
-    print(outputs_torch.shape)
-    # _, oc, oh, ow = outputs_torch.shape
-    # outputs_torch_packed = np.ravel(outputs_torch.reshape(ob, oc//cob, cob, oh, ow).transpose(0, 1, 3, 4, 2), order='C').reshape(ob, oc, oh, ow)
-    # outputs_torch_packed = outputs_torch.copy()
-    # pack(outputs_torch_packed, 1, oc, oh, ow, OUTPUT)
-    # assert(pytorch_fps == 0 and "Pytorch failed to run model correctly.")
     
-    # pack inpout data for small
-    b, c, h, w = input_dims
-    _, cib = get_platform_params(platform)
-    cib = 3 if c == 3 else cib
-    # model_input_packed = np.ravel(model_input.reshape(b, c//cib, cib, h, w).transpose(0, 1, 3, 4, 2), order='C').reshape(b, c, h, w)
+    # pack output for comparision
+   
+    outputs_torch_packed = outputs_torch.copy()
+    if(len(outputs_torch_packed.shape) == 4):
+        _, oc, oh, ow = outputs_torch_packed.shape
+        pack(outputs_torch_packed, 1, oc, oh, ow, OUTPUT)
+    
+    
+    # pack input data for small
+    _, ic, ih, iw = input_dims
     model_input_packed = model_input.copy()
-    pack(model_input_packed, 1, c, h, w, INPUT)
+    pack(model_input_packed, 1, ic, ih, iw, INPUT)
     
-    # warm up run
-    # for _ in range(50):
-    #     outputs = session.run(input=[model_input_packed])
-
+    for _ in range(100):
+        outputs = session.run(input=[model_input_packed])
+    
     # run small model and get outputs
     s = time.time()
     outputs = session.run(input=[model_input_packed])
     e = time.time()
     
-    print(outputs[0], outputs[0].shape)
-    print(outputs_torch, outputs_torch.shape)
-    
     # compare outputs
-    # passed = np.allclose(outputs[0], outputs_torch_packed)
-    # passed_str = colored("PASSED", "green") if passed else colored("FAILED", "red")
-    # print(f"{onnx_model_so_colored} {passed_str}")
-    # if not passed:
-    #     print("small: ")
-    #     print(outputs[0], outputs[0].shape)
-    #     print("pytorch: ")
-    #     print(outputs_torch_packed, outputs_torch_packed.shape)
-    # else:
-    #     print(f"{e-s}, {pytorch_time}, {pytorch_time/(e-s)}")
+    passed = np.allclose(outputs[0], outputs_torch_packed, atol=1e-5)
+    passed_str = colored("PASSED", "green") if passed else colored("FAILED", "red")
+    print(f"{onnx_model_so_colored} {passed_str}")
+    if not passed:
+        print("small: ")
+        print(outputs[0], outputs[0].shape)
+        print("pytorch: ")
+        print(outputs_torch_packed, outputs_torch_packed.shape)
+        max_abs_diff = np.max(np.abs(outputs[0] - outputs_torch_packed))
+        print("max abs diff: ", max_abs_diff)
+    else:
+        print(f"{e-s}, {pytorch_time}, {pytorch_time/(e-s)}")
 
 #*------------------------------------------------------------------------------- 
 def get_args(): 
