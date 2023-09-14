@@ -83,18 +83,18 @@ typedef float c_tile_t;
 //****************************************************************************
 
 #define FLOAT_LOAD_TILE_C(O, _W_ob, C_ob)               \
-    c0 = _mm256_load_ps(O + (0 * C_ob));                \
-    c1 = _mm256_load_ps(O + (0 * C_ob) + FLOAT_SIMD);   \
-    c2 = _mm256_load_ps(O + (1 * C_ob));                \
-    c3 = _mm256_load_ps(O + (1 * C_ob) + FLOAT_SIMD);   \
-    c4 = _mm256_load_ps(O + (2 * C_ob));                \
-    c5 = _mm256_load_ps(O + (2 * C_ob) + FLOAT_SIMD);   \
-    c6 = _mm256_load_ps(O + (3 * C_ob));                \
-    c7 = _mm256_load_ps(O + (3 * C_ob) + FLOAT_SIMD);   \
-    c8 = _mm256_load_ps(O + (4 * C_ob));                \
-    c9 = _mm256_load_ps(O + (4 * C_ob) + FLOAT_SIMD);   \
-    c10 = _mm256_load_ps(O + (5 * C_ob));               \
-    c11 = _mm256_load_ps(O + (5 * C_ob) + FLOAT_SIMD);
+    c0 = _mm256_loadu_ps(O + (0 * C_ob));                \
+    c1 = _mm256_loadu_ps(O + (0 * C_ob) + FLOAT_SIMD);   \
+    c2 = _mm256_loadu_ps(O + (1 * C_ob));                \
+    c3 = _mm256_loadu_ps(O + (1 * C_ob) + FLOAT_SIMD);   \
+    c4 = _mm256_loadu_ps(O + (2 * C_ob));                \
+    c5 = _mm256_loadu_ps(O + (2 * C_ob) + FLOAT_SIMD);   \
+    c6 = _mm256_loadu_ps(O + (3 * C_ob));                \
+    c7 = _mm256_loadu_ps(O + (3 * C_ob) + FLOAT_SIMD);   \
+    c8 = _mm256_loadu_ps(O + (4 * C_ob));                \
+    c9 = _mm256_loadu_ps(O + (4 * C_ob) + FLOAT_SIMD);   \
+    c10 = _mm256_loadu_ps(O + (5 * C_ob));               \
+    c11 = _mm256_loadu_ps(O + (5 * C_ob) + FLOAT_SIMD);
 
 #define FLOAT_LOAD_END_C(O, _W_ob, _C_ob)                       \
     for (uint32_t kk = 0; kk < _W_ob; kk++)                     \
@@ -112,18 +112,18 @@ typedef float c_tile_t;
 
 //  strided loads
 #define FLOAT_LOAD_TILE_C_strided(O, step, _W_ob, _C_ob)        \
-    c0 = _mm256_load_ps(O + (0 * step));                        \
-    c1 = _mm256_load_ps(O + (0 * step) + FLOAT_SIMD);           \
-    c2 = _mm256_load_ps(O + (1 * step));                        \
-    c3 = _mm256_load_ps(O + (1 * step) + FLOAT_SIMD);           \
-    c4 = _mm256_load_ps(O + (2 * step));                        \
-    c5 = _mm256_load_ps(O + (2 * step) + FLOAT_SIMD);           \
-    c6 = _mm256_load_ps(O + (3 * step));                        \
-    c7 = _mm256_load_ps(O + (3 * step) + FLOAT_SIMD);           \
-    c8 = _mm256_load_ps(O + (4 * step));                        \
-    c9 = _mm256_load_ps(O + (4 * step) + FLOAT_SIMD);           \
-    c10 = _mm256_load_ps(O + (5 * step));                       \
-    c11 = _mm256_load_ps(O + (5 * step) + FLOAT_SIMD);
+    c0 = _mm256_loadu_ps(O + (0 * step));                        \
+    c1 = _mm256_loadu_ps(O + (0 * step) + FLOAT_SIMD);           \
+    c2 = _mm256_loadu_ps(O + (1 * step));                        \
+    c3 = _mm256_loadu_ps(O + (1 * step) + FLOAT_SIMD);           \
+    c4 = _mm256_loadu_ps(O + (2 * step));                        \
+    c5 = _mm256_loadu_ps(O + (2 * step) + FLOAT_SIMD);           \
+    c6 = _mm256_loadu_ps(O + (3 * step));                        \
+    c7 = _mm256_loadu_ps(O + (3 * step) + FLOAT_SIMD);           \
+    c8 = _mm256_loadu_ps(O + (4 * step));                        \
+    c9 = _mm256_loadu_ps(O + (4 * step) + FLOAT_SIMD);           \
+    c10 = _mm256_loadu_ps(O + (5 * step));                       \
+    c11 = _mm256_loadu_ps(O + (5 * step) + FLOAT_SIMD);
 
 #define FLOAT_LOAD_END_C_strided(O, step, _W_ob, C_ob)  \
     for (uint32_t kk = 0; kk < _W_ob; kk++)             \
@@ -140,18 +140,18 @@ typedef float c_tile_t;
 //****************************************************************************
 
 #define FLOAT_LOAD_TILE_C_upsample(O, stride, _C_ib, _W_ob, C_ob)       \
-    c0 = _mm256_load_ps(O + ((0 / stride) * (_C_ib)));                  \
-    c1 = _mm256_load_ps(O + ((0 / stride) * (_C_ib) + FLOAT_SIMD));     \
-    c2 = _mm256_load_ps(O + ((1 / stride) * (_C_ib)));                  \
-    c3 = _mm256_load_ps(O + ((1 / stride) * (_C_ib) + FLOAT_SIMD));     \
-    c4 = _mm256_load_ps(O + ((2 / stride) * (_C_ib)));                  \
-    c5 = _mm256_load_ps(O + ((2 / stride) * (_C_ib) + FLOAT_SIMD));     \
-    c6 = _mm256_load_ps(O + ((3 / stride) * (_C_ib)));                  \
-    c7 = _mm256_load_ps(O + ((3 / stride) * (_C_ib) + FLOAT_SIMD));     \
-    c8 = _mm256_load_ps(O + ((4 / stride) * (_C_ib)));                  \
-    c9 = _mm256_load_ps(O + ((4 / stride) * (_C_ib) + FLOAT_SIMD));     \
-    c10 = _mm256_load_ps(O + ((5 / stride) * (_C_ib)));                 \
-    c11 = _mm256_load_ps(O + ((5 / stride) * (_C_ib) + FLOAT_SIMD));
+    c0 = _mm256_loadu_ps(O + ((0 / stride) * (_C_ib)));                  \
+    c1 = _mm256_loadu_ps(O + ((0 / stride) * (_C_ib) + FLOAT_SIMD));     \
+    c2 = _mm256_loadu_ps(O + ((1 / stride) * (_C_ib)));                  \
+    c3 = _mm256_loadu_ps(O + ((1 / stride) * (_C_ib) + FLOAT_SIMD));     \
+    c4 = _mm256_loadu_ps(O + ((2 / stride) * (_C_ib)));                  \
+    c5 = _mm256_loadu_ps(O + ((2 / stride) * (_C_ib) + FLOAT_SIMD));     \
+    c6 = _mm256_loadu_ps(O + ((3 / stride) * (_C_ib)));                  \
+    c7 = _mm256_loadu_ps(O + ((3 / stride) * (_C_ib) + FLOAT_SIMD));     \
+    c8 = _mm256_loadu_ps(O + ((4 / stride) * (_C_ib)));                  \
+    c9 = _mm256_loadu_ps(O + ((4 / stride) * (_C_ib) + FLOAT_SIMD));     \
+    c10 = _mm256_loadu_ps(O + ((5 / stride) * (_C_ib)));                 \
+    c11 = _mm256_loadu_ps(O + ((5 / stride) * (_C_ib) + FLOAT_SIMD));
 
 /// @todo VERIFY LAST USE OF C_ob BELOW (DIFFERENT THAN REF)
 #define FLOAT_LOAD_END_C_upsample(O, stride, _C_ib, W_elements, C_ob)   \
@@ -169,18 +169,18 @@ typedef float c_tile_t;
 //****************************************************************************
 
 #define FLOAT_STORE_TILE_C(O, W_ob, C_ob)               \
-    _mm256_store_ps(O + (0 * C_ob), c0);                \
-    _mm256_store_ps(O + (0 * C_ob) + FLOAT_SIMD, c1);   \
-    _mm256_store_ps(O + (1 * C_ob), c2);                \
-    _mm256_store_ps(O + (1 * C_ob + FLOAT_SIMD), c3);   \
-    _mm256_store_ps(O + (2 * C_ob), c4);                \
-    _mm256_store_ps(O + (2 * C_ob + FLOAT_SIMD), c5);   \
-    _mm256_store_ps(O + (3 * C_ob), c6);                \
-    _mm256_store_ps(O + (3 * C_ob + FLOAT_SIMD), c7);   \
-    _mm256_store_ps(O + (4 * C_ob), c8);                \
-    _mm256_store_ps(O + (4 * C_ob + FLOAT_SIMD), c9);   \
-    _mm256_store_ps(O + (5 * C_ob), c10);               \
-    _mm256_store_ps(O + (5 * C_ob + FLOAT_SIMD), c11);
+    _mm256_storeu_ps(O + (0 * C_ob), c0);                \
+    _mm256_storeu_ps(O + (0 * C_ob) + FLOAT_SIMD, c1);   \
+    _mm256_storeu_ps(O + (1 * C_ob), c2);                \
+    _mm256_storeu_ps(O + (1 * C_ob + FLOAT_SIMD), c3);   \
+    _mm256_storeu_ps(O + (2 * C_ob), c4);                \
+    _mm256_storeu_ps(O + (2 * C_ob + FLOAT_SIMD), c5);   \
+    _mm256_storeu_ps(O + (3 * C_ob), c6);                \
+    _mm256_storeu_ps(O + (3 * C_ob + FLOAT_SIMD), c7);   \
+    _mm256_storeu_ps(O + (4 * C_ob), c8);                \
+    _mm256_storeu_ps(O + (4 * C_ob + FLOAT_SIMD), c9);   \
+    _mm256_storeu_ps(O + (5 * C_ob), c10);               \
+    _mm256_storeu_ps(O + (5 * C_ob + FLOAT_SIMD), c11);
 
 #define FLOAT_STORE_END_C(O, _W_ob, _C_ob)                      \
     for (uint32_t kk = 0; kk < _W_ob; kk++)                     \
@@ -198,8 +198,8 @@ typedef float c_tile_t;
 //****************************************************************************
 
 #define FLOAT_CONV_TILE_C(step, a, b, W_ob, C_ob)       \
-    b0 = _mm256_load_ps(b);                             \
-    b1 = _mm256_load_ps(b + FLOAT_SIMD);                \
+    b0 = _mm256_loadu_ps(b);                             \
+    b1 = _mm256_loadu_ps(b + FLOAT_SIMD);                \
     a_reg = _mm256_broadcast_ss(a);                     \
     a += step;                                          \
     c0 = _mm256_fmadd_ps(a_reg, b0, c0);                \
@@ -248,28 +248,28 @@ typedef float c_tile_t;
 //****************************************************************************
 
 #define FLOAT_MAX_TILE_C(step, a, W_ob, C_ob)           \
-    b0 = _mm256_load_ps(a + (0 * step));                \
-    b1 = _mm256_load_ps(a + (0 * step) + FLOAT_SIMD);   \
+    b0 = _mm256_loadu_ps(a + (0 * step));                \
+    b1 = _mm256_loadu_ps(a + (0 * step) + FLOAT_SIMD);   \
     c0 = _mm256_max_ps(b0, c0);                         \
     c1 = _mm256_max_ps(b1, c1);                         \
-    a_reg = _mm256_load_ps(a + (1 * step));             \
-    c12 = _mm256_load_ps(a + (1 * step) + FLOAT_SIMD);  \
+    a_reg = _mm256_loadu_ps(a + (1 * step));             \
+    c12 = _mm256_loadu_ps(a + (1 * step) + FLOAT_SIMD);  \
     c2 = _mm256_max_ps(a_reg, c2);                      \
     c3 = _mm256_max_ps(c12, c3);                        \
-    b0 = _mm256_load_ps(a + (2 * step));                \
-    b1 = _mm256_load_ps(a + (2 * step) + FLOAT_SIMD);   \
+    b0 = _mm256_loadu_ps(a + (2 * step));                \
+    b1 = _mm256_loadu_ps(a + (2 * step) + FLOAT_SIMD);   \
     c4 = _mm256_max_ps(b0, c4);                         \
     c5 = _mm256_max_ps(b1, c5);                         \
-    a_reg = _mm256_load_ps(a + (3 * step));             \
-    c12 = _mm256_load_ps(a + (3 * step) + FLOAT_SIMD);  \
+    a_reg = _mm256_loadu_ps(a + (3 * step));             \
+    c12 = _mm256_loadu_ps(a + (3 * step) + FLOAT_SIMD);  \
     c6 = _mm256_max_ps(a_reg, c6);                      \
     c7 = _mm256_max_ps(c12, c7);                        \
-    b0 = _mm256_load_ps(a + (4 * step));                \
-    b1 = _mm256_load_ps(a + (4 * step) + FLOAT_SIMD);   \
+    b0 = _mm256_loadu_ps(a + (4 * step));                \
+    b1 = _mm256_loadu_ps(a + (4 * step) + FLOAT_SIMD);   \
     c8 = _mm256_max_ps(b0, c8);                         \
     c9 = _mm256_max_ps(b1, c9);                         \
-    a_reg = _mm256_load_ps(a + (5 * step));             \
-    c12 = _mm256_load_ps(a + (5 * step) + FLOAT_SIMD);  \
+    a_reg = _mm256_loadu_ps(a + (5 * step));             \
+    c12 = _mm256_loadu_ps(a + (5 * step) + FLOAT_SIMD);  \
     c10 = _mm256_max_ps(a_reg, c10);                    \
     c11 = _mm256_max_ps(c12, c11);
 
@@ -297,30 +297,30 @@ typedef float c_tile_t;
 //****************************************************************************
 
 #define FLOAT_DW_TILE_C(step, a, b, W_ob, C_ob)         \
-    b0 = _mm256_load_ps(b);                             \
-    b1 = _mm256_load_ps(b + FLOAT_SIMD);                \
-    c12 = _mm256_load_ps(a + (0 * step));               \
-    c13 = _mm256_load_ps(a + (0 * step) + FLOAT_SIMD);  \
+    b0 = _mm256_loadu_ps(b);                             \
+    b1 = _mm256_loadu_ps(b + FLOAT_SIMD);                \
+    c12 = _mm256_loadu_ps(a + (0 * step));               \
+    c13 = _mm256_loadu_ps(a + (0 * step) + FLOAT_SIMD);  \
     c0 = _mm256_fmadd_ps(b0, c12, c0);                  \
     c1 = _mm256_fmadd_ps(b1, c13, c1);                  \
-    c12 = _mm256_load_ps(a + (1 * step));               \
-    c13 = _mm256_load_ps(a + (1 * step) + FLOAT_SIMD);  \
+    c12 = _mm256_loadu_ps(a + (1 * step));               \
+    c13 = _mm256_loadu_ps(a + (1 * step) + FLOAT_SIMD);  \
     c2 = _mm256_fmadd_ps(b0, c12, c2);                  \
     c3 = _mm256_fmadd_ps(b1, c13, c3);                  \
-    c12 = _mm256_load_ps(a + (2 * step));               \
-    c13 = _mm256_load_ps(a + (2 * step) + FLOAT_SIMD);  \
+    c12 = _mm256_loadu_ps(a + (2 * step));               \
+    c13 = _mm256_loadu_ps(a + (2 * step) + FLOAT_SIMD);  \
     c4 = _mm256_fmadd_ps(b0, c12, c4);                  \
     c5 = _mm256_fmadd_ps(b1, c13, c5);                  \
-    c12 = _mm256_load_ps(a + (3 * step));               \
-    c13 = _mm256_load_ps(a + (3 * step) + FLOAT_SIMD);  \
+    c12 = _mm256_loadu_ps(a + (3 * step));               \
+    c13 = _mm256_loadu_ps(a + (3 * step) + FLOAT_SIMD);  \
     c6 = _mm256_fmadd_ps(b0, c12, c6);                  \
     c7 = _mm256_fmadd_ps(b1, c13, c7);                  \
-    c12 = _mm256_load_ps(a + (4 * step));               \
-    c13 = _mm256_load_ps(a + (4 * step) + FLOAT_SIMD);  \
+    c12 = _mm256_loadu_ps(a + (4 * step));               \
+    c13 = _mm256_loadu_ps(a + (4 * step) + FLOAT_SIMD);  \
     c8 = _mm256_fmadd_ps(b0, c12, c8);                  \
     c9 = _mm256_fmadd_ps(b1, c13, c9);                  \
-    c12 = _mm256_load_ps(a + (5 * step));               \
-    c13 = _mm256_load_ps(a + (5* step) + FLOAT_SIMD);   \
+    c12 = _mm256_loadu_ps(a + (5 * step));               \
+    c13 = _mm256_loadu_ps(a + (5* step) + FLOAT_SIMD);   \
     c10 = _mm256_fmadd_ps(b0, c12, c10);                \
     c11 = _mm256_fmadd_ps(b1, c13, c11);
 
@@ -360,84 +360,84 @@ typedef float c_tile_t;
 
 #define FLOAT_COND_SCALE_TILE_C(step, a, b, W_ob, C_ob) \
     c12 = _mm256_broadcast_ss(b);                       \
-    b0 = _mm256_load_ps(a + (0 * step));                \
+    b0 = _mm256_loadu_ps(a + (0 * step));                \
     c0 = _mm256_max_ps(b0, c0);                         \
     a_reg = _mm256_cmp_ps(b0, c0, _CMP_LT_OS);          \
     b0 = _mm256_mul_ps(b0, c12);                        \
     b0 = _mm256_and_ps(a_reg, b0);                      \
     c0 = _mm256_add_ps(b0, c0);                         \
     /**/                                                \
-    b1 = _mm256_load_ps(a + (0 * step) + FLOAT_SIMD);   \
+    b1 = _mm256_loadu_ps(a + (0 * step) + FLOAT_SIMD);   \
     c1 = _mm256_max_ps(b1, c1);                         \
     a_reg = _mm256_cmp_ps(b1, c1, _CMP_LT_OS);          \
     b1 = _mm256_mul_ps(b1, c12);                        \
     b1 = _mm256_and_ps(a_reg, b1);                      \
     c1 = _mm256_add_ps(b1, c1);                         \
     /**/                                                \
-    b0 = _mm256_load_ps(a + (1 * step));                \
+    b0 = _mm256_loadu_ps(a + (1 * step));                \
     c2 = _mm256_max_ps(b0, c2);                         \
     a_reg = _mm256_cmp_ps(b0, c2, _CMP_LT_OS);          \
     b0 = _mm256_mul_ps(b0, c12);                        \
     b0 = _mm256_and_ps(a_reg, b0);                      \
     c2 = _mm256_add_ps(b0, c2);                         \
     /**/                                                \
-    b1 = _mm256_load_ps(a + (1 * step) + FLOAT_SIMD);   \
+    b1 = _mm256_loadu_ps(a + (1 * step) + FLOAT_SIMD);   \
     c3 = _mm256_max_ps(b1, c3);                         \
     a_reg = _mm256_cmp_ps(b1, c3, _CMP_LT_OS);          \
     b1 = _mm256_mul_ps(b1, c12);                        \
     b1 = _mm256_and_ps(a_reg, b1);                      \
     c3 = _mm256_add_ps(b1, c3);                         \
     /**/                                                \
-    b0 = _mm256_load_ps(a + (2 * step));                \
+    b0 = _mm256_loadu_ps(a + (2 * step));                \
     c4 = _mm256_max_ps(b0, c4);                         \
     a_reg = _mm256_cmp_ps(b0, c4, _CMP_LT_OS);          \
     b0 = _mm256_mul_ps(b0, c12);                        \
     b0 = _mm256_and_ps(a_reg, b0);                      \
     c4 = _mm256_add_ps(b0, c4);                         \
     /**/                                                \
-    b1 = _mm256_load_ps(a + (2 * step) + FLOAT_SIMD);   \
+    b1 = _mm256_loadu_ps(a + (2 * step) + FLOAT_SIMD);   \
     c5 = _mm256_max_ps(b1, c5);                         \
     a_reg = _mm256_cmp_ps(b1, c5, _CMP_LT_OS);          \
     b1 = _mm256_mul_ps(b1, c12);                        \
     b1 = _mm256_and_ps(a_reg, b1);                      \
     c5 = _mm256_add_ps(b1, c5);                         \
     /**/                                                \
-    b0 = _mm256_load_ps(a + (3 * step));                \
+    b0 = _mm256_loadu_ps(a + (3 * step));                \
     c6 = _mm256_max_ps(b0, c6);                         \
     a_reg = _mm256_cmp_ps(b0, c6, _CMP_LT_OS);          \
     b0 = _mm256_mul_ps(b0, c12);                        \
     b0 = _mm256_and_ps(a_reg, b0);                      \
     c6 = _mm256_add_ps(b0, c6);                         \
     /**/                                                \
-    b1 = _mm256_load_ps(a + (3 * step) + FLOAT_SIMD);   \
+    b1 = _mm256_loadu_ps(a + (3 * step) + FLOAT_SIMD);   \
     c7 = _mm256_max_ps(b1, c7);                         \
     a_reg = _mm256_cmp_ps(b1, c7, _CMP_LT_OS);          \
     b1 = _mm256_mul_ps(b1, c12);                        \
     b1 = _mm256_and_ps(a_reg, b1);                      \
     c7 = _mm256_add_ps(b1, c7);                         \
     /**/                                                \
-    b0 = _mm256_load_ps(a + (4 * step));                \
+    b0 = _mm256_loadu_ps(a + (4 * step));                \
     c8 = _mm256_max_ps(b0, c8);                         \
     a_reg = _mm256_cmp_ps(b0, c8, _CMP_LT_OS);          \
     b0 = _mm256_mul_ps(b0, c12);                        \
     b0 = _mm256_and_ps(a_reg, b0);                      \
     c8 = _mm256_add_ps(b0, c8);                         \
     /**/                                                \
-    b1 = _mm256_load_ps(a + (4 * step) + FLOAT_SIMD);   \
+    b1 = _mm256_loadu_ps(a + (4 * step) + FLOAT_SIMD);   \
     c9 = _mm256_max_ps(b1, c9);                         \
     a_reg = _mm256_cmp_ps(b1, c9, _CMP_LT_OS);          \
     b1 = _mm256_mul_ps(b1, c12);                        \
     b1 = _mm256_and_ps(a_reg, b1);                      \
     c9 = _mm256_add_ps(b1, c9);                         \
     /**/                                                \
-    b0 = _mm256_load_ps(a + (5 * step));                \
+    b0 = _mm256_loadu_ps(a + (5 * step));                \
     c10 = _mm256_max_ps(b0, c10);                       \
     a_reg = _mm256_cmp_ps(b0, c10, _CMP_LT_OS);         \
     b0 = _mm256_mul_ps(b0, c12);                        \
     b0 = _mm256_and_ps(a_reg, b0);                      \
     c10 = _mm256_add_ps(b0, c10);                       \
     /**/                                                \
-    b1 = _mm256_load_ps(a + (5 * step) + FLOAT_SIMD);   \
+    b1 = _mm256_loadu_ps(a + (5 * step) + FLOAT_SIMD);   \
     c11 = _mm256_max_ps(b1, c11);                       \
     a_reg = _mm256_cmp_ps(b1, c11, _CMP_LT_OS);         \
     b1 = _mm256_mul_ps(b1, c12);                        \
@@ -468,28 +468,28 @@ typedef float c_tile_t;
 //****************************************************************************
 
 #define FLOAT_ACCUM_TILE_C(step, a, W_ob, C_ob)         \
-    b0 = _mm256_load_ps(a + (0 * step));                \
-    b1 = _mm256_load_ps(a + (0 * step) + FLOAT_SIMD);   \
+    b0 = _mm256_loadu_ps(a + (0 * step));                \
+    b1 = _mm256_loadu_ps(a + (0 * step) + FLOAT_SIMD);   \
     c0 = _mm256_add_ps(b0, c0);                         \
     c1 = _mm256_add_ps(b1, c1);                         \
-    a_reg = _mm256_load_ps(a + (1 * step));             \
-    c12 = _mm256_load_ps(a + (1 * step) + FLOAT_SIMD);  \
+    a_reg = _mm256_loadu_ps(a + (1 * step));             \
+    c12 = _mm256_loadu_ps(a + (1 * step) + FLOAT_SIMD);  \
     c2 = _mm256_add_ps(a_reg, c2);                      \
     c3 = _mm256_add_ps(c12, c3);                        \
-    b0 = _mm256_load_ps(a + (2 * step));                \
-    b1 = _mm256_load_ps(a + (2 * step) + FLOAT_SIMD);   \
+    b0 = _mm256_loadu_ps(a + (2 * step));                \
+    b1 = _mm256_loadu_ps(a + (2 * step) + FLOAT_SIMD);   \
     c4 = _mm256_add_ps(b0, c4);                         \
     c5 = _mm256_add_ps(b1, c5);                         \
-    a_reg = _mm256_load_ps(a + (3 * step));             \
-    c12 = _mm256_load_ps(a + (3 * step) + FLOAT_SIMD);  \
+    a_reg = _mm256_loadu_ps(a + (3 * step));             \
+    c12 = _mm256_loadu_ps(a + (3 * step) + FLOAT_SIMD);  \
     c6 = _mm256_add_ps(a_reg, c6);                      \
     c7 = _mm256_add_ps(c12, c7);                        \
-    b0 = _mm256_load_ps(a + (4 * step));                \
-    b1 = _mm256_load_ps(a + (4 * step) + FLOAT_SIMD);   \
+    b0 = _mm256_loadu_ps(a + (4 * step));                \
+    b1 = _mm256_loadu_ps(a + (4 * step) + FLOAT_SIMD);   \
     c8 = _mm256_add_ps(b0, c8);                         \
     c9 = _mm256_add_ps(b1, c9);                         \
-    a_reg = _mm256_load_ps(a + (5 * step));             \
-    c12 = _mm256_load_ps(a + (5 * step) + FLOAT_SIMD);  \
+    a_reg = _mm256_loadu_ps(a + (5 * step));             \
+    c12 = _mm256_loadu_ps(a + (5 * step) + FLOAT_SIMD);  \
     c10 = _mm256_add_ps(a_reg, c10);                    \
     c11 = _mm256_add_ps(c12, c11);
 
@@ -548,8 +548,8 @@ typedef float c_tile_t;
 
 // Pointer to C defined in the outer scope
 #define FLOAT_FMA_TILE_C(step, a, b, p_cur, W_ob, C_ob)         \
-    b0 = _mm256_load_ps(b + (p_cur * C_ob));                    \
-    b1 = _mm256_load_ps(b + (p_cur * C_ob + FLOAT_SIMD));       \
+    b0 = _mm256_loadu_ps(b + (p_cur * C_ob));                    \
+    b1 = _mm256_loadu_ps(b + (p_cur * C_ob + FLOAT_SIMD));       \
     a_reg = _mm256_broadcast_ss(a + (p_cur));                   \
     p_cur += step;                                              \
     c0 = _mm256_fmadd_ps(a_reg, b0, c0);                        \
@@ -599,12 +599,12 @@ typedef float c_tile_t;
 
 #define FLOAT_LOAD_TILE_C_POOL(O, W_ob, C_ob)                           \
     __m256 a_reg, b0, b1, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13; \
-    c0 = _mm256_load_ps(O + (0 * C_ob));                                \
-    c1 = _mm256_load_ps(O + (0 * C_ob) + FLOAT_SIMD);                   \
-    c2 = _mm256_load_ps(O + (1 * C_ob));                                \
-    c3 = _mm256_load_ps(O + (1 * C_ob) + FLOAT_SIMD);                   \
-    c4 = _mm256_load_ps(O + (2 * C_ob));                                \
-    c5 = _mm256_load_ps(O + (2 * C_ob) + FLOAT_SIMD);
+    c0 = _mm256_loadu_ps(O + (0 * C_ob));                                \
+    c1 = _mm256_loadu_ps(O + (0 * C_ob) + FLOAT_SIMD);                   \
+    c2 = _mm256_loadu_ps(O + (1 * C_ob));                                \
+    c3 = _mm256_loadu_ps(O + (1 * C_ob) + FLOAT_SIMD);                   \
+    c4 = _mm256_loadu_ps(O + (2 * C_ob));                                \
+    c5 = _mm256_loadu_ps(O + (2 * C_ob) + FLOAT_SIMD);
 
 #define FLOAT_LOAD_END_C_POOL(O, W_ob, C_ob, W_last)    \
     float c_tile[W_ob * C_ob];                          \
@@ -618,18 +618,18 @@ typedef float c_tile_t;
 
 #define FLOAT_LOAD_TILE_C_DW(O, W_ob, C_ob)                             \
     __m256 a_reg, b0, b1, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13; \
-    c0 = _mm256_load_ps(O + (0 * C_ob));                                \
-    c1 = _mm256_load_ps(O + (0 * C_ob) + FLOAT_SIMD);                   \
-    c2 = _mm256_load_ps(O + (1 * C_ob));                                \
-    c3 = _mm256_load_ps(O + (1 * C_ob) + FLOAT_SIMD);                   \
-    c4 = _mm256_load_ps(O + (2 * C_ob));                                \
-    c5 = _mm256_load_ps(O + (2 * C_ob) + FLOAT_SIMD);                   \
-    c6 = _mm256_load_ps(O + (3 * C_ob));                                \
-    c7 = _mm256_load_ps(O + (3 * C_ob) + FLOAT_SIMD);                   \
-    c8 = _mm256_load_ps(O + (4 * C_ob));                                \
-    c9 = _mm256_load_ps(O + (4 * C_ob) + FLOAT_SIMD);                   \
-    c10 = _mm256_load_ps(O + (5 * C_ob));                               \
-    c11 = _mm256_load_ps(O + (5 * C_ob) + FLOAT_SIMD);
+    c0 = _mm256_loadu_ps(O + (0 * C_ob));                                \
+    c1 = _mm256_loadu_ps(O + (0 * C_ob) + FLOAT_SIMD);                   \
+    c2 = _mm256_loadu_ps(O + (1 * C_ob));                                \
+    c3 = _mm256_loadu_ps(O + (1 * C_ob) + FLOAT_SIMD);                   \
+    c4 = _mm256_loadu_ps(O + (2 * C_ob));                                \
+    c5 = _mm256_loadu_ps(O + (2 * C_ob) + FLOAT_SIMD);                   \
+    c6 = _mm256_loadu_ps(O + (3 * C_ob));                                \
+    c7 = _mm256_loadu_ps(O + (3 * C_ob) + FLOAT_SIMD);                   \
+    c8 = _mm256_loadu_ps(O + (4 * C_ob));                                \
+    c9 = _mm256_loadu_ps(O + (4 * C_ob) + FLOAT_SIMD);                   \
+    c10 = _mm256_loadu_ps(O + (5 * C_ob));                               \
+    c11 = _mm256_loadu_ps(O + (5 * C_ob) + FLOAT_SIMD);
 
 
 
@@ -758,8 +758,8 @@ typedef float c_tile_t;
     }
 
 #define FLOAT_MUL_TILE_C(b, W_ob, C_ob)         \
-    b0 = _mm256_load_ps(b);                     \
-    b1 = _mm256_load_ps(b + FLOAT_SIMD);        \
+    b0 = _mm256_loadu_ps(b);                     \
+    b1 = _mm256_loadu_ps(b + FLOAT_SIMD);        \
     c0 = _mm256_mul_ps(b0, c0);                 \
     c1 = _mm256_mul_ps(b1, c1);                 \
     c2 = _mm256_mul_ps(b0, c2);                 \
@@ -933,26 +933,26 @@ typedef float c_tile_t;
 
 #define FLOAT_STORE_TILE_INTER(W_ob, C_ob)                      \
     float c_tile[W_ob * C_ob];                                  \
-    _mm256_store_ps(c_tile + (0 * C_ob), c0);                   \
-    _mm256_store_ps(c_tile + (0 * C_ob) + FLOAT_SIMD, c1);      \
-    _mm256_store_ps(c_tile + (1 * C_ob), c2);                   \
-    _mm256_store_ps(c_tile + (1 * C_ob + FLOAT_SIMD), c3);      \
-    _mm256_store_ps(c_tile + (2 * C_ob), c4);                   \
-    _mm256_store_ps(c_tile + (2 * C_ob + FLOAT_SIMD), c5);      \
-    _mm256_store_ps(c_tile + (3 * C_ob), c6);                   \
-    _mm256_store_ps(c_tile + (3 * C_ob + FLOAT_SIMD), c7);      \
-    _mm256_store_ps(c_tile + (4 * C_ob), c8);                   \
-    _mm256_store_ps(c_tile + (4 * C_ob + FLOAT_SIMD), c9);      \
-    _mm256_store_ps(c_tile + (5 * C_ob), c10);                  \
-    _mm256_store_ps(c_tile + (5 * C_ob + FLOAT_SIMD), c11);
+    _mm256_storeu_ps(c_tile + (0 * C_ob), c0);                   \
+    _mm256_storeu_ps(c_tile + (0 * C_ob) + FLOAT_SIMD, c1);      \
+    _mm256_storeu_ps(c_tile + (1 * C_ob), c2);                   \
+    _mm256_storeu_ps(c_tile + (1 * C_ob + FLOAT_SIMD), c3);      \
+    _mm256_storeu_ps(c_tile + (2 * C_ob), c4);                   \
+    _mm256_storeu_ps(c_tile + (2 * C_ob + FLOAT_SIMD), c5);      \
+    _mm256_storeu_ps(c_tile + (3 * C_ob), c6);                   \
+    _mm256_storeu_ps(c_tile + (3 * C_ob + FLOAT_SIMD), c7);      \
+    _mm256_storeu_ps(c_tile + (4 * C_ob), c8);                   \
+    _mm256_storeu_ps(c_tile + (4 * C_ob + FLOAT_SIMD), c9);      \
+    _mm256_storeu_ps(c_tile + (5 * C_ob), c10);                  \
+    _mm256_storeu_ps(c_tile + (5 * C_ob + FLOAT_SIMD), c11);
 
 #define FLOAT_STORE_TILE_C_POOL(O, W_ob_pool, C_ob)     \
-    _mm256_store_ps(O + (0 * C_ob), c0);                \
-    _mm256_store_ps(O + (0 * C_ob) + FLOAT_SIMD, c1);   \
-    _mm256_store_ps(O + (1 * C_ob), c2);                \
-    _mm256_store_ps(O + (1 * C_ob + FLOAT_SIMD), c3);   \
-    _mm256_store_ps(O + (2 * C_ob), c4);                \
-    _mm256_store_ps(O + (2 * C_ob + FLOAT_SIMD), c5);
+    _mm256_storeu_ps(O + (0 * C_ob), c0);                \
+    _mm256_storeu_ps(O + (0 * C_ob) + FLOAT_SIMD, c1);   \
+    _mm256_storeu_ps(O + (1 * C_ob), c2);                \
+    _mm256_storeu_ps(O + (1 * C_ob + FLOAT_SIMD), c3);   \
+    _mm256_storeu_ps(O + (2 * C_ob), c4);                \
+    _mm256_storeu_ps(O + (2 * C_ob + FLOAT_SIMD), c5);
 
 #define FLOAT_STORE_END_C_POOL(O, W_ob_pool, C_ob, W_last)      \
     for (uint32_t kk = 0; kk < W_last; kk++)                    \

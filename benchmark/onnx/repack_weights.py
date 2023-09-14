@@ -26,23 +26,10 @@ FILTER_CONV = 3
 FILTER_FC = 4
 
 #*-------------------------------------------------------------------------------
-def get_platform_params(platform):
-    if(platform == "ref"):
-        return 1, 1
-    elif(platform == "zen2"):
-        return 16, 16
-    elif(platform == "arm"):
-        return 16, 16
-    else:
-        print(f"[ERROR] Invalid platform {platform}")
-        exit(-1)
-
-#*-------------------------------------------------------------------------------
 # Repack weights for a given platform
 # Assumes all filter weights are in CO, CI, H, W format
 # Assumes filter weights contain a string "const_fold" in their name
-def repack_weights(onnx_model_path, platform):
-    cob, cib = get_platform_params(platform)
+def repack_weights(onnx_model_path):
     onnx_model_loaded = onnx.load(onnx_model_path)
     
     initializers = onnx_model_loaded.graph.initializer
@@ -67,11 +54,11 @@ def repack_weights(onnx_model_path, platform):
             print(f"repacking {weights_name} that has {W.shape} for {filter_type_str}")
             onnx_model_loaded.graph.initializer[weight_idx].CopyFrom(numpy_helper.from_array(W_packed, weights_name))
                
-    print(f"\nData has been repacked for {platform}!")
+    # print(f"\nData has been repacked for {platform}!")
     onnx.save(onnx_model_loaded, onnx_model_path[:-5]+"_repacked.onnx")
     print("New model has been saved")
 
     
 #*-------------------------------------------------------------------------------
 if __name__ == "__main__":
-    repack_weights(sys.argv[1], sys.argv[2])
+    repack_weights(sys.argv[1])

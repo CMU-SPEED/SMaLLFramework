@@ -54,22 +54,9 @@ OUTPUT = 1
 # Repack weights for a given platform
 # Assumes all filter weights are in CO, CI, H, W format
 # Assumes filter weights contain a string "const_fold" in their name
-def repack_weights(onnx_model_path, platform):
-    os.system(f"python3 repack_weights.py {onnx_model_path} {platform}")
+def repack_weights(onnx_model_path):
+    os.system(f"python3 repack_weights.py {onnx_model_path}")
     
-#*-------------------------------------------------------------------------------
-# return cob, cib
-# def get_platform_params(platform):
-#     if(platform == "ref"):
-#         return 1, 1
-#     elif(platform == "zen2"):
-#         return 16, 16
-#     elif(platform == "arm"):
-#         return 16, 16
-#     else:
-#         print(f"[ERROR] Invalid platform {platform}")
-#         exit(-1)
-
 #*-------------------------------------------------------------------------------
 # helper function to get input dimensions
 def get_input_dims(input_sign):
@@ -115,9 +102,9 @@ def run_pytorch_model(onnx_model_path, input_file, correctness):
 #*-------------------------------------------------------------------------------
 # compiles an onnx model using onnx-mlir
 # returns path to shared library that contains the model
-def compile_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, platform):
+def compile_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT):
     
-    repack_weights(onnx_model_path, platform)
+    repack_weights(onnx_model_path)
     print("Repacked weights!")
     onnx_model_path = onnx_model_path[:-5] + "_repacked.onnx"
     
@@ -148,10 +135,10 @@ def compile_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, platform):
 # compiles and executes an onnx model using onnx-mlir
 # also runs the same model using pytorch
 # prints fps results for small and pytorch
-def run_onnx_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, platform):
+def run_onnx_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT):
     
     # compile model using onnx-mlir
-    onnx_model_so = compile_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, platform)
+    onnx_model_so = compile_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT)
     onnx_model_so_colored = colored(onnx_model_so, "light_cyan")
     print(f"Running model {onnx_model_so_colored}\n")
     
@@ -173,13 +160,7 @@ def run_onnx_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, platform):
     np.save("input.npy", model_input)
     
     # run pytorch model and get fps
-    pytorch_time = run_pytorch_model(onnx_model_path, "input.npy", False)
-
-    # the following is commented out since correctness results are not needed, but is left in to show what the data layout for small is
-    # b, c, h, w = input_dims
-    # _, cib = get_platform_params(platform)
-    # model_input_packed = model_input.reshape(b, c//cib, cib, h, w).transpose(0, 1, 3, 4, 2).reshape(b, h, w, c)
-    
+    pytorch_time = run_pytorch_model(onnx_model_path, "input.npy", False)    
     
     # run small model and get fps out of 10000 runs
     # it is assumed that pytorch will also get the best fps out of 10000 runs
@@ -203,13 +184,10 @@ def run_onnx_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, platform):
 # compiles and executes an onnx model using onnx-mlir
 # also runs the same model using pytorch
 # prints correctness results by comparing outputs from small and pytorch
-def run_onnx_model_correctness(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, platform):
-    
-    # get platform params for packing data
-    # cob, cib = get_platform_params(platform)
+def run_onnx_model_correctness(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT):
     
     # compile model
-    onnx_model_so = compile_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, platform)
+    onnx_model_so = compile_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT)
     onnx_model_so_colored = colored(onnx_model_so, "light_cyan")
     print(f"Running model {onnx_model_so_colored}\n")
     
@@ -243,15 +221,20 @@ def run_onnx_model_correctness(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT, 
     if(len(outputs_torch_packed.shape) == 4):
         _, oc, oh, ow = outputs_torch_packed.shape
         pack(outputs_torch_packed, 1, oc, oh, ow, OUTPUT)
-    
-    
+
     # pack input data for small
-    _, ic, ih, iw = input_dims
+    _, ih, iw, ic = input_dims
     model_input_packed = model_input.copy()
+    model_input_packed = np.ravel(model_input_packed.transpose(0, 3, 1, 2), order='C')
     pack(model_input_packed, 1, ic, ih, iw, INPUT)
-    
-    for _ in range(100):
-        outputs = session.run(input=[model_input_packed])
+    model_input_packed = model_input_packed.reshape(1, ih, iw, ic)
+    # model_input_packed = np.ravel(model_input_packed.reshape(1, ih, iw, ic).transpose(0, 3, 1, 2)).reshape(1, ih, iw, ic)
+    # _, ic, ih, iw = model_input_packed.shape
+    # print(model_input_packed.shape)
+    # model_input_packed.transpose()
+     
+    # for _ in range(100):
+    #     outputs = session.run(input=[model_input_packed])
     
     # run small model and get outputs
     s = time.time()
@@ -289,12 +272,6 @@ def get_args():
         help="Path to SMaLL libray"
     )
     arg_parser.add_argument(
-        "-p", "--platform",
-        type=str,
-        default="ref",
-        help="Platform to run on. Options: ref, zen2, arm"
-    )
-    arg_parser.add_argument(
         "-o", "--ONNX_MLIR_ROOT",
         default="",
         help="Path to onnx-mlir"
@@ -316,7 +293,6 @@ if __name__ == "__main__":
     
     onnx_model = args.model
     small_lib_path = args.lib
-    platform = args.platform
     ONNX_MLIR_ROOT = args.ONNX_MLIR_ROOT
     ONNX_MLIR_ROOT_COLORED = colored(ONNX_MLIR_ROOT, "green")
     correctness = args.correctness
@@ -324,6 +300,6 @@ if __name__ == "__main__":
     print(f"\nUsing {ONNX_MLIR_ROOT_COLORED} to compile onnx models.\n")
     
     if(correctness):
-        run_onnx_model_correctness(onnx_model, small_lib_path, ONNX_MLIR_ROOT, platform)
+        run_onnx_model_correctness(onnx_model, small_lib_path, ONNX_MLIR_ROOT)
     else:
-        run_onnx_model(onnx_model, small_lib_path, ONNX_MLIR_ROOT, platform)
+        run_onnx_model(onnx_model, small_lib_path, ONNX_MLIR_ROOT)
