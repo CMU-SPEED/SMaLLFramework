@@ -22,17 +22,17 @@
 
 #include <small.h>
 #include <small/utils/Timer.hpp>
-#include <small/AveragePool2DLayer.hpp>
+#include <small/SoftMaxLayer.hpp>
 
 #include "test_utils.hpp"
 
 std::string const data_dir("../test/regression_data");
 
 //****************************************************************************
-// Generate AveragePool output regression data from unpack MaxPool input data.
+// Generate softmax output regression data from unpack MaxPool input data.
 //****************************************************************************
 template <class BufferT>
-bool compute_averagepool_output(LayerParams const &params)
+bool compute_softmax_output(LayerParams const &params)
 {
     /// @todo add smart pointer to buffers
     // Read input data
@@ -40,98 +40,61 @@ bool compute_averagepool_output(LayerParams const &params)
         get_pathname(data_dir, "in", "pool",
                      params,
                      params.C_i*params.H*params.W);
-    std::cout << "\nAveragePool: input file = " << in_fname << std::endl;
+    std::cout << "\nsoftmax: input file = " << in_fname << std::endl;
 
     BufferT input_dc = read_inputs<BufferT>(in_fname);
     TEST_ASSERT(input_dc.size() == params.C_i*params.H*params.W);
 
     // Read output regression data
     size_t Ho(small::compute_output_dim(
-                  params.H, params.k, params.s, params.p));
+                  params.H, 1,1, params.p));
     size_t Wo(small::compute_output_dim(
-                  params.W, params.k, params.s, params.p));
+                  params.W, 1,1, params.p));
     std::cerr << "Output image dims: " << Ho << ", " << Wo << std::endl;
+    assert(Ho == params.H && Wo == params.W);
     std::string out_fname =
-        get_pathname(data_dir, "out", "averagepool",
+        get_pathname(data_dir, "out", "softmax",
                      params,
-                     params.C_i*Ho*Wo);
-    std::cout << "AveragePool: output file= " << out_fname << std::endl;
+                     params.C_i*params.H*params.W);
+    std::cout << "softmax: output file= " << out_fname << std::endl;
 
     BufferT output_dc_answers(params.C_i*Ho*Wo);
 
     uint8_t t_pad=0, b_pad=0, l_pad=0, r_pad=0;
     if (params.p == small::PADDING_F)
     {
-        small::calc_padding(params.H, params.k, params.s, t_pad, b_pad);
-        small::calc_padding(params.W, params.k, params.s, l_pad, r_pad);
+        small::calc_padding(params.H, 1,1, t_pad, b_pad);
+        small::calc_padding(params.W, 1,1, l_pad, r_pad);
     }
 
     std::cout << "Padding t,b,l,r: " << (int)t_pad << "," << (int)b_pad
               << "," << (int)l_pad << "," << (int)r_pad << std::endl;
 
-    // Compute padded input
-    size_t padded_H = (params.H + t_pad + b_pad);
-    size_t padded_W = (params.W + r_pad + l_pad);
 
-    BufferT padded_input(params.C_i*padded_H*padded_W);
-    for (size_t ix = 0; ix < (params.C_i*padded_H*padded_W); ++ix)
-    {
-        padded_input[ix] = 0.f;
-    }
-
-    for (size_t c = 0; c < params.C_i; ++c)
-    {
-        for (size_t h = 0; h < params.H; ++h)
-        {
-            for (size_t w = 0; w < params.W; ++w)
-            {
-                padded_input[c*(padded_H*padded_W)+(h+t_pad)*padded_W+(w+l_pad)]
-                    = input_dc[c*(params.H*params.W) + h*params.W + w];
-            }
-        }
-    }
-
-    // small::AveragePool2D(params.k, params.k, params.s,
+    // small::SoftMax(1, 1,1,
     //                  t_pad, b_pad, l_pad, r_pad,
     //                  params.C_i, params.H, params.W,
     //                  packed_input_dc, packed_output_dc);
 
-    // Compute average pool outputs
+    // Compute softmax outputs
     size_t num_outputs = 0;
 
-    for (size_t c = 0; c < params.C_i; ++c)
+    //Ewise Exponent and sum
+    float sum = 0;
+    for (size_t c = 0; c < params.C_i * params.H * params.W; ++c)
     {
-        for (size_t h = 0; h < padded_H; h += params.s)
-        {
-            if ((h + params.k) > padded_H) break;
+   
+        output_dc_answers[c] = std::exp(input_dc[c]);
+        sum += std::exp(input_dc[c]);
+        num_outputs++;
 
-            for (size_t w = 0; w < padded_W; w += params.s)
-            {
-                if ((w + params.k) > padded_W) break;
+    }
 
-                std::cout << "kernel upper-left (c,h,w): " << c << ","
-                          << h << "," << w << std::endl;
-                typename BufferT::value_type val = 0.f;
-                for (size_t ih = h; ih < (h + params.k); ++ih)
-                {
-                    for (size_t iw = w; iw < (w + params.k); ++iw)
-                    {
-                        //std::cout << "accessing: h,w: " << ih << ","
-                        //          << iw << std::endl;
-                        size_t idx =
-                            c*padded_H*padded_W +
-                            ih*padded_W +
-                            iw;
-                        TEST_CHECK(idx < (c+1)*padded_H*padded_W);
-                        val += padded_input[idx];
-                    }
-                }
+    for (size_t c = 0; c < params.C_i * params.H * params.W; ++c)
+    {
+   
+        output_dc_answers[c] /= sum;
 
-                output_dc_answers[c*Ho*Wo + (h/params.s)*Wo + (w/params.s)] =
-                    val/((float)(params.k*params.k));
-                ++num_outputs;
-            }
-        }
     }
 
     std::cerr << "num_outputs = " << num_outputs << std::endl;
@@ -143,7 +106,7 @@ bool compute_averagepool_output(LayerParams const &params)
 }
 
 //****************************************************************************
-void test_compute_averagepool_output(void)
+void test_compute_softmax_output(void)
 {
     std::vector<LayerParams> params =
     {
@@ -154,24 +117,24 @@ void test_compute_averagepool_output(void)
         {96, 30, 30, 3, 2, small::PADDING_V, 0},
         {96,  3, 13, 3, 2, small::PADDING_V, 0},
 
-        {16,  3,  3, 3, 2, small::PADDING_F, 0},  //Ci,Hi,Wi,k,s,p,Co
-        {16,  3, 13, 3, 2, small::PADDING_F, 0},
-        {96, 30, 30, 3, 2, small::PADDING_F, 0},
-        {96,  3, 13, 3, 2, small::PADDING_F, 0}
+        // {16,  3,  3, 3, 2, small::PADDING_F, 0},  //Ci,Hi,Wi,k,s,p,Co
+        // {16,  3, 13, 3, 2, small::PADDING_F, 0},
+        // {96, 30, 30, 3, 2, small::PADDING_F, 0},
+        // {96,  3, 13, 3, 2, small::PADDING_F, 0}
     };
     for (LayerParams const &p: params)
     {
 #if defined(QUANTIZED)
-        TEST_CHECK(true == compute_averagepool_output<small::QUInt8Buffer>(p));
+        TEST_CHECK(true == compute_softmax_output<small::QUInt8Buffer>(p));
 #else
-        TEST_CHECK(true == compute_averagepool_output<small::FloatBuffer>(p));
+        TEST_CHECK(true == compute_softmax_output<small::FloatBuffer>(p));
 #endif
     }
 }
 
 //****************************************************************************
 template <class BufferT>
-bool run_averagepool_config(LayerParams const &params)
+bool run_softmax_config(LayerParams const &params)
 {
     /// @todo add smart pointer to buffers
     // Read input data
@@ -179,7 +142,7 @@ bool run_averagepool_config(LayerParams const &params)
         get_pathname(data_dir, "in", "pool",
                      params,
                      params.C_i*params.H*params.W);
-    std::cout << "\nAveragePool: input file = " << in_fname << std::endl;
+    std::cout << "\nsoftmax: input file = " << in_fname << std::endl;
 
     BufferT input_dc = read_inputs<BufferT>(in_fname);
     TEST_ASSERT(input_dc.size() == params.C_i*params.H*params.W);
@@ -194,15 +157,15 @@ bool run_averagepool_config(LayerParams const &params)
 
     // Read output regression data
     size_t Ho(small::compute_output_dim(
-                  params.H, params.k, params.s, params.p));
+                  params.H, 1, 1, params.p));
     size_t Wo(small::compute_output_dim(
-                  params.W, params.k, params.s, params.p));
+                  params.W, 1, 1, params.p));
     std::cerr << "Output image dims: " << Ho << ", " << Wo << std::endl;
     std::string out_fname =
-        get_pathname(data_dir, "out", "averagepool",
+        get_pathname(data_dir, "out", "softmax",
                      params,
                      params.C_i*Ho*Wo);
-    std::cout << "AveragePool: output file= " << out_fname << std::endl;
+    std::cout << "softmax: output file= " << out_fname << std::endl;
 
     BufferT output_dc_answers = read_inputs<BufferT>(out_fname);
     TEST_ASSERT(output_dc_answers.size() == params.C_i*Ho*Wo);
@@ -225,13 +188,12 @@ bool run_averagepool_config(LayerParams const &params)
     uint8_t t_pad=0, b_pad=0, l_pad=0, r_pad=0;
     if (params.p == small::PADDING_F)
     {
-        small::calc_padding(params.H, params.k, params.s, t_pad, b_pad);
-        small::calc_padding(params.W, params.k, params.s, l_pad, r_pad);
+        small::calc_padding(params.H, 1, 1, t_pad, b_pad);
+        small::calc_padding(params.W, 1, 1, l_pad, r_pad);
     }
 
     // Compute layer
-    small::AveragePool2D(params.k, params.k, params.s,
-                     t_pad, b_pad, l_pad, r_pad,
+    small::SoftMax(
                      params.C_i, params.H, params.W,
                      packed_input_dc, packed_output_dc);
 
@@ -244,7 +206,7 @@ bool run_averagepool_config(LayerParams const &params)
         {
             passing = false;
 
-            std::cout << "FAIL: AveragePool_out(" << ix << ")--> "
+            std::cout << "FAIL: softmax_out(" << ix << ")--> "
                       << std::setw(12) << std::setprecision(10)
                       << packed_output_dc[ix] << "(computed) != "
                       << std::setw(12) << std::setprecision(10)
@@ -258,17 +220,15 @@ bool run_averagepool_config(LayerParams const &params)
 }
 
 //****************************************************************************
+
 template <typename BufferT>
-bool run_averagepool_layer_config(LayerParams const &params)
+bool run_softmax_layer_config(LayerParams const &params)
 {
     /// @todo add smart pointer to buffers
     //=========================================================================
     small::shape_type input_shape({1UL, params.C_i, params.H, params.W});
     size_t input_size = params.C_i*params.H*params.W;
-    small::AveragePool2DLayer<BufferT> averagepool_layer(input_shape,
-                                                         params.k, params.k,
-                                                         params.s,
-                                                         params.p);
+    small::SoftMaxLayer<BufferT> softmax_layer(input_shape);
     //=========================================================================
 
     // Read input data
@@ -276,7 +236,7 @@ bool run_averagepool_layer_config(LayerParams const &params)
         get_pathname(data_dir, "in", "pool",
                      params,
                      input_size);
-    std::cout << "\nAveragePool: input file = " << in_fname << std::endl;
+    std::cout << "\nsoftmax: input file = " << in_fname << std::endl;
 
     // Allocate the input buffer
     BufferT input_dc = read_inputs<BufferT>(in_fname);
@@ -296,17 +256,17 @@ bool run_averagepool_layer_config(LayerParams const &params)
         std::move(packed_input_dc));
 
     // Read output regression data
-    auto output_shape(averagepool_layer.output_shape());
-    size_t output_buffer_size(averagepool_layer.output_size());
+    auto output_shape(softmax_layer.output_shape());
+    size_t output_buffer_size(softmax_layer.output_size());
 
     std::cerr << "Output image dims: "
               << output_shape[small::HEIGHT] << "x" << output_shape[small::WIDTH]
               << std::endl;
     std::string out_fname =
-        get_pathname(data_dir, "out", "averagepool",
+        get_pathname(data_dir, "out", "softmax",
                      params,
                      output_buffer_size);
-    std::cout << "AveragePool: output file= " << out_fname << std::endl;
+    std::cout << "softmax: output file= " << out_fname << std::endl;
 
     BufferT output_dc_answers = read_inputs<BufferT>(out_fname);
     TEST_ASSERT(output_dc_answers.size() == output_buffer_size);
@@ -330,7 +290,7 @@ bool run_averagepool_layer_config(LayerParams const &params)
                                                 std::move(packed_output_dc));
 
     // Compute layer
-    averagepool_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
+    softmax_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
 
     // Check answer
     bool passing = true;
@@ -341,7 +301,7 @@ bool run_averagepool_layer_config(LayerParams const &params)
         if (!almost_equal(buf[ix], packed_output_dc_answers[ix]))
         {
             passing = false;
-            std::cout << "FAIL: Averagepool_out(" << ix << ")--> "
+            std::cout << "FAIL: softmax_out(" << ix << ")--> "
                       << std::setw(12) << std::setprecision(10)
                       << buf[ix] << "(computed) != "
                       << std::setw(12) << std::setprecision(10)
@@ -355,8 +315,34 @@ bool run_averagepool_layer_config(LayerParams const &params)
 }
 
 //****************************************************************************
+void test_softmax_regression_data(void)
+{
+    std::vector<LayerParams> params =
+    {
+        {16,  3,  3, 3, 2, small::PADDING_V, 0},  //Ci,Hi,Wi,k,s,p,Co
+        {16,  3, 13, 3, 2, small::PADDING_V, 0},
+
+        {16, 30, 30, 3, 2, small::PADDING_V, 0},
+        {96, 30, 30, 3, 2, small::PADDING_V, 0},
+        {96,  3, 13, 3, 2, small::PADDING_V, 0},
+
+        // {16,  3,  3, 3, 2, small::PADDING_F, 0},  //Ci,Hi,Wi,k,s,p,Co
+        // {16,  3, 13, 3, 2, small::PADDING_F, 0},
+        // {96, 30, 30, 3, 2, small::PADDING_F, 0},
+        // {96,  3, 13, 3, 2, small::PADDING_F, 0}
+    };
+    for (LayerParams const &p: params)
+    {
+#if defined(QUANTIZED)
+        TEST_CHECK(true == run_softmax_config<small::QUInt8Buffer>(p));
+#else
+        TEST_CHECK(true == run_softmax_config<small::FloatBuffer>(p));
+#endif
+    }
+}
+
 //****************************************************************************
-void test_averagepool_regression_data(void)
+void test_softmax_layer_regression_data(void)
 {
     std::vector<LayerParams> params =
     {
@@ -375,42 +361,15 @@ void test_averagepool_regression_data(void)
     for (LayerParams const &p: params)
     {
 #if defined(QUANTIZED)
-        TEST_CHECK(true == run_averagepool_config<small::QUInt8Buffer>(p));
+        TEST_CHECK(true == run_softmax_layer_config<small::QUInt8Buffer>(p));
 #else
-        TEST_CHECK(true == run_averagepool_config<small::FloatBuffer>(p));
+        TEST_CHECK(true == run_softmax_layer_config<small::FloatBuffer>(p));
 #endif
     }
 }
 
 //****************************************************************************
-void test_averagepool_layer_regression_data(void)
-{
-    std::vector<LayerParams> params =
-    {
-        {16,  3,  3, 3, 2, small::PADDING_V, 0},  //Ci,Hi,Wi,k,s,p,Co
-        {16,  3, 13, 3, 2, small::PADDING_V, 0},
-
-        {16, 30, 30, 3, 2, small::PADDING_V, 0},
-        {96, 30, 30, 3, 2, small::PADDING_V, 0},
-        {96,  3, 13, 3, 2, small::PADDING_V, 0},
-
-        {16,  3,  3, 3, 2, small::PADDING_F, 0},  //Ci,Hi,Wi,k,s,p,Co
-        {16,  3, 13, 3, 2, small::PADDING_F, 0},
-        {96, 30, 30, 3, 2, small::PADDING_F, 0},
-        {96,  3, 13, 3, 2, small::PADDING_F, 0}
-    };
-    for (LayerParams const &p: params)
-    {
-#if defined(QUANTIZED)
-        TEST_CHECK(true == run_averagepool_layer_config<small::QUInt8Buffer>(p));
-#else
-        TEST_CHECK(true == run_averagepool_layer_config<small::FloatBuffer>(p));
-#endif
-    }
-}
-
-//****************************************************************************
-void measure_averagepool_performance(void)
+void measure_softmax_performance(void)
 {
     // C_i,Hi,Wi,k,s,p,C_o
     std::vector<LayerParams> params =
@@ -453,7 +412,7 @@ void measure_averagepool_performance(void)
     using Buffer = small::FloatBuffer;
 #endif
 
-    printf("\nAveragePool2D(%s) func.\n", type.c_str());
+    printf("\nsoftmax2D(%s) func.\n", type.c_str());
     printf("\tC_i\tH\tW\tk\ts\tnthd\truns\tt_min\tt_max\tt_avg\n");
 
     for (LayerParams const &p: params)
@@ -486,14 +445,14 @@ void measure_averagepool_performance(void)
             double max_t = 0.;
 
             // Warmup
-            small::AveragePool2D(p.k, p.k, p.s, t_pad, b_pad, l_pad, r_pad,
+            small::SoftMax(
                              p.C_i, p.H, p.W,
                              input_dc, output_dc);
 
             for (size_t iy = 0; iy < num_runs; ++iy)
             {
                 t.start();
-                small::AveragePool2D(p.k, p.k, p.s, t_pad, b_pad, l_pad, r_pad,
+                small::SoftMax(
                                  p.C_i, p.H, p.W,
                                  input_dc, output_dc);
                 t.stop();
@@ -510,7 +469,7 @@ void measure_averagepool_performance(void)
         }
     }
 
-    printf("\nAveragePool2D(%s) class\n", type.c_str());
+    printf("\nsoftmax2D(%s) class\n", type.c_str());
     printf("\tC_i\tH\tW\tk\ts\tnthd\truns\tt_min\tt_max\tt_avg\n");
 
     for (LayerParams const &p: params)
@@ -538,8 +497,8 @@ void measure_averagepool_performance(void)
         std::vector<small::Tensor<Buffer>*> outputs;
         outputs.push_back(&output_dc);
 
-        small::AveragePool2DLayer<Buffer>
-            averagepool_layer(input_shape, p.k, p.k, p.s, p.p);
+        small::SoftMaxLayer<Buffer>
+            softmax_layer(input_shape);
 
         for (size_t ix = 0; ix < 3; ++ix)
         {
@@ -552,12 +511,12 @@ void measure_averagepool_performance(void)
             double max_t = 0.;
 
             // Warm up
-            averagepool_layer.compute_output({&input_dc}, &output_dc);
+            softmax_layer.compute_output({&input_dc}, &output_dc);
 
             for (size_t iy = 0; iy < num_runs; ++iy)
             {
                 t.start();
-                averagepool_layer.compute_output({&input_dc}, &output_dc);
+                softmax_layer.compute_output({&input_dc}, &output_dc);
                 t.stop();
                 double ts = t.elapsed();
                 tx += ts;
@@ -576,9 +535,9 @@ void measure_averagepool_performance(void)
 //****************************************************************************
 //****************************************************************************
 TEST_LIST = {
-    {"compute_output", test_compute_averagepool_output},
-    {"averagepool_regression_data",       test_averagepool_regression_data},
-    {"averagepool_layer_regression_data", test_averagepool_layer_regression_data},
-    // {"averagepool_performance", measure_averagepool_performance},
+    {"compute_output", test_compute_softmax_output},
+    {"softmax_regression_data", test_softmax_regression_data},
+    // {"softmax_layer_regression_data", test_softmax_layer_regression_data},
+    // {"softmax_performance", measure_softmax_performance},
     {NULL, NULL}
 };

@@ -17,6 +17,8 @@
 #include <params.h>
 #include <Buffer.hpp>
 
+#include "arm_mathfun.h"
+
 // scalar versions of all the float microkernels for platform portability
 // Use the FLOAT_ prefix for all macros in this file.
 
@@ -57,7 +59,6 @@ typedef float32x4_t c_tile_t;
 // otherwise, FLOAT_SIMD = Neon bit width (128) / data type size.
 
 #define FLOAT_DEF_TILE_C(W_ob, C_ob)                    \
-    float c_tile[W_ob * C_ob];                          \
     float32x4_t c_tile_v[W_ob * (C_ob / FLOAT_SIMD)];
 
 #define FLOAT_DEF_END_C(W_ob, C_ob)                             \
@@ -690,6 +691,60 @@ typedef float32x4_t c_tile_t;
     }                                                            \
     }
 #endif
+
+//****************************************************************************
+// Softmax  (Ewise exponentiation)
+//****************************************************************************
+
+#define FLOAT_EXP_TILE_C(step, a, W_ob, C_ob)    \
+  float32x4_t av;                                                \
+  float const * a_pixel = a;\
+  av = vld1q_f32(a_pixel);                                     \
+  float32x4_t *c_cur = c_cur;                                   \
+  for (uint32_t kk = 0; kk < W_ob; kk++)                       \
+  {                                                              \
+    for (uint32_t jj = 0; jj < C_ob / FLOAT_SIMD; jj++)          \
+    {                                                            \
+      c_cur[(kk) * (C_ob / FLOAT_SIMD) + jj] = (av); \
+      av = vld1q_f32(a_pixel + jj * FLOAT_SIMD);\
+    }                                                            \
+       a_pixel += step;\
+}
+
+#if SIMD_EPILOGUE == 1
+#define FLOAT_EXP_END_C(step, a, c_cur, W_last, C_ob) \
+    c_tile_t *c_pixel = c_cur;                        \
+    c_tile_t const *a_pixel = a;                      \
+    for (uint32_t kk = 0; kk < W_last; kk++)          \
+    {                                                 \
+        c_tile_t *c_channel = c_pixel;                \
+        c_tile_t const *a_channel = a_pixel;          \
+        for (uint32_t jj = 0; jj < C_ob; jj++)        \
+        {                                             \
+            *(c_channel) = std::exp(*a_channel);      \
+            c_channel++;                              \
+            a_channel++;                              \
+        }                                             \
+        a_pixel += step;                              \
+        c_pixel += C_ob;                              \
+    }
+#else
+#define FLOAT_EXP_END_C(step, a, c_cur, W_last, C_ob) \
+  float32x4_t av;                                                \
+  float const * a_pixel = a;\
+  av = vld1q_f32(a_pixel);                                     \
+  float32x4_t *c_cur = c_cur;                                   \
+  for (uint32_t kk = 0; kk < W_last; kk++)                       \
+  {                                                              \
+    for (uint32_t jj = 0; jj < C_ob / FLOAT_SIMD; jj++)          \
+    {                                                            \
+      c_cur[(kk) * (C_ob / FLOAT_SIMD) + jj] = (av); \
+      av = vld1q_f32(a_pixel + jj * FLOAT_SIMD);\
+    }                                                            \
+       a_pixel += step;\
+}
+#endif
+
 //****************************************************************************
 // AVG Pooling
 //****************************************************************************
