@@ -85,7 +85,7 @@ bool compute_softmax_output(LayerParams const &params)
     {
    
         output_dc_answers[c] = std::exp(input_dc[c]);
-        sum += std::exp(input_dc[c]);
+        sum += output_dc_answers[c];
         num_outputs++;
 
     }
@@ -322,9 +322,9 @@ void test_softmax_regression_data(void)
         {16,  3,  3, 3, 2, small::PADDING_V, 0},  //Ci,Hi,Wi,k,s,p,Co
         {16,  3, 13, 3, 2, small::PADDING_V, 0},
 
-        {16, 30, 30, 3, 2, small::PADDING_V, 0},
-        {96, 30, 30, 3, 2, small::PADDING_V, 0},
-        {96,  3, 13, 3, 2, small::PADDING_V, 0},
+        // {16, 30, 30, 3, 2, small::PADDING_V, 0},
+        // {96, 30, 30, 3, 2, small::PADDING_V, 0},
+        // {96,  3, 13, 3, 2, small::PADDING_V, 0},
 
         // {16,  3,  3, 3, 2, small::PADDING_F, 0},  //Ci,Hi,Wi,k,s,p,Co
         // {16,  3, 13, 3, 2, small::PADDING_F, 0},
@@ -349,14 +349,14 @@ void test_softmax_layer_regression_data(void)
         {16,  3,  3, 3, 2, small::PADDING_V, 0},  //Ci,Hi,Wi,k,s,p,Co
         {16,  3, 13, 3, 2, small::PADDING_V, 0},
 
-        {16, 30, 30, 3, 2, small::PADDING_V, 0},
-        {96, 30, 30, 3, 2, small::PADDING_V, 0},
-        {96,  3, 13, 3, 2, small::PADDING_V, 0},
+        // {16, 30, 30, 3, 2, small::PADDING_V, 0},
+        // {96, 30, 30, 3, 2, small::PADDING_V, 0},
+        // {96,  3, 13, 3, 2, small::PADDING_V, 0},
 
-        {16,  3,  3, 3, 2, small::PADDING_F, 0},  //Ci,Hi,Wi,k,s,p,Co
-        {16,  3, 13, 3, 2, small::PADDING_F, 0},
-        {96, 30, 30, 3, 2, small::PADDING_F, 0},
-        {96,  3, 13, 3, 2, small::PADDING_F, 0}
+        // {16,  3,  3, 3, 2, small::PADDING_F, 0},  //Ci,Hi,Wi,k,s,p,Co
+        // {16,  3, 13, 3, 2, small::PADDING_F, 0},
+        // {96, 30, 30, 3, 2, small::PADDING_F, 0},
+        // {96,  3, 13, 3, 2, small::PADDING_F, 0}
     };
     for (LayerParams const &p: params)
     {

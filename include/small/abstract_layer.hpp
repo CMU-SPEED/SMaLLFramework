@@ -844,7 +844,7 @@ enum OP_TYPE
     // Deriving padding parameters
 
     //  To calculate offsets to next output row, next output block
-    // @todo fix this in small::output_dim
+    // @todo fix this in small::output_dim_new
     dim_t H_o_w_pad, W_o_w_pad;
     if constexpr (op_type == UPSAMPLE)
     {
@@ -861,9 +861,9 @@ enum OP_TYPE
     }
     else
     {
-        H_o_w_pad = small::output_dim((I_h + pad_top + pad_bottom),
+        H_o_w_pad = small::output_dim_new((I_h + pad_top + pad_bottom),
                                       _stride, F_h);
-        W_o_w_pad = small::output_dim((I_w + pad_left + pad_right),
+        W_o_w_pad = small::output_dim_new((I_w + pad_left + pad_right),
                                       _stride, F_w);
     }
     const dim_t O_h_w_pad = H_o_w_pad;
@@ -884,8 +884,8 @@ enum OP_TYPE
     }
     else
     {
-        H_o      = small::output_dim((I_h - H_full_index), _stride, F_h);
-        W_o_full = small::output_dim((I_w - W_full_index), _stride, F_w);
+        H_o      = small::output_dim_new((I_h - H_full_index), _stride, F_h);
+        W_o_full = small::output_dim_new((I_w - W_full_index), _stride, F_w);
     }
 
     // back padding elements
@@ -899,9 +899,9 @@ enum OP_TYPE
     }
     else
     {
-        b_pad_el = small::output_dim((I_h + pad_bottom - H_back_index),
+        b_pad_el = small::output_dim_new((I_h + pad_bottom - H_back_index),
                                      _stride, F_h);
-        r_pad_el = small::output_dim((I_w + pad_right - W_back_index),
+        r_pad_el = small::output_dim_new((I_w + pad_right - W_back_index),
                                      _stride, F_w);
     }
 
