@@ -22,4 +22,4 @@ Note:
     - Error message: `uint32_t small::convert_tensor2dc(const ScalarT*, small::BufferTypeEnum, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, ScalarT*) [with ScalarT = float; uint32_t = unsigned int]: Assertion 'C_i == 3' failed.`
 
 - autencoder
-    - seg faults
+    - seg faults, not exactly sure why
