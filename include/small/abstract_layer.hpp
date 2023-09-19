@@ -195,8 +195,8 @@ enum OP_TYPE
             dim_t H_ub = 0)
         {
             constexpr dim_t _C_ob = _G_b * _K_b;
-            constexpr dim_t _C_ib = _G_b * _F_cb;
-            constexpr dim_t step = _stride * _C_ib;
+            // constexpr dim_t _C_ib = _G_b * _F_cb;
+            // constexpr dim_t step = _stride * _C_ib;
 
             const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
             FLOAT_DEF_END_C(_O_wb, _C_ob);
@@ -380,9 +380,7 @@ enum OP_TYPE
                 FLOAT_LOAD_TILE_C(O, _O_wb, _C_ob);
             }
 
-            // int updates = 0;
-            // uint32_t step = _C_ob;//stride*_C_ob;
-            // int count = 0;
+
             for (uint32_t n = H_lb; n < H_UPPER; n++)
             {
                 int filter_offset_h = n * F_w * _F_cb * _G_b * _K_b;
@@ -789,9 +787,9 @@ enum OP_TYPE
             dim_t pad_right,
             dim_t pad_bottom,
 
-            BufferT const *__restrict__ I, // Data
+            BufferT const */*__restrict__*/ I, // Data
             BufferT const *__restrict__ F,
-            BufferT *__restrict__ O)
+            BufferT */*__restrict__*/ O)
         {
             using ScalarT = typename BufferT::value_type;
             using AccumT = typename BufferT::accum_type;
@@ -915,8 +913,9 @@ enum OP_TYPE
     const dim_t O_w_left = O_w - O_w_full;
     const dim_t O_hxO_w = O_h_w_pad * O_w_w_pad;
 
-    const dim_t K_full = (K / _K_b) * _K_b;
-    const dim_t K_left = K - K_full;
+    // When the number of channels is not a multiple of blocking size
+    // const dim_t K_full = (K / _K_b) * _K_b;
+    // const dim_t K_left = K - K_full;
 
     // printf("%d %d\n", F_h, F_w);
 #if DEBUG == 1
