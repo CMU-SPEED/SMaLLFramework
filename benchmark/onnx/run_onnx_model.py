@@ -160,23 +160,33 @@ def run_onnx_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT):
     np.save("input.npy", model_input)
     
     # run pytorch model and get fps
-    pytorch_time = run_pytorch_model(onnx_model_path, "input.npy", False)    
+    pytorch_time = run_pytorch_model(onnx_model_path, "input.npy", False)  
+    outputs_torch = np.load("pytorch_output.npy")
+    
+    # pack output for comparision
+    outputs_torch_packed = outputs_torch.copy()
+    if(len(outputs_torch_packed.shape) == 4):
+        _, oc, oh, ow = outputs_torch_packed.shape
+        pack(outputs_torch_packed, 1, oc, oh, ow, OUTPUT)  
     
     # run small model and get fps out of 10000 runs
     # it is assumed that pytorch will also get the best fps out of 10000 runs
     total_time = 0
     best_time = 1e9
-    RUNS = 10000
+    RUNS = 500
     for _ in range(RUNS):
         s = time.time()
         outputs = session.run(input=[model_input])
         e = time.time()
         total_time += (e-s)
         best_time = min(best_time, e-s)
+        
+    passed = np.allclose(outputs[0], outputs_torch_packed, atol=1e-5)
+    passed_str = colored("PASSED", "green") if passed else colored("FAILED", "red")
     
-    small_fps = input_dims[0]/best_time
-    print("small, pytorch")
-    print(f"{best_time}, {pytorch_time}, {pytorch_time/best_time}")
+    # small_fps = input_dims[0]/best_time
+    print("\nsmall, pytorch, pytorch/small, correctness")
+    print(f"{best_time}, {pytorch_time}, {pytorch_time/best_time}, {passed_str}")
         
 
 
@@ -216,7 +226,6 @@ def run_onnx_model_correctness(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT):
     outputs_torch = np.load("pytorch_output.npy")
     
     # pack output for comparision
-   
     outputs_torch_packed = outputs_torch.copy()
     if(len(outputs_torch_packed.shape) == 4):
         _, oc, oh, ow = outputs_torch_packed.shape
@@ -228,13 +237,6 @@ def run_onnx_model_correctness(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT):
     model_input_packed = np.ravel(model_input_packed.transpose(0, 3, 1, 2), order='C')
     pack(model_input_packed, 1, ic, ih, iw, INPUT)
     model_input_packed = model_input_packed.reshape(1, ih, iw, ic)
-    # model_input_packed = np.ravel(model_input_packed.reshape(1, ih, iw, ic).transpose(0, 3, 1, 2)).reshape(1, ih, iw, ic)
-    # _, ic, ih, iw = model_input_packed.shape
-    # print(model_input_packed.shape)
-    # model_input_packed.transpose()
-     
-    # for _ in range(100):
-    #     outputs = session.run(input=[model_input_packed])
     
     # run small model and get outputs
     s = time.time()
@@ -244,7 +246,7 @@ def run_onnx_model_correctness(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT):
     # compare outputs
     passed = np.allclose(outputs[0], outputs_torch_packed, atol=1e-5)
     passed_str = colored("PASSED", "green") if passed else colored("FAILED", "red")
-    print(f"{onnx_model_so_colored} {passed_str}")
+    # print(f"\n{onnx_model_so_colored} {passed_str}")
     if not passed:
         print("small: ")
         print(outputs[0], outputs[0].shape)
@@ -253,7 +255,8 @@ def run_onnx_model_correctness(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT):
         max_abs_diff = np.max(np.abs(outputs[0] - outputs_torch_packed))
         print("max abs diff: ", max_abs_diff)
     else:
-        print(f"{e-s}, {pytorch_time}, {pytorch_time/(e-s)}")
+        print("\nsmall, pytorch, pytorch/small, correctness")
+        print(f"{e-s}, {pytorch_time}, {pytorch_time/(e-s)}, {passed_str}")
 
 #*------------------------------------------------------------------------------- 
 def get_args(): 

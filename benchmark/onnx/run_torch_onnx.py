@@ -25,14 +25,16 @@ import argparse
 import torch
 from torch import nn
 import onnx
-from onnx2pytorch import ConvertModel
+# from onnx2pytorch import ConvertModel
+from onnx2torch import convert
 
 #*-------------------------------------------------------------------------------
 # Convert ONNX model to PyTorch model
 # assumes dependency on onnx2pytorch
 def convert_onnx_2_pytorch(onnx_model_path):
     onnx_model_loaded = onnx.load(onnx_model_path)
-    pytorch_model = ConvertModel(onnx_model_loaded)
+    # pytorch_model = ConvertModel(onnx_model_loaded)
+    pytorch_model = convert(onnx_model_loaded)
     # print(pytorch_model)
     # exit(-1)
     return pytorch_model
@@ -48,7 +50,7 @@ def run_onnx_model_performance(onnx_model_path, input_file):
 
     total_time = 0
     best_time = 1e9
-    RUNS = 10000
+    RUNS = 500
     for _ in range(RUNS):
         s = time.time()
         outputs = pytorch_model(input_torch)
@@ -56,33 +58,27 @@ def run_onnx_model_performance(onnx_model_path, input_file):
         total_time += (e-s)
         best_time = min(best_time, e-s)
         
+    outputs = outputs.detach().numpy() 
+    np.save("pytorch_output.npy", outputs)
+        
     print(f"{best_time}")
 
 #*-------------------------------------------------------------------------------
 # Run ONNX model for correctness
 # save outputs to pytorch_output.npy
 def run_onnx_model_correctness(onnx_model_path, input_file):
-    
-    onnx_model_loaded = onnx.load(onnx_model_path)
-    pytorch_model = ConvertModel(onnx_model_loaded)
-    # print(pytorch_model)
+
+    pytorch_model = convert_onnx_2_pytorch(onnx_model_path)
     
     l = [module for module in pytorch_model.modules() if not isinstance(module, nn.Sequential)]
-    # print(l)
     
     input_np = np.load(input_file)
     
     input_torch = torch.from_numpy(input_np)
     
-    # warm up run
-    # for _ in range(50):
-    #     outputs = pytorch_model(input_torch)
-    
     s = time.time()
     outputs = pytorch_model(input_torch)
     e = time.time()
-    
-    # print(outputs)
     
     outputs = outputs.detach().numpy() 
     np.save("pytorch_output.npy", outputs)
