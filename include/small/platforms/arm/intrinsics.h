@@ -696,7 +696,7 @@ typedef float32x4_t c_tile_t;
 // Softmax  (Ewise exponentiation)
 //****************************************************************************
 
-#define FLOAT_EXP_TILE_C(step, a, W_ob, C_ob) \
+/*#define FLOAT_EXP_TILE_C(step, a, W_ob, C_ob) \
     float32x4_t a_0, a_1, a_2, a_3;           \
     float const *a_pixel = a;                 \
     a_0 = vld1q_f32(a_pixel + 0 * FLOAT_SIMD);      \
@@ -733,6 +733,31 @@ typedef float32x4_t c_tile_t;
     c_5_1 = exp_ps(a_1);      \
     c_5_2 = exp_ps(a_2);      \
     c_5_3 = exp_ps(a_3);      \
+*/
+
+#define FLOAT_EXP_TILE_C(step, a, W_ob, C_ob)                  \
+    float c_tile_scalar[FLOAT_W_ob * FLOAT_C_ob];                  \
+    float *c_pixel = c_tile_scalar;                                \
+    float const *a_pixel = a;                               \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                     \
+    {                                                          \
+        float *c_channel = c_pixel;                         \
+        float const *a_channel = a_pixel;                   \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                 \
+        {                                                      \
+            *(c_channel) = std::exp(*a_channel);               \
+            c_channel++;                                       \
+            a_channel++;                                       \
+        }                                                      \
+        a_pixel += step;                                       \
+        c_pixel += C_ob;                                       \
+    }                                                          \
+    c_0_0 = vld1q_f32(c_tile_scalar + 0 * C_ob + 0 * FLOAT_SIMD);    c_0_1 = vld1q_f32(c_tile_scalar + 0 * C_ob + 1 * FLOAT_SIMD);     c_0_2 = vld1q_f32(c_tile_scalar + 0 * C_ob + 2 * FLOAT_SIMD);    c_0_3 = vld1q_f32(c_tile_scalar + 0 * C_ob + 3 * FLOAT_SIMD);   \
+    c_1_0 = vld1q_f32(c_tile_scalar + 1 * C_ob + 0 * FLOAT_SIMD);    c_1_1 = vld1q_f32(c_tile_scalar + 1 * C_ob + 1 * FLOAT_SIMD);     c_1_2 = vld1q_f32(c_tile_scalar + 1 * C_ob + 2 * FLOAT_SIMD);    c_1_3 = vld1q_f32(c_tile_scalar + 1 * C_ob + 3 * FLOAT_SIMD);   \
+    c_2_0 = vld1q_f32(c_tile_scalar + 2 * C_ob + 0 * FLOAT_SIMD);    c_2_1 = vld1q_f32(c_tile_scalar + 2 * C_ob + 1 * FLOAT_SIMD);     c_2_2 = vld1q_f32(c_tile_scalar + 2 * C_ob + 2 * FLOAT_SIMD);    c_2_3 = vld1q_f32(c_tile_scalar + 2 * C_ob + 3 * FLOAT_SIMD);   \
+    c_3_0 = vld1q_f32(c_tile_scalar + 3 * C_ob + 0 * FLOAT_SIMD);    c_3_1 = vld1q_f32(c_tile_scalar + 3 * C_ob + 1 * FLOAT_SIMD);     c_3_2 = vld1q_f32(c_tile_scalar + 3 * C_ob + 2 * FLOAT_SIMD);    c_3_3 = vld1q_f32(c_tile_scalar + 3 * C_ob + 3 * FLOAT_SIMD);   \
+    c_4_0 = vld1q_f32(c_tile_scalar + 4 * C_ob + 0 * FLOAT_SIMD);    c_4_1 = vld1q_f32(c_tile_scalar + 4 * C_ob + 1 * FLOAT_SIMD);     c_4_2 = vld1q_f32(c_tile_scalar + 4 * C_ob + 2 * FLOAT_SIMD);    c_4_3 = vld1q_f32(c_tile_scalar + 4 * C_ob + 3 * FLOAT_SIMD);   \
+    c_5_0 = vld1q_f32(c_tile_scalar + 5 * C_ob + 0 * FLOAT_SIMD);    c_5_1 = vld1q_f32(c_tile_scalar + 5 * C_ob + 1 * FLOAT_SIMD);     c_5_2 = vld1q_f32(c_tile_scalar + 5 * C_ob + 2 * FLOAT_SIMD);    c_5_3 = vld1q_f32(c_tile_scalar + 5 * C_ob + 3 * FLOAT_SIMD);   
 
 
 #if SIMD_EPILOGUE == 1
@@ -753,7 +778,7 @@ typedef float32x4_t c_tile_t;
         c_pixel += C_ob;                              \
     }
 #else
-#define FLOAT_EXP_END_C(step, a, c_cur, W_last, C_ob) \
+/*#define FLOAT_EXP_END_C(step, a, c_cur, W_last, C_ob) \
   float32x4_t av;                                                \
   float const * a_pixel = a;\
   av = vld1q_f32(a_pixel);                                     \
@@ -766,7 +791,27 @@ typedef float32x4_t c_tile_t;
       av = vld1q_f32(a_pixel + jj * FLOAT_SIMD);\
     }                                                            \
        a_pixel += step;\
-}
+}*/
+
+#define FLOAT_EXP_END_C(step, a, c_cur, W_last, C_ob) \
+    float c_tile_scalar[FLOAT_W_ob * FLOAT_C_ob];                  \
+    float *c_pixel = c_tile_scalar;                                \
+    float const *a_pixel = a;                               \
+    for (uint32_t kk = 0; kk < W_last; kk++)                     \
+    {                                                          \
+        float *c_channel = c_pixel;                         \
+        float const *a_channel = a_pixel;                   \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                 \
+        {                                                      \
+            *(c_channel) = std::exp(*a_channel);               \
+            c_channel++;                                       \
+            a_channel++;                                       \
+        }                                                      \
+        c_cur[kk * (C_ob/FLOAT_SIMD) + 0] = vld1q_f32(c_pixel + 0 * FLOAT_SIMD);    c_cur[kk * (C_ob/FLOAT_SIMD) + 1] = vld1q_f32(c_pixel + 1 * FLOAT_SIMD);     c_cur[kk * (C_ob/FLOAT_SIMD) + 2] = vld1q_f32(c_pixel + 2 * FLOAT_SIMD);    c_cur[kk * (C_ob/FLOAT_SIMD) + 3] = vld1q_f32(c_pixel + 3 * FLOAT_SIMD); \
+        a_pixel += step;                                       \
+        c_pixel += C_ob;                                       \
+    }                                                          \
+
 #endif
 
 //****************************************************************************

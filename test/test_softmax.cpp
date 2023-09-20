@@ -90,12 +90,12 @@ bool compute_softmax_output(LayerParams const &params)
 
     }
 
-    for (size_t c = 0; c < params.C_i * params.H * params.W; ++c)
-    {
+    // for (size_t c = 0; c < params.C_i * params.H * params.W; ++c)
+    // {
    
-        output_dc_answers[c] /= sum;
+    //     output_dc_answers[c] /= sum;
 
-    }
+    // }
 
     std::cerr << "num_outputs = " << num_outputs << std::endl;
     std::cerr << "..should be = " << (params.C_i*Ho*Wo) << std::endl;
@@ -202,7 +202,7 @@ bool run_softmax_config(LayerParams const &params)
     for (size_t ix = 0; ix < packed_output_dc_answers.size(); ++ix)
     {
         //if (packed_output_dc[ix] != packed_output_dc_answers[ix])
-        printf("%f %f\n", packed_output_dc[ix], packed_output_dc_answers[ix]);
+        // printf("%f %f\n", packed_output_dc[ix], packed_output_dc_answers[ix]);
         if (!almost_equal(packed_output_dc[ix], packed_output_dc_answers[ix]))
         {
             passing = false;
@@ -323,9 +323,9 @@ void test_softmax_regression_data(void)
         {16,  3,  3, 3, 2, small::PADDING_V, 0},  //Ci,Hi,Wi,k,s,p,Co
         {16,  3, 13, 3, 2, small::PADDING_V, 0},
 
-        // {16, 30, 30, 3, 2, small::PADDING_V, 0},
-        // {96, 30, 30, 3, 2, small::PADDING_V, 0},
-        // {96,  3, 13, 3, 2, small::PADDING_V, 0},
+        {16, 30, 30, 3, 2, small::PADDING_V, 0},
+        {96, 30, 30, 3, 2, small::PADDING_V, 0},
+        {96,  3, 13, 3, 2, small::PADDING_V, 0},
 
         // {16,  3,  3, 3, 2, small::PADDING_F, 0},  //Ci,Hi,Wi,k,s,p,Co
         // {16,  3, 13, 3, 2, small::PADDING_F, 0},
