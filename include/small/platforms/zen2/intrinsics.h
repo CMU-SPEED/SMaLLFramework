@@ -560,6 +560,37 @@ typedef small::FloatBuffer::value_type c_tile_t;
     }
 
 //****************************************************************************
+// Accumulate upsampling
+//****************************************************************************
+#define FLOAT_ACCUM_TILE_C_upsample(I, stride, _C_ib, _W_ob, C_ob)  \
+    a_reg = _mm256_load_ps(I + ((0 / stride) * (_C_ib)));              \
+    c12 = _mm256_load_ps(I + ((0 / stride) * (_C_ib) + FLOAT_SIMD)); \
+    b0 = _mm256_load_ps(I + ((1 / stride) * (_C_ib)));              \
+    b1 = _mm256_load_ps(I + ((1 / stride) * (_C_ib) + FLOAT_SIMD)); \
+    c0 = _mm256_add_ps(c0, a_reg); a_reg = _mm256_load_ps(I + ((2 / stride) * (_C_ib))); \
+    c1 = _mm256_add_ps(c1, c12); c12 = _mm256_load_ps(I + ((2 / stride) * (_C_ib) + FLOAT_SIMD));\
+    c2 = _mm256_add_ps(c2, b0); b0 =_mm256_load_ps(I + ((3 / stride) * (_C_ib)));  \
+    c3 = _mm256_add_ps(c3, b1); b1 = _mm256_load_ps(I + ((3 / stride) * (_C_ib) + FLOAT_SIMD));\
+    c4 = _mm256_add_ps(c4, a_reg); a_reg = _mm256_load_ps(I + ((4 / stride) * (_C_ib))); \
+    c5 = _mm256_add_ps(c5, c12); c12 = _mm256_load_ps(I + ((4 / stride) * (_C_ib) + FLOAT_SIMD));\
+    c6 = _mm256_add_ps(c6, b0); b0 =_mm256_load_ps(I + ((5 / stride) * (_C_ib)));  \
+    c7 = _mm256_add_ps(c7, b1); b1 = _mm256_load_ps(I + ((5 / stride) * (_C_ib) + FLOAT_SIMD));\
+    c8 = _mm256_add_ps(c8, a_reg); \
+    c9 = _mm256_add_ps(c9, c12);\
+    c10 = _mm256_add_ps(c10, b0); \
+    c11 = _mm256_add_ps(c11, b1);
+
+#define FLOAT_ACCUM_END_C_upsample(I, stride, _C_ib, _W_ob, C_ob)      \
+    printf("stride: %u\n", stride);\
+    for (uint32_t kk = 0; kk < _W_ob; kk++)                            \
+    {                                                                  \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                         \
+        {                                                              \
+            c_tile[kk * C_ob + jj] += I[(kk / stride) * (_C_ib) + jj]; \
+        }                                                              \
+    }
+
+//****************************************************************************
 // FMA unused?
 //****************************************************************************
 

@@ -1408,6 +1408,55 @@ void Bias<FloatBuffer>(int num_channels,
 
 //****************************************************************************
 //****************************************************************************
+// init a buffer with bias values, 1 per channel
+template <class BufferT>
+void PartialBias(int num_channels,
+          int output_height, int output_width,
+          BufferT const &input_buf,
+          BufferT &output_buf)
+{
+    BufferT::unimplemented_function();
+}
+
+//============================================================================
+#if defined(SMALL_HAS_FLOAT_SUPPORT)
+    template <>
+    void PartialBias<FloatBuffer>(int num_channels,
+                           int output_height, int output_width,
+                           FloatBuffer const &input_buf,
+                           FloatBuffer &output_buf)
+    {
+#if defined(RECORD_CALLS)
+        std::cout << "PartialBias<float>(chans:" << num_channels
+                  << ",img:" << output_height << "x" << output_width
+                  << ",I,O)\n";
+#endif
+
+        if (num_channels % FLOAT_C_ob == 0)
+        {
+            detail::abstract_layer<
+                FloatBuffer, FLOAT_C_ob, 1, 1,
+                FLOAT_W_ob, std::numeric_limits<dim_t>::max(), 1, detail::UPSAMPLE, 0, 0>(
+                num_channels, // Output Channel Grouping
+                1,            // Output Channels per group
+                1,
+                output_height, output_width,
+                1, 1,
+                0, 0, 0, 0,
+                &input_buf, (FloatBuffer *)nullptr, &output_buf);
+        }
+        else
+        {
+            throw std::invalid_argument(
+                "PartialBias<float> ERROR: in_channels unsupported.");
+        }
+    }
+#endif
+
+    /// @todo PartialBias<QUInt8Buffer>(..) implementation
+
+//****************************************************************************
+//****************************************************************************
 template <class BufferT>
 void Concat(uint32_t input0_channels,
             uint32_t input1_channels,

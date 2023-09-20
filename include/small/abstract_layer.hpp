@@ -117,7 +117,8 @@ enum OP_TYPE
     else if constexpr (op_type == EXP)                                                   \
     {                                                                                    \
         FLOAT_EXP_END_C(step, a_cur, c_cur,  W_elements, _C_ob)\
-}
+    }
+
 
         //****************************************************************************
         template <typename ScalarT,
@@ -297,6 +298,10 @@ enum OP_TYPE
             else
             {
                 FLOAT_LOAD_TILE_C(O, _O_wb, _C_ob);
+                if constexpr (op_type == UPSAMPLE)
+                {
+                    FLOAT_ACCUM_TILE_C_upsample(I, _stride, _C_ib, _O_wb, _C_ob);
+                }
                 //@todo support reduction tree-like kernel (for global reductions)
             }
 
@@ -466,6 +471,10 @@ enum OP_TYPE
                 else
                 {
                     FLOAT_LOAD_END_C(O, O_w_left, _C_ob);
+                    if constexpr (op_type == UPSAMPLE)
+                    {
+                        FLOAT_ACCUM_END_C_upsample(I, _stride, _C_ib, O_w_left, _C_ob)
+                    }
                 }
 
                 compute_with_padding<ScalarT, AccumT,

@@ -815,6 +815,68 @@ typedef float32x4_t c_tile_t;
 #endif
 
 //****************************************************************************
+// Accumulate upsampling
+//****************************************************************************
+
+//@todo build and test this on arm platform
+
+#define FLOAT_ACCUM_TILE_C_upsample(I, stride, _C_ib, _W_ob, C_ob) \
+    float32x4_t a_0, a_1, a_2, a_3;\
+    a_0 = vld1q_f32(I + (0 / stride) * C_ob + 0 * FLOAT_SIMD);  \
+    a_1 = vld1q_f32(I + (0 / stride) * C_ob + 1 * FLOAT_SIMD);  \
+    a_2 = vld1q_f32(I + (0 / stride) * C_ob + 2 * FLOAT_SIMD);  \
+    a_3 = vld1q_f32(I + (0 / stride) * C_ob + 3 * FLOAT_SIMD);  \
+    c_0_0 = vaddq_f32(c_0_0, a_0);a_0 = vld1q_f32(I + (1 / stride) * C_ob + 0 * FLOAT_SIMD);  \
+    c_0_1 = vaddq_f32(c_0_1, a_1);a_1 = vld1q_f32(I + (1 / stride) * C_ob + 1 * FLOAT_SIMD);  \
+    c_0_2 = vaddq_f32(c_0_2, a_2);a_2 = vld1q_f32(I + (1 / stride) * C_ob + 2 * FLOAT_SIMD);  \
+    c_0_3 = vaddq_f32(c_0_3, a_3);a_3 = vld1q_f32(I + (1 / stride) * C_ob + 3 * FLOAT_SIMD);  \
+    c_1_0 = vaddq_f32(c_1_0, a_0);a_0 = vld1q_f32(I + (2 / stride) * C_ob + 0 * FLOAT_SIMD);  \
+    c_1_1 = vaddq_f32(c_1_1, a_1);a_1 = vld1q_f32(I + (2 / stride) * C_ob + 1 * FLOAT_SIMD);  \
+    c_1_2 = vaddq_f32(c_1_2, a_2);a_2 = vld1q_f32(I + (2 / stride) * C_ob + 2 * FLOAT_SIMD);  \
+    c_1_3 = vaddq_f32(c_1_3, a_3);a_3 = vld1q_f32(I + (2 / stride) * C_ob + 3 * FLOAT_SIMD);  \
+    c_2_0 = vaddq_f32(c_2_0, a_0);a_0  = vld1q_f32(I + (3 / stride) * C_ob + 0 * FLOAT_SIMD);  \
+    c_2_1 = vaddq_f32(c_2_1, a_1);a_1  = vld1q_f32(I + (3 / stride) * C_ob + 1 * FLOAT_SIMD);  \
+    c_2_2 = vaddq_f32(c_2_2, a_2);a_2  = vld1q_f32(I + (3 / stride) * C_ob + 2 * FLOAT_SIMD);  \
+    c_2_3 = vaddq_f32(c_2_3, a_3);a_3  = vld1q_f32(I + (3 / stride) * C_ob + 3 * FLOAT_SIMD);  \
+    c_3_0 = vaddq_f32(c_3_0, a_0);a_0  = vld1q_f32(I + (4 / stride) * C_ob + 0 * FLOAT_SIMD);  \
+    c_3_1 = vaddq_f32(c_3_1, a_1);a_1  = vld1q_f32(I + (4 / stride) * C_ob + 1 * FLOAT_SIMD);  \
+    c_3_2 = vaddq_f32(c_3_2, a_2);a_2  = vld1q_f32(I + (4 / stride) * C_ob + 2 * FLOAT_SIMD);  \
+    c_3_3 = vaddq_f32(c_3_3, a_3);a_3  = vld1q_f32(I + (4 / stride) * C_ob + 3 * FLOAT_SIMD);  \
+    c_4_0 = vaddq_f32(c_4_0, a_0);a_0 = vld1q_f32(I + (5 / stride) * C_ob + 0 * FLOAT_SIMD);  \
+    c_4_1 = vaddq_f32(c_4_1, a_1);a_1 = vld1q_f32(I + (5 / stride) * C_ob + 1 * FLOAT_SIMD);  \
+    c_4_2 = vaddq_f32(c_4_2, a_2);a_2 = vld1q_f32(I + (5 / stride) * C_ob + 2 * FLOAT_SIMD);  \
+    c_4_3 = vaddq_f32(c_4_3, a_3);a_3 = vld1q_f32(I + (5 / stride) * C_ob + 3 * FLOAT_SIMD);
+    c_5_0 = vaddq_f32(c_5_0, a_0);\ 
+    c_5_1 = vaddq_f32(c_5_1, a_1);\ 
+    c_5_2 = vaddq_f32(c_5_2, a_2);\ 
+    c_5_3 = vaddq_f32(c_5_3, a_3);
+    
+#if FLOAT_SIMD_EPILOGUE == 1
+#define FLOAT_ACCUM_END_C_upsample(I, stride, _C_ib, _W_ob, C_ob)      \
+    for (uint32_t kk = 0; kk < _W_ob; kk++)                           \
+    {                                                                 \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                        \
+        {                                                             \
+            c_tile[kk * C_ob + jj] += I[(kk / stride) * (_C_ib) + jj]; \
+        }                                                             \
+    }
+
+#else
+
+#define FLOAT_ACCUM_END_C_upsample(I, stride, _C_ib, _W_ob, C_ob)                                     \
+    c_tile_t av;                                                                                      \
+    for (uint32_t kk = 0; kk < _W_ob; kk++)                                                           \
+    {                                                                                                 \
+        for (uint32_t jj = 0; jj < C_ob / FLOAT_SIMD; jj++)                                           \
+        {                                                                                             \
+            av =                                                                                      \
+                vld1q_f32(I + (kk / stride) * (_C_ib) + jj * FLOAT_SIMD);                             \
+            c_tile[kk * (C_ob / FLOAT_SIMD) + jj] = vaddq_f32(c_tile[kk * (C_ob / FLOAT_SIMD) + jj], av); \
+        }                                                                                             \
+    }
+#endif
+
+//****************************************************************************
 // AVG Pooling
 //****************************************************************************
 // TODO: is this tested?
