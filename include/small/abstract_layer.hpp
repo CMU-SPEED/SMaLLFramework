@@ -414,9 +414,8 @@ void inline kernel_pad(
     if (op_type == AVERAGE_POOL)
     {
         float norm = 1.0 / (1.0 * F_h * F_w);
-        FLOAT_DIV_TILE_C(norm, _O_wb, _C_ob)
-            }
-
+        FLOAT_DIV_TILE_C(norm, _O_wb, _C_ob);
+    }
     FLOAT_STORE_TILE_C(O, _O_wb, _C_ob);
 }
 
@@ -492,8 +491,8 @@ void inline kernel_right(
         if (op_type == AVERAGE_POOL)
         {
             float norm = 1.0 / (1.0 * F_h * F_w);
-            FLOAT_DIV_END_C(c_tile, norm, O_w_left, _C_ob)
-                }
+            FLOAT_DIV_END_C(c_tile, norm, O_w_left, _C_ob);
+        }
 
 
         FLOAT_STORE_END_C(O, O_w_left, _C_ob);
@@ -545,8 +544,8 @@ void inline kernel_right(
     if (op_type == AVERAGE_POOL)
     {
         float norm = 1.0 / (1.0 * F_h * F_w);
-        FLOAT_DIV_END_C(c_tile, norm, r_pad_el, _C_ob)
-            }
+        FLOAT_DIV_END_C(c_tile, norm, r_pad_el, _C_ob);
+    }
 
     FLOAT_STORE_END_C(O_ptr, r_pad_el, _C_ob);
 }
@@ -778,7 +777,7 @@ template <typename BufferT,
           dim_t _O_wb,
           dim_t _stride,
           dim_t _UNROLL,
-          OP_TYPE op_type,        // 'c' (conv,dense), 'p' (pool), 'u' (upsample), a' (relu activation), 'l' (leaky relu activation), or 'd' (accumulate)
+          OP_TYPE op_type,
           int8_t op_class,     //  2  (conv),  1  (dense,pool), or '0' (activation, upsample)
           bool rewrite_output> // 0 (partial conv, accum), 1 (otherwise)
 void abstract_layer(
