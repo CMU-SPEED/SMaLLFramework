@@ -900,7 +900,7 @@ void PartialDepthwiseConv2D<FloatBuffer>(
         {
             detail::abstract_layer<
                 FloatBuffer, FLOAT_C_ob, 1, 1,
-                FLOAT_W_ob, 1, 1, 'c', 1, 0>(
+                FLOAT_W_ob, 1, 1, detail::CONV, 1, 0>(
                     input_channels, // Output Channel Grouping
                     1,              // Output Channels per group
                     1,
@@ -914,7 +914,7 @@ void PartialDepthwiseConv2D<FloatBuffer>(
 
             detail::abstract_layer<
                 FloatBuffer, FLOAT_C_ob, 1, 1,
-                FLOAT_W_ob, 2, 1, 'c', 1, 0>(
+                FLOAT_W_ob, 2, 1, detail::CONV, 1, 0>(
                     input_channels, // Output Channel Grouping
                     1,              // Output Channels per group
                     1,
@@ -1298,7 +1298,7 @@ void SoftMax<FloatBuffer>(int input_channels,
     if (input_channels % FLOAT_C_ib == 0)
     {
         // SoftMax is a point wise exponent, global ADD, pointwise multiply
-        
+
         // pointwise exponent
         detail::abstract_layer<
             FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, detail::EXP, 0, 1>(
@@ -1310,7 +1310,7 @@ void SoftMax<FloatBuffer>(int input_channels,
             0, 0, 0, 0,
             &input_buf, (FloatBuffer *)nullptr, &output_buf);
 
-        
+
         // // global sum
         // FloatBuffer softmax_norm_buf(1);
         // detail::abstract_layer<
@@ -1556,32 +1556,32 @@ void Bias<FloatBuffer>(int num_channels,
 // init a buffer with bias values, 1 per channel
 template <class BufferT>
 void PartialBias(int num_channels,
-          int output_height, int output_width,
-          BufferT const &input_buf,
-          BufferT &output_buf)
+                 int output_height, int output_width,
+                 BufferT const &input_buf,
+                 BufferT &output_buf)
 {
     BufferT::unimplemented_function();
 }
 
 //============================================================================
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
-    template <>
-    void PartialBias<FloatBuffer>(int num_channels,
-                           int output_height, int output_width,
-                           FloatBuffer const &input_buf,
-                           FloatBuffer &output_buf)
-    {
+template <>
+void PartialBias<FloatBuffer>(int num_channels,
+                              int output_height, int output_width,
+                              FloatBuffer const &input_buf,
+                              FloatBuffer &output_buf)
+{
 #if defined(RECORD_CALLS)
-        std::cout << "PartialBias<float>(chans:" << num_channels
-                  << ",img:" << output_height << "x" << output_width
-                  << ",I,O)\n";
+    std::cout << "PartialBias<float>(chans:" << num_channels
+              << ",img:" << output_height << "x" << output_width
+              << ",I,O)\n";
 #endif
 
-        if (num_channels % FLOAT_C_ob == 0)
-        {
-            detail::abstract_layer<
-                FloatBuffer, FLOAT_C_ob, 1, 1,
-                FLOAT_W_ob, std::numeric_limits<dim_t>::max(), 1, detail::UPSAMPLE, 0, 0>(
+    if (num_channels % FLOAT_C_ob == 0)
+    {
+        detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1,
+            FLOAT_W_ob, std::numeric_limits<dim_t>::max(), 1, detail::UPSAMPLE, 0, 0>(
                 num_channels, // Output Channel Grouping
                 1,            // Output Channels per group
                 1,
@@ -1589,16 +1589,16 @@ void PartialBias(int num_channels,
                 1, 1,
                 0, 0, 0, 0,
                 &input_buf, (FloatBuffer *)nullptr, &output_buf);
-        }
-        else
-        {
-            throw std::invalid_argument(
-                "PartialBias<float> ERROR: in_channels unsupported.");
-        }
     }
+    else
+    {
+        throw std::invalid_argument(
+            "PartialBias<float> ERROR: in_channels unsupported.");
+    }
+}
 #endif
 
-    /// @todo PartialBias<QUInt8Buffer>(..) implementation
+/// @todo PartialBias<QUInt8Buffer>(..) implementation
 
 //****************************************************************************
 //****************************************************************************

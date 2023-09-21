@@ -306,10 +306,18 @@ void Accum(int input_channels,
 //****************************************************************************
 /// @todo document this interface
 template <class BufferT>
-void Bias(int input_channels,
+void Bias(int num_channels,
           int output_height, int output_width,
           BufferT const &input_buf,
           BufferT       &output_buf);
+
+//****************************************************************************
+/// @todo document this interface
+template <class BufferT>
+void PartialBias(int num_channels,
+                 int output_height, int output_width,
+                 BufferT const &input_buf,
+                 BufferT       &output_buf);
 
 //****************************************************************************
 /// @todo document this interface

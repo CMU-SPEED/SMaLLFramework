@@ -347,21 +347,25 @@ public:
         // HACK: placeholder for bias term
         if (m_packed_bias.size() == output_shape[CHANNEL])
         {
-            for (size_t Co = 0; Co < output_shape[CHANNEL]; ++Co)
-            {
-                for (size_t h = 0; h < output_shape[HEIGHT]; ++h)
-                {
-                    for (size_t w = 0; w < output_shape[WIDTH]; ++w)
-                    {
-                        size_t idx = packed_buffer_index(output_shape[CHANNEL],
-                                                         output_shape[HEIGHT],
-                                                         output_shape[WIDTH],
-                                                         BufferT::C_ob,
-                                                         Co, h, w);
-                        output->buffer()[idx] += m_packed_bias[Co];
-                    }
-                }
-            }
+            PartialBias(output_shape[CHANNEL],
+                        output_shape[HEIGHT], output_shape[WIDTH],
+                        m_packed_bias,
+                        output->buffer());
+            // for (size_t Co = 0; Co < output_shape[CHANNEL]; ++Co)
+            // {
+            //     for (size_t h = 0; h < output_shape[HEIGHT]; ++h)
+            //     {
+            //         for (size_t w = 0; w < output_shape[WIDTH]; ++w)
+            //         {
+            //             size_t idx = packed_buffer_index(output_shape[CHANNEL],
+            //                                              output_shape[HEIGHT],
+            //                                              output_shape[WIDTH],
+            //                                              BufferT::C_ob,
+            //                                              Co, h, w);
+            //             output->buffer()[idx] += m_packed_bias[Co];
+            //         }
+            //     }
+            // }
         }
 
         output->set_shape(output_shape);
