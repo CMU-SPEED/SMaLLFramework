@@ -76,7 +76,6 @@ bool compute_partial_bias_output(LayerParams const &params)
     size_t num_outputs = 0;
 
     //Add the per channel bias value to all height and width elements
-    float sum = 0;
     for (size_t c = 0; c < params.C_i * params.H * params.W; ++c)
     {
         // Assuming CHW
@@ -172,7 +171,7 @@ bool run_partial_bias_config(LayerParams const &params)
 
     // Bias vector
     BufferT packed_input_dc(params.C_i);
-    for(int c = 0; c < params.C_i; c++)
+    for(size_t c = 0; c < params.C_i; c++)
     {
         packed_input_dc[c] = float(c);
     }
