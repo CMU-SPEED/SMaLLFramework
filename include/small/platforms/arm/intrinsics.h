@@ -845,10 +845,10 @@ typedef float32x4_t c_tile_t;
     c_4_0 = vaddq_f32(c_4_0, a_0);a_0 = vld1q_f32(I + (5 / stride) * C_ob + 0 * FLOAT_SIMD);  \
     c_4_1 = vaddq_f32(c_4_1, a_1);a_1 = vld1q_f32(I + (5 / stride) * C_ob + 1 * FLOAT_SIMD);  \
     c_4_2 = vaddq_f32(c_4_2, a_2);a_2 = vld1q_f32(I + (5 / stride) * C_ob + 2 * FLOAT_SIMD);  \
-    c_4_3 = vaddq_f32(c_4_3, a_3);a_3 = vld1q_f32(I + (5 / stride) * C_ob + 3 * FLOAT_SIMD);
-    c_5_0 = vaddq_f32(c_5_0, a_0);\ 
-    c_5_1 = vaddq_f32(c_5_1, a_1);\ 
-    c_5_2 = vaddq_f32(c_5_2, a_2);\ 
+    c_4_3 = vaddq_f32(c_4_3, a_3);a_3 = vld1q_f32(I + (5 / stride) * C_ob + 3 * FLOAT_SIMD);  \
+    c_5_0 = vaddq_f32(c_5_0, a_0); \
+    c_5_1 = vaddq_f32(c_5_1, a_1); \
+    c_5_2 = vaddq_f32(c_5_2, a_2); \
     c_5_3 = vaddq_f32(c_5_3, a_3);
     
 #if FLOAT_SIMD_EPILOGUE == 1
