@@ -91,7 +91,7 @@ void Conv2D<FloatBuffer>(
         {
             detail::abstract_layer<
                 FloatBuffer, 1, FLOAT_C_ob, FLOAT_C_ib,
-                FLOAT_W_ob, 1, FLOAT_UNROLL, detail::CONV, 2, 1>(
+                FLOAT_W_ob, 1, FLOAT_UNROLL, OP_CONV, 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -104,7 +104,7 @@ void Conv2D<FloatBuffer>(
         {
             detail::abstract_layer<
                 FloatBuffer, 1, FLOAT_C_ob, FLOAT_C_ib,
-                FLOAT_W_ob, 2, FLOAT_UNROLL, detail::CONV, 2, 1>(
+                FLOAT_W_ob, 2, FLOAT_UNROLL, OP_CONV, 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -127,7 +127,7 @@ void Conv2D<FloatBuffer>(
         {
             detail::abstract_layer<
                 FloatBuffer, 1, FLOAT_C_ob, 3,
-                FLOAT_W_ob, 1, 1, detail::CONV, 2, 1>(
+                FLOAT_W_ob, 1, 1, OP_CONV, 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -140,7 +140,7 @@ void Conv2D<FloatBuffer>(
         {
             detail::abstract_layer<
                 FloatBuffer, 1, FLOAT_C_ob, 3,
-                FLOAT_W_ob, 2, 1, detail::CONV, 2, 1>( // unroll?
+                FLOAT_W_ob, 2, 1, OP_CONV, 2, 1>( // unroll?
                 1,                                     // Output Channel Grouping
                 output_channels,                       // Output Channels per group
                 input_channels,
@@ -313,7 +313,7 @@ void PartialConv2D<FloatBuffer>(
         {
             detail::abstract_layer<
                 FloatBuffer, 1, FLOAT_C_ob, FLOAT_C_ib,
-                FLOAT_W_ob, 1, FLOAT_UNROLL, detail::CONV, 2, 0>(
+                FLOAT_W_ob, 1, FLOAT_UNROLL, OP_CONV, 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -327,7 +327,7 @@ void PartialConv2D<FloatBuffer>(
 
             detail::abstract_layer<
                 FloatBuffer, 1, FLOAT_C_ob, FLOAT_C_ib,
-                FLOAT_W_ob, 2, FLOAT_UNROLL, detail::CONV, 2, 0>(
+                FLOAT_W_ob, 2, FLOAT_UNROLL, OP_CONV, 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -349,7 +349,7 @@ void PartialConv2D<FloatBuffer>(
         if (stride == 1)
         {
             detail::abstract_layer<
-                FloatBuffer, 1, FLOAT_C_ob, 3, FLOAT_W_ob, 1, 1, detail::CONV, 2, 0>(
+                FloatBuffer, 1, FLOAT_C_ob, 3, FLOAT_W_ob, 1, 1, OP_CONV, 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -361,7 +361,7 @@ void PartialConv2D<FloatBuffer>(
         else if (stride == 2)
         {
             detail::abstract_layer<
-                FloatBuffer, 1, FLOAT_C_ob, 3, FLOAT_W_ob, 2, 1, detail::CONV, 2, 0>(
+                FloatBuffer, 1, FLOAT_C_ob, 3, FLOAT_W_ob, 2, 1, OP_CONV, 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -530,7 +530,7 @@ void MaxPool2D<FloatBuffer>(
         if (stride == 1)
         {
             detail::abstract_layer<
-                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, detail::MAX_POOL, 1, 1>(
+                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_MAX_POOL, 1, 1>(
                 input_channels, // Output Channel Grouping
                 1,              // Output Channels per group
                 1,
@@ -542,7 +542,7 @@ void MaxPool2D<FloatBuffer>(
         else if (stride == 2)
         {
             detail::abstract_layer<
-                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, detail::MAX_POOL, 1, 1>(
+                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, OP_MAX_POOL, 1, 1>(
                 input_channels, // Output Channel Grouping
                 1,              // Output Channels per group
                 1,
@@ -668,7 +668,7 @@ void AveragePool2D<FloatBuffer>(
         if (stride == 1)
         {
             detail::abstract_layer<
-                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, detail::AVERAGE_POOL, 1, 1>(
+                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_AVERAGE_POOL, 1, 1>(
                 input_channels, // Output Channel Grouping
                 1,              // Output Channels per group
                 1,
@@ -680,7 +680,7 @@ void AveragePool2D<FloatBuffer>(
         else if (stride == 2)
         {
             detail::abstract_layer<
-                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, detail::AVERAGE_POOL, 1, 1>(
+                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, OP_AVERAGE_POOL, 1, 1>(
                 input_channels, // Output Channel Grouping
                 1,              // Output Channels per group
                 1,
@@ -692,7 +692,7 @@ void AveragePool2D<FloatBuffer>(
         else if (stride == 3)
         {
             detail::abstract_layer<
-                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 3, 1, detail::AVERAGE_POOL, 1, 1>(
+                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 3, 1, OP_AVERAGE_POOL, 1, 1>(
                 input_channels, // Output Channel Grouping
                 1,              // Output Channels per group
                 1,
@@ -759,7 +759,7 @@ void DepthwiseConv2D<FloatBuffer>(
         if (stride == 1)
         {
             detail::abstract_layer<
-                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, detail::CONV, 1, 1>(
+                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_CONV, 1, 1>(
                 input_channels, // Output Channel Grouping
                 1,              // Output Channels per group
                 1,
@@ -772,7 +772,7 @@ void DepthwiseConv2D<FloatBuffer>(
         {
 
             detail::abstract_layer<
-                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, detail::CONV, 1, 1>(
+                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, OP_CONV, 1, 1>(
                 input_channels, // Output Channel Grouping
                 1,              // Output Channels per group
                 1,
@@ -900,7 +900,7 @@ void PartialDepthwiseConv2D<FloatBuffer>(
         {
             detail::abstract_layer<
                 FloatBuffer, FLOAT_C_ob, 1, 1,
-                FLOAT_W_ob, 1, 1, detail::CONV, 1, 0>(
+                FLOAT_W_ob, 1, 1, OP_CONV, 1, 0>(
                     input_channels, // Output Channel Grouping
                     1,              // Output Channels per group
                     1,
@@ -914,7 +914,7 @@ void PartialDepthwiseConv2D<FloatBuffer>(
 
             detail::abstract_layer<
                 FloatBuffer, FLOAT_C_ob, 1, 1,
-                FLOAT_W_ob, 2, 1, detail::CONV, 1, 0>(
+                FLOAT_W_ob, 2, 1, OP_CONV, 1, 0>(
                     input_channels, // Output Channel Grouping
                     1,              // Output Channels per group
                     1,
@@ -1032,7 +1032,7 @@ void ReLUActivation<FloatBuffer>(int input_channels,
     if (input_channels % FLOAT_C_ib == 0)
     {
         detail::abstract_layer<
-            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, detail::RELU, 0, 1>(
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_RELU, 0, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
@@ -1121,7 +1121,7 @@ void LeakyReLUActivation<FloatBuffer>(int input_channels,
     if (input_channels % FLOAT_C_ib == 0)
     {
         detail::abstract_layer<
-            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, detail::LEAKY_RELU, 0, 1>(
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_LEAKY_RELU, 0, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
@@ -1183,7 +1183,7 @@ void Dropout(int input_channels,
              int input_height, int input_width,
              BufferT const &input_buf,
              BufferT const &filter_buf,
-             BufferT &output_buf)
+             BufferT       &output_buf)
 {
     // for (auto ix = 0; ix < input_channels*input_height*input_width; ++ix)
     // {
@@ -1202,7 +1202,7 @@ void Dropout<FloatBuffer>(int input_channels,
                           int input_height, int input_width,
                           FloatBuffer const &input_buf,
                           FloatBuffer const &filter_buf,
-                          FloatBuffer &output_buf)
+                          FloatBuffer       &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "Dropout<float>(chans:" << input_channels
@@ -1214,7 +1214,7 @@ void Dropout<FloatBuffer>(int input_channels,
     if (input_channels % FLOAT_C_ib == 0)
     {
         detail::abstract_layer<
-            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, detail::MUL, 0, 1>(
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_MUL, 0, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
@@ -1235,10 +1235,10 @@ void Dropout<FloatBuffer>(int input_channels,
 #if 0 // defined(SMALL_HAS_QUINT8_SUPPORT)
 template <>
 void Dropout<QUInt8Buffer>(int input_channels,
-                                       int input_height, int input_width,
-                                       QUInt8Buffer const &input_buf,
-                                       QUInt8Buffer const &filter_buf,
-                                       QUInt8Buffer &output_buf)
+                           int input_height, int input_width,
+                           QUInt8Buffer const &input_buf,
+                           QUInt8Buffer const &filter_buf,
+                           QUInt8Buffer       &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "Dropout<quint8>(chans:" << input_channels
@@ -1268,15 +1268,14 @@ void Dropout<QUInt8Buffer>(int input_channels,
     }
 }
 #endif
+
 //****************************************************************************
 //****************************************************************************
-/// @todo In the original q_interface_abstract.hpp, why was this the only
-///       layer with 'zero' param?
 template <class BufferT>
 void SoftMax(int input_channels,
-                    int input_height, int input_width,
-                    BufferT const &input_buf,
-                    BufferT &output_buf) //, int zero = 0)
+             int input_height, int input_width,
+             BufferT const &input_buf,
+             BufferT       &output_buf)
 {
     BufferT::unimplemented_function();
 }
@@ -1285,9 +1284,9 @@ void SoftMax(int input_channels,
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
 template <>
 void SoftMax<FloatBuffer>(int input_channels,
-                                    int input_height, int input_width,
-                                    FloatBuffer const &input_buf,
-                                    FloatBuffer &output_buf)
+                          int input_height, int input_width,
+                          FloatBuffer const &input_buf,
+                          FloatBuffer       &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "SoftMax<float>(chans:" << input_channels
@@ -1301,7 +1300,7 @@ void SoftMax<FloatBuffer>(int input_channels,
 
         // pointwise exponent
         detail::abstract_layer<
-            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, detail::EXP, 0, 1>(
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_EXP, 0, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
@@ -1311,30 +1310,30 @@ void SoftMax<FloatBuffer>(int input_channels,
             &input_buf, (FloatBuffer *)nullptr, &output_buf);
 
 
-        // // global sum
-        // FloatBuffer softmax_norm_buf(1);
-        // detail::abstract_layer<
-        //     FloatBuffer, 1, 1, FLOAT_C_ob, FLOAT_W_ob, 1, 1, detail::ADD, 3, 1>(
-        //     1, // Output Channel Grouping
-        //     1, // Output Channels per group
-        //     input_channels,
-        //     input_height, input_width,
-        //     input_height, input_width,
-        //     0, 0, 0, 0,
-        //     &output_buf, (FloatBuffer *)nullptr, &softmax_norm_buf);
+        // global sum
+        FloatBuffer softmax_norm_buf(1);
+        detail::abstract_layer<
+            FloatBuffer, 1, 1, FLOAT_C_ob, FLOAT_W_ob, 1, 1, OP_ADD, 3, 1>(
+            1, // Output Channel Grouping
+            1, // Output Channels per group
+            input_channels,
+            input_height, input_width,
+            input_height, input_width,
+            0, 0, 0, 0,
+            &output_buf, (FloatBuffer *)nullptr, &softmax_norm_buf);
 
-        // //elementwise scaling
-        // softmax_norm_buf.data()[0] = 1.0/softmax_norm_buf.data()[0];
-        // printf("norm factor %f\n", softmax_norm_buf.data()[0]);
-        // detail::abstract_layer<
-        //     FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, detail::MUL, 0, 1>(
-        //     input_channels, // Output Channel Grouping
-        //     1,              // Output Channels per group
-        //     1,
-        //     input_height, input_width,
-        //     1, 1,
-        //     0, 0, 0, 0,
-        //     &output_buf, &softmax_norm_buf, &output_buf);
+        //elementwise scaling
+        softmax_norm_buf.data()[0] = 1.0/softmax_norm_buf.data()[0];
+        printf("norm factor %f\n", softmax_norm_buf.data()[0]);
+        detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_MUL, 0, 1>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            1, 1,
+            0, 0, 0, 0,
+            &output_buf, &softmax_norm_buf, &output_buf);
     }
     else
     {
@@ -1382,7 +1381,7 @@ void UpSample2D<FloatBuffer>(int scale_factor,
         if (input_channels % FLOAT_C_ib == 0)
         {
             detail::abstract_layer<
-                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, detail::UPSAMPLE, 0, 1>(
+                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, OP_UPSAMPLE, 0, 1>(
                 input_channels, // Output Channel Grouping
                 1,              // Output Channels per group
                 1,
@@ -1483,7 +1482,7 @@ void Accum<FloatBuffer>(int input_channels,
     if (input_channels % FLOAT_C_ib == 0)
     {
         detail::abstract_layer<
-            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, detail::ADD, 0, 0>(
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_ADD, 0, 0>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
@@ -1532,7 +1531,7 @@ void Bias<FloatBuffer>(int num_channels,
     {
         detail::abstract_layer<
             FloatBuffer, FLOAT_C_ob, 1, 1,
-            FLOAT_W_ob, std::numeric_limits<dim_t>::max(), 1, detail::UPSAMPLE, 0, 1>(
+            FLOAT_W_ob, std::numeric_limits<dim_t>::max(), 1, OP_UPSAMPLE, 0, 1>(
             num_channels, // Output Channel Grouping
             1,            // Output Channels per group
             1,
@@ -1581,7 +1580,7 @@ void PartialBias<FloatBuffer>(int num_channels,
     {
         detail::abstract_layer<
             FloatBuffer, FLOAT_C_ob, 1, 1,
-            FLOAT_W_ob, std::numeric_limits<dim_t>::max(), 1, detail::UPSAMPLE, 0, 0>(
+            FLOAT_W_ob, std::numeric_limits<dim_t>::max(), 1, OP_UPSAMPLE, 0, 0>(
                 num_channels, // Output Channel Grouping
                 1,            // Output Channels per group
                 1,
@@ -1660,7 +1659,7 @@ void Dense<FloatBuffer>(int output_elements, int input_elements,
               << "x" << input_elements << "I,F,O)\n";
 #endif
     detail::abstract_layer<
-        FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, detail::CONV, 1, 1>(
+        FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_CONV, 1, 1>(
         output_elements, // Output Channel Grouping
         1,               // Output Channels per group
         1,

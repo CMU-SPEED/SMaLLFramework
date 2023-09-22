@@ -283,6 +283,25 @@ void LeakyReLUActivation(int input_channels,
                          BufferT const &input_buf,
                          BufferT       &output_buf);
 
+
+//****************************************************************************
+/// @todo document this interface
+template <class BufferT>
+void Dropout(int input_channels,
+             int input_height, int input_width,
+             BufferT const &input_buf,
+             BufferT const &filter_buf,
+             BufferT       &output_buf);
+
+
+//****************************************************************************
+/// @todo document this interface
+template <class BufferT>
+void SoftMax(int input_channels,
+             int input_height, int input_width,
+             BufferT const &input_buf,
+             BufferT       &output_buf);
+
 //****************************************************************************
 /**
  * Element-wise accumulation of input buffer into output buffer.

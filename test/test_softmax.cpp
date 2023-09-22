@@ -72,9 +72,9 @@ bool compute_softmax_output(LayerParams const &params)
 
 
     // small::SoftMax(1, 1,1,
-    //                  t_pad, b_pad, l_pad, r_pad,
-    //                  params.C_i, params.H, params.W,
-    //                  packed_input_dc, packed_output_dc);
+    //                t_pad, b_pad, l_pad, r_pad,
+    //                params.C_i, params.H, params.W,
+    //                packed_input_dc, packed_output_dc);
 
     // Compute softmax outputs
     size_t num_outputs = 0;
@@ -83,19 +83,17 @@ bool compute_softmax_output(LayerParams const &params)
     float sum = 0;
     for (size_t c = 0; c < params.C_i * params.H * params.W; ++c)
     {
-   
+
         output_dc_answers[c] = std::exp(input_dc[c]);
         sum += output_dc_answers[c];
         num_outputs++;
 
     }
 
-    // for (size_t c = 0; c < params.C_i * params.H * params.W; ++c)
-    // {
-   
-    //     output_dc_answers[c] /= sum;
-
-    // }
+    for (size_t c = 0; c < params.C_i * params.H * params.W; ++c)
+    {
+        output_dc_answers[c] /= sum;
+    }
 
     std::cerr << "num_outputs = " << num_outputs << std::endl;
     std::cerr << "..should be = " << (params.C_i*Ho*Wo) << std::endl;
@@ -193,9 +191,8 @@ bool run_softmax_config(LayerParams const &params)
     }
 
     // Compute layer
-    small::SoftMax(
-                     params.C_i, params.H, params.W,
-                     packed_input_dc, packed_output_dc);
+    small::SoftMax(params.C_i, params.H, params.W,
+                   packed_input_dc, packed_output_dc);
 
     // Check answer
     bool passing = true;
@@ -350,9 +347,9 @@ void test_softmax_layer_regression_data(void)
         {16,  3,  3, 3, 2, small::PADDING_V, 0},  //Ci,Hi,Wi,k,s,p,Co
         {16,  3, 13, 3, 2, small::PADDING_V, 0},
 
-        // {16, 30, 30, 3, 2, small::PADDING_V, 0},
-        // {96, 30, 30, 3, 2, small::PADDING_V, 0},
-        // {96,  3, 13, 3, 2, small::PADDING_V, 0},
+        {16, 30, 30, 3, 2, small::PADDING_V, 0},
+        {96, 30, 30, 3, 2, small::PADDING_V, 0},
+        {96,  3, 13, 3, 2, small::PADDING_V, 0},
 
         // {16,  3,  3, 3, 2, small::PADDING_F, 0},  //Ci,Hi,Wi,k,s,p,Co
         // {16,  3, 13, 3, 2, small::PADDING_F, 0},
@@ -538,7 +535,7 @@ void measure_softmax_performance(void)
 TEST_LIST = {
     {"compute_output", test_compute_softmax_output},
     {"softmax_regression_data", test_softmax_regression_data},
-    // {"softmax_layer_regression_data", test_softmax_layer_regression_data},
+    {"softmax_layer_regression_data", test_softmax_layer_regression_data},
     // {"softmax_performance", measure_softmax_performance},
     {NULL, NULL}
 };

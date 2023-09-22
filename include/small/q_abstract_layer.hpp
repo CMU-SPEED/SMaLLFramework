@@ -18,13 +18,8 @@
 #include <omp.h>
 #endif
 
+#include <small/op_type.hpp>
 #include <small/utils.hpp>
-
-// #define G_b    16
-// #define K_b    1
-// #define F_cb   1
-// #define O_wb   6
-// #define stride 1
 
 #define DEBUG 0
 

@@ -114,7 +114,7 @@ typedef small::FloatBuffer::value_type c_tile_t;
 //****************************************************************************
 
 //  strided loads
-// @todo: make this asm 
+// @todo: make this asm
 #define FLOAT_LOAD_TILE_C_strided(O, step, _W_ob, _C_ob)        \
     c0 = _mm256_load_ps(O + (0 * step));                        \
     c1 = _mm256_load_ps(O + (0 * step) + FLOAT_SIMD);           \
@@ -171,19 +171,23 @@ typedef small::FloatBuffer::value_type c_tile_t;
 //****************************************************************************
 // Stores
 //****************************************************************************
-// if constexpr (op_type == EXP)                             \
-// {                                                         \
-//     for (uint32_t kk = 0; kk < W_ob; kk++)               \
-//     {                                                     \
-//         for (uint32_t jj = 0; jj < C_ob; jj++)           \
-//         {                                                 \
-//             O[kk * _C_ob + jj] = c_tile[kk * _C_ob + jj]; \
-//         }                                                 \
-//     }\
-// }\
-// else\
+#if 0
 
-#define FLOAT_STORE_TILE_C(O, W_ob, C_ob)                     \
+if constexpr (op_type == OP_EXP)                          \
+{                                                         \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                \
+    {                                                     \
+        for (uint32_t jj = 0; jj < C_ob; jj++)            \
+        {                                                 \
+            O[kk * _C_ob + jj] = c_tile[kk * _C_ob + jj]; \
+        }                                                 \
+    }                                                     \
+}                                                         \
+else
+
+#endif
+
+#define FLOAT_STORE_TILE_C(O, W_ob, C_ob)               \
 {\
     _mm256_store_ps(O + (0 * C_ob), c0);                \
     _mm256_store_ps(O + (0 * C_ob) + FLOAT_SIMD, c1);   \
@@ -642,7 +646,7 @@ typedef small::FloatBuffer::value_type c_tile_t;
 // Softmax  (Ewise exponentiation)
 //****************************************************************************
 // This SIMD implementation does not seem to work.
-// #define FLOAT_EXP_TILE_C(step, a, W_ob, C_ob)    
+// #define FLOAT_EXP_TILE_C(step, a, W_ob, C_ob)
 // a_reg = _mm256_load_ps(a + 0 * FLOAT_SIMD);
 // c12 = _mm256_load_ps(a + 1 * FLOAT_SIMD);
 // a += step;
@@ -701,7 +705,7 @@ typedef small::FloatBuffer::value_type c_tile_t;
     c8 = _mm256_loadu_ps(c_tile + 4 * C_ob + 0 * FLOAT_SIMD); \
     c9 = _mm256_loadu_ps(c_tile + 4 * C_ob + 1 * FLOAT_SIMD); \
     c10 = _mm256_loadu_ps(c_tile + 5 * C_ob + 0 * FLOAT_SIMD); \
-    c11 = _mm256_loadu_ps(c_tile + 5 * C_ob + 1 * FLOAT_SIMD); 
+    c11 = _mm256_loadu_ps(c_tile + 5 * C_ob + 1 * FLOAT_SIMD);
 
 #define FLOAT_EXP_END_C(step, a, c_cur, W_last, C_ob) \
     c_tile_t *c_pixel = c_cur;                        \
