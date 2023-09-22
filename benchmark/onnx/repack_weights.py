@@ -44,7 +44,7 @@ def repack_weights(onnx_model_path):
             weights_name = inputs[1]
             weight_idx = init_dict[weights_name]
             W = numpy_helper.to_array(initializers[weight_idx])
-            assert(len(W.shape) == 4 and "weight shape is not 4D")
+            assert(len(W.shape) == 4 and "weight shape is not 4D") 
             co, ci, kh, kw = W.shape
             W_packed = W.copy().astype(np.float32)
             #! for the filter type, we are going to make the naive assumption that if ci > 1, then it is a conv filter
@@ -53,6 +53,18 @@ def repack_weights(onnx_model_path):
             pack(W_packed, co, ci, kh, kw, filter_type)
             print(f"repacking {weights_name} that has {W.shape} for {filter_type_str}")
             onnx_model_loaded.graph.initializer[weight_idx].CopyFrom(numpy_helper.from_array(W_packed, weights_name))
+        if(node.op_type == "Gemm" or node.op_type == "MatMul"):
+            # inputs should be an ordered list of [input, weight, bias]
+            inputs = node.input
+            weights_name = inputs[1]
+            weight_idx = init_dict[weights_name]
+            W = numpy_helper.to_array(initializers[weight_idx])
+            assert(len(W.shape) == 2 and "weight shape is not 2D") 
+            ci, co = W.shape
+            W_packed = W.T.copy().astype(np.float32)
+            pack(W_packed, co, ci, 1, 1, FILTER_FC)
+            print(f"repacking {weights_name} that has {W.shape} for fc")
+            onnx_model_loaded.graph.initializer[weight_idx].CopyFrom(numpy_helper.from_array(W_packed.reshape(ci, co), weights_name))
                
     # print(f"\nData has been repacked for {platform}!")
     onnx.save(onnx_model_loaded, onnx_model_path[:-5]+"_repacked.onnx")

@@ -11,15 +11,14 @@ Note:
 ### Supported Models
 
 - Mobilenet
-    - 0.0015535354614257812, 0.002940654754638672, 1.8928790669122162, PASSED
+    - 0.0014078617095947266, 0.0029659271240234375, 2.1066892464013547, PASSED
 - Resnet
-    - 0.0005571842193603516, 0.0007615089416503906, 1.3667094565682498, PASSED
+    - 0.0006041526794433594, 0.0007834434509277344, 1.2967640094711919, PASSED
+- Autoencoder
+    - 7.677078247070312e-05, 0.00015401840209960938, 2.0062111801242235, PASSED
 
 ### Failing Models
 
 - dscnn
     - failing due to packing of input data. The shape doesn't match what is expected for `convert_tensor2dc()`. 
     - Error message: `uint32_t small::convert_tensor2dc(const ScalarT*, small::BufferTypeEnum, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, ScalarT*) [with ScalarT = float; uint32_t = unsigned int]: Assertion 'C_i == 3' failed.`
-
-- autencoder
-    - seg faults, not exactly sure why

@@ -21,6 +21,7 @@
 
 from termcolor import colored
 import numpy as np
+np.random.seed(0)
 import time
 import os
 import json
@@ -231,12 +232,19 @@ def run_onnx_model_correctness(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT):
         _, oc, oh, ow = outputs_torch_packed.shape
         pack(outputs_torch_packed, 1, oc, oh, ow, OUTPUT)
 
-    # pack input data for small
-    _, ih, iw, ic = input_dims
     model_input_packed = model_input.copy()
-    model_input_packed = np.ravel(model_input_packed.transpose(0, 3, 1, 2), order='C')
-    pack(model_input_packed, 1, ic, ih, iw, INPUT)
-    model_input_packed = model_input_packed.reshape(1, ih, iw, ic)
+    # pack input data for small
+    if(len(input_dims) == 4):
+        _, ih, iw, ic = input_dims
+        model_input_packed = np.ravel(model_input_packed.transpose(0, 3, 1, 2), order='C')
+        pack(model_input_packed, 1, ic, ih, iw, INPUT)
+        model_input_packed = model_input_packed.reshape(1, ih, iw, ic)
+    elif(len(input_dims) == 2):
+        _, ic = input_dims
+        # pack(model_input_packed, 1, ic, 1, 1, INPUT)
+    else:
+        print("Shape not supported")
+        exit(-1)
     
     # run small model and get outputs
     s = time.time()
@@ -291,8 +299,6 @@ def get_args():
 if __name__ == "__main__":
     
     args = get_args()
-    
-    np.random.seed(0)
     
     onnx_model = args.model
     small_lib_path = args.lib

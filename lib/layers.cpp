@@ -293,7 +293,7 @@ void MaxPoolSingleOut(
     small::FloatBuffer in(omTensorGetNumElems(input), (float*)omTensorGetDataPtr(input));
     small::FloatBuffer out(omTensorGetNumElems(output), (float*)omTensorGetDataPtr(output));
 
-    assert(stride_h == stride_w && "[ERROR in AveragePool2D] stride_h != stride_w\n");
+    // assert(stride_h == stride_w && "[ERROR in AveragePool2D] stride_h != stride_w\n");
 
     uint8_t t_pad = 0, b_pad = 0, l_pad = 0, r_pad = 0;
     small::MaxPool2D<small::FloatBuffer>(
@@ -350,9 +350,27 @@ void Relu(
 {
     // printf("entering %s %d\n", __func__, relu++);
 
-    size_t ih = omTensorGetShape(input)[2];
-    size_t iw = omTensorGetShape(input)[3];
-    size_t ic = omTensorGetShape(input)[1];
+    // size_t ic = omTensorGetShape(input)[1];
+    // size_t ih = omTensorGetShape(input)[2];
+    // size_t iw = omTensorGetShape(input)[3];
+    size_t ic;
+    size_t ih;
+    size_t iw;
+
+    if(omTensorGetRank(input) == 2) {
+        ic = omTensorGetShape(input)[1];
+        ih = 1;
+        iw = 1;
+    }
+    else if(omTensorGetRank(input) == 4) {
+        ic = omTensorGetShape(input)[1];
+        ih = omTensorGetShape(input)[2];
+        iw = omTensorGetShape(input)[3];
+    }
+    else {
+        printf("[ERROR in Relu] input rank != 2 or 4\n");
+        exit(1);
+    }
 
     small::FloatBuffer in(omTensorGetNumElems(input), (float*)omTensorGetDataPtr(input));
     small::FloatBuffer out(omTensorGetNumElems(output), (float*)omTensorGetDataPtr(output));
@@ -364,6 +382,8 @@ void Relu(
         relu.compute_output({&input_tensor}, &output_tensor);
         memcpy(omTensorGetDataPtr(output), output_tensor.buffer().data(), omTensorGetNumElems(output) * sizeof(float));
     #else
+        // printf("ic=%ld, ih=%ld, iw=%ld\n", ic, ih, iw);
+
         small::ReLUActivation<small::FloatBuffer>(
             ic,
             ih, iw,
@@ -372,6 +392,8 @@ void Relu(
         );
     #endif
     
+    // printf("leaving relu\n");
+
 }
 
 
@@ -391,25 +413,84 @@ void Gemm(
 {
     // printf("entering %s %d\n", __func__, gemm++);
 
-    int m = omTensorGetShape(A)[0];
-    int k = omTensorGetShape(A)[1];
-    int n = omTensorGetShape(B)[1];
+    assert(omTensorGetShape(A)[0] == 1 && omTensorGetShape(C)[0] && "[ERROR in Gemm] m != 1\n");
+    int ic = omTensorGetShape(A)[1];
+    int oc = omTensorGetShape(B)[1];
+    
 
-    // // printf("A is %ld x %ld\n", omTensorGetShape(A)[0], omTensorGetShape(A)[1]);
-    // // printf("B is %ld x %ld\n", omTensorGetShape(B)[0], omTensorGetShape(B)[1]);
-    // // printf("C is %ld x %ld\n", omTensorGetShape(C)[0], omTensorGetShape(C)[1]);
-    // // printf("bias is %ld x %ld\n", omTensorGetShape(bias)[0], omTensorGetShape(bias)[1]);
-    // // printf("alpha = %f | beta = %f\n", alpha, beta);
+    // printf("A is %ld x %ld\n", omTensorGetShape(A)[0], omTensorGetShape(A)[1]);
+    // printf("B is %ld x %ld\n", omTensorGetShape(B)[0], omTensorGetShape(B)[1]);
+    // printf("C is %ld x %ld\n", omTensorGetShape(C)[0], omTensorGetShape(C)[1]);
 
-    for(int i=0; i<n; i++) {
+    // for(int p_tile = 0; p_tile < k/FLOAT_C_ob; p_tile++){
+    // for(int i=0; i<n; i++) {
 
-        float sum = (bias != NULL) ? ((float*)omTensorGetDataPtr(bias))[i] : 0.0;
+    //     float sum = (bias != NULL) ? ((float*)omTensorGetDataPtr(bias))[i] : 0.0;
+    //     // float sum =  0.0;
 
-        for(int p=0; p<k; p++) {
-            sum += ((float*)omTensorGetDataPtr(A))[p] * ((float*)omTensorGetDataPtr(B))[p*n + i];
-        }
+    //     for(int p=0; p<FLOAT_C_ob; p++) {
+    //         // if the data is packed then B is oc/cob x ic/cib x 1 x 1 x cib x cob = oc/cob x ic x cob
+    //         // B comes in as oc x ic = k x n
+    //         // k = oc/ocob
+    //         // n = ic
+    //         sum += ((float*)omTensorGetDataPtr(A))[p_tile*FLOAT_C_ob + p] * ((float*)omTensorGetDataPtr(B))[p_tile*n*FLOAT_C_ob + i*FLOAT_C_ob + p];
+    //     }
 
-        ((float*)omTensorGetDataPtr(C))[i] = sum;
+    //     ((float*)omTensorGetDataPtr(C))[i] += sum;
+    // }
+    // }
+
+    // for(int i=0; i<n; i++) {
+
+    //     float sum = (bias != NULL) ? ((float*)omTensorGetDataPtr(bias))[i] : 0.0;
+
+    //     for(int p=0; p<k; p++) {
+    //         sum += ((float*)omTensorGetDataPtr(A))[p] * ((float*)omTensorGetDataPtr(B))[p*n + i];
+    //     }
+
+    //     ((float*)omTensorGetDataPtr(C))[i] = sum;
+    // }
+
+    small::FloatBuffer in(omTensorGetNumElems(A), (float*)omTensorGetDataPtr(A));
+    small::FloatBuffer filt(omTensorGetNumElems(B), (float*)omTensorGetDataPtr(B));
+    small::FloatBuffer out(omTensorGetNumElems(C), (float*)omTensorGetDataPtr(C));
+
+    if(bias != NULL) {
+        int b_elems = omTensorGetShape(bias)[0];
+        assert(b_elems == oc && "[ERROR in Gemm] b_elems != output channels\n");
+
+        small::Bias<small::FloatBuffer>(
+            oc,
+            1,
+            1,
+            small::FloatBuffer(omTensorGetNumElems(bias), (float*)omTensorGetDataPtr(bias)), 
+            out
+        );
+
+        small::PartialConv2D<small::FloatBuffer>(
+            1, 1, 
+            1,
+            0, 0, 0, 0,
+            oc, 
+            ic,
+            1, 1,
+            in,
+            filt,
+            out
+        );
+    }
+    else {
+        small::Conv2D<small::FloatBuffer>(
+            1, 1, 
+            1,
+            0, 0, 0, 0,
+            oc, 
+            ic,
+            1, 1,
+            in,
+            filt,
+            out
+        );
     }
 
 }
@@ -422,6 +503,8 @@ void MatMul(
     OMTensor *B
 )
 {
+    // printf("entering %s %d\n", __func__, matmul++);
+
     Gemm(C, A, B, NULL, 1.0, 0.0);
 }
 

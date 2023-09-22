@@ -161,9 +161,9 @@ uint32_t convert_tensor2dc(ScalarT               const *flat_t,
         ///       integer multiple of _C_ib.
         if (C_i < _C_ib) //(dim1 < _C_ob)
         {
-            assert(C_i == 3);
+            assert(C_i == 3 || C_i == 1);
             //std::cerr << "HERE: dim1, C_ob: " << H << ", " << _C_ob << std::endl;;
-            _C_ib = 3;    /// @todo why is this a 3?
+            _C_ib = C_i;    /// @todo why is this a 3?
         }
     }
 
