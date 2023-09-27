@@ -62,7 +62,7 @@ typedef float32x4_t c_tile_t;
     float32x4_t c_tile_v[W_ob * (C_ob / FLOAT_SIMD)];
 
 #define FLOAT_DEF_END_C(W_ob, C_ob)                             \
-    c_tile_t c_tile[W_ob * (C_ob / FLOAT_SIMD_EPILOGUE)];
+    c_tile_t c_tile[W_ob * (FLOAT_C_ob / FLOAT_SIMD_EPILOGUE)];
 
 
 #define FLOAT_ZERO_TILE_C(W_ob, C_ob)                                   \
@@ -87,13 +87,13 @@ typedef float32x4_t c_tile_t;
 
 #else
 
-#define FLOAT_ZERO_END_C(_W_ob, C_ob)                                   \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)                             \
-    {                                                                   \
-        for (uint32_t jj = 0; jj < C_ob / FLOAT_SIMD; jj++)             \
-        {                                                               \
-            c_tile[kk * (C_ob / FLOAT_SIMD) + jj] = vdupq_n_f32(0);     \
-        }                                                               \
+#define FLOAT_ZERO_END_C(_W_ob, C_ob)                                     \
+    for (uint32_t kk = 0; kk < _W_ob; kk++)                               \
+    {                                                                     \
+        for (uint32_t jj = 0; jj < FLOAT_C_ob / FLOAT_SIMD; jj++)         \
+        {                                                                 \
+            c_tile[kk * (FLOAT_C_ob / FLOAT_SIMD) + jj] = vdupq_n_f32(0); \
+        }                                                                 \
     }
 #endif
 
@@ -124,13 +124,25 @@ typedef float32x4_t c_tile_t;
 #else
 
 #define FLOAT_LOAD_END_C(O, _W_ob, C_ob)                                \
+if constexpr(C_ob == 1)\
+{\
+    for(uint32_t kk = 0; kk < _W_ob; kk++)\
+    {\
+      float c_channel_v[FLOAT_C_ob]={0};\
+      c_channel_v[0] = O[kk * C_ob];\
+      c_tile[kk * (FLOAT_C_ob/FLOAT_SIMD)]  = vld1q_f32(c_channel_v);\
+    }\
+}\
+else\
+{\
     for (uint32_t kk = 0; kk < _W_ob; kk++)                             \
     {                                                                   \
         for (uint32_t jj = 0; jj < C_ob / FLOAT_SIMD; jj++)             \
         {                                                               \
             c_tile[kk * (C_ob / FLOAT_SIMD) + jj] = vld1q_f32(O + kk * C_ob + jj * FLOAT_SIMD); \
         }                                                               \
-    }
+    }\
+}
 #endif
 
 
@@ -254,14 +266,25 @@ typedef float32x4_t c_tile_t;
 
 #else
 
-#define FLOAT_STORE_END_C(O, _W_ob, C_ob)                       \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)                     \
-    {                                                           \
-        for (uint32_t jj = 0; jj < C_ob / FLOAT_SIMD; jj++)     \
-        {                                                       \
-            vst1q_f32(O + kk * C_ob + jj * FLOAT_SIMD,          \
-                      c_tile[kk * (C_ob / FLOAT_SIMD) + jj]);   \
-        }                                                       \
+#define FLOAT_STORE_END_C(O, _W_ob, C_ob)                         \
+    for (uint32_t kk = 0; kk < _W_ob; kk++)                       \
+    {                                                             \
+        if constexpr (C_ob == 1)                                  \
+        {                                                         \
+                float c_pixel[FLOAT_SIMD];                                    \
+                vst1q_f32(c_pixel,        \
+                          c_tile[kk * (FLOAT_C_ob / FLOAT_SIMD)]); \
+                O[kk] = c_pixel[0];\
+                                                                 \
+        }                                                         \
+        else                                                      \
+        {                                                         \
+            for (uint32_t jj = 0; jj < C_ob / FLOAT_SIMD; jj++)   \
+            {                                                     \
+                vst1q_f32(O + kk * C_ob + jj * FLOAT_SIMD,        \
+                          c_tile[kk * (C_ob / FLOAT_SIMD) + jj]); \
+            }                                                     \
+        }                                                         \
     }
 #endif
 
@@ -619,15 +642,15 @@ typedef float32x4_t c_tile_t;
 
 #else
 
-#define FLOAT_ACCUM_END_C(step, a, c_cur, W_last, C_ob)                 \
-    for (uint32_t kk = 0; kk < W_last; kk++)                            \
-    {                                                                   \
-        for (uint32_t jj = 0; jj < C_ob / FLOAT_SIMD; jj++)             \
-        {                                                               \
-            float32x4_t av = vld1q_f32(a + kk * step + jj * FLOAT_SIMD); \
-            c_cur[(kk) * (C_ob / FLOAT_SIMD) + jj] =                    \
-                vaddq_f32(av, c_cur[(kk) * (C_ob / FLOAT_SIMD) + jj]);  \
-        }                                                               \
+#define FLOAT_ACCUM_END_C(step, a, c_cur, W_last, C_ob)                              \
+    for (uint32_t kk = 0; kk < W_last; kk++)                                         \
+    {                                                                                \
+        for (uint32_t jj = 0; jj < FLOAT_C_ob / FLOAT_SIMD; jj++)                          \
+        {                                                                            \
+            float32x4_t av = vld1q_f32(a + kk * step + jj * FLOAT_SIMD);             \
+            c_cur[(kk) * (FLOAT_C_ob / FLOAT_SIMD) + jj] =                                 \
+                vaddq_f32(av, c_cur[(kk) * (FLOAT_C_ob / FLOAT_SIMD) + jj]);               \
+        }                                                                            \
     }
 #endif
 
@@ -876,6 +899,37 @@ typedef float32x4_t c_tile_t;
     }
 #endif
 
+//
+
+//****************************************************************************
+// Accumulate channel dimension
+//****************************************************************************
+
+#define FLOAT_REDUCE_CHANNEL_END_C(O_w_left, _C_ob)                                \
+if constexpr(_C_ob == 1 && _C_ob != FLOAT_SIMD_EPILOGUE)\
+{\
+    float c_tile_array[FLOAT_C_ob];                                         \
+    for (uint32_t kk = 0; kk < O_w_left; kk++)                              \
+    {                                                                       \
+        float32x4_t *c_channel_v = c_tile + kk * (FLOAT_C_ob / FLOAT_SIMD); \
+        c_channel_v[0] = vaddq_f32(c_channel_v[0], c_channel_v[1]);         \
+        c_channel_v[2] = vaddq_f32(c_channel_v[2], c_channel_v[3]);         \
+        c_channel_v[0] = vaddq_f32(c_channel_v[0], c_channel_v[2]);         \
+                                                                            \
+        vst1q_f32(c_tile_array, c_channel_v[0]);                            \
+        for (uint32_t jj = 1; jj < FLOAT_SIMD; jj++)                        \
+        {                                                                   \
+            c_tile_array[0] += c_tile_array[jj];                            \
+            c_tile_array[jj] = 0;                                           \
+        }                                                                   \
+                                                                            \
+        c_channel_v[0] = vld1q_f32(c_tile_array);                           \
+        c_channel_v[1] = vdupq_n_f32(0.0);                                  \
+        c_channel_v[2] = vdupq_n_f32(0.0);                                  \
+        c_channel_v[3] = vdupq_n_f32(0.0);                                  \
+    }\
+}
+
 //****************************************************************************
 // AVG Pooling
 //****************************************************************************
@@ -963,6 +1017,8 @@ typedef float32x4_t c_tile_t;
             c_pixel += C_ob;                            \
         }                                               \
     }
+
+
 
 
 

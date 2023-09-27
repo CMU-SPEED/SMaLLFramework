@@ -149,6 +149,7 @@ void inline compute_with_padding(dim_t H_lb, dim_t H_ub,
                 ScalarT const *a_cur = a + ii * _UNROLL;
                 FLOAT_ABSTRACT_OP_END(op_type, op_class, a_cur, b_cur, c_cur, W_elements, _C_ob);
             }
+            
         }
     }
 }
@@ -451,6 +452,10 @@ void inline kernel_right(
         }
         else
         {
+            if constexpr(op_type == OP_ADD && op_class == 3)
+            {
+                FLOAT_ZERO_END_C(O_w_left, _C_ob);
+            }
             FLOAT_LOAD_END_C(O, O_w_left, _C_ob);
             if constexpr (op_type == OP_UPSAMPLE)
                          {
@@ -460,6 +465,8 @@ void inline kernel_right(
 
         compute_with_padding<ScalarT, AccumT,
                              _G_b, _K_b, _F_cb, _O_wb, _stride,
+                         
+                         
                              _UNROLL, op_type, op_class>(
                                  H_lb, H_UPPER,
                                  0, F_w,
@@ -470,12 +477,17 @@ void inline kernel_right(
                                  I,
                                  c_tile);
 
+
         if (op_type == OP_AVERAGE_POOL)
         {
             float norm = 1.0 / (1.0 * F_h * F_w);
             FLOAT_DIV_END_C(c_tile, norm, O_w_left, _C_ob);
         }
-
+        if constexpr(op_type == OP_ADD && op_class == 3 && _C_ob == 1)
+        {
+            /* If the operation reduces the channel dimension, reduce across channel dimension of simd tile*/
+            FLOAT_REDUCE_CHANNEL_END_C(O_w_left, _C_ob)
+        }
 
         FLOAT_STORE_END_C(O, O_w_left, _C_ob);
     }
@@ -907,7 +919,6 @@ void abstract_layer(
     // const dim_t K_full = (K / _K_b) * _K_b;
     // const dim_t K_left = K - K_full;
 
-    // printf("%d %d\n", F_h, F_w);
 #if DEBUG == 1
     printf("\t\t I_h %d I_w %d F_C %d G %d \n", I_h, I_w, F_c, G);
     printf("\t\t O_h_pad: %d O_w_w_pad %d \n", O_h_w_pad, O_w_w_pad);

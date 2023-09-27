@@ -595,6 +595,24 @@ else
     }
 
 //****************************************************************************
+// Accumulate channel dimension
+//****************************************************************************
+
+#define FLOAT_REDUCE_CHANNEL_END_C(O_w_left, _C_ob)           \
+    if constexpr (_C_ob == 1 && _C_ob != FLOAT_SIMD_EPILOGUE) \
+    {                                                         \
+        float c_tile_array[FLOAT_C_ob];                       \
+        for (uint32_t kk = 0; kk < O_w_left; kk++)            \
+        {                                                     \
+            float *c_channel_v = c_tile + kk * (FLOAT_C_ob);  \
+            for (uint32_t jj = 1; jj < FLOAT_C_ob; jj++)      \
+            {                                                 \
+                c_channel_v[0] += c_channel_v[jj];            \
+                c_channel_v[jj] = 0;                          \
+            }                                                 \
+        }                                                     \
+    }
+//****************************************************************************
 // FMA unused?
 //****************************************************************************
 

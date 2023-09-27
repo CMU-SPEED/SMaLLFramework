@@ -1310,10 +1310,10 @@ void SoftMax<FloatBuffer>(int input_channels,
             &input_buf, (FloatBuffer *)nullptr, &output_buf);
 
 
-        // global sum
+        // // global sum
         FloatBuffer softmax_norm_buf(1);
         detail::abstract_layer<
-            FloatBuffer, 1, 1, FLOAT_C_ob, FLOAT_W_ob, 1, 1, OP_ADD, 3, 1>(
+            FloatBuffer, 1, 1, FLOAT_C_ob, FLOAT_W_ob, 1, FLOAT_C_ob, OP_ADD, 3, 1>(
             1, // Output Channel Grouping
             1, // Output Channels per group
             input_channels,
@@ -1322,9 +1322,8 @@ void SoftMax<FloatBuffer>(int input_channels,
             0, 0, 0, 0,
             &output_buf, (FloatBuffer *)nullptr, &softmax_norm_buf);
 
-        //elementwise scaling
+        // //elementwise scaling
         softmax_norm_buf.data()[0] = 1.0/softmax_norm_buf.data()[0];
-        printf("norm factor %f\n", softmax_norm_buf.data()[0]);
         detail::abstract_layer<
             FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_MUL, 0, 1>(
             input_channels, // Output Channel Grouping
