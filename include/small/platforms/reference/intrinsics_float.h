@@ -351,8 +351,11 @@ typedef small::FloatBuffer::value_type c_tile_t;
     }
 
 #define FLOAT_ACCUM_END_C(step, a, c_cur, W_last, C_ob) \
+float const * a_in_channel = a;\
+for(uint32_t u =0 ; u < _UNROLL; u++)\
+{\
     float *c_pixel = c_cur;                             \
-    float const *a_pixel = a;                           \
+    float const *a_pixel = a_in_channel;                           \
     for (uint32_t kk = 0; kk < W_last; kk++)            \
     {                                                   \
         float *c_channel = c_pixel;                     \
@@ -365,8 +368,9 @@ typedef small::FloatBuffer::value_type c_tile_t;
         }                                               \
         a_pixel += step;                                \
         c_pixel += C_ob;                                \
-    }
-
+    }\
+    a_in_channel++;\
+}
 //****************************************************************************
 // Broadcast multiplication kernels
 //****************************************************************************
