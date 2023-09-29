@@ -1322,6 +1322,9 @@ void SoftMax<FloatBuffer>(int input_channels,
             0, 0, 0, 0,
             &output_buf, (FloatBuffer *)nullptr, &softmax_norm_buf);
 
+        std::cout << "Global sum: " << softmax_norm_buf.data()[0]
+                  << std::endl;
+
         // //elementwise scaling
         softmax_norm_buf.data()[0] = 1.0/softmax_norm_buf.data()[0];
         detail::abstract_layer<

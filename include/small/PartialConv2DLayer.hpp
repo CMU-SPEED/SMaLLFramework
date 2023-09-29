@@ -368,7 +368,6 @@ public:
                       m_packed_filters,
                       output->buffer());
 
-        // HACK: placeholder for bias term
         if (m_packed_bias.size() == output_shape[CHANNEL])
         {
             PartialBias(output_shape[CHANNEL],

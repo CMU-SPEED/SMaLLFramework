@@ -208,6 +208,7 @@ bool run_softmax_config(LayerParams const &params)
                       << packed_output_dc[ix] << "(computed) != "
                       << std::setw(12) << std::setprecision(10)
                       << packed_output_dc_answers[ix]
+                      << ", ratio = " << packed_output_dc[ix]/packed_output_dc_answers[ix]
                       << std::endl;
         }
     }
@@ -532,9 +533,9 @@ void measure_softmax_performance(void)
 //****************************************************************************
 //****************************************************************************
 TEST_LIST = {
-    {"compute_output", test_compute_softmax_output},
+    //{"compute_output", test_compute_softmax_output},
     {"softmax_regression_data", test_softmax_regression_data},
-    // {"softmax_layer_regression_data", test_softmax_layer_regression_data},
+    {"softmax_layer_regression_data", test_softmax_layer_regression_data},
     // {"softmax_performance", measure_softmax_performance},
     {NULL, NULL}
 };

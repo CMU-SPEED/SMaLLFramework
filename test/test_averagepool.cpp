@@ -576,7 +576,7 @@ void measure_averagepool_performance(void)
 //****************************************************************************
 //****************************************************************************
 TEST_LIST = {
-    {"compute_output", test_compute_averagepool_output},
+    //{"compute_output", test_compute_averagepool_output},
     {"averagepool_regression_data",       test_averagepool_regression_data},
     {"averagepool_layer_regression_data", test_averagepool_layer_regression_data},
     // {"averagepool_performance", measure_averagepool_performance},

@@ -149,7 +149,6 @@ void inline compute_with_padding(dim_t H_lb, dim_t H_ub,
                 ScalarT const *a_cur = a + ii * _UNROLL;
                 FLOAT_ABSTRACT_OP_END(op_type, op_class, a_cur, b_cur, c_cur, W_elements, _C_ob);
             }
-            
         }
     }
 }
@@ -226,8 +225,8 @@ void inline kernel_left(
     if(op_type == OP_AVERAGE_POOL)
     {
         float norm = 1.0/(1.0*F_h*F_w);
-        FLOAT_DIV_END_C(c_tile, norm, l_pad_el, _C_ob)
-            }
+        FLOAT_DIV_END_C(c_tile, norm, l_pad_el, _C_ob);
+    }
     FLOAT_STORE_END_C(O_ptr, l_pad_el, _C_ob);
     O_ptr += _G_b * _K_b;
 }
@@ -314,8 +313,8 @@ void inline kernel(
     if (op_type == OP_AVERAGE_POOL)
     {
         float norm = 1.0 / (1.0 * F_h * F_w);
-        FLOAT_DIV_TILE_C(norm, _O_wb, _C_ob)
-            }
+        FLOAT_DIV_TILE_C(norm, _O_wb, _C_ob);
+    }
     FLOAT_STORE_TILE_C(O, _O_wb, _C_ob);
     //@todo support reduction-tree like store for global reductions
 }
@@ -465,8 +464,6 @@ void inline kernel_right(
 
         compute_with_padding<ScalarT, AccumT,
                              _G_b, _K_b, _F_cb, _O_wb, _stride,
-                         
-                         
                              _UNROLL, op_type, op_class>(
                                  H_lb, H_UPPER,
                                  0, F_w,
@@ -476,7 +473,6 @@ void inline kernel_right(
                                  F,
                                  I,
                                  c_tile);
-
 
         if (op_type == OP_AVERAGE_POOL)
         {
@@ -1001,7 +997,6 @@ void abstract_layer(
             // resuse O_group as a uint32_t array
             for (index_t k = channel_tid; k < K / _K_b; k += T_channel)
             {
-
                 ScalarT const *I_channel_block_output =
                     I_group + 0;
                 ScalarT const *F_channel_block_output =

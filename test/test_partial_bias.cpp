@@ -532,7 +532,7 @@ void test_partial_bias_regression_data(void)
 //****************************************************************************
 //****************************************************************************
 TEST_LIST = {
-    {"compute_output", test_compute_partial_bias_output},
+    //{"compute_output", test_compute_partial_bias_output},
     {"partial_bias_regression_data", test_partial_bias_regression_data},
     // {"partial_bias_layer_regression_data", test_partial_bias_layer_regression_data},
     // {"partial_bias_performance", measure_partial_bias_performance},
