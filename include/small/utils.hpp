@@ -158,7 +158,9 @@ inline uint8_t calc_back_padding(char      padding_type,
 // assumes 'v' padding
 inline dim_t output_dim(dim_t input_dim, dim_t stride, dim_t kernel_dim)
 {
-    int out_elems = (int(input_dim) - int(kernel_dim))/ stride + 1;
+    int out_elems = (int(input_dim) - int(kernel_dim)) /(stride) + 1;
+    // int out_elems = (int(input_dim) - int(kernel_dim))/ int(stride) + 1;
+
     return ((out_elems > 0) ? dim_t(out_elems) : 0U);
 }
 

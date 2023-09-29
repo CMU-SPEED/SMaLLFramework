@@ -118,6 +118,14 @@ public:
                       << "x" << output_shape[WIDTH]
                       << ")" << std::endl;
         }
+        else if (activation_type == SOFTMAX)
+        {
+            std::cerr << "Softmax(batches:" << output_shape[BATCH]
+                      << ",chans:" << output_shape[CHANNEL]
+                      << ",img:" << output_shape[HEIGHT]
+                      << "x" << output_shape[WIDTH]
+                      << ")" << std::endl;
+        }
 #endif
     }
 
@@ -204,6 +212,14 @@ public:
             std::cerr << "LeakyReLU(batches:" << output_shape[BATCH]
                       << ",chans:" << output_shape[CHANNEL]
                       << ",slope:" << leaky_slope
+                      << ",img:" << output_shape[HEIGHT]
+                      << "x" << output_shape[WIDTH]
+                      << ")" << std::endl;
+        }
+        else if (activation_type == SOFTMAX)
+        {
+            std::cerr << "Softmax(batches:" << output_shape[BATCH]
+                      << ",chans:" << output_shape[CHANNEL]
                       << ",img:" << output_shape[HEIGHT]
                       << "x" << output_shape[WIDTH]
                       << ")" << std::endl;
@@ -309,6 +325,14 @@ public:
                       << "x" << output_shape[WIDTH]
                       << ")" << std::endl;
         }
+        else if (activation_type == SOFTMAX)
+        {
+            std::cerr << "Softmax(batches:" << output_shape[BATCH]
+                      << ",chans:" << output_shape[CHANNEL]
+                      << ",img:" << output_shape[HEIGHT]
+                      << "x" << output_shape[WIDTH]
+                      << ")" << std::endl;
+        }
 #endif
     }
 
@@ -344,24 +368,12 @@ public:
                       m_packed_filters,
                       output->buffer());
 
-        // HACK: placeholder for bias term
         if (m_packed_bias.size() == output_shape[CHANNEL])
         {
-            for (size_t Co = 0; Co < output_shape[CHANNEL]; ++Co)
-            {
-                for (size_t h = 0; h < output_shape[HEIGHT]; ++h)
-                {
-                    for (size_t w = 0; w < output_shape[WIDTH]; ++w)
-                    {
-                        size_t idx = packed_buffer_index(output_shape[CHANNEL],
-                                                         output_shape[HEIGHT],
-                                                         output_shape[WIDTH],
-                                                         BufferT::C_ob,
-                                                         Co, h, w);
-                        output->buffer()[idx] += m_packed_bias[Co];
-                    }
-                }
-            }
+            PartialBias(output_shape[CHANNEL],
+                        output_shape[HEIGHT], output_shape[WIDTH],
+                        m_packed_bias,
+                        output->buffer());
         }
 
         output->set_shape(output_shape);
@@ -380,6 +392,13 @@ public:
                                        output->buffer(),
                                        m_leaky_slope,
                                        output->buffer());
+        }
+        else if (m_activation_type == SOFTMAX)
+        {
+            small::SoftMax(output_shape[CHANNEL],
+                           output_shape[HEIGHT], output_shape[WIDTH],
+                           output->buffer(),
+                           output->buffer());
         }
     }
 

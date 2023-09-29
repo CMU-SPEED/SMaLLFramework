@@ -420,6 +420,14 @@ Conv2DLayer<BufferT>::Conv2DLayer(
                   << "x" << output_shape[WIDTH]
                   << ")" << std::endl;
     }
+    else if (activation_type == SOFTMAX)
+    {
+        std::cerr << "Softmax(batches:" << output_shape[BATCH]
+                  << ",chans:" << output_shape[CHANNEL]
+                  << ",img:" << output_shape[HEIGHT]
+                  << "x" << output_shape[WIDTH]
+                  << ")" << std::endl;
+    }
 #endif
 }
 
@@ -517,6 +525,14 @@ Conv2DLayer<BufferT>::Conv2DLayer(
         std::cerr << "LeakyReLU(batches:" << output_shape[BATCH]
                   << ",chans:" << output_shape[CHANNEL]
                   << ",slope:" << leaky_slope
+                  << ",img:" << output_shape[HEIGHT]
+                  << "x" << output_shape[WIDTH]
+                  << ")" << std::endl;
+    }
+    else if (activation_type == SOFTMAX)
+    {
+        std::cerr << "Softmax(batches:" << output_shape[BATCH]
+                  << ",chans:" << output_shape[CHANNEL]
                   << ",img:" << output_shape[HEIGHT]
                   << "x" << output_shape[WIDTH]
                   << ")" << std::endl;
@@ -633,6 +649,14 @@ Conv2DLayer<BufferT>::Conv2DLayer(
                   << "x" << output_shape[WIDTH]
                   << ")" << std::endl;
     }
+    else if (activation_type == SOFTMAX)
+    {
+        std::cerr << "Softmax(batches:" << output_shape[BATCH]
+                  << ",chans:" << output_shape[CHANNEL]
+                  << ",img:" << output_shape[HEIGHT]
+                  << "x" << output_shape[WIDTH]
+                  << ")" << std::endl;
+    }
 #endif
 }
 
@@ -702,6 +726,13 @@ void Conv2DLayer<BufferT>::compute_output(
                                    output->buffer(),
                                    m_leaky_slope,
                                    output->buffer());
+    }
+    else if (m_activation_type == SOFTMAX)
+    {
+        small::SoftMax(output_shape[CHANNEL],
+                       output_shape[HEIGHT], output_shape[WIDTH],
+                       output->buffer(),
+                       output->buffer());
     }
 }
 

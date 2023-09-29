@@ -25,7 +25,8 @@ namespace small
 enum ActivationType {
     NONE    = 0,  // aka LINEAR
     RELU    = 1,
-    LEAKY   = 2
+    LEAKY   = 2,
+    SOFTMAX = 3
 };
 
 //****************************************************************************

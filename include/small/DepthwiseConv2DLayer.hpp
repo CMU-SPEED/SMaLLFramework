@@ -350,6 +350,14 @@ DepthwiseConv2DLayer<BufferT>::DepthwiseConv2DLayer(
                   << "x" << output_shape[WIDTH]
                   << ")" << std::endl;
     }
+    else if (activation_type == SOFTMAX)
+    {
+        std::cerr << "Softmax(batches:" << output_shape[BATCH]
+                  << ",chans:" << output_shape[CHANNEL]
+                  << ",img:" << output_shape[HEIGHT]
+                  << "x" << output_shape[WIDTH]
+                  << ")" << std::endl;
+    }
 #endif
 }
 
@@ -421,6 +429,14 @@ DepthwiseConv2DLayer<BufferT>::DepthwiseConv2DLayer(
         std::cerr << "LeakyReLU(batches:" << output_shape[BATCH]
                   << ",chans:" << output_shape[CHANNEL]
                   << ",slope:" << leaky_slope
+                  << ",img:" << output_shape[HEIGHT]
+                  << "x" << output_shape[WIDTH]
+                  << ")" << std::endl;
+    }
+    else if (activation_type == SOFTMAX)
+    {
+        std::cerr << "Softmax(batches:" << output_shape[BATCH]
+                  << ",chans:" << output_shape[CHANNEL]
                   << ",img:" << output_shape[HEIGHT]
                   << "x" << output_shape[WIDTH]
                   << ")" << std::endl;
@@ -511,6 +527,14 @@ DepthwiseConv2DLayer<BufferT>::DepthwiseConv2DLayer(
                   << "x" << output_shape[WIDTH]
                   << ")" << std::endl;
     }
+    else if (activation_type == SOFTMAX)
+    {
+        std::cerr << "Softmax(batches:" << output_shape[BATCH]
+                  << ",chans:" << output_shape[CHANNEL]
+                  << ",img:" << output_shape[HEIGHT]
+                  << "x" << output_shape[WIDTH]
+                  << ")" << std::endl;
+    }
 #endif
 }
 
@@ -578,6 +602,13 @@ void DepthwiseConv2DLayer<BufferT>::compute_output(
                                    output->buffer(),
                                    m_leaky_slope,
                                    output->buffer());
+    }
+    else if (m_activation_type == SOFTMAX)
+    {
+        small::SoftMax(output_shape[CHANNEL],
+                       output_shape[HEIGHT], output_shape[WIDTH],
+                       output->buffer(),
+                       output->buffer());
     }
 }
 

@@ -18,14 +18,14 @@
 #include <type_traits>
 
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
-#include <small/abstract_layer.hpp>   /// @todo abstract_layer_float.hpp
+#include <small/abstract_layer.hpp> /// @todo abstract_layer_float.hpp
 #endif
 
 #if defined(SMALL_HAS_QUINT8_SUPPORT)
 #include <small/q_abstract_layer.hpp> /// @todo abstract_layer_quint8.hpp
 #endif
 
-//#define RECORD_CALLS
+// #define RECORD_CALLS
 
 #if defined(RECORD_CALLS)
 #include <iostream>
@@ -45,7 +45,7 @@ void Conv2D(int kernel_height, int kernel_width, int stride,
             int input_height, int input_width,
             BufferT const &input_buf,
             BufferT const &filter_buf,
-            BufferT       &output_buf)
+            BufferT &output_buf)
 {
     BufferT::unimplemented_function();
 }
@@ -68,7 +68,7 @@ void Conv2D<FloatBuffer>(
     int input_height, int input_width,
     FloatBuffer const &input_buf,
     FloatBuffer const &filter_buf,
-    FloatBuffer       &output_buf)
+    FloatBuffer &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "Conv2D<float>(k:"
@@ -91,27 +91,27 @@ void Conv2D<FloatBuffer>(
         {
             detail::abstract_layer<
                 FloatBuffer, 1, FLOAT_C_ob, FLOAT_C_ib,
-                FLOAT_W_ob, 1, FLOAT_UNROLL, 'c', 2, 1>(
-                    1,               // Output Channel Grouping
-                    output_channels, // Output Channels per group
-                    input_channels,
-                    input_height, input_width,
-                    kernel_height, kernel_width,
-                    t_pad, l_pad, r_pad, b_pad,
-                    &input_buf, &filter_buf, &output_buf);
+                FLOAT_W_ob, 1, FLOAT_UNROLL, OP_CONV, 2, 1>(
+                1,               // Output Channel Grouping
+                output_channels, // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
         }
         else if (stride == 2)
         {
             detail::abstract_layer<
                 FloatBuffer, 1, FLOAT_C_ob, FLOAT_C_ib,
-                FLOAT_W_ob, 2, FLOAT_UNROLL, 'c', 2, 1>(
-                    1,               // Output Channel Grouping
-                    output_channels, // Output Channels per group
-                    input_channels,
-                    input_height, input_width,
-                    kernel_height, kernel_width,
-                    t_pad, l_pad, r_pad, b_pad,
-                    &input_buf, &filter_buf, &output_buf);
+                FLOAT_W_ob, 2, FLOAT_UNROLL, OP_CONV, 2, 1>(
+                1,               // Output Channel Grouping
+                output_channels, // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
         }
         else
         {
@@ -127,27 +127,27 @@ void Conv2D<FloatBuffer>(
         {
             detail::abstract_layer<
                 FloatBuffer, 1, FLOAT_C_ob, 3,
-                FLOAT_W_ob, 1, 1, 'c', 2, 1>(
-                    1,               // Output Channel Grouping
-                    output_channels, // Output Channels per group
-                    input_channels,
-                    input_height, input_width,
-                    kernel_height, kernel_width,
-                    t_pad, l_pad, r_pad, b_pad,
-                    &input_buf, &filter_buf, &output_buf);
+                FLOAT_W_ob, 1, 1, OP_CONV, 2, 1>(
+                1,               // Output Channel Grouping
+                output_channels, // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
         }
         else if (stride == 2)
         {
             detail::abstract_layer<
                 FloatBuffer, 1, FLOAT_C_ob, 3,
-                FLOAT_W_ob, 2, 1, 'c', 2, 1>( // unroll?
-                    1,               // Output Channel Grouping
-                    output_channels, // Output Channels per group
-                    input_channels,
-                    input_height, input_width,
-                    kernel_height, kernel_width,
-                    t_pad, l_pad, r_pad, b_pad,
-                    &input_buf, &filter_buf, &output_buf);
+                FLOAT_W_ob, 2, 1, OP_CONV, 2, 1>( // unroll?
+                1,                                     // Output Channel Grouping
+                output_channels,                       // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
         }
         else
         {
@@ -173,7 +173,7 @@ void Conv2D<QUInt8Buffer>(
     int input_height, int input_width,
     QUInt8Buffer const &input_buf,
     QUInt8Buffer const &filter_buf,
-    QUInt8Buffer       &output_buf)
+    QUInt8Buffer &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "Conv2D<quint8>(k:"
@@ -197,26 +197,26 @@ void Conv2D<QUInt8Buffer>(
             quint8_detail::abstract_layer<
                 QUInt8Buffer, 1, QUINT8_C_ob, QUINT8_C_ib,
                 QUINT8_W_ob, 1, QUINT8_UNROLL, 'c', 2, 1>(
-                    1,               // Output Channel Grouping
-                    output_channels, // Output Channels per group
-                    input_channels,
-                    input_height, input_width,
-                    kernel_height, kernel_width,
-                    t_pad, l_pad, r_pad, b_pad,
-                    &input_buf, &filter_buf, &output_buf);
+                1,               // Output Channel Grouping
+                output_channels, // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
         }
         else if (stride == 2)
         {
             quint8_detail::abstract_layer<
                 QUInt8Buffer, 1, QUINT8_C_ob, QUINT8_C_ib,
                 QUINT8_W_ob, 2, QUINT8_UNROLL, 'c', 2, 1>(
-                    1,               // Output Channel Grouping
-                    output_channels, // Output Channels per group
-                    input_channels,
-                    input_height, input_width,
-                    kernel_height, kernel_width,
-                    t_pad, l_pad, r_pad, b_pad,
-                    &input_buf, &filter_buf, &output_buf);
+                1,               // Output Channel Grouping
+                output_channels, // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
         }
         else
         {
@@ -233,26 +233,26 @@ void Conv2D<QUInt8Buffer>(
             quint8_detail::abstract_layer<
                 QUInt8Buffer, 1, QUINT8_C_ob, 3,
                 QUINT8_W_ob, 1, 1, 'c', 2, 1>(
-                    1,               // Output Channel Grouping
-                    output_channels, // Output Channels per group
-                    input_channels,
-                    input_height, input_width,
-                    kernel_height, kernel_width,
-                    t_pad, l_pad, r_pad, b_pad,
-                    &input_buf, &filter_buf, &output_buf);
+                1,               // Output Channel Grouping
+                output_channels, // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
         }
         else if (stride == 2)
         {
             quint8_detail::abstract_layer<
                 QUInt8Buffer, 1, QUINT8_C_ob, 3,
                 QUINT8_W_ob, 2, 1, 'c', 2, 1>( // unroll?
-                    1,               // Output Channel Grouping
-                    output_channels, // Output Channels per group
-                    input_channels,
-                    input_height, input_width,
-                    kernel_height, kernel_width,
-                    t_pad, l_pad, r_pad, b_pad,
-                    &input_buf, &filter_buf, &output_buf);
+                1,                             // Output Channel Grouping
+                output_channels,               // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
         }
         else
         {
@@ -279,7 +279,7 @@ void PartialConv2D(int kernel_height, int kernel_width, int stride,
                    int input_height, int input_width,
                    BufferT const &input_buf,
                    BufferT const &filter_buf,
-                   BufferT       &output_buf)
+                   BufferT &output_buf)
 {
     BufferT::unimplemented_function();
 }
@@ -294,7 +294,7 @@ void PartialConv2D<FloatBuffer>(
     int input_height, int input_width,
     FloatBuffer const &input_buf,
     FloatBuffer const &filter_buf,
-    FloatBuffer       &output_buf)
+    FloatBuffer &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "PartialConv2D<float>(k:"
@@ -313,28 +313,28 @@ void PartialConv2D<FloatBuffer>(
         {
             detail::abstract_layer<
                 FloatBuffer, 1, FLOAT_C_ob, FLOAT_C_ib,
-                FLOAT_W_ob, 1, FLOAT_UNROLL, 'c', 2, 0>(
-                    1,               // Output Channel Grouping
-                    output_channels, // Output Channels per group
-                    input_channels,
-                    input_height, input_width,
-                    kernel_height, kernel_width,
-                    t_pad, l_pad, r_pad, b_pad,
-                    &input_buf, &filter_buf, &output_buf);
+                FLOAT_W_ob, 1, FLOAT_UNROLL, OP_CONV, 2, 0>(
+                1,               // Output Channel Grouping
+                output_channels, // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
         }
         else if (stride == 2)
         {
 
             detail::abstract_layer<
                 FloatBuffer, 1, FLOAT_C_ob, FLOAT_C_ib,
-                FLOAT_W_ob, 2, FLOAT_UNROLL, 'c', 2, 0>(
-                    1,               // Output Channel Grouping
-                    output_channels, // Output Channels per group
-                    input_channels,
-                    input_height, input_width,
-                    kernel_height, kernel_width,
-                    t_pad, l_pad, r_pad, b_pad,
-                    &input_buf, &filter_buf, &output_buf);
+                FLOAT_W_ob, 2, FLOAT_UNROLL, OP_CONV, 2, 0>(
+                1,               // Output Channel Grouping
+                output_channels, // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
         }
         else
         {
@@ -349,19 +349,19 @@ void PartialConv2D<FloatBuffer>(
         if (stride == 1)
         {
             detail::abstract_layer<
-                FloatBuffer, 1, FLOAT_C_ob, 3, FLOAT_W_ob, 1, 1, 'c', 2, 0>(
-                    1,               // Output Channel Grouping
-                    output_channels, // Output Channels per group
-                    input_channels,
-                    input_height, input_width,
-                    kernel_height, kernel_width,
-                    t_pad, l_pad, r_pad, b_pad,
-                    &input_buf, &filter_buf, &output_buf);
+                FloatBuffer, 1, FLOAT_C_ob, 3, FLOAT_W_ob, 1, 1, OP_CONV, 2, 0>(
+                1,               // Output Channel Grouping
+                output_channels, // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
         }
         else if (stride == 2)
         {
             detail::abstract_layer<
-                FloatBuffer, 1, FLOAT_C_ob, 3, FLOAT_W_ob, 2, 1, 'c', 2, 0>(
+                FloatBuffer, 1, FLOAT_C_ob, 3, FLOAT_W_ob, 2, 1, OP_CONV, 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -397,7 +397,7 @@ void PartialConv2D<QUInt8Buffer>(
     int input_height, int input_width,
     QUInt8Buffer const &input_buf,
     QUInt8Buffer const &filter_buf,
-    QUInt8Buffer       &output_buf)
+    QUInt8Buffer &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "PartialConv2D<quint8>(k:"
@@ -417,13 +417,13 @@ void PartialConv2D<QUInt8Buffer>(
             quint8_detail::abstract_layer<
                 QUInt8Buffer, 1, QUINT8_C_ob, QUINT8_C_ib,
                 QUINT8_W_ob, 1, QUINT8_UNROLL, 'c', 2, 0>(
-                    1,               // Output Channel Grouping
-                    output_channels, // Output Channels per group
-                    input_channels,
-                    input_height, input_width,
-                    kernel_height, kernel_width,
-                    t_pad, l_pad, r_pad, b_pad,
-                    &input_buf, &filter_buf, &output_buf);
+                1,               // Output Channel Grouping
+                output_channels, // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
         }
         else if (stride == 2)
         {
@@ -431,13 +431,13 @@ void PartialConv2D<QUInt8Buffer>(
             quint8_detail::abstract_layer<
                 QUInt8Buffer, 1, QUINT8_C_ob, QUINT8_C_ib,
                 QUINT8_W_ob, 2, QUINT8_UNROLL, 'c', 2, 0>(
-                    1,               // Output Channel Grouping
-                    output_channels, // Output Channels per group
-                    input_channels,
-                    input_height, input_width,
-                    kernel_height, kernel_width,
-                    t_pad, l_pad, r_pad, b_pad,
-                    &input_buf, &filter_buf, &output_buf);
+                1,               // Output Channel Grouping
+                output_channels, // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
         }
         else
         {
@@ -453,13 +453,13 @@ void PartialConv2D<QUInt8Buffer>(
         {
             quint8_detail::abstract_layer<
                 QUInt8Buffer, 1, QUINT8_C_ob, 3, QUINT8_W_ob, 1, 1, 'c', 2, 0>(
-                    1,               // Output Channel Grouping
-                    output_channels, // Output Channels per group
-                    input_channels,
-                    input_height, input_width,
-                    kernel_height, kernel_width,
-                    t_pad, l_pad, r_pad, b_pad,
-                    &input_buf, &filter_buf, &output_buf);
+                1,               // Output Channel Grouping
+                output_channels, // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
         }
         else if (stride == 2)
         {
@@ -498,7 +498,7 @@ void MaxPool2D(int kernel_height, int kernel_width, int stride,
                int input_channels,
                int input_height, int input_width,
                BufferT const &input_buf,
-               BufferT       &output_buf)
+               BufferT &output_buf)
 {
     BufferT::unimplemented_function();
 }
@@ -512,7 +512,7 @@ void MaxPool2D<FloatBuffer>(
     int input_channels,
     int input_height, int input_width,
     FloatBuffer const &input_buf,
-    FloatBuffer       &output_buf)
+    FloatBuffer &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "MaxPool2D<float>(k:"
@@ -530,26 +530,26 @@ void MaxPool2D<FloatBuffer>(
         if (stride == 1)
         {
             detail::abstract_layer<
-                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, 'p', 1, 1>(
-                    input_channels, // Output Channel Grouping
-                    1,              // Output Channels per group
-                    1,
-                    input_height, input_width,
-                    kernel_height, kernel_width,
-                    t_pad, l_pad, r_pad, b_pad,
-                    &input_buf, (FloatBuffer*)nullptr, &output_buf);
+                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_MAX_POOL, 1, 1>(
+                input_channels, // Output Channel Grouping
+                1,              // Output Channels per group
+                1,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, (FloatBuffer *)nullptr, &output_buf);
         }
         else if (stride == 2)
         {
             detail::abstract_layer<
-                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, 'p', 1, 1>(
-                    input_channels, // Output Channel Grouping
-                    1,              // Output Channels per group
-                    1,
-                    input_height, input_width,
-                    kernel_height, kernel_width,
-                    t_pad, l_pad, r_pad, b_pad,
-                    &input_buf, (FloatBuffer*)nullptr, &output_buf);
+                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, OP_MAX_POOL, 1, 1>(
+                input_channels, // Output Channel Grouping
+                1,              // Output Channels per group
+                1,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, (FloatBuffer *)nullptr, &output_buf);
         }
         else
         {
@@ -575,7 +575,7 @@ void MaxPool2D<QUInt8Buffer>(
     int input_channels,
     int input_height, int input_width,
     QUInt8Buffer const &input_buf,
-    QUInt8Buffer       &output_buf)
+    QUInt8Buffer &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "MaxPool2D<quint8>(k:"
@@ -594,25 +594,25 @@ void MaxPool2D<QUInt8Buffer>(
         {
             quint8_detail::abstract_layer<
                 QUInt8Buffer, QUINT8_C_ob, 1, 1, QUINT8_W_ob, 1, 1, 'p', 1, 1>(
-                    input_channels, // Output Channel Grouping
-                    1,              // Output Channels per group
-                    1,
-                    input_height, input_width,
-                    kernel_height, kernel_width,
-                    t_pad, l_pad, r_pad, b_pad,
-                    &input_buf, (QUInt8Buffer*)nullptr, &output_buf);
+                input_channels, // Output Channel Grouping
+                1,              // Output Channels per group
+                1,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, (QUInt8Buffer *)nullptr, &output_buf);
         }
         else if (stride == 2)
         {
             quint8_detail::abstract_layer<
                 QUInt8Buffer, QUINT8_C_ob, 1, 1, QUINT8_W_ob, 2, 1, 'p', 1, 1>(
-                    input_channels, // Output Channel Grouping
-                    1,              // Output Channels per group
-                    1,
-                    input_height, input_width,
-                    kernel_height, kernel_width,
-                    t_pad, l_pad, r_pad, b_pad,
-                    &input_buf, (QUInt8Buffer*)nullptr, &output_buf);
+                input_channels, // Output Channel Grouping
+                1,              // Output Channels per group
+                1,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, (QUInt8Buffer *)nullptr, &output_buf);
         }
         else
         {
@@ -668,26 +668,38 @@ void AveragePool2D<FloatBuffer>(
         if (stride == 1)
         {
             detail::abstract_layer<
-                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, 's', 1, 1>(
-                    input_channels, // Output Channel Grouping
-                    1,              // Output Channels per group
-                    1,
-                    input_height, input_width,
-                    kernel_height, kernel_width,
-                    t_pad, l_pad, r_pad, b_pad,
-                    &input_buf, (FloatBuffer *)nullptr, &output_buf);
+                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_AVERAGE_POOL, 1, 1>(
+                input_channels, // Output Channel Grouping
+                1,              // Output Channels per group
+                1,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, (FloatBuffer *)nullptr, &output_buf);
         }
         else if (stride == 2)
         {
             detail::abstract_layer<
-                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, 's', 1, 1>(
-                    input_channels, // Output Channel Grouping
-                    1,              // Output Channels per group
-                    1,
-                    input_height, input_width,
-                    kernel_height, kernel_width,
-                    t_pad, l_pad, r_pad, b_pad,
-                    &input_buf, (FloatBuffer *)nullptr, &output_buf);
+                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, OP_AVERAGE_POOL, 1, 1>(
+                input_channels, // Output Channel Grouping
+                1,              // Output Channels per group
+                1,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, (FloatBuffer *)nullptr, &output_buf);
+        }
+        else if (stride == 3)
+        {
+            detail::abstract_layer<
+                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 3, 1, OP_AVERAGE_POOL, 1, 1>(
+                input_channels, // Output Channel Grouping
+                1,              // Output Channels per group
+                1,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, (FloatBuffer *)nullptr, &output_buf);
         }
         else
         {
@@ -730,7 +742,7 @@ void DepthwiseConv2D<FloatBuffer>(
     int input_height, int input_width,
     FloatBuffer const &input_buf,
     FloatBuffer const &filter_buf,
-    FloatBuffer       &output_buf)
+    FloatBuffer &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "DepthwiseConv2D<float>(k:"
@@ -747,27 +759,27 @@ void DepthwiseConv2D<FloatBuffer>(
         if (stride == 1)
         {
             detail::abstract_layer<
-                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, 'c', 1, 1>(
-                    input_channels, // Output Channel Grouping
-                    1,              // Output Channels per group
-                    1,
-                    input_height, input_width,
-                    kernel_height, kernel_width,
-                    t_pad, l_pad, r_pad, b_pad,
-                    &input_buf, &filter_buf, &output_buf);
+                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_CONV, 1, 1>(
+                input_channels, // Output Channel Grouping
+                1,              // Output Channels per group
+                1,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
         }
         else if (stride == 2)
         {
 
             detail::abstract_layer<
-                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, 'c', 1, 1>(
-                    input_channels, // Output Channel Grouping
-                    1,              // Output Channels per group
-                    1,
-                    input_height, input_width,
-                    kernel_height, kernel_width,
-                    t_pad, l_pad, r_pad, b_pad,
-                    &input_buf, &filter_buf, &output_buf);
+                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, OP_CONV, 1, 1>(
+                input_channels, // Output Channel Grouping
+                1,              // Output Channels per group
+                1,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
         }
         else
         {
@@ -793,7 +805,7 @@ void DepthwiseConv2D<QUInt8Buffer>(
     int input_height, int input_width,
     QUInt8Buffer const &input_buf,
     QUInt8Buffer const &filter_buf,
-    QUInt8Buffer       &output_buf)
+    QUInt8Buffer &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "DepthwiseConv2D<quint8>(k:"
@@ -811,26 +823,26 @@ void DepthwiseConv2D<QUInt8Buffer>(
         {
             quint8_detail::abstract_layer<
                 QUInt8Buffer, QUINT8_C_ob, 1, 1, QUINT8_W_ob, 1, 1, 'c', 1, 1>(
-                    input_channels, // Output Channel Grouping
-                    1,              // Output Channels per group
-                    1,
-                    input_height, input_width,
-                    kernel_height, kernel_width,
-                    t_pad, l_pad, r_pad, b_pad,
-                    &input_buf, &filter_buf, &output_buf);
+                input_channels, // Output Channel Grouping
+                1,              // Output Channels per group
+                1,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
         }
         else if (stride == 2)
         {
 
             quint8_detail::abstract_layer<
                 QUInt8Buffer, QUINT8_C_ob, 1, 1, QUINT8_W_ob, 2, 1, 'c', 1, 1>(
-                    input_channels, // Output Channel Grouping
-                    1,              // Output Channels per group
-                    1,
-                    input_height, input_width,
-                    kernel_height, kernel_width,
-                    t_pad, l_pad, r_pad, b_pad,
-                    &input_buf, &filter_buf, &output_buf);
+                input_channels, // Output Channel Grouping
+                1,              // Output Channels per group
+                1,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
         }
         else
         {
@@ -888,7 +900,7 @@ void PartialDepthwiseConv2D<FloatBuffer>(
         {
             detail::abstract_layer<
                 FloatBuffer, FLOAT_C_ob, 1, 1,
-                FLOAT_W_ob, 1, 1, 'c', 1, 0>(
+                FLOAT_W_ob, 1, 1, OP_CONV, 1, 0>(
                     input_channels, // Output Channel Grouping
                     1,              // Output Channels per group
                     1,
@@ -902,7 +914,7 @@ void PartialDepthwiseConv2D<FloatBuffer>(
 
             detail::abstract_layer<
                 FloatBuffer, FLOAT_C_ob, 1, 1,
-                FLOAT_W_ob, 2, 1, 'c', 1, 0>(
+                FLOAT_W_ob, 2, 1, OP_CONV, 1, 0>(
                     input_channels, // Output Channel Grouping
                     1,              // Output Channels per group
                     1,
@@ -998,7 +1010,7 @@ template <class BufferT>
 void ReLUActivation(int input_channels,
                     int input_height, int input_width,
                     BufferT const &input_buf,
-                    BufferT       &output_buf) //, int zero = 0)
+                    BufferT &output_buf) //, int zero = 0)
 {
     BufferT::unimplemented_function();
 }
@@ -1009,7 +1021,7 @@ template <>
 void ReLUActivation<FloatBuffer>(int input_channels,
                                  int input_height, int input_width,
                                  FloatBuffer const &input_buf,
-                                 FloatBuffer       &output_buf)
+                                 FloatBuffer &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "ReLUActivation<float>(chans:" << input_channels
@@ -1020,14 +1032,14 @@ void ReLUActivation<FloatBuffer>(int input_channels,
     if (input_channels % FLOAT_C_ib == 0)
     {
         detail::abstract_layer<
-            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, 'a', 0, 1>(
-                input_channels, // Output Channel Grouping
-                1,              // Output Channels per group
-                1,
-                input_height, input_width,
-                1, 1,
-                0, 0, 0, 0,
-                &input_buf, (FloatBuffer*)nullptr, &output_buf);
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_RELU, 0, 1>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            1, 1,
+            0, 0, 0, 0,
+            &input_buf, (FloatBuffer *)nullptr, &output_buf);
     }
     else
     {
@@ -1043,7 +1055,7 @@ template <>
 void ReLUActivation<QUInt8Buffer>(int input_channels,
                                   int input_height, int input_width,
                                   QUInt8Buffer const &input_buf,
-                                  QUInt8Buffer       &output_buf)
+                                  QUInt8Buffer &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "ReLUActivation<quint8>(chans:" << input_channels
@@ -1055,13 +1067,13 @@ void ReLUActivation<QUInt8Buffer>(int input_channels,
     {
         quint8_detail::abstract_layer<
             QUInt8Buffer, QUINT8_C_ob, 1, 1, QUINT8_W_ob, 1, 1, 'a', 0, 1>(
-                input_channels, // Output Channel Grouping
-                1,              // Output Channels per group
-                1,
-                input_height, input_width,
-                1, 1,
-                0, 0, 0, 0,
-                &input_buf, (QUInt8Buffer*)nullptr, &output_buf);
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            1, 1,
+            0, 0, 0, 0,
+            &input_buf, (QUInt8Buffer *)nullptr, &output_buf);
     }
     else
     {
@@ -1109,14 +1121,14 @@ void LeakyReLUActivation<FloatBuffer>(int input_channels,
     if (input_channels % FLOAT_C_ib == 0)
     {
         detail::abstract_layer<
-            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, 'l', 0, 1>(
-                input_channels, // Output Channel Grouping
-                1,              // Output Channels per group
-                1,
-                input_height, input_width,
-                1, 1,
-                0, 0, 0, 0,
-                &input_buf, &filter_buf, &output_buf);
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_LEAKY_RELU, 0, 1>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            1, 1,
+            0, 0, 0, 0,
+            &input_buf, &filter_buf, &output_buf);
     }
     else
     {
@@ -1127,7 +1139,7 @@ void LeakyReLUActivation<FloatBuffer>(int input_channels,
 #endif
 
 //============================================================================
-#if 0 //defined(SMALL_HAS_QUINT8_SUPPORT)
+#if 0 // defined(SMALL_HAS_QUINT8_SUPPORT)
 template <>
 void LeakyReLUActivation<QUInt8Buffer>(int input_channels,
                                        int input_height, int input_width,
@@ -1166,6 +1178,175 @@ void LeakyReLUActivation<QUInt8Buffer>(int input_channels,
 
 //****************************************************************************
 //****************************************************************************
+template <class BufferT>
+void Dropout(int input_channels,
+             int input_height, int input_width,
+             BufferT const &input_buf,
+             BufferT const &filter_buf,
+             BufferT       &output_buf)
+{
+    // for (auto ix = 0; ix < input_channels*input_height*input_width; ++ix)
+    // {
+    //     output_buf[ix] = ((input_buf[ix] < 0) ?
+    //                       (negative_slope*input_buf[ix]) :
+    //                       input_buf[ix]);
+    // }
+
+    BufferT::unimplemented_function();
+}
+
+//============================================================================
+#if defined(SMALL_HAS_FLOAT_SUPPORT)
+template <>
+void Dropout<FloatBuffer>(int input_channels,
+                          int input_height, int input_width,
+                          FloatBuffer const &input_buf,
+                          FloatBuffer const &filter_buf,
+                          FloatBuffer       &output_buf)
+{
+#if defined(RECORD_CALLS)
+    std::cout << "Dropout<float>(chans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",slope:" << filter_buf.data()[0]
+              << ",I,O)\n";
+#endif
+
+    if (input_channels % FLOAT_C_ib == 0)
+    {
+        detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_MUL, 0, 1>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            1, 1,
+            0, 0, 0, 0,
+            &input_buf, &filter_buf, &output_buf);
+    }
+    else
+    {
+        throw std::invalid_argument(
+            "Dropout<float> ERROR: in_channels unsupported.");
+    }
+}
+#endif
+
+//============================================================================
+#if 0 // defined(SMALL_HAS_QUINT8_SUPPORT)
+template <>
+void Dropout<QUInt8Buffer>(int input_channels,
+                           int input_height, int input_width,
+                           QUInt8Buffer const &input_buf,
+                           QUInt8Buffer const &filter_buf,
+                           QUInt8Buffer       &output_buf)
+{
+#if defined(RECORD_CALLS)
+    std::cout << "Dropout<quint8>(chans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",slope:" << filter_buf.data()[0]
+              << ",I,O)\n";
+#endif
+
+#pragma message("WARNING: Dropout microkernels not implemented for QUInt8Buffer")
+
+    if (input_channels % QUINT8_C_ib == 0)
+    {
+        quint8_detail::abstract_layer<
+            QUInt8Buffer, QUINT8_C_ob, 1, 1, QUINT8_W_ob, 1, 1, 'm', 0, 1>(
+                input_channels, // Output Channel Grouping
+                1,              // Output Channels per group
+                1,
+                input_height, input_width,
+                1, 1,
+                0, 0, 0, 0,
+                &input_buf, &filter_buf, &output_buf);
+    }
+    else
+    {
+        throw std::invalid_argument(
+            "Dropout<quint8> ERROR: in_channels unsupported.");
+    }
+}
+#endif
+
+//****************************************************************************
+//****************************************************************************
+template <class BufferT>
+void SoftMax(int input_channels,
+             int input_height, int input_width,
+             BufferT const &input_buf,
+             BufferT       &output_buf)
+{
+    BufferT::unimplemented_function();
+}
+
+//============================================================================
+#if defined(SMALL_HAS_FLOAT_SUPPORT)
+template <>
+void SoftMax<FloatBuffer>(int input_channels,
+                          int input_height, int input_width,
+                          FloatBuffer const &input_buf,
+                          FloatBuffer       &output_buf)
+{
+#if defined(RECORD_CALLS)
+    std::cout << "SoftMax<float>(chans:" << input_channels
+                << ",img:" << input_height << "x" << input_width
+                << ",I,O)\n";
+#endif
+
+    if (input_channels % FLOAT_C_ib == 0)
+    {
+        // SoftMax is a point wise exponent, global ADD, pointwise multiply
+
+        // pointwise exponent
+        detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_EXP, 0, 1>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            1, 1,
+            0, 0, 0, 0,
+            &input_buf, (FloatBuffer *)nullptr, &output_buf);
+
+
+        // // global sum
+        FloatBuffer softmax_norm_buf(1);
+        detail::abstract_layer<
+            FloatBuffer, 1, 1, FLOAT_C_ob, FLOAT_W_ob, 1, FLOAT_C_ob, OP_ADD, 3, 1>(
+            1, // Output Channel Grouping
+            1, // Output Channels per group
+            input_channels,
+            input_height, input_width,
+            input_height, input_width,
+            0, 0, 0, 0,
+            &output_buf, (FloatBuffer *)nullptr, &softmax_norm_buf);
+
+        std::cout << "Global sum: " << softmax_norm_buf.data()[0]
+                  << std::endl;
+
+        // //elementwise scaling
+        softmax_norm_buf.data()[0] = 1.0/softmax_norm_buf.data()[0];
+        detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_MUL, 0, 1>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            1, 1,
+            0, 0, 0, 0,
+            &output_buf, &softmax_norm_buf, &output_buf);
+    }
+    else
+    {
+        throw std::invalid_argument(
+            "SoftMax<float> ERROR: in_channels unsupported.");
+    }
+}
+#endif
+
+//****************************************************************************
+//****************************************************************************
 // nearest neighbor upsampling
 template <typename BufferT>
 void UpSample2D(int scale_factor,
@@ -1184,7 +1365,7 @@ void UpSample2D<FloatBuffer>(int scale_factor,
                              int input_channels,
                              int input_height, int input_width,
                              FloatBuffer const &input_buf,
-                             FloatBuffer       &output_buf)
+                             FloatBuffer &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "UpSample2D<float>(chans:" << input_channels
@@ -1202,19 +1383,19 @@ void UpSample2D<FloatBuffer>(int scale_factor,
         if (input_channels % FLOAT_C_ib == 0)
         {
             detail::abstract_layer<
-                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, 'u', 0, 1>(
-                    input_channels, // Output Channel Grouping
-                    1,              // Output Channels per group
-                    1,
-                    input_height, input_width,
-                    1, 1,
-                    0, 0, 0, 0,
-                    &input_buf, (FloatBuffer *)nullptr, &output_buf);
+                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, OP_UPSAMPLE, 0, 1>(
+                input_channels, // Output Channel Grouping
+                1,              // Output Channels per group
+                1,
+                input_height, input_width,
+                1, 1,
+                0, 0, 0, 0,
+                &input_buf, (FloatBuffer *)nullptr, &output_buf);
         }
         else
         {
-        throw std::invalid_argument(
-            "Upsample<float> ERROR: in_channels unsupported.");
+            throw std::invalid_argument(
+                "Upsample<float> ERROR: in_channels unsupported.");
         }
     }
     else
@@ -1226,7 +1407,7 @@ void UpSample2D<FloatBuffer>(int scale_factor,
 #endif
 
 //============================================================================
-#if 0 //defined(SMALL_HAS_QUINT8_SUPPORT)
+#if 0 // defined(SMALL_HAS_QUINT8_SUPPORT)
 template <>
 void UpSample2D<QUInt8Buffer>(int scale_factor,
                              int input_channels,
@@ -1275,14 +1456,13 @@ void UpSample2D<QUInt8Buffer>(int scale_factor,
 }
 #endif
 
-
 //****************************************************************************
 //****************************************************************************
 template <class BufferT>
 void Accum(int input_channels,
            int input_height, int input_width,
            BufferT const &input_buf,
-           BufferT       &output_buf)
+           BufferT &output_buf)
 {
     BufferT::unimplemented_function();
 }
@@ -1293,7 +1473,7 @@ template <>
 void Accum<FloatBuffer>(int input_channels,
                         int input_height, int input_width,
                         FloatBuffer const &input_buf,
-                        FloatBuffer       &output_buf)
+                        FloatBuffer &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "Accum<float>(chans:" << input_channels
@@ -1304,14 +1484,14 @@ void Accum<FloatBuffer>(int input_channels,
     if (input_channels % FLOAT_C_ib == 0)
     {
         detail::abstract_layer<
-            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, 'd', 0, 0>(
-                input_channels, // Output Channel Grouping
-                1,              // Output Channels per group
-                1,
-                input_height, input_width,
-                1, 1,
-                0, 0, 0, 0,
-                &input_buf, (FloatBuffer *)NULL, &output_buf);
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_ADD, 0, 0>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            1, 1,
+            0, 0, 0, 0,
+            &input_buf, (FloatBuffer *)NULL, &output_buf);
     }
     else
     {
@@ -1325,12 +1505,12 @@ void Accum<FloatBuffer>(int input_channels,
 
 //****************************************************************************
 //****************************************************************************
-//init a buffer with bias values, 1 per channel
+// init a buffer with bias values, 1 per channel
 template <class BufferT>
 void Bias(int num_channels,
           int output_height, int output_width,
           BufferT const &input_buf,
-          BufferT       &output_buf)
+          BufferT &output_buf)
 {
     BufferT::unimplemented_function();
 }
@@ -1341,7 +1521,7 @@ template <>
 void Bias<FloatBuffer>(int num_channels,
                        int output_height, int output_width,
                        FloatBuffer const &input_buf,
-                       FloatBuffer       &output_buf)
+                       FloatBuffer &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "Bias<float>(chans:" << num_channels
@@ -1353,14 +1533,14 @@ void Bias<FloatBuffer>(int num_channels,
     {
         detail::abstract_layer<
             FloatBuffer, FLOAT_C_ob, 1, 1,
-            FLOAT_W_ob, std::numeric_limits<dim_t>::max(), 1, 'u', 0, 1>(
-                num_channels,   // Output Channel Grouping
-                1,              // Output Channels per group
-                1,
-                output_height, output_width,
-                1, 1,
-                0, 0, 0, 0,
-                &input_buf, (FloatBuffer *)nullptr, &output_buf);
+            FLOAT_W_ob, std::numeric_limits<dim_t>::max(), 1, OP_UPSAMPLE, 0, 1>(
+            num_channels, // Output Channel Grouping
+            1,            // Output Channels per group
+            1,
+            output_height, output_width,
+            1, 1,
+            0, 0, 0, 0,
+            &input_buf, (FloatBuffer *)nullptr, &output_buf);
     }
     else
     {
@@ -1374,13 +1554,62 @@ void Bias<FloatBuffer>(int num_channels,
 
 //****************************************************************************
 //****************************************************************************
+// init a buffer with bias values, 1 per channel
+template <class BufferT>
+void PartialBias(int num_channels,
+                 int output_height, int output_width,
+                 BufferT const &input_buf,
+                 BufferT &output_buf)
+{
+    BufferT::unimplemented_function();
+}
+
+//============================================================================
+#if defined(SMALL_HAS_FLOAT_SUPPORT)
+template <>
+void PartialBias<FloatBuffer>(int num_channels,
+                              int output_height, int output_width,
+                              FloatBuffer const &input_buf,
+                              FloatBuffer &output_buf)
+{
+#if defined(RECORD_CALLS)
+    std::cout << "PartialBias<float>(chans:" << num_channels
+              << ",img:" << output_height << "x" << output_width
+              << ",I,O)\n";
+#endif
+
+    if (num_channels % FLOAT_C_ob == 0)
+    {
+        detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1,
+            FLOAT_W_ob, std::numeric_limits<dim_t>::max(), 1, OP_UPSAMPLE, 0, 0>(
+                num_channels, // Output Channel Grouping
+                1,            // Output Channels per group
+                1,
+                output_height, output_width,
+                1, 1,
+                0, 0, 0, 0,
+                &input_buf, (FloatBuffer *)nullptr, &output_buf);
+    }
+    else
+    {
+        throw std::invalid_argument(
+            "PartialBias<float> ERROR: in_channels unsupported.");
+    }
+}
+#endif
+
+/// @todo PartialBias<QUInt8Buffer>(..) implementation
+
+//****************************************************************************
+//****************************************************************************
 template <class BufferT>
 void Concat(uint32_t input0_channels,
             uint32_t input1_channels,
             uint32_t input_height, uint32_t input_width,
             BufferT const &input0_buf,
             BufferT const &input1_buf,
-            BufferT       &output_buf)
+            BufferT &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "Concat(inchans:" << input0_channels
@@ -1399,11 +1628,11 @@ void Concat(uint32_t input0_channels,
     // Since channels is the slowest dimension, I believe that we can
     // just do 2 copies into a large buffer assuming that we just want
     // to concat 2 packed buffers in the channel dimension.
-    size_t size0(input0_channels*input_height*input_width);
+    size_t size0(input0_channels * input_height * input_width);
     std::copy(input0_buf.data(), input0_buf.data() + size0,
               output_buf.data());
 
-    size_t size1(input1_channels*input_height*input_width);
+    size_t size1(input1_channels * input_height * input_width);
     std::copy(input1_buf.data(), input1_buf.data() + size1,
               output_buf.data() + size0);
 }
@@ -1414,7 +1643,7 @@ template <class BufferT>
 void Dense(int output_elements, int input_elements,
            BufferT const &input_buf,
            BufferT const &filter_buf,
-           BufferT       &output_buf)
+           BufferT &output_buf)
 {
     BufferT::unimplemented_function();
 }
@@ -1425,21 +1654,21 @@ template <>
 void Dense<FloatBuffer>(int output_elements, int input_elements,
                         FloatBuffer const &input_buf,
                         FloatBuffer const &filter_buf,
-                        FloatBuffer       &output_buf)
+                        FloatBuffer &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "Dense<float>(outxin:" << output_elements
               << "x" << input_elements << "I,F,O)\n";
 #endif
     detail::abstract_layer<
-        FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, 'c', 1, 1>(
-            output_elements, // Output Channel Grouping
-            1,               // Output Channels per group
-            1,
-            1, input_elements,
-            1, 1,
-            0, 0, 0, 0,
-            &input_buf, &filter_buf, &output_buf);
+        FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_CONV, 1, 1>(
+        output_elements, // Output Channel Grouping
+        1,               // Output Channels per group
+        1,
+        1, input_elements,
+        1, 1,
+        0, 0, 0, 0,
+        &input_buf, &filter_buf, &output_buf);
 }
 #endif
 
@@ -1449,7 +1678,7 @@ template <>
 void Dense<QUInt8Buffer>(int output_elements, int input_elements,
                          QUInt8Buffer const &input_buf,
                          QUInt8Buffer const &filter_buf,
-                         QUInt8Buffer       &output_buf)
+                         QUInt8Buffer &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "Dense<quint8>(outxin:" << output_elements
@@ -1457,13 +1686,13 @@ void Dense<QUInt8Buffer>(int output_elements, int input_elements,
 #endif
     quint8_detail::abstract_layer<
         QUInt8Buffer, QUINT8_C_ob, 1, 1, QUINT8_W_ob, 1, 1, 'c', 1, 1>(
-            output_elements, // Output Channel Grouping
-            1,               // Output Channels per group
-            1,
-            1, input_elements,
-            1, 1,
-            0, 0, 0, 0,
-            &input_buf, &filter_buf, &output_buf);
+        output_elements, // Output Channel Grouping
+        1,               // Output Channels per group
+        1,
+        1, input_elements,
+        1, 1,
+        0, 0, 0, 0,
+        &input_buf, &filter_buf, &output_buf);
 }
 #endif
 
