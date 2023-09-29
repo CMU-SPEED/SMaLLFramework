@@ -68,6 +68,24 @@ public:
         ActivationType    activation_type = NONE,
         float             leaky_slope = 1.e-2);
 
+    // With bias and fused batch normalization
+    DepthwiseConv2DLayer(
+        shape_type const &input_shape,    //pred.output_shape()
+        uint32_t          kernel_height,
+        uint32_t          kernel_width,
+        uint32_t          stride,
+        PaddingEnum       padding_type,
+        BufferT    const &filters,
+        BufferT    const &bias,
+        BufferT    const &bn_weight,            // gamma
+        BufferT    const &bn_bias,              // beta
+        BufferT    const &bn_running_mean,      // mu_hat
+        BufferT    const &bn_running_variance,  // sigma_hat^2
+        float      const &bn_eps = 1.e-5,       // float?
+        bool              buffers_are_packed = true,
+        ActivationType    activation_type = NONE,
+        float             leaky_slope = 1.e-2);
+
     virtual ~DepthwiseConv2DLayer() {}
 
     virtual void compute_output(
@@ -501,6 +519,93 @@ DepthwiseConv2DLayer<BufferT>::DepthwiseConv2DLayer(
         m_kernel_height, m_kernel_width,
         filters,
         BufferT(), // no bias
+        bn_weight, bn_bias,
+        bn_running_mean, bn_running_variance, bn_eps,
+        buffers_are_packed,
+        m_packed_filters,
+        m_packed_bias);
+
+
+#if defined(DEBUG_LAYERS)
+    auto &output_shape = this->output_shape();
+    if (activation_type == RELU)
+    {
+        std::cerr << "ReLU(batches:" << output_shape[BATCH]
+                  << ",chans:" << output_shape[CHANNEL]
+                  << ",img:" << output_shape[HEIGHT]
+                  << "x" << output_shape[WIDTH]
+                  << ")" << std::endl;
+    }
+    else if (activation_type == LEAKY)
+    {
+        std::cerr << "LeakyReLU(batches:" << output_shape[BATCH]
+                  << ",chans:" << output_shape[CHANNEL]
+                  << ",slope:" << m_leaky_slope[0]
+                  << ",img:" << output_shape[HEIGHT]
+                  << "x" << output_shape[WIDTH]
+                  << ")" << std::endl;
+    }
+#endif
+}
+
+//****************************************************************************
+template <class BufferT>
+DepthwiseConv2DLayer<BufferT>::DepthwiseConv2DLayer(
+    shape_type const &input_shape,
+    uint32_t          kernel_height,
+    uint32_t          kernel_width,
+    uint32_t          stride,
+    PaddingEnum       padding_type,
+    BufferT    const &filters,
+    BufferT    const &bias,
+    BufferT    const &bn_weight,            // gamma
+    BufferT    const &bn_bias,              // beta
+    BufferT    const &bn_running_mean,      // mu_hat
+    BufferT    const &bn_running_variance,  // sigma_hat^2
+    float      const &bn_eps ,              // float?
+    bool              buffers_are_packed,
+    ActivationType    activation_type,
+    float             leaky_slope)
+    : Layer<BufferT>(),
+      m_input_shape(input_shape),
+      m_kernel_height(kernel_height),
+      m_kernel_width(kernel_width),
+      m_stride(stride),
+      m_activation_type(activation_type),
+      m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0),
+      m_leaky_slope(1),  /// @note Allocating 1-element buffer
+      m_packed_filters(),
+      m_packed_bias()
+{
+#if defined(DEBUG_LAYERS)
+    std::cerr << "DWConv2D(batches:" << m_input_shape[BATCH]
+              << ",k:" << m_kernel_height << "x" << m_kernel_width
+              << ",s:" << m_stride
+              << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
+              << ",chans:" << m_input_shape[CHANNEL]
+              << ",img:" << m_input_shape[HEIGHT]
+              << "x" << m_input_shape[WIDTH]
+              << "), filters.size=" << filters.size()
+              << ",bias.size=" << bias.size()
+              << ",bn.sizes(weight,bias,run_var,run_avg)=("
+              << bn_weight.size()
+              << "," << bn_bias.size()
+              << "," << bn_running_variance.size()
+              << "," << bn_running_mean.size()
+              << "),bn_eps:" << bn_eps << std::endl;
+#endif
+
+    m_leaky_slope[0] = leaky_slope;
+    compute_padding_output_shape(m_input_shape,
+                                 m_kernel_height, m_kernel_width,
+                                 m_stride,
+                                 padding_type);
+
+    detail::initialize_dw_conv2d_buffers(
+        m_input_shape[CHANNEL],
+        m_kernel_height, m_kernel_width,
+        filters,
+        bias,
         bn_weight, bn_bias,
         bn_running_mean, bn_running_variance, bn_eps,
         buffers_are_packed,
