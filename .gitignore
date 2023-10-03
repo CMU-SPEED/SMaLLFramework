@@ -18,3 +18,4 @@ Results/
 *.mlir
 *.o
 benchmark/regression_data
+*.DS_Store
