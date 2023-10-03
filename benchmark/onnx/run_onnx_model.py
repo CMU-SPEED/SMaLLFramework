@@ -27,6 +27,7 @@ import os
 import json
 import argparse
 import subprocess
+import helper
 
 # These are imported from onnx-mlir
 from PyRuntime import OMExecutionSession
@@ -35,6 +36,7 @@ import ctypes
 import pathlib
 from numpy.ctypeslib import ndpointer
 
+#*-------------------------------------------------------------------------------
 libsmall = pathlib.Path().absolute() / "../../lib/libpack.so"
 libsmall = ctypes.CDLL(libsmall)
 pack = libsmall.pack
@@ -47,43 +49,8 @@ pack.argtypes = [
     ctypes.c_int, # w
     ctypes.c_int  # type
 ]
-
 INPUT = 0
 OUTPUT = 1
-        
-#*-------------------------------------------------------------------------------
-# Repack weights for a given platform
-# Assumes all filter weights are in CO, CI, H, W format
-# Assumes filter weights contain a string "const_fold" in their name
-def repack_weights(onnx_model_path):
-    os.system(f"python3 repack_weights.py {onnx_model_path}")
-    
-#*-------------------------------------------------------------------------------
-# helper function to get input dimensions
-def get_input_dims(input_sign):
-    input_dims = [1 if x==-1 else x for x in input_sign["dims"]]
-    print(f"Input dims: {input_dims}")
-    
-    while(True):
-        c = input("Would you like to change the input dimensions? (y/n): ").lower()
-        if(c != "y" and c != "n"):
-            continue
-        else:
-            break
-        
-    new_input_dims_list = []
-    if(c == "y"):
-        while(True):
-            new_input_dims = input("Enter new input dimensions as space seperated list of integers: ")
-            new_input_dims_list = [int(x) for x in new_input_dims.split(" ")]
-            if(len(new_input_dims_list) != len(input_dims)):
-                print("[ERROR] Number of dimensions entered doesn't match expected number of dimension.")
-                continue
-            else:
-                break
-        input_dims = new_input_dims_list
-        
-    return input_dims
 
 #*-------------------------------------------------------------------------------
 # use os.system to run pytorch model
@@ -105,9 +72,10 @@ def run_pytorch_model(onnx_model_path, input_file, correctness):
 # returns path to shared library that contains the model
 def compile_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT):
     
-    repack_weights(onnx_model_path)
-    print("Repacked weights!")
-    onnx_model_path = onnx_model_path[:-5] + "_repacked.onnx"
+    if(ONNX_MLIR_ROOT != "" and "nico" in ONNX_MLIR_ROOT):
+        helper.repack_weights(onnx_model_path)
+        print("Repacked weights!")
+        onnx_model_path = onnx_model_path[:-5] + "_repacked.onnx"
     
     onnx_model_o = onnx_model_path[:-5] + ".o"
     onnx_model_so = onnx_model_path[:-5] + ".so"
@@ -120,7 +88,8 @@ def compile_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT):
     # --enable-conv-opt-pass=false must be passed to onnx-mlir to avoid a bug
     # add more passes here if needed
     print("Compiling model...\n")
-    os.system(f"{onnx_mlir_exe} --enable-conv-opt-pass=false --EmitObj {onnx_model_path}")
+    os.system(f"{onnx_mlir_exe} -O3 --enable-conv-opt-pass=false --EmitObj {onnx_model_path}")
+    # os.system(f"{onnx_mlir_exe} -O3 --EmitObj {onnx_model_path}")
    
     # link small to the compiled model
     onnx_lib_link = f"-L{ONNX_MLIR_ROOT}/build/Debug/lib -lcruntime"
@@ -156,7 +125,7 @@ def run_onnx_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT):
     # create input data and store it in a file for pytorch to use
     # input data is assumed to be in NCHW format
     input_sign = json.loads(session.input_signature())[0]
-    input_dims = get_input_dims(input_sign)
+    input_dims = helper.get_input_dims(input_sign)
     model_input = np.random.rand(*input_dims).astype(np.float32)
     np.save("input.npy", model_input)
     
@@ -188,7 +157,7 @@ def run_onnx_model(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT):
     # small_fps = input_dims[0]/best_time
     print("\nsmall, pytorch, pytorch/small, correctness")
     print(f"{best_time}, {pytorch_time}, {pytorch_time/best_time}, {passed_str}")
-        
+    # os.system(f"rm {onnx_model_so_colored}")
 
 
 #*-------------------------------------------------------------------------------
@@ -215,7 +184,7 @@ def run_onnx_model_correctness(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT):
     # create input data and store it in a file for pytorch to use
     # input data is assumed to be in NCHW format
     input_sign = json.loads(session.input_signature())[0]
-    input_dims = get_input_dims(input_sign)
+    input_dims = helper.get_input_dims(input_sign)
     model_input = np.random.rand(*input_dims).astype(np.float32)
     np.save("input.npy", model_input)
     
@@ -227,6 +196,7 @@ def run_onnx_model_correctness(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT):
     outputs_torch = np.load("pytorch_output.npy")
     
     # pack output for comparision
+    # only pack if the output is another 4D tensor
     outputs_torch_packed = outputs_torch.copy()
     if(len(outputs_torch_packed.shape) == 4):
         _, oc, oh, ow = outputs_torch_packed.shape
@@ -254,7 +224,6 @@ def run_onnx_model_correctness(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT):
     # compare outputs
     passed = np.allclose(outputs[0], outputs_torch_packed, atol=1e-5)
     passed_str = colored("PASSED", "green") if passed else colored("FAILED", "red")
-    # print(f"\n{onnx_model_so_colored} {passed_str}")
     if not passed:
         print("small: ")
         print(outputs[0], outputs[0].shape)
@@ -265,6 +234,8 @@ def run_onnx_model_correctness(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT):
     else:
         print("\nsmall, pytorch, pytorch/small, correctness")
         print(f"{e-s}, {pytorch_time}, {pytorch_time/(e-s)}, {passed_str}")
+        
+    # os.system(f"rm {onnx_model_so_colored}")
 
 #*------------------------------------------------------------------------------- 
 def get_args(): 
@@ -292,6 +263,11 @@ def get_args():
         action='store_true',
         help="Run correctness test."
     )
+    arg_parser.add_argument(
+        "--save_data",
+        action='store_true',
+        help="Save input and output data."
+    )
     
     return arg_parser.parse_args()
     
@@ -301,6 +277,7 @@ if __name__ == "__main__":
     args = get_args()
     
     onnx_model = args.model
+    onnx_model_shortned = onnx_model[:-5]
     small_lib_path = args.lib
     ONNX_MLIR_ROOT = args.ONNX_MLIR_ROOT
     ONNX_MLIR_ROOT_COLORED = colored(ONNX_MLIR_ROOT, "green")
@@ -312,3 +289,23 @@ if __name__ == "__main__":
         run_onnx_model_correctness(onnx_model, small_lib_path, ONNX_MLIR_ROOT)
     else:
         run_onnx_model(onnx_model, small_lib_path, ONNX_MLIR_ROOT)
+        
+    
+    os.system("rm -rf ./tiny/*.so")
+    os.system("rm -rf ./tiny/*.o")
+    
+    if(args.save_data):
+        input_data = np.load("input.npy")
+        with open(f"{onnx_model_shortned}_input.bin", "wb") as f:
+            f.write(input_data.tobytes())
+        output_data = np.load("pytorch_output.npy")
+        with open(f"{onnx_model_shortned}_output.bin", "wb") as f:
+            f.write(output_data.tobytes())
+        os.system(f"python extract_weights.py {onnx_model}")
+        os.system("rm -rf input.npy")
+        os.system("rm -rf pytorch_output.npy")
+        
+    os.system("rm -rf input.npy")
+    os.system("rm -rf pytorch_output.npy")
+    
+    

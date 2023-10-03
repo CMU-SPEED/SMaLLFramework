@@ -19,3 +19,4 @@ Results/
 *.o
 benchmark/regression_data
 *.DS_Store
+*.tar.gz

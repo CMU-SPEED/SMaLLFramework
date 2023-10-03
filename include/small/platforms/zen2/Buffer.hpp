@@ -146,8 +146,9 @@ public:
         if (m_buffer_created) 
         {   
             // printf("freeing buffer that has %d elems\n", m_num_elts);
-            if(m_buffer != nullptr);
+            if(m_buffer != nullptr) {
                 free(m_buffer);
+            }
         }
     }
 

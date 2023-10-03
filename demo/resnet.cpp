@@ -26,7 +26,7 @@
 
 /// @todo Which of these defines are needed?
 #ifndef RUNS
-#define RUNS 10
+#define RUNS 500
 #endif
 
 /* From https://github.com/mlcommons/tiny/blob/master/benchmark/training/image_classification/keras_model.py

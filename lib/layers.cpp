@@ -289,6 +289,8 @@ void MaxPoolSingleOut(
     int ic = omTensorGetShape(input)[1];
     int ih = omTensorGetShape(input)[2];
     int iw = omTensorGetShape(input)[3];
+    
+    // printf("ic=%d, ih=%d, iw=%d, kh=%d, kw=%d\n", ic, ih, iw, k_h, k_w);
 
     small::FloatBuffer in(omTensorGetNumElems(input), (float*)omTensorGetDataPtr(input));
     small::FloatBuffer out(omTensorGetNumElems(output), (float*)omTensorGetDataPtr(output));
@@ -412,15 +414,14 @@ void Gemm(
 )
 {
     // printf("entering %s %d\n", __func__, gemm++);
-
-    assert(omTensorGetShape(A)[0] == 1 && omTensorGetShape(C)[0] && "[ERROR in Gemm] m != 1\n");
     int ic = omTensorGetShape(A)[1];
     int oc = omTensorGetShape(B)[1];
-    
 
     // printf("A is %ld x %ld\n", omTensorGetShape(A)[0], omTensorGetShape(A)[1]);
     // printf("B is %ld x %ld\n", omTensorGetShape(B)[0], omTensorGetShape(B)[1]);
     // printf("C is %ld x %ld\n", omTensorGetShape(C)[0], omTensorGetShape(C)[1]);
+
+    assert(omTensorGetShape(A)[0] == 1 && omTensorGetShape(C)[0] && "[ERROR in Gemm] m != 1\n");
 
     // for(int p_tile = 0; p_tile < k/FLOAT_C_ob; p_tile++){
     // for(int i=0; i<n; i++) {

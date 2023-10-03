@@ -26,7 +26,7 @@
 
 /// @todo Which of these defines are needed?
 #ifndef RUNS
-#define RUNS 10
+#define RUNS 500
 #endif
 
 //****************************************************************************
