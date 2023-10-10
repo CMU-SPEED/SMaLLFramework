@@ -225,6 +225,7 @@ def run_onnx_model_correctness(onnx_model_path, small_lib_path, ONNX_MLIR_ROOT):
     passed = np.allclose(outputs[0], outputs_torch_packed, atol=1e-5)
     passed_str = colored("PASSED", "green") if passed else colored("FAILED", "red")
     if not passed:
+        print("TEST FAILED")
         print("small: ")
         print(outputs[0], outputs[0].shape)
         print("pytorch: ")
@@ -302,6 +303,8 @@ if __name__ == "__main__":
         with open(f"{onnx_model_shortned}_output.bin", "wb") as f:
             f.write(output_data.tobytes())
         os.system(f"python extract_weights.py {onnx_model}")
+        os.system(f"rm -rf {onnx_model_shortned}_data.tar.gz")
+        os.system(f"tar -czvf {onnx_model_shortned}_data.tar.gz {onnx_model_shortned}_input.bin {onnx_model_shortned}_output.bin {onnx_model_shortned}_weights.bin")
         os.system("rm -rf input.npy")
         os.system("rm -rf pytorch_output.npy")
         
