@@ -92,6 +92,9 @@ public:
         std::vector<Tensor<BufferT> const *> input,
         Tensor<BufferT>*                     output) const;
 
+    BufferT const &get_packed_filters() const { return m_packed_filters; }
+    BufferT const &get_packed_bias()    const { return m_packed_bias; }
+
 private:
     void compute_padding_output_shape(shape_type const &input_shape,
                                       uint32_t          kernel_height,
