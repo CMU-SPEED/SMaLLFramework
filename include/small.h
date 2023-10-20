@@ -31,4 +31,8 @@
 #include <small/buffers.hpp>
 #include <small/interface.hpp>
 
+
 #include <small/interface_abstract.hpp>
+
+// #include <small/fused_interface.hpp>
+#include <small/fused_interface_abstract.hpp>

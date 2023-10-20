@@ -287,7 +287,38 @@ typedef small::FloatBuffer::value_type c_tile_t;
         }                                                       \
     }
 
+//****************************************************************************
+// ReLU Activation
+//****************************************************************************
 
+// Same kernel as Pooling, set to zero to start.
+
+// When Fused, compare with a register of zeros
+#define FLOAT_FUSED_RELU_TILE_C(W_ob, C_ob)                           \
+    float *c_pixel = c_tile;                                           \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                          \
+    {                                                                 \
+        float *c_channel = c_pixel;                                   \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                        \
+        {                                                             \
+            *(c_channel) = (0.0 > *(c_channel)) ? 0.0 : *(c_channel); \
+            c_channel++;                                              \
+        }                                                             \
+        c_pixel += C_ob;                                              \
+    }
+
+#define FLOAT_FUSED_RELU_END_C(c_cur, W_last, C_ob)                   \
+    float *c_pixel = c_cur;                                           \
+    for (uint32_t kk = 0; kk < W_last; kk++)                          \
+    {                                                                 \
+        float *c_channel = c_pixel;                                   \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                        \
+        {                                                             \
+            *(c_channel) = (0.0 > *(c_channel)) ? 0.0 : *(c_channel); \
+            c_channel++;                                              \
+        }                                                             \
+        c_pixel += C_ob;                                              \
+    }
 //****************************************************************************
 // Leaky ReLU activation
 //****************************************************************************
@@ -328,6 +359,33 @@ typedef small::FloatBuffer::value_type c_tile_t;
         c_pixel += C_ob;                                                \
     }
 
+#define FLOAT_FUSED_COND_SCALE_TILE_C(b, W_ob, C_ob)                                       \
+    float *c_pixel = c_tile;                                                                \
+    float scale = b[0];                                                                    \
+    for (uint32_t kk = 0; kk < W_last; kk++)                                               \
+    {                                                                                      \
+        float *c_channel = c_pixel;                                                        \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                                             \
+        {                                                                                  \
+            *(c_channel) = (0.0 > *(c_channel)) ? (*(c_channel) * (scale)) : *(c_channel); \
+            c_channel++;                                                                   \
+        }                                                                                  \
+        c_pixel += C_ob;                                                                   \
+    }
+
+#define FLOAT_FUSED_COND_SCALE_END_C(b, c_cur, W_last, C_ob)                               \
+    float *c_pixel = c_cur;                                                                \
+    float scale = b[0];                                                                    \
+    for (uint32_t kk = 0; kk < W_last; kk++)                                               \
+    {                                                                                      \
+        float *c_channel = c_pixel;                                                        \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                                             \
+        {                                                                                  \
+            *(c_channel) = (0.0 > *(c_channel)) ? (*(c_channel) * (scale)) : *(c_channel); \
+            c_channel++;                                                                   \
+        }                                                                                  \
+        c_pixel += C_ob;                                                                   \
+    }
 
 //****************************************************************************
 // Accumulation kernels
