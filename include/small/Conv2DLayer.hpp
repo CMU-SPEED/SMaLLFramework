@@ -65,7 +65,7 @@ public:
                 BufferT    const &bn_bias,              // beta
                 BufferT    const &bn_running_mean,      // mu_hat
                 BufferT    const &bn_running_variance,  // sigma_hat^2
-                float      const &bn_eps = 1.e-5,       // float?
+                float      const &bn_eps = 1.e-3,       // float?
                 bool              buffers_are_packed = true,
                 ActivationType    activation_type = NONE,
                 float             leaky_slope = 1.e-2);
@@ -83,7 +83,7 @@ public:
                 BufferT    const &bn_bias,              // beta
                 BufferT    const &bn_running_mean,      // mu_hat
                 BufferT    const &bn_running_variance,  // sigma_hat^2
-                float      const &bn_eps = 1.e-5,       // float?
+                float      const &bn_eps = 1.e-3,       // float?
                 bool              buffers_are_packed = true,
                 ActivationType    activation_type = NONE,
                 float             leaky_slope = 1.e-2);
@@ -289,8 +289,8 @@ namespace detail
             for (size_t ochan = 0; ochan < num_effective_output_channels; ++ochan)
             {
                 // compute scaling factor for filters of this output channel
-                float filter_scale =
-                    bn_weight[ochan]/std::sqrt(bn_running_variance[ochan] + bn_eps);
+                float rsq = 1.0f/std::sqrt(bn_running_variance[ochan] + bn_eps);
+                float filter_scale = bn_weight[ochan] * rsq;
 
                 /// @todo REVISIT: this does not look like python code above
                 if (no_bias)
@@ -300,8 +300,8 @@ namespace detail
                 }
                 else
                 {
-                    packed_bias[ochan] = filter_scale*packed_bias[ochan] +
-                        bn_bias[ochan] - bn_running_mean[ochan]*filter_scale;
+                    packed_bias[ochan] = bn_bias[ochan] +
+                        filter_scale*(packed_bias[ochan] - bn_running_mean[ochan]);
                 }
                 //std::cerr << ": packed_bias(" << ochan << ") = "
                 //          << packed_bias[ochan]
