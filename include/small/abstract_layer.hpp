@@ -26,9 +26,8 @@
 namespace small
 {
 
-
-// This is to make it easier to setup and read the fused function signature
-
+// @todo: move to op_type.hpp?
+// This is to make it easier to setup and read the fused function signature 
 template <dim_t G_b,
           dim_t K_b,
           dim_t F_cb,
@@ -2435,7 +2434,7 @@ void fused_abstract_layer(
             {
                 I_group = I_buf + g * (F_c * I_h * I_w * _G_b);
             }
-            ScalarT *O_group = O_inter_buf + g * (K * O_hxO_w * _G_b);
+            ScalarT *O_group = O_inter_buf + (group_tid) * (K * O_hxO_w * _G_b);
             // if leaky relu, the weight pointer does not change with the group id
 
             ScalarT const *F_group;
@@ -2457,7 +2456,7 @@ void fused_abstract_layer(
                     F_group + k * (F_c * F_h * F_w * _G_b * _K_b);
                 //@todo: this indexing should change to save intermediate memory
                 ScalarT *O_channel_block_output =
-                    O_group + k * (O_hxO_w * _G_b * _K_b);
+                    O_group + (channel_tid) * (O_hxO_w * _G_b * _K_b);
 
                 //@todo fix the filter height and width as necessary (they should be one because it is a single element reduction)
                 ScalarT const *F_before_buf_group = F_before_buf + (g * K + k) * (1 * 1 * _G_b * _K_b);
@@ -2864,9 +2863,9 @@ void fused_abstract_layer(
 
                     dim_t H_o_1_full_0 = small::output_dim(t_pad_el+H_o, _stride_1, F_h_1);
                     dim_t H_o_computed =  ((H_o_1_full_0 -1)*_stride_1) + F_h_1;
-                    #if PERFORMANCE == 0 
-                    printf("2nd operation height elements without bottom padding of first operation: %d H_o elements: %d left: %d \n", H_o_1_full_0, H_o_computed, H_o - H_o_computed); 
-                    #endif
+                    // #if PERFORMANCE == 0 
+                    // // printf("2nd operation height elements without bottom padding of first operation: %d H_o elements: %d left: %d \n", H_o_1_full_0, H_o_computed, H_o - H_o_computed); 
+                    // #endif
                     // Reduction rows of second operation of second operation that can be computed without bottom padding elements of the first
                     // Peeled first iteration to be computed with top padding (input elements have already been computed)
                     for (index_t j = 0; j < (H_o_1_full_0 > 0); j++) 
