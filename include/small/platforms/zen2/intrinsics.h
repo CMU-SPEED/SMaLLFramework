@@ -590,7 +590,6 @@ for(uint32_t u =0 ; u < _UNROLL; u++)\
     c11 = _mm256_add_ps(c11, b1);
 
 #define FLOAT_ACCUM_END_C_upsample(I, stride, _C_ib, _W_ob, C_ob)      \
-    printf("stride: %u\n", stride);\
     for (uint32_t kk = 0; kk < _W_ob; kk++)                            \
     {                                                                  \
         for (uint32_t jj = 0; jj < C_ob; jj++)                         \
