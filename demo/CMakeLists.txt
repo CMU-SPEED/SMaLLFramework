@@ -31,7 +31,7 @@ foreach( layer_name ${LAYER_NAMES} )
   target_compile_definitions(${demo_name} PRIVATE LAYER=${layer_name})
 endforeach( layer_name ${LAYER_NAMES} )
 
-set(MODEL_SOURCES mobilenet.cpp resnet.cpp dscnn.cpp dscnn_square.cpp autoencoder.cpp tinyyolov2.cpp)
+set(MODEL_SOURCES mobilenet.cpp mobilenet_reshuffled resnet.cpp dscnn.cpp dscnn_square.cpp autoencoder.cpp tinyyolov2.cpp)
 message("In demo/CMakeLists.txt: ${MODEL_SOURCES}")
 
 foreach( model_source_file ${MODEL_SOURCES} )

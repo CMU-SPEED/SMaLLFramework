@@ -2660,7 +2660,6 @@ void fused_abstract_layer(
                 for (index_t i = (F_c / _F_cb) - 1; i < (F_c / _F_cb); i++)
                 {
                     bool first = rewrite_output && (i == 0);
-
                     bool first_1 = rewrite_output_1;
                     ScalarT const *I_channel_block_input =
                         I_channel_block_output + i * (I_h * I_w * _F_cb * _G_b);
@@ -2691,7 +2690,7 @@ void fused_abstract_layer(
                         first,
                         F_h,
                         F_w,
-                        I_w * _C_ib,
+                        I_w * _F_cb,
                         t_pad_el,
                         pad_top,
                         W_full_index,
@@ -2736,7 +2735,7 @@ void fused_abstract_layer(
                             first,
                             F_h,
                             F_w,
-                            I_w * _C_ib,
+                            I_w * _F_cb,
                             l_pad_el,
                             pad_left,
                             I_row,
@@ -2773,7 +2772,7 @@ void fused_abstract_layer(
                                 first,
                                 F_h,
                                 F_w,
-                                I_w * _C_ib,
+                                I_w * _F_cb,
                                 I_col,
                                 F_col,
                                 O_col,
