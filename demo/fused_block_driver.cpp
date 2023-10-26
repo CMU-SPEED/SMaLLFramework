@@ -21,7 +21,7 @@
 #define COMPUTE_BIAS true
 
 #ifndef RUNS
-#define RUNS 1000
+#define RUNS 100
 #endif
 #ifndef PARALLEL
 #define PARALLEL 0
@@ -194,8 +194,8 @@ inline void small_layer_block(
 #elif LAYER == DW_CONV
 
     uint32_t o_h_1, o_w_1;
-    op_dim(o_h + t_pad_1 + b_pad_1, stride_1, kernel_size_1, o_h_1);
-    op_dim(o_w + l_pad_1 + r_pad_1, stride_1, kernel_size_1, o_w_1);
+    o_h_1 = small::output_dim_new(o_h + t_pad_1 + b_pad_1, stride_1, kernel_size_1);
+    o_w_1 = small::output_dim_new(o_w + l_pad_1 + r_pad_1, stride_1, kernel_size_1);
     if constexpr (bias)
     {
 
@@ -578,9 +578,9 @@ int main(int argc, char **argv)
     size_t filter_buffer_size(C_o_conv*kernel_size*kernel_size);
     size_t bias_buffer_size(C_o_conv*COMPUTE_BIAS);
 #endif
-    size_t out_intermediate_buffer_size(conv_output_height*conv_output_width*C_o_conv);
+    size_t out_intermediate_buffer_size(conv_output_height * conv_output_width * FLOAT_C_ob * num_threads);
     //@todo: work this out
-    size_t out_intermediate_unfused_buffer_size(conv_output_height * conv_output_width * FLOAT_C_ob * num_threads);
+    size_t out_intermediate_unfused_buffer_size(conv_output_height * conv_output_width * C_o_conv);
     size_t out_buffer_size(output_height*output_width*C_o_conv);
 
 
@@ -627,12 +627,8 @@ int main(int argc, char **argv)
                                 sum_conv = ULLONG_MAX;
     std::vector<uint64_t> unfused_timing;
 
-
-    // std::cout << in_dimensions << std::endl
-    //           << conv_filter_dimensions << std::endl
-    //           << out_intermediate_unfused_dimensions << std::endl
-    //           << out_dimensions << std::endl;
-
+    printf("running unfused ");
+    fflush(0);
 
     // Checking Fused SMaLL Framework implementation
     small_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
@@ -667,6 +663,9 @@ int main(int argc, char **argv)
 
     memset(out_intermediate_unfused_dc.data(), 0.0, out_intermediate_unfused_buffer_size * sizeof(float));
 
+    printf("running fused ewise ");
+    fflush(0);
+
     small_fused_ewise_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
                                                 conv_kernel_size,
                                                 conv_stride, // Covolution parameters
@@ -695,6 +694,7 @@ int main(int argc, char **argv)
 
     assert(check_ewise_fusion == 1);
     printf("check_ewise_fusion %d ", check_ewise_fusion);
+    fflush(0);
 
     // Full Fused block
     memset(out_intermediate_unfused_dc.data(), 0.0, out_intermediate_unfused_buffer_size * sizeof(float));
@@ -725,6 +725,7 @@ int main(int argc, char **argv)
     CORRECTNESS_CHECK(check, output_dc, output_dc_unfused);
     assert(check == 1);
     printf("check %d ", check);
+    fflush(0);
 
 #if PERFORMANCE == 0
     output_file(out_fname, output_dc.data(), out_buffer_size);
@@ -734,6 +735,7 @@ int main(int argc, char **argv)
     unsigned long long t0, t1;
 // performance comparison
 #if PERFORMANCE == 1
+    printf("runs %d, %d, \t ", RUNS, num_threads);
     // Unfused
     unsigned long long sum_small = ULLONG_MAX;
     std::vector<unsigned long long> small_timing;
@@ -766,6 +768,8 @@ int main(int argc, char **argv)
         MIN(sum_small, (t1 - t0));
         small_timing.push_back((t1 - t0));
     }
+    print_cycles(sum_small);
+    fflush(0);
 
     // Fused implementations
     // Fused ewise
@@ -801,8 +805,9 @@ int main(int argc, char **argv)
         small_timing_fused_ewise.push_back((t1 - t0));
     }
     print_cycles(sum_small_fused_ewise);
-    // printf("%.4f, ", (sum_pytorch * 1.0) / (sum_small_fused_ewise * 1.0));
-    printf("%.4f ", (sum_small * 1.0) / (sum_small_fused_ewise * 1.0));
+    fflush(0);
+
+  
     printf("\t");
 
     // Fused block
@@ -838,7 +843,9 @@ int main(int argc, char **argv)
         small_timing_fused.push_back((t1 - t0));
     }
     print_cycles(sum_small_fused);
-    // printf("%.4f, ", (sum_pytorch * 1.0) / (sum_small_fused * 1.0));
+    fflush(0);
+
+    printf("%.4f ", (sum_small * 1.0) / (sum_small_fused_ewise * 1.0));
     printf("%.4f ", (sum_small * 1.0) / (sum_small_fused * 1.0));
     printf("\n");
     #endif
