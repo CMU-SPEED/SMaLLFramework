@@ -209,7 +209,8 @@ small::Tensor<BufferT> &model_inference(
     layers[layer_num++]->compute_output({&input_dc}, &inter_0_dc);   // Conv2D
     layers[layer_num++]->compute_output({&inter_0_dc}, &inter_0_dc); // ReLU
 
-    for (auto ix = 0U; ix < 13; ++ix)
+    auto ds_blocks = 13;
+    for (auto ix = 0U; ix < ds_blocks; ++ix)
     {
         layers[layer_num++]->compute_output({&inter_0_dc}, &inter_1_dc); // DWConv
         layers[layer_num++]->compute_output({&inter_1_dc}, &inter_1_dc); // ReLU
@@ -219,8 +220,8 @@ small::Tensor<BufferT> &model_inference(
 
     layers[layer_num++]->compute_output({&inter_0_dc}, &inter_1_dc); // MaxPool2D
     layers[layer_num++]->compute_output({&inter_1_dc}, &inter_0_dc); // Conv2D
-    // return inter_0_dc;
     return inter_0_dc;
+    // return inter_1_dc;
 }
 
 //****************************************************************************
@@ -467,16 +468,16 @@ model_inference(uint32_t layer_num_total,
                      I_HEIGHT(layer_num), I_WIDTH(layer_num),
                      inter_0_dc,
                      inter_1_dc);
-    uint32_t num_classes = 16;  /// @todo get from layer params
-    small::Conv2D(1, 1, 1,
-                  0, 0, 0, 0,
-                  num_classes, 1024,  /// @todo get from layer params
-                  1, 1,
-                  inter_1_dc,
-                  *filter_buf_ptrs[filter_buf_ptrs.size() - 1], // layernum-1?
-                  inter_0_dc);
+    // uint32_t num_classes = 16;  /// @todo get from layer params
+    // small::Conv2D(1, 1, 1,
+    //               0, 0, 0, 0,
+    //               num_classes, 1024,  /// @todo get from layer params
+    //               1, 1,
+    //               inter_1_dc,
+    //               *filter_buf_ptrs[filter_buf_ptrs.size() - 1], // layernum-1?
+    //               inter_0_dc);
 
-    return inter_0_dc;
+    return inter_1_dc;
 }
 
 //****************************************************************************
@@ -491,19 +492,26 @@ fused_ewise_model_inference(uint32_t layer_num_total,
                 BufferT &inter_1_dc)
 {
     auto layer_num = 0;
-    small::Conv2D(REDUCTION_HW(layer_num), REDUCTION_HW(layer_num),
-                  STRIDE(layer_num), PADDING(layer_num),
-                  GROUP_C(layer_num), REDUCTION_C(layer_num),
-                  I_HEIGHT(layer_num), I_WIDTH(layer_num),
-                  input_dc,
-                  *filter_buf_ptrs[layer_num],
-                  inter_0_dc);
+    // small::Conv2D(REDUCTION_HW(layer_num), REDUCTION_HW(layer_num),
+    //               STRIDE(layer_num), PADDING(layer_num),
+    //               GROUP_C(layer_num), REDUCTION_C(layer_num),
+    //               I_HEIGHT(layer_num), I_WIDTH(layer_num),
+    //               input_dc,
+    //               *filter_buf_ptrs[layer_num],
+    //               inter_0_dc);
+    small::Conv2D_ReLU(REDUCTION_HW(layer_num), REDUCTION_HW(layer_num),
+                       STRIDE(layer_num), PADDING(layer_num),
+                       GROUP_C(layer_num), REDUCTION_C(layer_num),
+                       I_HEIGHT(layer_num), I_WIDTH(layer_num),
+                       input_dc,
+                       *filter_buf_ptrs[layer_num],
+                       inter_0_dc);
 
     layer_num++;
-    small::ReLUActivation(GROUP_C(0),
-                          I_HEIGHT(layer_num), I_WIDTH(layer_num),
-                          inter_0_dc,
-                          inter_0_dc);
+    // small::ReLUActivation(GROUP_C(0),
+    //                       I_HEIGHT(layer_num), I_WIDTH(layer_num),
+    //                       inter_0_dc,
+    //                       inter_0_dc);
     std::array<uint32_t, 2> const &in_dims = intermediate_dims[layer_num];
     uint32_t input_channels = GROUPS(layer_num);
     uint32_t kernel_size = REDUCTION_HW(layer_num);
@@ -569,17 +577,17 @@ fused_ewise_model_inference(uint32_t layer_num_total,
                      I_HEIGHT(layer_num), I_WIDTH(layer_num),
                      inter_0_dc,
                      inter_1_dc);
-    uint32_t num_classes = 16; /// @todo get from layer params
-    small::Conv2D(1, 1, 1,
-                  0, 0, 0, 0,
-                  num_classes, 1024, /// @todo get from layer params
-                  1, 1,
-                  inter_1_dc,
-                  *filter_buf_ptrs[filter_buf_ptrs.size() - 1], // layernum-1?
-                  inter_0_dc);
+    // uint32_t num_classes = 16; /// @todo get from layer params
+    // small::Conv2D(1, 1, 1,
+    //               0, 0, 0, 0,
+    //               num_classes, 1024, /// @todo get from layer params
+    //               1, 1,
+    //               inter_1_dc,
+    //               *filter_buf_ptrs[filter_buf_ptrs.size() - 1], // layernum-1?
+    //               inter_0_dc);
 
-    return inter_0_dc;
-    // return inter_1_dc;
+    // return inter_0_dc;
+    return inter_1_dc;
 }
 
 //****************************************************************************
@@ -595,23 +603,35 @@ fused_model_inference(uint32_t layer_num_total,
                 BufferT &inter_0_buffer_dc)
 {
     auto layer_num = 0;
-    small::Conv2D(REDUCTION_HW(layer_num), REDUCTION_HW(layer_num),
-                  STRIDE(layer_num), PADDING(layer_num),
-                  GROUP_C(layer_num), REDUCTION_C(layer_num),
-                  I_HEIGHT(layer_num), I_WIDTH(layer_num),
-                  input_dc,
-                  *filter_buf_ptrs[layer_num],
-                  inter_0_dc);
+
+    small::Conv2D_ReLU(REDUCTION_HW(layer_num), REDUCTION_HW(layer_num),
+                                            STRIDE(layer_num), PADDING(layer_num),
+                                            GROUP_C(layer_num), REDUCTION_C(layer_num),
+                                            I_HEIGHT(layer_num), I_WIDTH(layer_num),
+                                            input_dc,
+                                            *filter_buf_ptrs[layer_num],
+                                            inter_0_dc);
+
+    // small::Conv2D_ReLU_DepthwiseConv2D_ReLU(REDUCTION_HW(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num),
+    //                                         PADDING(layer_num),
+    //                                         REDUCTION_HW(layer_num + 1), REDUCTION_HW(layer_num + 1), STRIDE(layer_num + 1),
+    //                                         PADDING(layer_num+1),
+    //                                         GROUP_C(layer_num), REDUCTION_C(layer_num),
+    //                                         I_HEIGHT(layer_num), I_WIDTH(layer_num),
+    //                                         input_dc,
+    //                                         *filter_buf_ptrs[layer_num],
+    //                                         inter_0_buffer_dc,
+    //                                         *filter_buf_ptrs[layer_num+1],
+    //                                         inter_1_dc);
 
     layer_num++;
-    small::ReLUActivation(GROUP_C(0),
-                          I_HEIGHT(layer_num), I_WIDTH(layer_num),
-                          inter_0_dc,
-                          inter_0_dc);
+    // small::ReLUActivation(GROUP_C(0),
+    //                       I_HEIGHT(layer_num), I_WIDTH(layer_num),
+    //                       inter_0_dc,
+    //                       inter_0_dc);
 
     /**/
 
-    {
         std::array<uint32_t, 2> const &in_dims = intermediate_dims[layer_num];
         uint32_t input_channels = GROUPS(layer_num);
         uint32_t kernel_size = REDUCTION_HW(layer_num);
@@ -623,7 +643,7 @@ fused_model_inference(uint32_t layer_num_total,
         uint8_t r_pad = layer_params[layer_num][8];
         BufferT const &I = inter_0_dc;
         BufferT const &F_dw = *filter_buf_ptrs[layer_num];
-        BufferT const &F_1x1 = *filter_buf_ptrs[layer_num + 1];
+        // BufferT const &F_1x1 = *filter_buf_ptrs[layer_num + 1];
         BufferT &O_intermediate = inter_1_dc;
         BufferT &O = inter_0_dc;
 
@@ -634,13 +654,18 @@ fused_model_inference(uint32_t layer_num_total,
                                inter_0_dc, F_dw, inter_1_dc);
 
         layer_num++;
-    }
 
     /**/
 
+
     auto ds_blocks = 12;
+    // printf("1:%d 0:%d\n", inter_1_dc.data(), inter_0_dc.data());
+
     for (int ds_layer = 0; ds_layer < ds_blocks; ds_layer++)
     {
+        BufferT &I = inter_1_dc;
+        BufferT &O_intermediate = inter_0_buffer_dc;
+        BufferT &O = inter_0_dc;
         // printf("layer_num %d \n", layer_num);
         fused_dscnn_block(
             intermediate_dims[layer_num], REDUCTION_C(layer_num), // Input dimensions
@@ -648,49 +673,67 @@ fused_model_inference(uint32_t layer_num_total,
             STRIDE(layer_num+1),
             GROUP_C(layer_num),
             PADDING(layer_num+1),
-            inter_1_dc,
+            I,
             *filter_buf_ptrs[layer_num],
             *filter_buf_ptrs[layer_num + 1],
-            inter_0_buffer_dc,
-            inter_0_dc);
+            O_intermediate,
+            O);
+
 
         layer_num += 2;
 
-        // BufferT &O_intermediate = inter_1_dc;
-        // O_intermediate = inter_1_dc;
-        // inter_1_dc = inter_0_dc;
-        // inter_0_dc = O_intermediate;
+        
         inter_1_dc = inter_0_dc;
+
+        // printf("1:%d 0:%d\n", inter_1_dc.data(), inter_0_dc.data());
     }
 
     /**/
 
     // printf("calling conv 1x1 %d %d \n", layer_num, layer_num_total);
 
-    std::array<uint32_t, 2> const &in_dims = intermediate_dims[layer_num];
-    uint32_t input_channels = REDUCTION_C(layer_num);
-    uint32_t output_channels = GROUP_C(layer_num);
+    // in_dims = intermediate_dims[layer_num];
+    input_channels = REDUCTION_C(layer_num);
+    output_channels = GROUP_C(layer_num);
 
     BufferT const &F_1x1 = *filter_buf_ptrs[layer_num];
 
-    small::Conv2D_ReLU(1, 1, 1,
+    // small::Conv2D_ReLU(1, 1, 1,
+    //                    0, 0, 0, 0,
+    //                    output_channels, input_channels,
+    //                    intermediate_dims[layer_num][0], intermediate_dims[layer_num][1],
+    //                    inter_1_dc, F_1x1, inter_0_dc);
+    // // small::ReLUActivation(output_channels, o_h, o_w, O, O);
+    // layer_num++;
+
+    // // /**/
+
+    // // printf("calling pool %d %d \n", layer_num, layer_num_total);
+    // small::MaxPool2D(REDUCTION_HW(layer_num), REDUCTION_HW(layer_num),
+    //                  STRIDE(layer_num), PADDING(layer_num),
+    //                  GROUPS(layer_num),
+    //                  I_HEIGHT(layer_num), I_WIDTH(layer_num),
+    //                  inter_0_dc,
+    //                  inter_1_dc);
+
+    small::Conv2D_ReLU_Maxpool2D(1, 1, 1,
                        0, 0, 0, 0,
+                       REDUCTION_HW(layer_num + 1), REDUCTION_HW(layer_num + 1), STRIDE(layer_num + 1),
+                       PADDING(layer_num + 1),
                        output_channels, input_channels,
-                       in_dims[0], in_dims[1],
-                       inter_1_dc, F_1x1, inter_0_dc);
-    // small::ReLUActivation(output_channels, o_h, o_w, O, O);
+                       intermediate_dims[layer_num][0], intermediate_dims[layer_num][1],
+                       inter_1_dc, F_1x1, inter_0_buffer_dc, inter_0_dc);
+    inter_1_dc = inter_0_dc;
+    // // small::ReLUActivation(output_channels, o_h, o_w, O, O);
+
+    // // printf("calling pool %d %d \n", layer_num, layer_num_total);
+    // small::MaxPool2D(
+    //                  GROUPS(layer_num),
+    //                  I_HEIGHT(layer_num), I_WIDTH(layer_num),
+    //                  inter_0_dc,
+    //                  inter_1_dc);
     layer_num++;
 
-    // /**/
-
-    // printf("calling pool %d %d \n", layer_num, layer_num_total);
-    small::MaxPool2D(REDUCTION_HW(layer_num), REDUCTION_HW(layer_num),
-                     STRIDE(layer_num), PADDING(layer_num),
-                     GROUPS(layer_num),
-                     I_HEIGHT(layer_num), I_WIDTH(layer_num),
-                     inter_0_dc,
-                     inter_1_dc);
-    // // Dense(num_classes, GROUP_C(layer_num - 1), inter_1_dc, filter_fc_dc, output_dc);
     uint32_t num_classes = 16; /// @todo get from layer params
     small::Conv2D(1, 1, 1,
                   0, 0, 0, 0,
@@ -913,13 +956,15 @@ void inference()
     {
         my_timer.start();
 
-        //auto &output_dc =
-        model_inference(layer_num_total, layer_params, intermediate_dims,
+        for (int i = 0; i < 100; i++)
+        {
+            // auto &output_dc =
+            model_inference(layer_num_total, layer_params, intermediate_dims,
                             filter_buf_ptrs,
                             input_dc, inter_0_dc, inter_1_dc);
-
+        }
         my_timer.stop();
-        auto diff = my_timer.elapsed();
+        auto diff = my_timer.elapsed() / 100;
         min_small = std::min<double>(min_small, diff);
         small_timing.push_back(diff);
     }
@@ -932,12 +977,15 @@ void inference()
     for (int r = 0; r < RUNS; r++)
     {
         my_timer.start();
+        for(int i = 0; i < 100; i++)
+        {
         fused_ewise_model_inference(layer_num_total, layer_params, intermediate_dims,
                               filter_buf_ptrs,
                               input_dc, inter_0_dc, inter_1_dc);
+        }
 
         my_timer.stop();
-        auto diff = my_timer.elapsed();
+        auto diff = my_timer.elapsed()/100;
         min_small_fused_ewise = std::min<double>(min_small_fused_ewise, diff);
         // small_fused_ewise_timing.push_back(diff);
     }
@@ -950,12 +998,14 @@ void inference()
     for (int r = 0; r < RUNS; r++)
     {
         my_timer.start();
+        for(int i = 0; i < 100; i++)
+        {
         fused_model_inference(layer_num_total, layer_params, intermediate_dims,
                         filter_buf_ptrs,
                         input_dc, inter_0_dc, inter_1_dc, inter_0_buffer_dc);
-
+        }
         my_timer.stop();
-        auto diff = my_timer.elapsed();
+        auto diff = my_timer.elapsed()/100;
         min_small_fused = std::min<double>(min_small_fused, diff);
         // small_fused_timing.push_back(diff);
     }

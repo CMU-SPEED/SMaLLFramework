@@ -18,10 +18,10 @@
 
 #define PERFORMANCE 1
 
-#define COMPUTE_BIAS true
+#define COMPUTE_BIAS false
 
 #ifndef RUNS
-#define RUNS 100
+#define RUNS 1000
 #endif
 #ifndef PARALLEL
 #define PARALLEL 0
@@ -739,9 +739,11 @@ int main(int argc, char **argv)
     // Unfused
     unsigned long long sum_small = ULLONG_MAX;
     std::vector<unsigned long long> small_timing;
-    for (int r = 0; r < RUNS; r++)
+    for (int r = 0; r < RUNS/10; r++)
     {
         t0 = rdtsc();
+        for(int i = 0; i < 10; i++)
+        {
         small_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
                                         conv_kernel_size,
                                         conv_stride, // Covolution parameters
@@ -764,9 +766,11 @@ int main(int argc, char **argv)
                                         bias_dc,
                                         out_intermediate_unfused_dc,
                                         output_dc);
+        }
         t1 = rdtsc();
-        MIN(sum_small, (t1 - t0));
-        small_timing.push_back((t1 - t0));
+        diff = (t1-t0)/10;
+        MIN(sum_small, (diff));
+        small_timing.push_back((diff));
     }
     print_cycles(sum_small);
     fflush(0);
