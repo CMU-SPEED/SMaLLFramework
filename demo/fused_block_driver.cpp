@@ -14,6 +14,8 @@
 // Pooling driver
 
 #include <small.h>
+#include <small/utils/Timer.hpp>
+
 #include "utils.h"
 
 #define PERFORMANCE 1
@@ -255,6 +257,7 @@ inline void small_fused_ewise_layer_block(
                                 Bias_conv,
                                 O_intermediate);
         small::MaxPool2D(kernel_size_1, kernel_size_1, stride_1, t_pad_1, b_pad_1, l_pad_1, r_pad_1, output_channels_conv, o_h, o_w, O_intermediate, O);
+   
     }
     else
     {
@@ -778,9 +781,14 @@ int main(int argc, char **argv)
     // Fused implementations
     // Fused ewise
     unsigned long long sum_small_fused_ewise = ULLONG_MAX;
+
+    unsigned long long sum_small_fused_ewise_conv = ULLONG_MAX;
+    unsigned long long sum_small_fused_ewise_dw = ULLONG_MAX;
+
     std::vector<unsigned long long> small_timing_fused_ewise;
     for (int r = 0; r < RUNS; r++)
     {
+        small::Timer my_timer;
         t0 = rdtsc();
         small_fused_ewise_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
                                                     conv_kernel_size,
@@ -805,10 +813,36 @@ int main(int argc, char **argv)
                                                     out_intermediate_unfused_dc,
                                                     output_dc);
         t1 = rdtsc();
-        MIN(sum_small_fused_ewise, (t1 - t0));
-        small_timing_fused_ewise.push_back((t1 - t0));
+        MIN(sum_small_fused_ewise, t1 - t0);
+        small_timing_fused_ewise.push_back(t1 - t0);
+
+        t0 = rdtsc();
+        small::Conv2D_Bias_ReLU(conv_kernel_size, conv_kernel_size, conv_stride,
+                                t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
+                                C_o_conv, C_i,
+                                input_height, input_width,
+                                input_dc,
+                                conv_filter_dc,
+                                conv_bias_dc,
+                                out_intermediate_unfused_dc);
+        t1 = rdtsc();
+        MIN(sum_small_fused_ewise_conv, (t1 - t0));
+
+        auto diff_conv = (t1 - t0);
+
+        t0 = rdtsc();
+        small::MaxPool2D(kernel_size, kernel_size, stride, t_pad, b_pad, l_pad, r_pad, C_o_conv, input_height, input_width, out_intermediate_unfused_dc, output_dc);
+        t1 = rdtsc();
+        MIN(sum_small_fused_ewise_dw, (t1 - t0));
+
+        auto diff_dw = (t1- t0);
+      
     }
     print_cycles(sum_small_fused_ewise);
+    print_cycles(sum_small_fused_ewise_conv);
+    print_cycles(sum_small_fused_ewise_dw);
+    print_cycles(sum_small_fused_ewise_dw + sum_small_fused_ewise_conv);
+
     fflush(0);
 
   
