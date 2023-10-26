@@ -861,7 +861,19 @@ for(uint32_t u =0 ; u < _UNROLL; u++)\
     }
 
 #define FLOAT_FUSED_EXP_TILE_C(W_ob, C_ob)                  \
-    c_tile_t c_tile[FLOAT_W_ob * FLOAT_C_ob];                  \
+    c_tile_t c_tile[FLOAT_W_ob * FLOAT_C_ob];                  
+    _mm256_storeu_ps(c_tile + 0 * C_ob + 0 * FLOAT_SIMD, c0 );  \
+    _mm256_storeu_ps(c_tile + 0 * C_ob + 1 * FLOAT_SIMD, c1 );  \
+    _mm256_storeu_ps(c_tile + 1 * C_ob + 0 * FLOAT_SIMD, c2 );  \
+    _mm256_storeu_ps(c_tile + 1 * C_ob + 1 * FLOAT_SIMD, c3 );  \
+    _mm256_storeu_ps(c_tile + 2 * C_ob + 0 * FLOAT_SIMD, c4 );  \
+    _mm256_storeu_ps(c_tile + 2 * C_ob + 1 * FLOAT_SIMD, c5 );  \
+    _mm256_storeu_ps(c_tile + 3 * C_ob + 0 * FLOAT_SIMD, c6 );  \
+    _mm256_storeu_ps(c_tile + 3 * C_ob + 1 * FLOAT_SIMD, c7 );  \
+    _mm256_storeu_ps(c_tile + 4 * C_ob + 0 * FLOAT_SIMD, c8 );  \
+    _mm256_storeu_ps(c_tile + 4 * C_ob + 1 * FLOAT_SIMD, c9 );  \
+    _mm256_storeu_ps(c_tile + 5 * C_ob + 0 * FLOAT_SIMD, c10); \
+    _mm256_storeu_ps(c_tile + 5 * C_ob + 1 * FLOAT_SIMD, c11);\
     c_tile_t *c_pixel = c_tile;                                \
     for (uint32_t kk = 0; kk < W_ob; kk++)                     \
     {                                                          \
