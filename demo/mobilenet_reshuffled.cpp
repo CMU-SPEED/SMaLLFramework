@@ -111,6 +111,9 @@ FINAL
 #include<small/MaxPool2DLayer.hpp>
 #include<small/ReLULayer.hpp>
 
+
+#define TIME_LAYER 1
+
 template <class BufferT>
 std::vector<small::Layer<BufferT>*> create_model(
     std::vector<BufferT*> const &filters)
@@ -259,6 +262,12 @@ small::Tensor<BufferT> &model_inference(
 //****************************************************************************
 // The output of the block is stored in O
 //
+
+//timers
+double layer_timers[3][15];
+double min_layer_timers[3][15];
+double avg_layer_timers[3][15];
+
 template <class BufferT>
 inline void dscnn_block(
     std::array<uint32_t, 2> const &in_dims, uint32_t input_channels, // Input dimensions
@@ -382,6 +391,11 @@ model_inference(uint32_t layer_num_total,
                 BufferT       &inter_1_dc)
 {
     auto layer_num = 0;
+    #if TIME_LAYER
+    small::Timer my_timer;
+
+    my_timer.start();
+    #endif
     small::Conv2D(REDUCTION_HW(layer_num), REDUCTION_HW(layer_num),
                   STRIDE(layer_num), PADDING(layer_num),
                   GROUP_C(layer_num), REDUCTION_C(layer_num),
@@ -430,11 +444,16 @@ model_inference(uint32_t layer_num_total,
                         inter_1_dc, inter_1_dc);
 
     layer_num++;
-
+    #if TIME_LAYER
+    my_timer.stop();
+    layer_timers[0][0] = my_timer.elapsed();
+    #endif
     auto ds_blocks = 12;
     for (int ds_layer = 0; ds_layer < ds_blocks; ds_layer++)
     {
-       
+       #if TIME_LAYER
+       my_timer.start();
+       #endif
         dscnn_block(
             intermediate_dims[layer_num], REDUCTION_C(layer_num), // Input dimensions
             REDUCTION_HW(layer_num+1),
@@ -448,11 +467,16 @@ model_inference(uint32_t layer_num_total,
             inter_1_dc);
 
         layer_num += 2;
+        #if TIME_LAYER
+        my_timer.stop();
+        layer_timers[0][1+ds_layer] = my_timer.elapsed();
+        #endif
     }
 
 
-
-
+    #if TIME_LAYER
+    my_timer.start();
+    #endif
     small::Conv2D(1, 1, 1,
                     0, 0, 0, 0,
                     GROUP_C(layer_num), REDUCTION_C(layer_num),
@@ -466,17 +490,27 @@ model_inference(uint32_t layer_num_total,
                      STRIDE(layer_num), PADDING(layer_num),
                      GROUPS(layer_num),
                      I_HEIGHT(layer_num), I_WIDTH(layer_num),
-                     inter_0_dc,
-                     inter_1_dc);
-    // uint32_t num_classes = 16;  /// @todo get from layer params
-    // small::Conv2D(1, 1, 1,
-    //               0, 0, 0, 0,
-    //               num_classes, 1024,  /// @todo get from layer params
-    //               1, 1,
-    //               inter_1_dc,
-    //               *filter_buf_ptrs[filter_buf_ptrs.size() - 1], // layernum-1?
-    //               inter_0_dc);
-
+                        inter_0_dc,
+                        inter_1_dc);
+    #if TIME_LAYER
+    my_timer.stop();
+    layer_timers[0][13] = my_timer.elapsed();
+    #endif
+    #if TIME_LAYER
+    my_timer.start();
+    #endif
+    uint32_t num_classes = 16;  /// @todo get from layer params
+    small::Conv2D(1, 1, 1,
+                  0, 0, 0, 0,
+                  num_classes, 1024,  /// @todo get from layer params
+                  1, 1,
+                  inter_1_dc,
+                  *filter_buf_ptrs[filter_buf_ptrs.size() - 1], // layernum-1?
+                  inter_0_dc);
+    #if TIME_LAYER
+    my_timer.stop();
+    layer_timers[0][14] = my_timer.elapsed();
+    #endif
     return inter_1_dc;
 }
 
@@ -491,6 +525,7 @@ fused_ewise_model_inference(uint32_t layer_num_total,
                 BufferT &inter_0_dc,
                 BufferT &inter_1_dc)
 {
+
     auto layer_num = 0;
     // small::Conv2D(REDUCTION_HW(layer_num), REDUCTION_HW(layer_num),
     //               STRIDE(layer_num), PADDING(layer_num),
@@ -499,6 +534,10 @@ fused_ewise_model_inference(uint32_t layer_num_total,
     //               input_dc,
     //               *filter_buf_ptrs[layer_num],
     //               inter_0_dc);
+    #if TIME_LAYER
+    small::Timer my_timer;
+    my_timer.start();
+    #endif
     small::Conv2D_ReLU(REDUCTION_HW(layer_num), REDUCTION_HW(layer_num),
                        STRIDE(layer_num), PADDING(layer_num),
                        GROUP_C(layer_num), REDUCTION_C(layer_num),
@@ -506,7 +545,6 @@ fused_ewise_model_inference(uint32_t layer_num_total,
                        input_dc,
                        *filter_buf_ptrs[layer_num],
                        inter_0_dc);
-
     layer_num++;
     // small::ReLUActivation(GROUP_C(0),
     //                       I_HEIGHT(layer_num), I_WIDTH(layer_num),
@@ -532,7 +570,10 @@ fused_ewise_model_inference(uint32_t layer_num_total,
                            input_channels,
                            in_dims[1], in_dims[0],
                            inter_0_dc, F_dw, inter_1_dc);
-
+    #if TIME_LAYER
+    my_timer.stop();
+    layer_timers[1][0] = my_timer.elapsed();
+    #endif
     uint32_t o_w = small::output_dim(in_dims[0] + l_pad + r_pad,
                                      stride, kernel_size);
     uint32_t o_h = small::output_dim(in_dims[1] + t_pad + b_pad,
@@ -547,7 +588,9 @@ fused_ewise_model_inference(uint32_t layer_num_total,
     auto ds_blocks = 12;
     for (int ds_layer = 0; ds_layer < ds_blocks; ds_layer++)
     {
-
+        #if TIME_LAYER
+        my_timer.start();
+        #endif
         fused_ewise_dscnn_block(
             intermediate_dims[layer_num], REDUCTION_C(layer_num), // Input dimensions
             REDUCTION_HW(layer_num + 1),
@@ -559,10 +602,17 @@ fused_ewise_model_inference(uint32_t layer_num_total,
             *filter_buf_ptrs[layer_num + 1],
             inter_0_dc,
             inter_1_dc);
-
-        layer_num += 2;
+        #if TIME_LAYER
+        my_timer.stop();
+        layer_timers[1][1+ds_layer] = my_timer.elapsed();
+            #endif
+        layer_num += 2
+        ;
     }
 
+    #if TIME_LAYER
+    my_timer.start();
+    #endif
     small::Conv2D_ReLU(1, 1, 1,
                   0, 0, 0, 0,
                   GROUP_C(layer_num), REDUCTION_C(layer_num),
@@ -577,17 +627,27 @@ fused_ewise_model_inference(uint32_t layer_num_total,
                      I_HEIGHT(layer_num), I_WIDTH(layer_num),
                      inter_0_dc,
                      inter_1_dc);
-    // uint32_t num_classes = 16; /// @todo get from layer params
-    // small::Conv2D(1, 1, 1,
-    //               0, 0, 0, 0,
-    //               num_classes, 1024, /// @todo get from layer params
-    //               1, 1,
-    //               inter_1_dc,
-    //               *filter_buf_ptrs[filter_buf_ptrs.size() - 1], // layernum-1?
-    //               inter_0_dc);
-
-    // return inter_0_dc;
-    return inter_1_dc;
+    #if TIME_LAYER
+    my_timer.stop();
+    layer_timers[1][13] = my_timer.elapsed();
+    #endif
+    #if TIME_LAYER
+    my_timer.start();
+    #endif
+    uint32_t num_classes = 16; /// @todo get from layer params
+    small::Conv2D(1, 1, 1,
+                  0, 0, 0, 0,
+                  num_classes, 1024, /// @todo get from layer params
+                  1, 1,
+                  inter_1_dc,
+                  *filter_buf_ptrs[filter_buf_ptrs.size() - 1], // layernum-1?
+                  inter_0_dc);
+    #if TIME_LAYER
+    my_timer.stop();
+    layer_timers[1][14] = my_timer.elapsed();
+    #endif
+    return inter_0_dc;
+    // return inter_1_dc;
 }
 
 //****************************************************************************
@@ -602,8 +662,13 @@ fused_model_inference(uint32_t layer_num_total,
                 BufferT &inter_1_dc,
                 BufferT &inter_0_buffer_dc)
 {
-    auto layer_num = 0;
+    
 
+    auto layer_num = 0;
+    #if TIME_LAYER
+    small::Timer my_timer;
+    my_timer.start();
+    #endif
     small::Conv2D_ReLU(REDUCTION_HW(layer_num), REDUCTION_HW(layer_num),
                                             STRIDE(layer_num), PADDING(layer_num),
                                             GROUP_C(layer_num), REDUCTION_C(layer_num),
@@ -654,8 +719,12 @@ fused_model_inference(uint32_t layer_num_total,
                                inter_0_dc, F_dw, inter_1_dc);
 
         layer_num++;
-
+        #if TIME_LAYER
+        my_timer.stop();
+        layer_timers[2][0] = my_timer.elapsed();
+        #endif
     /**/
+
 
 
     auto ds_blocks = 12;
@@ -667,6 +736,9 @@ fused_model_inference(uint32_t layer_num_total,
         BufferT &O_intermediate = inter_0_buffer_dc;
         BufferT &O = inter_0_dc;
         // printf("layer_num %d \n", layer_num);
+        #if TIME_LAYER
+        my_timer.start();
+        #endif
         fused_dscnn_block(
             intermediate_dims[layer_num], REDUCTION_C(layer_num), // Input dimensions
             REDUCTION_HW(layer_num+1),
@@ -679,6 +751,10 @@ fused_model_inference(uint32_t layer_num_total,
             O_intermediate,
             O);
 
+        #if TIME_LAYER
+        my_timer.stop();
+        layer_timers[2][1+ds_layer] = my_timer.elapsed();
+        #endif
 
         layer_num += 2;
 
@@ -715,7 +791,9 @@ fused_model_inference(uint32_t layer_num_total,
     //                  I_HEIGHT(layer_num), I_WIDTH(layer_num),
     //                  inter_0_dc,
     //                  inter_1_dc);
-
+    #if TIME_LAYER
+    my_timer.start();
+    #endif
     small::Conv2D_ReLU_Maxpool2D(1, 1, 1,
                        0, 0, 0, 0,
                        REDUCTION_HW(layer_num + 1), REDUCTION_HW(layer_num + 1), STRIDE(layer_num + 1),
@@ -732,8 +810,15 @@ fused_model_inference(uint32_t layer_num_total,
     //                  I_HEIGHT(layer_num), I_WIDTH(layer_num),
     //                  inter_0_dc,
     //                  inter_1_dc);
-    layer_num++;
+    #if TIME_LAYER
+    my_timer.stop();
+    layer_timers[2][13] = my_timer.elapsed();
+    #endif
 
+    layer_num++;
+    #if TIME_LAYER
+    my_timer.start();
+    #endif
     uint32_t num_classes = 16; /// @todo get from layer params
     small::Conv2D(1, 1, 1,
                   0, 0, 0, 0,
@@ -742,6 +827,10 @@ fused_model_inference(uint32_t layer_num_total,
                   inter_1_dc,
                   *filter_buf_ptrs[filter_buf_ptrs.size() - 1], // layernum-1?
                   inter_0_dc);
+    #if TIME_LAYER
+    my_timer.stop();
+    layer_timers[2][14] = my_timer.elapsed();
+    #endif
 
     return inter_0_dc;
 }
@@ -951,7 +1040,7 @@ void inference()
 
     double min_small = std::numeric_limits<double>::max();
     std::vector<double> small_timing;
-    std::cout << "Performing timing runs unfused ...\n";
+    std::cout << "Performing timing "<< RUNS <<" runs unfused ...\n";
     for (int r = 0; r < RUNS; r++)
     {
         my_timer.start();
@@ -967,6 +1056,41 @@ void inference()
         auto diff = my_timer.elapsed() / 100;
         min_small = std::min<double>(min_small, diff);
         small_timing.push_back(diff);
+
+
+    #if TIME_LAYER
+        int impl = 0;
+
+        for (int i = 0; i < 100; i++)
+        {
+            model_inference(layer_num_total, layer_params, intermediate_dims,
+                                        filter_buf_ptrs,
+                                        input_dc, inter_0_dc, inter_1_dc);
+            for (int timer = 0; timer < 15; timer++)
+            {
+                if (0 < i)
+                {
+                    avg_layer_timers[impl][timer] += layer_timers[impl][timer];
+                }
+                else
+                {
+                    avg_layer_timers[impl][timer] = layer_timers[impl][timer];
+                }
+            }
+        }
+        for (int timer = 0; timer < 15; timer++)
+        {
+            avg_layer_timers[impl][timer] /= 100;
+            if (0 < r)
+            {
+                min_layer_timers[impl][timer] = std::min<double>(min_layer_timers[impl][timer], avg_layer_timers[impl][timer]);
+            }
+            else
+            {
+                min_layer_timers[impl][timer] = avg_layer_timers[impl][timer];
+            }
+        }
+    #endif
     }
 
     std::cout << "Minimum time: " << min_small << " ns.\n";
@@ -985,8 +1109,42 @@ void inference()
         }
 
         my_timer.stop();
-        auto diff = my_timer.elapsed()/100;
+        auto diff = (my_timer.elapsed())/100;
         min_small_fused_ewise = std::min<double>(min_small_fused_ewise, diff);
+
+        #if TIME_LAYER
+        int impl = 1;
+
+        for (int i = 0; i < 100; i++)
+        {
+            fused_ewise_model_inference(layer_num_total, layer_params, intermediate_dims,
+                                  filter_buf_ptrs,
+                                  input_dc, inter_0_dc, inter_1_dc);
+            for (int timer = 0; timer < 15; timer++)
+            {
+                if (0 < i)
+                {
+                    avg_layer_timers[impl][timer] += layer_timers[impl][timer];
+                }
+                else
+                {
+                    avg_layer_timers[impl][timer] = layer_timers[impl][timer];
+                }
+            }
+        }
+        for (int timer = 0; timer < 15; timer++)
+        {
+            avg_layer_timers[impl][timer] /= 100;
+            if (0 < r)
+            {
+                min_layer_timers[impl][timer] = std::min<double>(min_layer_timers[impl][timer], avg_layer_timers[impl][timer]);
+            }
+            else
+            {
+                min_layer_timers[impl][timer] = avg_layer_timers[impl][timer];
+            }
+        }
+        #endif
         // small_fused_ewise_timing.push_back(diff);
     }
 
@@ -1003,14 +1161,62 @@ void inference()
         fused_model_inference(layer_num_total, layer_params, intermediate_dims,
                         filter_buf_ptrs,
                         input_dc, inter_0_dc, inter_1_dc, inter_0_buffer_dc);
+
         }
         my_timer.stop();
         auto diff = my_timer.elapsed()/100;
         min_small_fused = std::min<double>(min_small_fused, diff);
+
+        #if TIME_LAYER
+        int impl = 2;
+        for (int i = 0; i < 100; i++) {
+            fused_model_inference(layer_num_total, layer_params, intermediate_dims,
+                                  filter_buf_ptrs,
+                                  input_dc, inter_0_dc, inter_1_dc, inter_0_buffer_dc);
+            for (int timer = 0; timer < 15; timer++){
+                if (0 < i) {
+                    avg_layer_timers[impl][timer] += layer_timers[impl][timer];
+                } else {
+                    avg_layer_timers[impl][timer] = layer_timers[impl][timer];
+                }
+            }
+        }
+        for (int timer = 0; timer < 15; timer++)
+        {
+            avg_layer_timers[impl][timer] /= 100;
+            if (0 < r) {
+                min_layer_timers[impl][timer] = std::min<double>(min_layer_timers[impl][timer], avg_layer_timers[impl][timer]);
+            } else {
+                min_layer_timers[impl][timer] = avg_layer_timers[impl][timer];
+
+            }
+        }
+        #endif
         // small_fused_timing.push_back(diff);
     }
 
     std::cout << "Minimum time: " << min_small_fused << " ns.\n";
+
+
+    #if TIME_LAYER
+    double sum_unfused = 0, sum_ewise = 0, sum_fused = 0;
+    for(int layer = 0 ; layer < 15; layer++)
+    {
+        printf("%d , ",layer);
+        for(int impl = 0; impl < 3; impl++)
+        {
+            printf("%f ,", min_layer_timers[impl][layer]);
+        }
+        printf("\n");
+        sum_unfused += min_layer_timers[0][layer];
+        sum_ewise   += min_layer_timers[1][layer];
+        sum_fused   += min_layer_timers[2][layer];
+    }
+
+    printf("sum , %f, %f, %f \n", sum_unfused, sum_ewise, sum_fused);
+    #endif
+
+    printf("sum , %f, %f, %f \n", min_small, min_small_fused_ewise, min_small_fused);
 
     int num_th = 1;
 #if PARALLEL == 1
