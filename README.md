@@ -1,7 +1,8 @@
 
-# SMaLL Framework
+# SMaLL: Software for rapidly instantiating Machine Learning Libraries
 
-A portable framework for writing high performance machine learning libraries .
+SMaLL is a framework for rapidly instantiating DNN based libraries for different architecture. In particular, the objective of SMaLL is to provide a quick and portable approach for developing DNN inference libraries for edge devices. At the core of SMaLL is a common set of loop nests across the different supported layers. Instead of writing every layer manually, each layer is instantiated from a small set of kernels.
+
 
 ## Build Instructions
 
