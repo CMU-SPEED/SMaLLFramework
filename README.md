@@ -3,6 +3,25 @@
 
 SMaLL is a framework for rapidly instantiating DNN based libraries for different architecture. In particular, the objective of SMaLL is to provide a quick and portable approach for developing DNN inference libraries for edge devices. At the core of SMaLL is a common set of loop nests across the different supported layers. Instead of writing every layer manually, each layer is instantiated from a small set of kernels.
 
+A detailed discussion of the framework can be found [here](https://arxiv.org/abs/2303.04769) (preprint), and [here](https://dl.acm.org/doi/10.1145/3607870) (ACM Transaction of Embedded System article).
+
+## Citation
+Please use the following citation when referencing SMaLL
+```
+@article{10.1145/3607870,
+author = {Sridhar, Upasana and Tukanov, Nicholai and Binder, Elliott and Low, Tze Meng and McMillan, Scott and Schatz, Martin D.},
+title = {SMaLL: Software for Rapidly Instantiating Machine Learning Libraries},
+year = {2023},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+issn = {1539-9087},
+url = {https://doi.org/10.1145/3607870},
+doi = {10.1145/3607870},
+note = {Just Accepted},
+journal = {ACM Trans. Embed. Comput. Syst.},
+month = {jul}
+}
+```
 
 ## Build Instructions
 
