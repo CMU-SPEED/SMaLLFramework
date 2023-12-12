@@ -669,33 +669,29 @@ fused_model_inference(uint32_t layer_num_total,
     small::Timer my_timer;
     my_timer.start();
     #endif
-    small::Conv2D_ReLU(REDUCTION_HW(layer_num), REDUCTION_HW(layer_num),
-                                            STRIDE(layer_num), PADDING(layer_num),
-                                            GROUP_C(layer_num), REDUCTION_C(layer_num),
-                                            I_HEIGHT(layer_num), I_WIDTH(layer_num),
-                                            input_dc,
-                                            *filter_buf_ptrs[layer_num],
-                                            inter_0_dc);
-
-    // small::Conv2D_ReLU_DepthwiseConv2D_ReLU(REDUCTION_HW(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num),
-    //                                         PADDING(layer_num),
-    //                                         REDUCTION_HW(layer_num + 1), REDUCTION_HW(layer_num + 1), STRIDE(layer_num + 1),
-    //                                         PADDING(layer_num+1),
+    // small::Conv2D_ReLU(REDUCTION_HW(layer_num), REDUCTION_HW(layer_num),
+    //                                         STRIDE(layer_num), PADDING(layer_num),
     //                                         GROUP_C(layer_num), REDUCTION_C(layer_num),
     //                                         I_HEIGHT(layer_num), I_WIDTH(layer_num),
     //                                         input_dc,
     //                                         *filter_buf_ptrs[layer_num],
-    //                                         inter_0_buffer_dc,
-    //                                         *filter_buf_ptrs[layer_num+1],
-    //                                         inter_1_dc);
+    //                                         inter_0_dc);
+
+    small::Conv2D_ReLU_DepthwiseConv2D_ReLU(REDUCTION_HW(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num),
+                                            PADDING(layer_num),
+                                            REDUCTION_HW(layer_num + 1), REDUCTION_HW(layer_num + 1), STRIDE(layer_num + 1),
+                                            PADDING(layer_num+1),
+                                            GROUP_C(layer_num), REDUCTION_C(layer_num),
+                                            I_HEIGHT(layer_num), I_WIDTH(layer_num),
+                                            input_dc,
+                                            *filter_buf_ptrs[layer_num],
+                                            inter_0_buffer_dc,
+                                            *filter_buf_ptrs[layer_num+1],
+                                            inter_1_dc);
 
     layer_num++;
-    // small::ReLUActivation(GROUP_C(0),
-    //                       I_HEIGHT(layer_num), I_WIDTH(layer_num),
-    //                       inter_0_dc,
-    //                       inter_0_dc);
 
-    /**/
+    /*
 
         std::array<uint32_t, 2> const &in_dims = intermediate_dims[layer_num];
         uint32_t input_channels = GROUPS(layer_num);
@@ -717,6 +713,7 @@ fused_model_inference(uint32_t layer_num_total,
                                input_channels,
                                in_dims[1], in_dims[0],
                                inter_0_dc, F_dw, inter_1_dc);
+                               */
 
         layer_num++;
         #if TIME_LAYER
@@ -769,39 +766,40 @@ fused_model_inference(uint32_t layer_num_total,
     // printf("calling conv 1x1 %d %d \n", layer_num, layer_num_total);
 
     // in_dims = intermediate_dims[layer_num];
-    input_channels = REDUCTION_C(layer_num);
-    output_channels = GROUP_C(layer_num);
+    // input_channels = REDUCTION_C(layer_num);
+    // output_channels = GROUP_C(layer_num);
 
     BufferT const &F_1x1 = *filter_buf_ptrs[layer_num];
 
-    // small::Conv2D_ReLU(1, 1, 1,
+#if TIME_LAYER
+    my_timer.start();
+#endif
+    small::Conv2D_ReLU(1, 1, 1,
+                       0, 0, 0, 0,
+                       GROUP_C(layer_num), REDUCTION_C(layer_num),
+                       intermediate_dims[layer_num][0], intermediate_dims[layer_num][1],
+                       inter_1_dc, F_1x1, inter_0_dc);
+    // small::ReLUActivation(output_channels, o_h, o_w, O, O);
+    layer_num++;
+
+    // /**/
+
+    // printf("calling pool %d %d \n", layer_num, layer_num_total);
+    small::MaxPool2D(REDUCTION_HW(layer_num), REDUCTION_HW(layer_num),
+                     STRIDE(layer_num), PADDING(layer_num),
+                     GROUPS(layer_num),
+                     I_HEIGHT(layer_num), I_WIDTH(layer_num),
+                     inter_0_dc,
+                     inter_1_dc);
+
+    // small::Conv2D_ReLU_Maxpool2D(1, 1, 1,
     //                    0, 0, 0, 0,
+    //                    REDUCTION_HW(layer_num + 1), REDUCTION_HW(layer_num + 1), STRIDE(layer_num + 1),
+    //                    PADDING(layer_num + 1),
     //                    output_channels, input_channels,
     //                    intermediate_dims[layer_num][0], intermediate_dims[layer_num][1],
-    //                    inter_1_dc, F_1x1, inter_0_dc);
-    // // small::ReLUActivation(output_channels, o_h, o_w, O, O);
-    // layer_num++;
-
-    // // /**/
-
-    // // printf("calling pool %d %d \n", layer_num, layer_num_total);
-    // small::MaxPool2D(REDUCTION_HW(layer_num), REDUCTION_HW(layer_num),
-    //                  STRIDE(layer_num), PADDING(layer_num),
-    //                  GROUPS(layer_num),
-    //                  I_HEIGHT(layer_num), I_WIDTH(layer_num),
-    //                  inter_0_dc,
-    //                  inter_1_dc);
-    #if TIME_LAYER
-    my_timer.start();
-    #endif
-    small::Conv2D_ReLU_Maxpool2D(1, 1, 1,
-                       0, 0, 0, 0,
-                       REDUCTION_HW(layer_num + 1), REDUCTION_HW(layer_num + 1), STRIDE(layer_num + 1),
-                       PADDING(layer_num + 1),
-                       output_channels, input_channels,
-                       intermediate_dims[layer_num][0], intermediate_dims[layer_num][1],
-                       inter_1_dc, F_1x1, inter_0_buffer_dc, inter_0_dc);
-    inter_1_dc = inter_0_dc;
+    //                    inter_1_dc, F_1x1, inter_0_buffer_dc, inter_0_dc);
+    // inter_1_dc = inter_0_dc;
     // // small::ReLUActivation(output_channels, o_h, o_w, O, O);
 
     // // printf("calling pool %d %d \n", layer_num, layer_num_total);
@@ -1218,6 +1216,7 @@ void inference()
 
     printf("sum , %f, %f, %f \n", min_small, min_small_fused_ewise, min_small_fused);
 
+
     int num_th = 1;
 #if PARALLEL == 1
     char const *env_nt(std::getenv("OMP_NUM_THREADS"));
@@ -1227,6 +1226,11 @@ void inference()
     }
 #endif
     std::cout << "Num Threads: " << num_th << std::endl;
+#if PARALLEL_DIST == ELEMENTAL
+    printf("ELEMENTAL\n");
+#else
+    printf("BLOCK\n");
+#endif
     // print_stats(small_fused_timing, "\nSMaLL:mobilenet");
 
     printf("deallocing %ld filters\n", filter_buf_ptrs.size());

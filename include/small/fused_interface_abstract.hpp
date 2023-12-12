@@ -17,6 +17,8 @@
 #include <stdexcept>
 #include <type_traits>
 
+#define SMALL_HAS_FLOAT_SUPPORT 1
+
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
 #include <small/abstract_layer.hpp> /// @todo abstract_layer_float.hpp
 #endif
@@ -94,6 +96,18 @@ namespace small
         convolution_params.pad_bottom = conv_b_pad;
         convolution_params.F = &filter_buf;
 
+        small::Mapping<FloatBuffer> relu_params;
+        relu_params.G = input_channels;
+        relu_params.K = 1;
+        relu_params.F_c = 1;
+        relu_params.F_h = 1;
+        relu_params.F_w = 1;
+        relu_params.pad_top = 0;
+        relu_params.pad_left = 0;
+        relu_params.pad_right = 0;
+        relu_params.pad_bottom = 0;
+        relu_params.F = NULL;
+
         if (input_channels % FLOAT_C_ib == 0)
         {
             if (conv_stride == 1)
@@ -111,6 +125,29 @@ namespace small
                     &convolution_params,
                     input_height, input_width,
                     &input_buf, &output_buf);
+
+                // detail::fused_abstract_layer<
+                //     FloatBuffer,
+                //     1, FLOAT_C_ob, FLOAT_C_ib,
+                //     FLOAT_W_ob,
+                //     1,
+                //     FLOAT_UNROLL,
+                //     OP_CONV, 2,
+                //     1,
+
+                //     FLOAƒT_C_ob, 1, 1,
+                //     FLOAT_W_ob,
+                //     1,
+                //     FLOAT_UNROLL,
+                //     OP_RELU, 1,
+                //     1,
+
+                //     OP_NONE, OP_NONE,
+                //     0, 0>(
+                //     &convolution_params,
+                //     &relu_params,
+                //     input_height, input_width,
+                //     &input_buf, &output_buf, &output_buf);
             }
             else if (conv_stride == 2)
             {
@@ -259,6 +296,48 @@ namespace small
                 detail::fused_abstract_layer<
                     FloatBuffer,
                     1, FLOAT_C_ob, FLOAT_C_ib,
+                    FLOAT_W_ob,
+                    2,
+                    FLOAT_UNROLL,
+                    OP_CONV, 2,
+                    1,
+                    OP_UPSAMPLE, OP_RELU,
+                    std::numeric_limits<dim_t>::max()>(
+                    &convolution_params,
+                    input_height, input_width,
+                    &input_buf, &output_buf);
+            }
+            else
+            {
+                throw std::invalid_argument(
+                    "Conv2D_ReLU<float> ERROR: conv_stride unsupported.");
+            }
+        }
+        else if(input_channels == 3 && input_channels < FLOAT_C_ob)
+        {
+            if (conv_stride == 1)
+            {
+
+                detail::fused_abstract_layer<
+                    FloatBuffer,
+                    1, FLOAT_C_ob, 3,
+                    FLOAT_W_ob,
+                    1,
+                    FLOAT_UNROLL,
+                    OP_CONV, 2,
+                    1,
+                    OP_UPSAMPLE, OP_RELU,
+                    std::numeric_limits<dim_t>::max()>(
+                    &convolution_params,
+                    input_height, input_width,
+                    &input_buf, &output_buf);
+            }
+            else if (conv_stride == 2)
+            {
+
+                detail::fused_abstract_layer<
+                    FloatBuffer,
+                    1, FLOAT_C_ob, 3,
                     FLOAT_W_ob,
                     2,
                     FLOAT_UNROLL,
@@ -480,37 +559,129 @@ void Conv2D_Bias_ReLU_Maxpool2D<FloatBuffer>(
     // Specific case for the first layer
     else if ((input_channels == 3) && (input_channels < FLOAT_C_ib))
     {
-        if (conv_stride == 1)
+        if (conv_stride == 1 && pool_stride == 1)
         {
 
             detail::fused_abstract_layer<
-                FloatBuffer, 1, FLOAT_C_ob, 3,
-                FLOAT_W_ob, 1, 1, OP_CONV, 2, 1, OP_UPSAMPLE, OP_RELU, std::numeric_limits<dim_t>::max()>(
+                FloatBuffer,
+                1, FLOAT_C_ob, 3,
+                FLOAT_W_ob,
+                1,
+                FLOAT_UNROLL,
+                OP_CONV, 2,
+                1,
+
+                FLOAT_C_ob, 1, 1,
+                FLOAT_W_ob,
+                1,
+                FLOAT_UNROLL,
+                OP_MAX_POOL, 1,
+                1,
+
+                OP_UPSAMPLE, OP_RELU,
+                std::numeric_limits<dim_t>::max(), 1,
+                OP_NONE, OP_NONE,
+                0, 1>(
                 &convolution_params,
+                &max_pooling_params,
                 input_height, input_width,
-                &input_buf, &inter_output_buf);
+                &input_buf, &inter_output_buf, &output_buf);
         }
-        else if (conv_stride == 2)
+        else if (conv_stride == 1 && pool_stride == 2)
         {
 
             detail::fused_abstract_layer<
-                FloatBuffer, 1, FLOAT_C_ob, 3,
-                FLOAT_W_ob, 2, 1, OP_CONV, 2, 1, OP_UPSAMPLE, OP_RELU, std::numeric_limits<dim_t>::max()>( // unroll?
+                FloatBuffer,
+                1, FLOAT_C_ob, 3,
+                FLOAT_W_ob,
+                1,
+                FLOAT_UNROLL,
+                OP_CONV, 2,
+                1,
+
+                FLOAT_C_ob, 1, 1,
+                FLOAT_W_ob,
+                2,
+                FLOAT_UNROLL,
+                OP_MAX_POOL, 1,
+                1,
+
+                OP_UPSAMPLE, OP_RELU,
+                std::numeric_limits<dim_t>::max(), 1,
+                OP_NONE, OP_NONE,
+                0, 1>(
                 &convolution_params,
+                &max_pooling_params,
                 input_height, input_width,
-                &input_buf, &inter_output_buf);
+                &input_buf, &inter_output_buf, &output_buf);
+        }
+        else if (conv_stride == 2 && pool_stride == 1)
+        {
+
+            detail::fused_abstract_layer<
+                FloatBuffer,
+                1, FLOAT_C_ob, 3,
+                FLOAT_W_ob,
+                2,
+                FLOAT_UNROLL,
+                OP_CONV, 2,
+                1,
+
+                FLOAT_C_ob, 1, 1,
+                FLOAT_W_ob,
+                1,
+                FLOAT_UNROLL,
+                OP_MAX_POOL, 1,
+                1,
+
+                OP_UPSAMPLE, OP_RELU,
+                std::numeric_limits<dim_t>::max(), 1,
+                OP_NONE, OP_NONE,
+                0, 1>(
+                &convolution_params,
+                &max_pooling_params,
+                input_height, input_width,
+                &input_buf, &inter_output_buf, &output_buf);
+        }
+        else if (conv_stride == 2 && pool_stride == 2)
+        {
+
+            detail::fused_abstract_layer<
+                FloatBuffer,
+                1, FLOAT_C_ob, 3,
+                FLOAT_W_ob,
+                2,
+                FLOAT_UNROLL,
+                OP_CONV, 2,
+                1,
+
+                FLOAT_C_ob, 1, 1,
+                FLOAT_W_ob,
+                2,
+                FLOAT_UNROLL,
+                OP_MAX_POOL, 1,
+                1,
+
+                OP_UPSAMPLE, OP_RELU,
+                std::numeric_limits<dim_t>::max(), 1,
+                OP_NONE, OP_NONE,
+                0, 1>(
+                &convolution_params,
+                &max_pooling_params,
+                input_height, input_width,
+                &input_buf, &inter_output_buf, &output_buf);
         }
         else
         {
             throw std::invalid_argument(
-                "Conv2D_ReLU<float> ERROR: stride unsupported.");
+                "Conv2D_ReLU<float> ERROR: conv_stride unsupported.");
         }
 
-        small::MaxPool2D(pool_kernel_height, pool_kernel_width, pool_stride,
-                         pool_t_pad, pool_b_pad, pool_l_pad, pool_r_pad,
-                         output_channels,
-                         conv_output_height, conv_output_width,
-                         inter_output_buf, output_buf);
+        // small::MaxPool2D(pool_kernel_height, pool_kernel_width, pool_stride,
+        //                  pool_t_pad, pool_b_pad, pool_l_pad, pool_r_pad,
+        //                  output_channels,
+        //                  conv_output_height, conv_output_width,
+        //                  inter_output_buf, output_buf);
         
     }
     else
@@ -721,28 +892,122 @@ void Conv2D_ReLU_Maxpool2D<FloatBuffer>(
     // Specific case for the first layer
     else if ((input_channels == 3) && (input_channels < FLOAT_C_ib))
     {
-        if (conv_stride == 1)
+        if (conv_stride == 1 && pool_stride == 1)
         {
+
             detail::fused_abstract_layer<
-                FloatBuffer, 1, FLOAT_C_ob, 3,
-                FLOAT_W_ob, 1, 1, OP_CONV, 2, 1, OP_NONE, OP_RELU>(
+                FloatBuffer,
+                1, FLOAT_C_ob, 3,
+                FLOAT_W_ob,
+                1,
+                FLOAT_UNROLL,
+                OP_CONV, 2,
+                1,
+
+                FLOAT_C_ob, 1, 1,
+                FLOAT_W_ob,
+                1,
+                FLOAT_UNROLL,
+                OP_MAX_POOL, 1,
+                1,
+
+                OP_NONE, OP_RELU,
+                0, 1,
+                OP_NONE, OP_RELU,
+                0, 1>(
                 &convolution_params,
+                &max_pooling_params,
                 input_height, input_width,
-                &input_buf, &inter_output_buf);
+                &input_buf, &inter_output_buf, &output_buf);
         }
-        else if (conv_stride == 2)
+        else if (conv_stride == 1 && pool_stride == 2)
         {
+
             detail::fused_abstract_layer<
-                FloatBuffer, 1, FLOAT_C_ob, 3,
-                FLOAT_W_ob, 2, 1, OP_CONV, 2, 1, OP_NONE, OP_RELU>( // unroll?
+                FloatBuffer,
+                1, FLOAT_C_ob, 3,
+                FLOAT_W_ob,
+                1,
+                FLOAT_UNROLL,
+                OP_CONV, 2,
+                1,
+
+                FLOAT_C_ob, 1, 1,
+                FLOAT_W_ob,
+                2,
+                FLOAT_UNROLL,
+                OP_MAX_POOL, 1,
+                1,
+
+                OP_NONE, OP_RELU,
+                0, 1,
+                OP_NONE, OP_RELU,
+                0, 1>(
                 &convolution_params,
+                &max_pooling_params,
                 input_height, input_width,
-                &input_buf, &inter_output_buf);
+                &input_buf, &inter_output_buf, &output_buf);
+        }
+        else if (conv_stride == 2 && pool_stride == 1)
+        {
+
+            detail::fused_abstract_layer<
+                FloatBuffer,
+                1, FLOAT_C_ob, 3,
+                FLOAT_W_ob,
+                2,
+                FLOAT_UNROLL,
+                OP_CONV, 2,
+                1,
+
+                FLOAT_C_ob, 1, 1,
+                FLOAT_W_ob,
+                1,
+                FLOAT_UNROLL,
+                OP_MAX_POOL, 1,
+                1,
+
+                OP_NONE, OP_RELU,
+                0, 1,
+                OP_NONE, OP_RELU,
+                0, 1>(
+                &convolution_params,
+                &max_pooling_params,
+                input_height, input_width,
+                &input_buf, &inter_output_buf, &output_buf);
+        }
+        else if (conv_stride == 2 && pool_stride == 2)
+        {
+
+            detail::fused_abstract_layer<
+                FloatBuffer,
+                1, FLOAT_C_ob, 3,
+                FLOAT_W_ob,
+                2,
+                FLOAT_UNROLL,
+                OP_CONV, 2,
+                1,
+
+                FLOAT_C_ob, 1, 1,
+                FLOAT_W_ob,
+                2,
+                FLOAT_UNROLL,
+                OP_MAX_POOL, 1,
+                1,
+
+                OP_NONE, OP_RELU,
+                0, 1,
+                OP_NONE, OP_RELU,
+                0, 1>(
+                &convolution_params,
+                &max_pooling_params,
+                input_height, input_width,
+                &input_buf, &inter_output_buf, &output_buf);
         }
         else
         {
             throw std::invalid_argument(
-                "Conv2D_ReLU<float> ERROR: stride unsupported.");
+                "Conv2D_ReLU<float> ERROR: conv_stride unsupported.");
         }
     }
     else

@@ -212,6 +212,30 @@ else
         }                                                       \
     }
 
+#define FLOAT_STORE_TILE_C_strided(step, O, W_ob, C_ob)                  \
+    {                                                      \
+        _mm256_store_ps(O + (0 * step), c0);               \
+        _mm256_store_ps(O + (0 * step) + FLOAT_SIMD, c1);  \
+        _mm256_store_ps(O + (1 * step), c2);               \
+        _mm256_store_ps(O + (1 * step + FLOAT_SIMD), c3);  \
+        _mm256_store_ps(O + (2 * step), c4);               \
+        _mm256_store_ps(O + (2 * step + FLOAT_SIMD), c5);  \
+        _mm256_store_ps(O + (3 * step), c6);               \
+        _mm256_store_ps(O + (3 * step + FLOAT_SIMD), c7);  \
+        _mm256_store_ps(O + (4 * step), c8);               \
+        _mm256_store_ps(O + (4 * step + FLOAT_SIMD), c9);  \
+        _mm256_store_ps(O + (5 * step), c10);              \
+        _mm256_store_ps(O + (5 * step + FLOAT_SIMD), c11); \
+    }
+
+#define FLOAT_STORE_END_C_strided(step, O, _W_ob, _C_ob)                \
+    for (uint32_t kk = 0; kk < _W_ob; kk++)               \
+    {                                                     \
+        for (uint32_t jj = 0; jj < _C_ob; jj++)           \
+        {                                                 \
+            O[kk *step + jj] = c_tile[kk * _C_ob + jj]; \
+        }                                                 \
+    }
 
 //****************************************************************************
 // Convolution Computation
