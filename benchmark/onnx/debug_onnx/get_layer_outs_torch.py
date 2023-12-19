@@ -16,14 +16,16 @@ if __name__ == "__main__":
     pytorch_model = convert(onnx_model_loaded)
     
     # input_shape = pytorch_model.parameters().size()
+    # TODO: Figure out a way to determine input shape at runtime
     input_shape = (1, 96, 96, 3)
     input_tensor = np.random.rand(*input_shape).astype(np.float32)
-    
     outs = pytorch_model(torch.from_numpy(input_tensor))
+    
     
     for i, out in enumerate(outs[1:]):
         total_elems = out.numel()
         file_name = f"{model_name}_{i}_{total_elems}"
+        #*** CHANGE THIS TO ADJUST HOW THE FILES ARE STORED
         np.save(file_name, out.detach().numpy())
     
     total_elems = outs[0].numel()
