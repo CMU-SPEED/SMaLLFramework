@@ -24,10 +24,11 @@ if __name__ == "__main__":
     
     for i, out in enumerate(outs[1:]):
         total_elems = out.numel()
-        file_name = f"{model_name}_{i}_{total_elems}"
-        #*** CHANGE THIS TO ADJUST HOW THE FILES ARE STORED
-        np.save(file_name, out.detach().numpy())
+        file_name = f"{model_name}_{i}_{total_elems}.bin"
+        with open(file_name, "wb") as f:
+            f.write(out.detach().numpy().tobytes())
     
     total_elems = outs[0].numel()
-    file_name = f"{model_name}_{len(outs)}_{total_elems}"
-    np.save(file_name, outs[0].detach().numpy())
+    file_name = f"{model_name}_{len(outs)}_{total_elems}.bin"
+    with open(file_name, "wb") as f:
+            f.write(outs[0].detach().numpy().tobytes())
