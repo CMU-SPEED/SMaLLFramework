@@ -21,7 +21,7 @@
 #include <small/op_type.hpp>
 #include <small/utils.hpp>
 
-#define DEBUG 1
+#define DEBUG 0
 
 
 #define ELEMENTAL 1
@@ -239,7 +239,7 @@ template <typename ScalarT,
           dim_t _F_cb,
           dim_t _O_wb,
           dim_t _stride,
-          dim_t _UNROLL,
+          dim_t _UNROLL, /*@todo _UNROLL should be 1, or handled if F_C_left < _UNROLL*/
           // TODO: add a bool to switch between microkernel and default imp
           // Leaf to describe abstract operation
           OpType op_type,
@@ -806,9 +806,7 @@ void inline rem_kernel(
         float norm = 1.0 / (1.0 * F_h * F_w);
         FLOAT_DIV_END_C(c_tile, norm, _O_wb, _C_ob);
     }
-    // #if DEBUG
-    printf("rem channels: %d\n", _C_ob);
-    // #endif
+
     FLOAT_STORE_END_C(O, _O_wb, _C_ob);
     //@todo support reduction-tree like store for global reductions
 }
@@ -1494,14 +1492,14 @@ void inline rem_kernel_right(
     dim_t H_lb = 0,
     dim_t H_ub = 0)
 {
-    printf("G_left %d K_left %d\n", G_left, K_left);
     const dim_t _C_ob = G_left * K_left;
     const dim_t _C_ib = G_left * _F_cb;
     const dim_t step = _stride * _C_ib;
     const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
     FLOAT_DEF_END_C(_O_wb, _C_ob);
 
-#if DEBUG
+#if DEBUG == 1
+    printf("G_left %d K_left %d\n", G_left, K_left);
     printf("kernel_right_rem\n");
     printf("First 5 input values: %f %f %f %f %f\n", I[0], I[1], I[2], I[3], I[4]);
     if(op_type == OP_CONV)
@@ -1563,7 +1561,7 @@ void inline rem_kernel_right(
         }
 
         FLOAT_STORE_END_C(O, O_w_left, _C_ob);
-#if DEBUG
+#if DEBUG == 1
         printf("First output value: %f %f %f %f \n", O[0], O[1], O[2], O[3]);
 #endif
     }

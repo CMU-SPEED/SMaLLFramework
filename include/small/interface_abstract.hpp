@@ -794,8 +794,8 @@ void DepthwiseConv2D<FloatBuffer>(
               << ",img:" << input_height << "x" << input_width
               << ",I,F,O)\n";
 #endif
-    if (input_channels % FLOAT_C_ib == 0)
-    {
+    // if (input_channels % FLOAT_C_ib == 0)
+    // {
         if (stride == 1)
         {
             detail::abstract_layer<
@@ -826,7 +826,7 @@ void DepthwiseConv2D<FloatBuffer>(
             throw std::invalid_argument(
                 "DepthwiseConv2D<float> ERROR: stride unsupported.");
         }
-    }
+    // }
     // else
     // {
     //     throw std::invalid_argument(
