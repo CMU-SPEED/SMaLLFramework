@@ -17,6 +17,8 @@
 #include <stdexcept>
 #include <type_traits>
 
+#define SMALL_HAS_FLOAT_SUPPORT 1
+
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
 #include <small/abstract_layer.hpp> /// @todo abstract_layer_float.hpp
 #endif
@@ -155,11 +157,49 @@ void Conv2D<FloatBuffer>(
                 "Conv2D<float> ERROR: stride unsupported.");
         }
     }
+    
+    //Generic handling for input channels that are not a multiple
     else
     {
-        throw std::invalid_argument(
-            "Conv2D<float> ERROR: in_channels unsupported.");
+        // printf("Generic handling for input channels that are not a multiple\n");
+        // printf("call parameters: ");
+        if (stride == 1)
+        {
+            detail::abstract_layer<
+                FloatBuffer, 1, FLOAT_C_ob, FLOAT_C_ib,
+                FLOAT_W_ob, 1, FLOAT_UNROLL, OP_CONV, 2, 1>(
+                1,               // Output Channel Grouping
+                output_channels, // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
+        }
+        else if (stride == 2)
+        {
+            detail::abstract_layer<
+                FloatBuffer, 1, FLOAT_C_ob, FLOAT_C_ib,
+                FLOAT_W_ob, 2, FLOAT_UNROLL, OP_CONV, 2, 1>(
+                1,               // Output Channel Grouping
+                output_channels, // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
+        }
+        else
+        {
+            throw std::invalid_argument(
+                "Conv2D<float> ERROR: stride unsupported.");
+        }
     }
+    // else
+    // {
+    //     throw std::invalid_argument(
+    //         "Conv2D<float> ERROR: in_channels unsupported.");
+    // }
 }
 #endif
 
@@ -379,11 +419,11 @@ void PartialConv2D<FloatBuffer>(
 
     /// @todo We need another specific case for input_channels==1 (maybe more)
 
-    else
-    {
-        throw std::invalid_argument(
-            "PartialConv2D<float> ERROR: in_channels unsupported.");
-    }
+    // else
+    // {
+    //     throw std::invalid_argument(
+    //         "PartialConv2D<float> ERROR: in_channels unsupported.");
+    // }
 }
 #endif
 
@@ -525,8 +565,8 @@ void MaxPool2D<FloatBuffer>(
               << ",I,O)\n";
 #endif
 
-    if (input_channels % FLOAT_C_ib == 0)
-    {
+    // if (input_channels % FLOAT_C_ib == 0)
+    // {
         if (stride == 1)
         {
             detail::abstract_layer<
@@ -556,12 +596,12 @@ void MaxPool2D<FloatBuffer>(
             throw std::invalid_argument(
                 "MaxPool2D<float> ERROR: stride unsupported.");
         }
-    }
-    else
-    {
-        throw std::invalid_argument(
-            "MaxPool2D<float> ERROR: in_channels unsupported.");
-    }
+    // }
+    // else
+    // {
+    //     throw std::invalid_argument(
+    //         "MaxPool2D<float> ERROR: in_channels unsupported.");
+    // }
 }
 
 #endif
@@ -707,11 +747,11 @@ void AveragePool2D<FloatBuffer>(
                 "AveragePool2D<float> ERROR: stride unsupported.");
         }
     }
-    else
-    {
-        throw std::invalid_argument(
-            "AveragePool2D<float> ERROR: in_channels unsupported.");
-    }
+    // else
+    // {
+    //     throw std::invalid_argument(
+    //         "AveragePool2D<float> ERROR: in_channels unsupported.");
+    // }
 }
 
 #endif
@@ -787,11 +827,11 @@ void DepthwiseConv2D<FloatBuffer>(
                 "DepthwiseConv2D<float> ERROR: stride unsupported.");
         }
     }
-    else
-    {
-        throw std::invalid_argument(
-            "DepthwiseConv2D<float> ERROR: in_channels unsupported.");
-    }
+    // else
+    // {
+    //     throw std::invalid_argument(
+    //         "DepthwiseConv2D<float> ERROR: in_channels unsupported.");
+    // }
 }
 #endif
 
@@ -1029,8 +1069,8 @@ void ReLUActivation<FloatBuffer>(int input_channels,
               << ",I,O)\n";
 #endif
 
-    if (input_channels % FLOAT_C_ib == 0)
-    {
+    // if (input_channels % FLOAT_C_ob == 0)
+    // {
         detail::abstract_layer<
             FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_RELU, 0, 1>(
             input_channels, // Output Channel Grouping
@@ -1040,12 +1080,12 @@ void ReLUActivation<FloatBuffer>(int input_channels,
             1, 1,
             0, 0, 0, 0,
             &input_buf, (FloatBuffer *)nullptr, &output_buf);
-    }
-    else
-    {
-        throw std::invalid_argument(
-            "ReLUActivation<float> ERROR: in_channels unsupported.");
-    }
+    // }
+    // else
+    // {
+    //     throw std::invalid_argument(
+    //         "ReLUActivation<float> ERROR: in_channels unsupported.");
+    // }
 }
 #endif
 

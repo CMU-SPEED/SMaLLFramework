@@ -930,6 +930,31 @@ if constexpr(_C_ob == 1 && _C_ob != FLOAT_SIMD_EPILOGUE)\
     }\
 }
 
+#define FLOAT_REDUCE_REM_CHANNEL_END_C(O_w_left, _C_ob)                             \
+    if  (_C_ob == 1 && _C_ob != FLOAT_SIMD_EPILOGUE)                   \
+    {                                                                           \
+        float c_tile_array[FLOAT_C_ob];                                         \
+        for (uint32_t kk = 0; kk < O_w_left; kk++)                              \
+        {                                                                       \
+            float32x4_t *c_channel_v = c_tile + kk * (FLOAT_C_ob / FLOAT_SIMD); \
+            c_channel_v[0] = vaddq_f32(c_channel_v[0], c_channel_v[1]);         \
+            c_channel_v[2] = vaddq_f32(c_channel_v[2], c_channel_v[3]);         \
+            c_channel_v[0] = vaddq_f32(c_channel_v[0], c_channel_v[2]);         \
+                                                                                \
+            vst1q_f32(c_tile_array, c_channel_v[0]);                            \
+            for (uint32_t jj = 1; jj < FLOAT_SIMD; jj++)                        \
+            {                                                                   \
+                c_tile_array[0] += c_tile_array[jj];                            \
+                c_tile_array[jj] = 0;                                           \
+            }                                                                   \
+                                                                                \
+            c_channel_v[0] = vld1q_f32(c_tile_array);                           \
+            c_channel_v[1] = vdupq_n_f32(0.0);                                  \
+            c_channel_v[2] = vdupq_n_f32(0.0);                                  \
+            c_channel_v[3] = vdupq_n_f32(0.0);                                  \
+        }                                                                       \
+    }
+
 //****************************************************************************
 // AVG Pooling
 //****************************************************************************
