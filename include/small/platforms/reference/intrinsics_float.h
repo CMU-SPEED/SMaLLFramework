@@ -441,7 +441,7 @@ for(uint32_t u =0 ; u < _UNROLL; u++)\
         }                                                                       \
     }
 
-#define FLOAT_REDUCE_CHANNEL_END_C(O_w_left, _C_ob)           \
+#define FLOAT_REDUCE_REM_CHANNEL_END_C(O_w_left, _C_ob)           \
     if(_C_ob == 1 && _C_ob != FLOAT_SIMD_EPILOGUE) \
     {                                                         \
         float c_tile_array[FLOAT_C_ob];                       \
