@@ -19,8 +19,8 @@
 #include "utils.h"
 
 #define PERFORMANCE 1
-
-#define COMPUTE_BIAS false
+#define TIME_LAYER 1
+#define COMPUTE_BIAS true
 
 #ifndef RUNS
 #define RUNS 1000
@@ -33,6 +33,10 @@
 
 #define H_TILE 0
 #define POOLING 1
+
+double layer_timers[3][15];
+double min_layer_timers[3][15];
+double avg_layer_timers[3][15];
 
 // #include <params.h>  // SMaLL platform-specific includes
 
@@ -176,23 +180,39 @@ inline void small_layer_block(
     small::FloatBuffer &O_intermediate,
     small::FloatBuffer &O)
 {
+    small::Timer my_timer;
+
     uint32_t o_h, o_w;
     o_h = small::output_dim_new(in_dims[0] + t_pad_conv + b_pad_conv, stride_conv, kernel_size_conv);
     o_w = small::output_dim_new(in_dims[1] + l_pad_conv + r_pad_conv, stride_conv, kernel_size_conv);
     if constexpr (bias)
     {
-
+        my_timer.start();
         small::Bias(output_channels_conv, o_h, o_w, Bias_conv, O_intermediate);
+        my_timer.stop();
+        layer_timers[0][4] = my_timer.elapsed();
 
+        my_timer.start();
         small::PartialConv2D(kernel_size_conv, kernel_size_conv, stride_conv, t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv, output_channels_conv, input_channels, in_dims[0], in_dims[1], I, F_conv, O_intermediate);
+        my_timer.stop();
+        layer_timers[0][0] = my_timer.elapsed();
     }
     else
     {
+        my_timer.start();
         small::Conv2D(kernel_size_conv, kernel_size_conv, stride_conv, t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv, output_channels_conv, input_channels, in_dims[0], in_dims[1], I, F_conv, O_intermediate);
+        my_timer.stop();
+        layer_timers[0][0] = my_timer.elapsed();
     }
+    my_timer.start();
     small::ReLUActivation(output_channels_conv, o_h, o_w, O_intermediate, O_intermediate);
+    my_timer.stop();
+    layer_timers[0][1] = my_timer.elapsed();
 #if LAYER == MAX_POOL
+    my_timer.start();
     small::MaxPool2D(kernel_size_1, kernel_size_1, stride_1, t_pad_1, b_pad_1, l_pad_1, r_pad_1, output_channels_conv, o_h, o_w, O_intermediate, O);
+    my_timer.stop();
+    layer_timers[0][2] = my_timer.elapsed();
 #elif LAYER == DW_CONV
 
     uint32_t o_h_1, o_w_1;
@@ -201,15 +221,27 @@ inline void small_layer_block(
     if constexpr (bias)
     {
 
+        my_timer.start();
         small::Bias(output_channels_conv, o_h_1, o_w_1, Bias_layer, O);
+        my_timer.stop();
 
+        layer_timers[0][5] = my_timer.elapsed();
+        my_timer.start();
         small::PartialDepthwiseConv2D(kernel_size_1, kernel_size_1, stride_1, t_pad_1, b_pad_1, l_pad_1, r_pad_1, output_channels_conv, o_h, o_w, O_intermediate, F_layer, O);
+        my_timer.stop();
+        layer_timers[0][2] = my_timer.elapsed();
     }
     else
     {
+        my_timer.start();
         small::DepthwiseConv2D(kernel_size_1, kernel_size_1, stride_1, t_pad_1, b_pad_1, l_pad_1, r_pad_1, output_channels_conv, o_h, o_w, O_intermediate, F_layer, O);
+        my_timer.stop();
+        layer_timers[0][2] = my_timer.elapsed();
     }
+    my_timer.start();
     small::ReLUActivation(output_channels_conv, o_h_1, o_w_1, O, O);
+    my_timer.stop();
+    layer_timers[0][3] = my_timer.elapsed();
 
 #endif
 }
@@ -242,12 +274,14 @@ inline void small_fused_ewise_layer_block(
     small::FloatBuffer &O_intermediate,
     small::FloatBuffer &O)
 {
+    small::Timer my_timer;
     uint32_t o_h, o_w;
     o_h = small::output_dim_new(in_dims[0] + t_pad_conv + b_pad_conv, stride_conv, kernel_size_conv);
     o_w = small::output_dim_new(in_dims[1] + l_pad_conv + r_pad_conv, stride_conv, kernel_size_conv);
 #if LAYER == MAX_POOL
     if constexpr (bias)
     {
+        my_timer.start();
         small::Conv2D_Bias_ReLU(kernel_size_conv, kernel_size_conv, stride_conv,
                                 t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
                                 output_channels_conv, input_channels,
@@ -256,11 +290,18 @@ inline void small_fused_ewise_layer_block(
                                 F_conv,
                                 Bias_conv,
                                 O_intermediate);
+        my_timer.stop();
+        layer_timers[1][0] = my_timer.elapsed();
+
+        my_timer.start();
         small::MaxPool2D(kernel_size_1, kernel_size_1, stride_1, t_pad_1, b_pad_1, l_pad_1, r_pad_1, output_channels_conv, o_h, o_w, O_intermediate, O);
+        my_timer.stop();
+        layer_timers[1][2] = my_timer.elapsed();
    
     }
     else
     {
+        my_timer.start();
         small::Conv2D_ReLU(kernel_size_conv, kernel_size_conv, stride_conv,
                            t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
                            output_channels_conv, input_channels,
@@ -268,11 +309,18 @@ inline void small_fused_ewise_layer_block(
                            I,
                            F_conv,
                            O_intermediate);
+        my_timer.stop();
+        layer_timers[1][0] = my_timer.elapsed();
+
+        my_timer.start();
         small::MaxPool2D(kernel_size_1, kernel_size_1, stride_1, t_pad_1, b_pad_1, l_pad_1, r_pad_1, output_channels_conv, o_h, o_w, O_intermediate, O);
-    }
+        my_timer.stop();
+        layer_timers[1][2] = my_timer.elapsed();
+   }
 #elif LAYER == DW_CONV
     if constexpr (bias)
     {
+        my_timer.start();
         small::Conv2D_Bias_ReLU(kernel_size_conv, kernel_size_conv, stride_conv,
                                 t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
                                 output_channels_conv, input_channels,
@@ -281,6 +329,11 @@ inline void small_fused_ewise_layer_block(
                                 F_conv,
                                 Bias_conv,
                                 O_intermediate);
+
+        my_timer.stop();
+        layer_timers[1][0] = my_timer.elapsed();
+
+        my_timer.start();
         small::DepthwiseConv2D_Bias_ReLU(kernel_size_1, kernel_size_1, stride_1,
                                          t_pad_1, b_pad_1, l_pad_1, r_pad_1,
                                          output_channels_conv,
@@ -289,9 +342,13 @@ inline void small_fused_ewise_layer_block(
                                          F_layer,
                                          Bias_layer,
                                          O);
+        my_timer.stop();
+        layer_timers[1][2] = my_timer.elapsed();
     }
     else
     {
+        my_timer.start();
+
         small::Conv2D_ReLU(kernel_size_conv, kernel_size_conv, stride_conv,
                            t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
                            output_channels_conv, input_channels,
@@ -300,6 +357,11 @@ inline void small_fused_ewise_layer_block(
                            F_conv,
                            O_intermediate);
 
+
+        my_timer.stop();
+        layer_timers[1][0] = my_timer.elapsed();
+
+        my_timer.start();
         small::DepthwiseConv2D_ReLU(kernel_size_1, kernel_size_1, stride_1,
                                     t_pad_1, b_pad_1, l_pad_1, r_pad_1,
                                     output_channels_conv,
@@ -307,6 +369,8 @@ inline void small_fused_ewise_layer_block(
                                     O_intermediate,
                                     F_layer,
                                     O);
+        my_timer.stop();
+        layer_timers[1][2] = my_timer.elapsed();
     }
 #endif
 }
@@ -338,6 +402,8 @@ inline void fused_small_layer_block(
     small::FloatBuffer &O)
 {
 
+    small::Timer my_timer;
+    my_timer.start();
 #if LAYER == MAX_POOL
     if constexpr (bias)
     {
@@ -390,6 +456,8 @@ inline void fused_small_layer_block(
                                                 F_layer, O);
     }
 #endif
+my_timer.stop();
+layer_timers[2][0] = my_timer.elapsed();
 }
 
 int main(int argc, char **argv)
@@ -451,51 +519,51 @@ int main(int argc, char **argv)
     switch (LAYER)
     {
     case CONV:
-        std::cout << "LAYER = CONV\n";
+        // std::cout << "LAYER = CONV\n";
         base_fname += "_conv2d_";
         break; // yes
     case PARTIAL_CONV:
-        std::cout << "LAYER = PARTIAL_CONV\n";
+        // std::cout << "LAYER = PARTIAL_CONV\n";
         base_fname += "_partial_conv_";
         break; // yes
     case DW_CONV:
-        std::cout << "LAYER = DW_CONV\n";
+        // std::cout << "LAYER = DW_CONV\n";
         base_fname += "_dw_conv_";
         break; // yes
     case GROUP_CONV:
-        std::cout << "LAYER = GROUP_CONV\n";
+        // std::cout << "LAYER = GROUP_CONV\n";
         base_fname += "_gp_conv_";
         break;
     case FC:
-        std::cout << "LAYER = FC\n";
+        // std::cout << "LAYER = FC\n";
         base_fname += "_fc_";
         break; // yes
     case MAX_POOL:
-        std::cout << "LAYER = MAX_POOL\n";
+        // std::cout << "LAYER = MAX_POOL\n";
         base_fname += "_max_pool_";
         break; // yes
     case RELU:
-        std::cout << "LAYER = RELU\n";
+        // std::cout << "LAYER = RELU\n";
         base_fname += "_relu_";
         break; // yes
     case UPSAMPLE:
-        std::cout << "LAYER = UPSAMPLE\n";
+        // std::cout << "LAYER = UPSAMPLE\n";
         base_fname += "_upsample_";
         break; // yes
     case AVERAGE_POOL:
-        std::cout << "LAYER = AVERAGE_POOL\n";
+        // std::cout << "LAYER = AVERAGE_POOL\n";
         base_fname += "_average_pool_";
         break; // yes
     case DROPOUT:
-        std::cout << "LAYER = DROPOUT\n";
+        // std::cout << "LAYER = DROPOUT\n";
         base_fname += "_dropout";
         break; // yes
     case SOFTMAX:
-        std::cout << "LAYER = SOFTMAX\n";
+        // std::cout << "LAYER = SOFTMAX\n";
         base_fname += "_softmax";
         break; // yes
     case PARTIAL_BIAS:
-        std::cout << "LAYER = PARTIAL_BIAS\n";
+        // std::cout << "LAYER = PARTIAL_BIAS\n";
         base_fname += "_partial_bias";
         break; // yes
     }
@@ -544,12 +612,12 @@ int main(int argc, char **argv)
     uint32_t C_o = atol(argv[7]);
 #endif
 
-    std::cout << "image dimensions  : " << input_height << " x " << input_width << std::endl;
-    std::cout << "stride:           " << stride << std::endl;
-    std::cout << "padding(t,b,l,r): ";
-    printf("%u %u %u %u \n", t_pad, b_pad, l_pad, r_pad);
-    std::cout << "conv padding(t,b,l,r): ";
-    printf("%u %u %u %u \n", t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv);
+    // std::cout << "image dimensions  : " << input_height << " x " << input_width << std::endl;
+    // std::cout << "stride:           " << stride << std::endl;
+    // std::cout << "padding(t,b,l,r): ";
+    // printf("%u %u %u %u \n", t_pad, b_pad, l_pad, r_pad);
+    // std::cout << "conv padding(t,b,l,r): ";
+    // printf("%u %u %u %u \n", t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv);
 
     uint32_t num_threads = 1;
 #if PARALLEL
@@ -630,7 +698,7 @@ int main(int argc, char **argv)
                                 sum_conv = ULLONG_MAX;
     std::vector<uint64_t> unfused_timing;
 
-    printf("running unfused ");
+    // printf("running unfused ");
     fflush(0);
 
     // Checking Fused SMaLL Framework implementation
@@ -666,8 +734,8 @@ int main(int argc, char **argv)
 
     memset(out_intermediate_unfused_dc.data(), 0.0, out_intermediate_unfused_buffer_size * sizeof(float));
 
-    printf("running fused ewise ");
-    fflush(0);
+    // printf("running fused ewise ");
+    // fflush(0);
 
     small_fused_ewise_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
                                                 conv_kernel_size,
@@ -696,11 +764,12 @@ int main(int argc, char **argv)
     CORRECTNESS_CHECK(check_ewise_fusion, output_dc, output_dc_unfused);
 
     assert(check_ewise_fusion == 1);
-    printf("check_ewise_fusion %d ", check_ewise_fusion);
-    fflush(0);
+    // printf("check_ewise_fusion %d ", check_ewise_fusion);
+    // fflush(0);
 
     // Full Fused block
     memset(out_intermediate_unfused_dc.data(), 0.0, out_intermediate_unfused_buffer_size * sizeof(float));
+    // printf("C_i %d, C_o_conv %d, C_o %d, kernel_size_conv %d, kernel_size %d, stride_conv %d, stride %d, t_pad_conv %d, t_pad %d, b_pad_conv %d, b_pad %d, l_pad_conv %d, l_pad %d, r_pad_conv %d, r_pad %d \n", C_i, C_o_conv, C_o_conv, conv_kernel_size, kernel_size, conv_stride, stride, t_pad_conv, t_pad, b_pad_conv, b_pad, l_pad_conv, l_pad, r_pad_conv, r_pad);
     fused_small_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
                                           conv_kernel_size,
                                           conv_stride, // Covolution parameters
@@ -727,7 +796,7 @@ int main(int argc, char **argv)
     bool check = true;
     CORRECTNESS_CHECK(check, output_dc, output_dc_unfused);
     assert(check == 1);
-    printf("check %d ", check);
+    // printf("check %d ", check);
     fflush(0);
 
 #if PERFORMANCE == 0
@@ -738,45 +807,135 @@ int main(int argc, char **argv)
     unsigned long long t0, t1;
 // performance comparison
 #if PERFORMANCE == 1
-    printf("runs %d, %d, \t ", RUNS, num_threads);
+
+    // printf("runs %d, %d, \t ", RUNS, num_threads);
     // Unfused
-    unsigned long long sum_small = ULLONG_MAX;
+    unsigned long long sum_small_conv = ULLONG_MAX;
+    std::vector<unsigned long long> small_conv_timing;
+    for (int r = 0; r < RUNS / 10; r++)
+    {
+        t0 = rdtsc();
+        for (int i = 0; i < 10; i++)
+        {
+            small::Conv2D(conv_kernel_size, conv_kernel_size, conv_stride,
+                          t_pad_conv,
+                          b_pad_conv,
+                          l_pad_conv,
+                          r_pad_conv,
+                          C_o_conv, C_i,
+                          input_height, input_width,
+                          input_dc,
+                          conv_filter_dc,
+                        //   conv_bias_dc,
+                          out_intermediate_unfused_dc);
+        }
+        t1 = rdtsc();
+        diff = (t1 - t0) / 10;
+        MIN(sum_small_conv, (diff));
+        small_conv_timing.push_back((diff));
+    }
+    fflush(0);
+
+    // Unfused
+    unsigned long long sum_small = ULLONG_MAX, sum_small_conv_relu = ULLONG_MAX, sum_small_pool = ULLONG_MAX, sum_small_pool_relu = ULLONG_MAX;
     std::vector<unsigned long long> small_timing;
     for (int r = 0; r < RUNS/10; r++)
     {
+        int impl = 0;
         t0 = rdtsc();
-        for(int i = 0; i < 10; i++)
+        for (int i = 0; i < 10; i++)
         {
-        small_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
-                                        conv_kernel_size,
-                                        conv_stride, // Covolution parameters
-                                        C_o_conv,    // Convolution parameters
-                                        t_pad_conv,
-                                        b_pad_conv,
-                                        l_pad_conv,
-                                        r_pad_conv,
-                                        kernel_size,
-                                        stride,   // Covolution parameters
-                                        C_o_conv, // Convolution parameters
-                                        t_pad,
-                                        b_pad,
-                                        l_pad,
-                                        r_pad,
-                                        input_dc,
-                                        conv_filter_dc,
-                                        conv_bias_dc,
-                                        filter_dc,
-                                        bias_dc,
-                                        out_intermediate_unfused_dc,
-                                        output_dc);
+            small_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
+                                            conv_kernel_size,
+                                            conv_stride, // Covolution parameters
+                                            C_o_conv,    // Convolution parameters
+                                            t_pad_conv,
+                                            b_pad_conv,
+                                            l_pad_conv,
+                                            r_pad_conv,
+                                            kernel_size,
+                                            stride,   // Covolution parameters
+                                            C_o_conv, // Convolution parameters
+                                            t_pad,
+                                            b_pad,
+                                            l_pad,
+                                            r_pad,
+                                            input_dc,
+                                            conv_filter_dc,
+                                            conv_bias_dc,
+                                            filter_dc,
+                                            bias_dc,
+                                            out_intermediate_unfused_dc,
+                                            output_dc);
         }
+
         t1 = rdtsc();
         diff = (t1-t0)/10;
         MIN(sum_small, (diff));
         small_timing.push_back((diff));
+
+
+#if TIME_LAYER
+
+        for (int i = 0; i < 10; i++)
+        {
+            small_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
+                                            conv_kernel_size,
+                                            conv_stride, // Covolution parameters
+                                            C_o_conv,    // Convolution parameters
+                                            t_pad_conv,
+                                            b_pad_conv,
+                                            l_pad_conv,
+                                            r_pad_conv,
+                                            kernel_size,
+                                            stride,   // Covolution parameters
+                                            C_o_conv, // Convolution parameters
+                                            t_pad,
+                                            b_pad,
+                                            l_pad,
+                                            r_pad,
+                                            input_dc,
+                                            conv_filter_dc,
+                                            conv_bias_dc,
+                                            filter_dc,
+                                            bias_dc,
+                                            out_intermediate_unfused_dc,
+                                            output_dc);
+
+            for (int timer = 0; timer < 6; timer++)
+            {
+                if (0 < i)
+                {
+                    avg_layer_timers[impl][timer] += layer_timers[impl][timer];
+                }
+                else
+                {
+                    avg_layer_timers[impl][timer] = layer_timers[impl][timer];
+                }
+            }
+        }
+
+
+// #endif
+        
+       
+// #if TIME_LAYER
+        for (int timer = 0; timer < 6; timer++)
+        {
+            avg_layer_timers[impl][timer] /= 10;
+            if (0 < r)
+            {
+                min_layer_timers[impl][timer] = std::min<double>(min_layer_timers[impl][timer], avg_layer_timers[impl][timer]);
+            }
+            else
+            {
+                min_layer_timers[impl][timer] = avg_layer_timers[impl][timer];
+            }
+        }
+#endif
     }
-    print_cycles(sum_small);
     fflush(0);
+
 
     // Fused implementations
     // Fused ewise
@@ -790,6 +949,8 @@ int main(int argc, char **argv)
     {
         small::Timer my_timer;
         t0 = rdtsc();
+        for(int trial = 0; trial < 10; trial++)
+        {
         small_fused_ewise_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
                                                     conv_kernel_size,
                                                     conv_stride, // Covolution parameters
@@ -812,36 +973,67 @@ int main(int argc, char **argv)
                                                     bias_dc,
                                                     out_intermediate_unfused_dc,
                                                     output_dc);
+        }
         t1 = rdtsc();
-        MIN(sum_small_fused_ewise, t1 - t0);
-        small_timing_fused_ewise.push_back(t1 - t0);
+        MIN(sum_small_fused_ewise, (t1 - t0)/10);
+        small_timing_fused_ewise.push_back((t1 - t0)/10);
 
-        t0 = rdtsc();
-        small::Conv2D_Bias_ReLU(conv_kernel_size, conv_kernel_size, conv_stride,
-                                t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
-                                C_o_conv, C_i,
-                                input_height, input_width,
-                                input_dc,
-                                conv_filter_dc,
-                                conv_bias_dc,
-                                out_intermediate_unfused_dc);
-        t1 = rdtsc();
-        MIN(sum_small_fused_ewise_conv, (t1 - t0));
+        #if TIME_LAYER
+        auto impl = 1;
+        for (int trial = 0; trial < 10; trial++)
+        {
+            small_fused_ewise_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
+                                                        conv_kernel_size,
+                                                        conv_stride, // Covolution parameters
+                                                        C_o_conv,    // Convolution parameters
+                                                        t_pad_conv,
+                                                        b_pad_conv,
+                                                        l_pad_conv,
+                                                        r_pad_conv,
+                                                        kernel_size,
+                                                        stride,   // Covolution parameters
+                                                        C_o_conv, // Convolution parameters
+                                                        t_pad,
+                                                        b_pad,
+                                                        l_pad,
+                                                        r_pad,
+                                                        input_dc,
+                                                        conv_filter_dc,
+                                                        conv_bias_dc,
+                                                        filter_dc,
+                                                        bias_dc,
+                                                        out_intermediate_unfused_dc,
+                                                        output_dc);
 
-        auto diff_conv = (t1 - t0);
+            for (int timer = 0; timer < 6; timer++)
+            {
+                if (0 < trial)
+                {
+                    avg_layer_timers[impl][timer] += layer_timers[impl][timer];
+                }
+                else
+                {
+                    avg_layer_timers[impl][timer] = layer_timers[impl][timer];
+                }
+            }
+        }
+        for (int timer = 0; timer < 6; timer++)
+        {
+            avg_layer_timers[impl][timer] /= 10;
+            if (0 < r)
+            {
+                min_layer_timers[impl][timer] = std::min<double>(min_layer_timers[impl][timer], avg_layer_timers[impl][timer]);
+            }
+            else
+            {
+                min_layer_timers[impl][timer] = avg_layer_timers[impl][timer];
+            }
+        }
+#endif
 
-        t0 = rdtsc();
-        small::MaxPool2D(kernel_size, kernel_size, stride, t_pad, b_pad, l_pad, r_pad, C_o_conv, input_height, input_width, out_intermediate_unfused_dc, output_dc);
-        t1 = rdtsc();
-        MIN(sum_small_fused_ewise_dw, (t1 - t0));
-
-        auto diff_dw = (t1- t0);
-      
     }
-    print_cycles(sum_small_fused_ewise);
-    print_cycles(sum_small_fused_ewise_conv);
-    print_cycles(sum_small_fused_ewise_dw);
-    print_cycles(sum_small_fused_ewise_dw + sum_small_fused_ewise_conv);
+  
+    // print_cycles(sum_small_fused_ewise_dw + sum_small_fused_ewise_conv);
 
     fflush(0);
 
@@ -854,67 +1046,130 @@ int main(int argc, char **argv)
     for (int r = 0; r < RUNS; r++)
     {
         t0 = rdtsc();
-        fused_small_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
-                                              conv_kernel_size,
-                                              conv_stride, // Covolution parameters
-                                              C_o_conv,    // Convolution parameters
-                                              t_pad_conv,
-                                              b_pad_conv,
-                                              l_pad_conv,
-                                              r_pad_conv,
-                                              kernel_size,
-                                              stride,   // Covolution parameters
-                                              C_o_conv, // Convolution parameters
-                                              t_pad,
-                                              b_pad,
-                                              l_pad,
-                                              r_pad,
-                                              input_dc,
-                                              conv_filter_dc,
-                                              conv_bias_dc,
-                                              filter_dc,
-                                              bias_dc,
-                                              out_intermediate_unfused_dc,
-                                              output_dc);
+        for (int trial = 0; trial < 10; trial++)
+        {
+            fused_small_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
+                                                  conv_kernel_size,
+                                                  conv_stride, // Covolution parameters
+                                                  C_o_conv,    // Convolution parameters
+                                                  t_pad_conv,
+                                                  b_pad_conv,
+                                                  l_pad_conv,
+                                                  r_pad_conv,
+                                                  kernel_size,
+                                                  stride,   // Covolution parameters
+                                                  C_o_conv, // Convolution parameters
+                                                  t_pad,
+                                                  b_pad,
+                                                  l_pad,
+                                                  r_pad,
+                                                  input_dc,
+                                                  conv_filter_dc,
+                                                  conv_bias_dc,
+                                                  filter_dc,
+                                                  bias_dc,
+                                                  out_intermediate_unfused_dc,
+                                                  output_dc);
+        }
         t1 = rdtsc();
-        MIN(sum_small_fused, (t1 - t0));
-        small_timing_fused.push_back((t1 - t0));
+        MIN(sum_small_fused, (t1 - t0)/10);
+        small_timing_fused.push_back((t1 - t0)/10);
+
+        #if TIME_LAYER 
+        auto impl = 2;
+        for (int trial = 0; trial < 10; trial++)
+        {
+        
+            fused_small_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
+                                                  conv_kernel_size,
+                                                  conv_stride, // Covolution parameters
+                                                  C_o_conv,    // Convolution parameters
+                                                  t_pad_conv,
+                                                  b_pad_conv,
+                                                  l_pad_conv,
+                                                  r_pad_conv,
+                                                  kernel_size,
+                                                  stride,   // Covolution parameters
+                                                  C_o_conv, // Convolution parameters
+                                                  t_pad,
+                                                  b_pad,
+                                                  l_pad,
+                                                  r_pad,
+                                                  input_dc,
+                                                  conv_filter_dc,
+                                                  conv_bias_dc,
+                                                  filter_dc,
+                                                  bias_dc,
+                                                  out_intermediate_unfused_dc,
+                                                  output_dc);
+
+            for (int timer = 0; timer < 6; timer++)
+            {
+                if (0 < trial)
+                {
+                    avg_layer_timers[impl][timer] += layer_timers[impl][timer];
+                }
+                else
+                {
+                    avg_layer_timers[impl][timer] = layer_timers[impl][timer];
+                }
+            }
+        }
+
+        for (int timer = 0; timer < 6; timer++)
+        {
+            avg_layer_timers[impl][timer] /= 10;
+            if (0 < r)
+            {
+                min_layer_timers[impl][timer] = std::min<double>(min_layer_timers[impl][timer], avg_layer_timers[impl][timer]);
+            }
+            else
+            {
+                min_layer_timers[impl][timer] = avg_layer_timers[impl][timer];
+            }
+        }
+#endif
     }
-    print_cycles(sum_small_fused);
     fflush(0);
 
-    printf("%.4f ", (sum_small * 1.0) / (sum_small_fused_ewise * 1.0));
-    printf("%.4f ", (sum_small * 1.0) / (sum_small_fused * 1.0));
+#if TIME_LAYER
+    double sum_unfused = 0, sum_ewise = 0, sum_fused_block = 0;
+    printf("impl, conv , conv_relu, pool/dw, relu, conv_bias, dw_bias\n ");
+    for (int impl = 0; impl < 3; impl++)
+    {  printf("%d , ", impl);
+        for (int layer = 0; layer < 6; layer++)
+        {
+            printf("%f ,", min_layer_timers[impl][layer]);
+            if(impl == 0)
+            {
+            sum_unfused += min_layer_timers[0][layer];
+            sum_ewise += min_layer_timers[1][layer];
+            sum_fused_block += min_layer_timers[2][layer];
+            }
+        }
+        printf("\n");
+
+    }
+
+    printf("sum , %f, %f, %f \n", sum_unfused, sum_ewise, sum_fused_block);
+#endif
+
+    print_cycles(sum_small_conv);
+    print_cycles(sum_small);
+    print_cycles(sum_small_fused_ewise);
+    // print_cycles(sum_small_fused_ewise_conv);
+    // print_cycles(sum_small_fused_ewise_dw);
+    print_cycles(sum_small_fused);
+    printf(" %.4f, ", (sum_small * 1.0) / (sum_small_fused_ewise * 1.0));
+    printf("%.4f , %d", COMPUTE_BIAS, (sum_small * 1.0) / (sum_small_fused * 1.0));
     printf("\n");
+
+    #if PARALLEL_DIST == ELEMENTAL
+    printf("ELEMENTAL\n");
+    #else
+    printf("BLOCK\n");
     #endif
+#endif
 
-    //     // Writing time for each trial into a csv_file
 
-    //     // file pointer
-    //     std::fstream fout;
-
-    //     // opens an existing csv file or creates a new file.
-    //     fout.open("report.csv", std::ios::out | std::ios::app);
-
-    //     fout << "input dims"
-    //          << "\t"
-    //          << "pytorch_timing"
-    //          << "\t"
-    //          << "small_timing"
-    //          << "\t "
-    //          << "small_timing_fused"
-    //          << "\n";
-
-    //     // Read the input
-    //     for (int i = 0; i < RUNS; i++)
-    //     {
-    //         // Insert the data to file
-    //         fout << a.size(1) << "x" << a.size(2) << "x" << a.size(3) << "\t"
-    //              << pytorch_timing[i] << "\t "
-    //              << small_timing[i] << "\t "
-    //              << small_timing_fused[i]
-    //              << "\n";
-    //     }
-
-    //     fout.close();
 }
