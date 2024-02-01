@@ -46,32 +46,52 @@ void test_initialization()
 void test_add()
 {
     printf("\n");
-    const small::QUInt8Buffer::accum_type x = 8;   // c_tile_t (32 bits)
-    const small::QUInt8Buffer::value_type y = 255; // c_tile_out_t (8 bits)
-    QUINT8_DEF_TILE_C(QUINT8_W_ob, QUINT8_C_ob);
-    QUINT8_ZERO_TILE_C(QUINT8_W_ob, QUINT8_C_ob, x);
 
-    c_tile_out_t I[QUINT8_W_ob * QUINT8_C_ob];
+    // Initialize c_tile with random values
+    // Initialize c_tile2 with the same values
+    QUINT8_DEF_TILE_C(QUINT8_W_ob, QUINT8_C_ob);
+    c_tile_t c_tile2[QUINT8_W_ob * QUINT8_C_ob];
 
     for (uint32_t kk = 0; kk < QUINT8_W_ob; kk++)
     {
         for (uint32_t jj = 0; jj < QUINT8_C_ob; jj++)
         {
-            I[kk * QUINT8_C_ob + jj] = y;
+            int r = rand();
+            c_tile[kk * QUINT8_C_ob + jj] = r;
+            c_tile2[kk * QUINT8_C_ob + jj] = r;
         }
     }
 
-    QUINT8_ADD_TILE_C_G(I, QUINT8_W_ob, QUINT8_C_ob);
+    // Initializing I with random values
+    c_tile_out_t I[QUINT8_W_ob * QUINT8_C_ob];
+    for (uint32_t kk = 0; kk < QUINT8_W_ob; kk++)
+    {
+        for (uint32_t jj = 0; jj < QUINT8_C_ob; jj++)
+        {
+            I[kk * QUINT8_C_ob + jj] = rand();
+        }
+    }
 
-    // print the c_tile buffer to make sure the values were assigned
+    // Running old version of function being tested
+    OLD_QUINT8_ADD_TILE_C_G(I, QUINT8_W_ob, QUINT8_C_ob);
+
+    // Copy output of old version of function into ouput_ref
+    c_tile_t output_ref[QUINT8_W_ob * QUINT8_C_ob];
+    memcpy(output_ref, c_tile, sizeof(c_tile_t) * QUINT8_W_ob * QUINT8_C_ob);
+
+    // Copy c_tile2 into c_tile and run the new version of the function
+    memcpy(c_tile, c_tile2, sizeof(c_tile_t) * QUINT8_W_ob * QUINT8_C_ob);
+
+    // Running new version of function being tested
+    OLD_QUINT8_ADD_TILE_C_G(I, QUINT8_W_ob, QUINT8_C_ob);
+
+    // Checking values
     for (int kk = 0; kk < QUINT8_W_ob; kk++)
     {
         for (int jj = 0; jj < QUINT8_C_ob; jj++)
         {
-            TEST_CHECK(c_tile[kk * QUINT8_C_ob + jj] == x + y);
-            printf("%d ", c_tile[kk * QUINT8_C_ob + jj]);
+            TEST_CHECK(c_tile[kk * QUINT8_C_ob + jj] == output_ref[kk * QUINT8_C_ob + jj]);
         }
-        printf("\n");
     }
 }
 
