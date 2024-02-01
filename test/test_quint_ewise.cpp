@@ -83,7 +83,7 @@ void test_add()
     memcpy(c_tile, c_tile2, sizeof(c_tile_t) * QUINT8_W_ob * QUINT8_C_ob);
 
     // Running new version of function being tested
-    OLD_QUINT8_ADD_TILE_C_G(I, QUINT8_W_ob, QUINT8_C_ob);
+    QUINT8_ADD_TILE_C_G(I, QUINT8_W_ob, QUINT8_C_ob);
 
     // Checking values
     for (int kk = 0; kk < QUINT8_W_ob; kk++)
