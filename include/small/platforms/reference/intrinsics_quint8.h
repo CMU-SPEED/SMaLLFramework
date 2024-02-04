@@ -371,15 +371,15 @@ namespace small
         i_pixel += C_ob;                         \
     }
 
-#define QUINT8_ADD_TILE_C_G(I, W_ob_g, C_ob) \
-    c_tile_t *c_channel = c_tile;            \
-    c_tile_out_t const *i_channel = I;       \
-    const uint32_t length = W_ob_g * C_ob;   \
-    for (uint32_t kk = 0; kk < length; kk++) \
-    {                                        \
-        *c_channel++ += *i_channel++;        \
-        /*c_channel++;*/                     \
-        /*i_channel++;*/                     \
+#define QUINT8_ADD_TILE_C_G(I, W_ob_g, C_ob)                \
+    c_tile_t *c_channel = c_tile;                           \
+    c_tile_out_t const *i_channel = I;                      \
+    const c_tile_t *end_addr = c_channel + (W_ob_g * C_ob); \
+    /*address of the last element in c_tile*/               \
+                                                            \
+    while (c_channel < end_addr)                            \
+    {                                                       \
+        *c_channel++ += *i_channel++;                       \
     }
 
 #define QUINT8_ADD_LAST_C_G(I, W_last, C_ob)     \
