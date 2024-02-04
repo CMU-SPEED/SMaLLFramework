@@ -374,12 +374,12 @@ namespace small
 #define QUINT8_ADD_TILE_C_G(I, W_ob_g, C_ob) \
     c_tile_t *c_channel = c_tile;            \
     c_tile_out_t const *i_channel = I;       \
-    uint32_t length = W_ob_g * C_ob;         \
+    const uint32_t length = W_ob_g * C_ob;   \
     for (uint32_t kk = 0; kk < length; kk++) \
     {                                        \
-        *c_channel += *i_channel;            \
-        c_channel++;                         \
-        i_channel++;                         \
+        *c_channel++ += *i_channel++;        \
+        /*c_channel++;*/                     \
+        /*i_channel++;*/                     \
     }
 
 #define QUINT8_ADD_LAST_C_G(I, W_last, C_ob)     \

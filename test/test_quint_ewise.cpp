@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <acutest.h>
 #include <small.h>
+#include <small/utils/Timer.hpp>
 
 #if !defined(SMALL_HAS_QUINT8_SUPPORT)
 #ERROR "ERROR: small does not have quint8 support"
@@ -24,6 +25,8 @@ typedef uint8_t c_tile_out_t;
 #define QUINT8_C_ob 8
 #endif
 
+const int num_runs = 100000;
+
 void test_initialization()
 {
     printf("\n");
@@ -37,13 +40,12 @@ void test_initialization()
         for (int jj = 0; jj < QUINT8_C_ob; jj++)
         {
             TEST_CHECK(c_tile[kk * QUINT8_C_ob + jj] == x);
-            printf("%u ", c_tile[kk * QUINT8_C_ob + jj]);
         }
         printf("\n");
     }
 }
 
-void test_add()
+void test_add_correctness()
 {
     printf("\n");
 
@@ -68,7 +70,7 @@ void test_add()
     {
         for (uint32_t jj = 0; jj < QUINT8_C_ob; jj++)
         {
-            I[kk * QUINT8_C_ob + jj] = rand();
+            I[kk * QUINT8_C_ob + jj] = static_cast<c_tile_out_t>(rand());
         }
     }
 
@@ -95,9 +97,74 @@ void test_add()
     }
 }
 
+void test_add_performance()
+{
+    printf("\n");
+    printf("num_runs, min, max, avg");
+
+    // Initialize c_tile with random values
+    // Initialize c_tile2 with the same values
+    QUINT8_DEF_TILE_C(QUINT8_W_ob, QUINT8_C_ob);
+    QUINT8_ZERO_TILE_C(QUINT8_W_ob, QUINT8_C_ob, 0);
+
+    // Initializing I with random values
+    c_tile_out_t I[QUINT8_W_ob * QUINT8_C_ob];
+    for (uint32_t kk = 0; kk < QUINT8_W_ob; kk++)
+    {
+        for (uint32_t jj = 0; jj < QUINT8_C_ob; jj++)
+        {
+            I[kk * QUINT8_C_ob + jj] = 1U;
+        }
+    }
+
+    small::Timer t;
+    double tx = 0.;
+    double min_t = std::numeric_limits<double>::max();
+    double max_t = 0.;
+    for (int i = 0; i < num_runs; ++i)
+    {
+        // Running old version of function being tested
+        t.start();
+        OLD_QUINT8_ADD_TILE_C_G(I, QUINT8_W_ob, QUINT8_C_ob);
+        t.stop();
+
+        double ts = t.elapsed();
+        tx += ts;
+        min_t = std::min(min_t, ts);
+        max_t = std::max(max_t, ts);
+    }
+
+    printf("num_runs: %d, c_tile value: %d\n", num_runs, c_tile[0]);
+    printf("Old macro\t%d\t%lf\t%lf\t%lf\n",
+           num_runs, min_t, max_t, (tx / num_runs));
+
+    // Running new version of function being tested
+    QUINT8_ZERO_TILE_C(QUINT8_W_ob, QUINT8_C_ob, 0);
+    tx = 0.;
+    min_t = std::numeric_limits<double>::max();
+    max_t = 0.;
+
+    for (int i = 0; i < num_runs; ++i)
+    {
+        // Running old version of function being tested
+        t.start();
+        QUINT8_ADD_TILE_C_G(I, QUINT8_W_ob, QUINT8_C_ob);
+        t.stop();
+
+        double ts = t.elapsed();
+        tx += ts;
+        min_t = std::min(min_t, ts);
+        max_t = std::max(max_t, ts);
+    }
+
+    printf("num_runs: %d, c_tile value: %d\n", num_runs, c_tile[0]);
+    printf("New macro\t%d\t%lf\t%lf\t%lf\n",
+           num_runs, min_t, max_t, (tx / num_runs));
+}
 //****************************************************************************
 //****************************************************************************
 TEST_LIST = {
-    {"initialization of full block of data", test_initialization},
-    {"add function", test_add},
+    // {"initialization of full block of data", test_initialization},
+    {"add function, correctness test", test_add_correctness},
+    {"add function, performance test", test_add_performance},
     {NULL, NULL}};
