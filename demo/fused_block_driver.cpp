@@ -21,12 +21,13 @@
 #define PERFORMANCE 1
 #define TIME_LAYER 1
 #define COMPUTE_BIAS true
+#define COMPUTE_RELU true
 
 #ifndef RUNS
 #define RUNS 1000
 #endif
 #ifndef PARALLEL
-#define PARALLEL 0
+#define PARALLEL 1
 #endif
 
 #define PREFETCH 1
@@ -205,7 +206,10 @@ inline void small_layer_block(
         layer_timers[0][0] = my_timer.elapsed();
     }
     my_timer.start();
+    if constexpr (COMPUTE_RELU)
+    {
     small::ReLUActivation(output_channels_conv, o_h, o_w, O_intermediate, O_intermediate);
+    }
     my_timer.stop();
     layer_timers[0][1] = my_timer.elapsed();
 #if LAYER == MAX_POOL
@@ -239,7 +243,10 @@ inline void small_layer_block(
         layer_timers[0][2] = my_timer.elapsed();
     }
     my_timer.start();
+    if constexpr (COMPUTE_RELU)
+    {   
     small::ReLUActivation(output_channels_conv, o_h_1, o_w_1, O, O);
+    }
     my_timer.stop();
     layer_timers[0][3] = my_timer.elapsed();
 
@@ -302,13 +309,33 @@ inline void small_fused_ewise_layer_block(
     else
     {
         my_timer.start();
-        small::Conv2D_ReLU(kernel_size_conv, kernel_size_conv, stride_conv,
-                           t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
-                           output_channels_conv, input_channels,
-                           in_dims[0], in_dims[1],
-                           I,
-                           F_conv,
-                           O_intermediate);
+        if constexpr (COMPUTE_RELU)
+        {
+            small::Conv2D_ReLU(kernel_size_conv, kernel_size_conv, stride_conv,
+                               t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
+                               output_channels_conv, input_channels,
+                               in_dims[0], in_dims[1],
+                               I,
+                               F_conv,
+                               O_intermediate);
+        }
+        else
+        {
+            small::Conv2D(kernel_size_conv, kernel_size_conv, stride_conv,
+                          t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
+                          output_channels_conv, input_channels,
+                          in_dims[0], in_dims[1],
+                          I,
+                          F_conv,
+                          O_intermediate);
+        }
+        // small::Conv2D_ReLU(kernel_size_conv, kernel_size_conv, stride_conv,
+        //                    t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
+        //                    output_channels_conv, input_channels,
+        //                    in_dims[0], in_dims[1],
+        //                    I,
+        //                    F_conv,
+        //                    O_intermediate);
         my_timer.stop();
         layer_timers[1][0] = my_timer.elapsed();
 
@@ -349,26 +376,66 @@ inline void small_fused_ewise_layer_block(
     {
         my_timer.start();
 
-        small::Conv2D_ReLU(kernel_size_conv, kernel_size_conv, stride_conv,
-                           t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
-                           output_channels_conv, input_channels,
-                           in_dims[0], in_dims[1],
-                           I,
-                           F_conv,
-                           O_intermediate);
+        if constexpr (COMPUTE_RELU)
+        {
+            small::Conv2D_ReLU(kernel_size_conv, kernel_size_conv, stride_conv,
+                               t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
+                               output_channels_conv, input_channels,
+                               in_dims[0], in_dims[1],
+                               I,
+                               F_conv,
+                               O_intermediate);
+        }
+        else
+        {
+            small::Conv2D(kernel_size_conv, kernel_size_conv, stride_conv,
+                          t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
+                          output_channels_conv, input_channels,
+                          in_dims[0], in_dims[1],
+                          I,
+                          F_conv,
+                          O_intermediate);
+        }
+        // small::Conv2D_ReLU(kernel_size_conv, kernel_size_conv, stride_conv,
+        //                    t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
+        //                    output_channels_conv, input_channels,
+        //                    in_dims[0], in_dims[1],
+        //                    I,
+        //                    F_conv,
+                        //    O_intermediate);
 
 
         my_timer.stop();
         layer_timers[1][0] = my_timer.elapsed();
 
         my_timer.start();
-        small::DepthwiseConv2D_ReLU(kernel_size_1, kernel_size_1, stride_1,
+        if constexpr(COMPUTE_RELU)
+        {
+            small::DepthwiseConv2D_ReLU(kernel_size_1, kernel_size_1, stride_1,
+                                        t_pad_1, b_pad_1, l_pad_1, r_pad_1,
+                                        output_channels_conv,
+                                        o_h, o_w,
+                                        O_intermediate,
+                                        F_layer,
+                                        O);
+        }
+        else
+        {
+            small::DepthwiseConv2D(kernel_size_1, kernel_size_1, stride_1,
                                     t_pad_1, b_pad_1, l_pad_1, r_pad_1,
                                     output_channels_conv,
                                     o_h, o_w,
                                     O_intermediate,
                                     F_layer,
                                     O);
+        }
+        // small::DepthwiseConv2D_ReLU(kernel_size_1, kernel_size_1, stride_1,
+        //                             t_pad_1, b_pad_1, l_pad_1, r_pad_1,
+        //                             output_channels_conv,
+        //                             o_h, o_w,
+        //                             O_intermediate,
+        //                             F_layer,
+        //                             O);
         my_timer.stop();
         layer_timers[1][2] = my_timer.elapsed();
     }
@@ -421,16 +488,42 @@ inline void fused_small_layer_block(
     }
     else
     {
-        small::Conv2D_ReLU_Maxpool2D(kernel_size_conv, kernel_size_conv, stride_conv,
-                                     t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
-                                     kernel_size_1, kernel_size_1, stride_1,
-                                     t_pad_1, b_pad_1, l_pad_1, r_pad_1,
-                                     output_channels_conv, input_channels,
-                                     in_dims[0], in_dims[1],
-                                     I,
-                                     F_conv,
-                                     O_intermediate,
-                                     O);
+        if constexpr(COMPUTE_RELU)
+        {
+            small::Conv2D_ReLU_Maxpool2D(kernel_size_conv, kernel_size_conv, stride_conv,
+                                          t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
+                                          kernel_size_1, kernel_size_1, stride_1,
+                                          t_pad_1, b_pad_1, l_pad_1, r_pad_1,
+                                          output_channels_conv, input_channels,
+                                          in_dims[0], in_dims[1],
+                                          I,
+                                          F_conv,
+                                          O_intermediate,
+                                          O);
+        }
+        else
+        {
+            small::Conv2D_Maxpool2D(kernel_size_conv, kernel_size_conv, stride_conv,
+                                    t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
+                                    kernel_size_1, kernel_size_1, stride_1,
+                                    t_pad_1, b_pad_1, l_pad_1, r_pad_1,
+                                    output_channels_conv, input_channels,
+                                    in_dims[0], in_dims[1],
+                                    I,
+                                    F_conv,
+                                    O_intermediate,
+                                    O);
+        }
+        // small::Conv2D_ReLU_Maxpool2D(kernel_size_conv, kernel_size_conv, stride_conv,
+        //                              t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
+        //                              kernel_size_1, kernel_size_1, stride_1,
+        //                              t_pad_1, b_pad_1, l_pad_1, r_pad_1,
+        //                              output_channels_conv, input_channels,
+        //                              in_dims[0], in_dims[1],
+        //                              I,
+        //                              F_conv,
+        //                              O_intermediate,
+        //                              O);
     }
 #elif LAYER == DW_CONV
     if constexpr (bias)
@@ -446,14 +539,36 @@ inline void fused_small_layer_block(
     }
     else
     {
-        small::Conv2D_ReLU_DepthwiseConv2D_ReLU(kernel_size_conv, kernel_size_conv, stride_conv,
-                                                t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
-                                                kernel_size_1, kernel_size_1, stride_1,
-                                                t_pad_1, b_pad_1, l_pad_1, r_pad_1,
-                                                output_channels_conv, input_channels,
-                                                in_dims[0], in_dims[1],
-                                                I, F_conv, O_intermediate,
-                                                F_layer, O);
+        if constexpr(COMPUTE_RELU)
+        {
+            small::Conv2D_ReLU_DepthwiseConv2D_ReLU(kernel_size_conv, kernel_size_conv, stride_conv,
+                                                    t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
+                                                    kernel_size_1, kernel_size_1, stride_1,
+                                                    t_pad_1, b_pad_1, l_pad_1, r_pad_1,
+                                                    output_channels_conv, input_channels,
+                                                    in_dims[0], in_dims[1],
+                                                    I, F_conv, O_intermediate,
+                                                    F_layer, O);
+        }
+        else
+        {
+            small::Conv2D_DepthwiseConv2D(kernel_size_conv, kernel_size_conv, stride_conv,
+                                          t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
+                                          kernel_size_1, kernel_size_1, stride_1,
+                                          t_pad_1, b_pad_1, l_pad_1, r_pad_1,
+                                          output_channels_conv, input_channels,
+                                          in_dims[0], in_dims[1],
+                                          I, F_conv, O_intermediate,
+                                          F_layer, O);
+        }
+        // small::Conv2D_ReLU_DepthwiseConv2D_ReLU(kernel_size_conv, kernel_size_conv, stride_conv,
+        //                                         t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
+        //                                         kernel_size_1, kernel_size_1, stride_1,
+        //                                         t_pad_1, b_pad_1, l_pad_1, r_pad_1,
+        //                                         output_channels_conv, input_channels,
+        //                                         in_dims[0], in_dims[1],
+        //                                         I, F_conv, O_intermediate,
+        //                                         F_layer, O);
     }
 #endif
 my_timer.stop();
@@ -1161,7 +1276,7 @@ int main(int argc, char **argv)
     // print_cycles(sum_small_fused_ewise_dw);
     print_cycles(sum_small_fused);
     printf(" %.4f, ", (sum_small * 1.0) / (sum_small_fused_ewise * 1.0));
-    printf("%.4f , %d", COMPUTE_BIAS, (sum_small * 1.0) / (sum_small_fused * 1.0));
+    printf("%.4f , %d", (sum_small * 1.0) / (sum_small_fused * 1.0), COMPUTE_BIAS);
     printf("\n");
 
     #if PARALLEL_DIST == ELEMENTAL
