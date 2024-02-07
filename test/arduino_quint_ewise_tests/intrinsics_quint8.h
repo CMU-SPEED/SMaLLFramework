@@ -19,20 +19,10 @@
 
 #define QUINT8_SIMD_EPILOGUE 1
 
-namespace small
-{
-    namespace quint8_detail
-    {
-
-        /// @todo both pairs of typedefs should not be needed.
-        typedef small::QUInt8Buffer::value_type dtype;
-        typedef small::QUInt8Buffer::accum_type atype;
-
-        typedef small::QUInt8Buffer::value_type c_tile_out_t;
-        typedef small::QUInt8Buffer::accum_type c_tile_t;
-
-    }
-}
+typedef int32_t c_tile_t;
+typedef uint8_t c_tile_out_t;
+typedef int8_t dtype;
+typedef int32_t atype;
 
 // Architecture specific tiling params
 

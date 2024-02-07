@@ -6,19 +6,12 @@
 
 // If the macros in the above header are used within the small namespace, these types would have been typedef-ed.
 // Adding defines here so that you can get your tests up and running
-typedef int32_t c_tile_t;
-typedef uint8_t c_tile_out_t;
+
 
 // These are defined in params_quint8.h
-#ifdef QUINT8_W_ob
-#undef QUINT8_W_ob
 #define QUINT8_W_ob 8
-#endif
 
-#ifdef QUINT8_C_ob
-#undef QUINT8_C_ob
 #define QUINT8_C_ob 8
-#endif
 
 const int num_outer_runs = 100;
 const int num_inner_runs = 1000;
@@ -107,10 +100,6 @@ void test_add_performance()
         }
     }
 
-    printf("num_runs: %d, c_tile value: %d\n", num_outer_runs * num_inner_runs, c_tile[0]);
-    printf("Old macro\t%d\t%lf\t%lf\t%lf\n",
-           num_outer_runs * num_inner_runs, min_t, max_t, (tx / (num_outer_runs * num_inner_runs)));
-
     // Running new version of function being tested
     QUINT8_ZERO_TILE_C(QUINT8_W_ob, QUINT8_C_ob, 0);
 
@@ -125,9 +114,6 @@ void test_add_performance()
         }
     }
 
-    printf("num_runs: %d, c_tile value: %d\n", (num_inner_runs * num_outer_runs), c_tile[0]);
-    printf("New macro\t%d\t%lf\t%lf\t%lf\n",
-           (num_inner_runs * num_outer_runs), min_t, max_t, (tx / (num_inner_runs * num_outer_runs)));
 }
 
 void setup() {
