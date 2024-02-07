@@ -1,8 +1,8 @@
 // The CMakeLists.txt file finds the path to this header file when -DCMAKE_UARCH=REF
-// #include <intrinsics_quint8.h>
+#include <intrinsics_quint8.h>
 #include <stdio.h>
 #include <acutest.h>
-#include <small.h>
+// #include <small.h>
 #include <small/utils/Timer.hpp>
 
 #if !defined(SMALL_HAS_QUINT8_SUPPORT)
@@ -25,7 +25,8 @@ typedef uint8_t c_tile_out_t;
 #define QUINT8_C_ob 8
 #endif
 
-const int num_runs = 100000;
+const int num_outer_runs = 100;
+const int num_inner_runs = 1000;
 
 void test_initialization()
 {
@@ -121,11 +122,16 @@ void test_add_performance()
     double tx = 0.;
     double min_t = std::numeric_limits<double>::max();
     double max_t = 0.;
-    for (int i = 0; i < num_runs; ++i)
+    for (int i = 0; i < num_outer_runs; ++i)
     {
         // Running old version of function being tested
         t.start();
-        OLD_QUINT8_ADD_TILE_C_G(I, QUINT8_W_ob, QUINT8_C_ob);
+        __asm__ volatile(
+            "old_kernel:");
+        for (int j = 0; j < num_inner_runs; ++j)
+        {
+            OLD_QUINT8_ADD_TILE_C_G(I, QUINT8_W_ob, QUINT8_C_ob);
+        }
         t.stop();
 
         double ts = t.elapsed();
@@ -134,9 +140,9 @@ void test_add_performance()
         max_t = std::max(max_t, ts);
     }
 
-    printf("num_runs: %d, c_tile value: %d\n", num_runs, c_tile[0]);
+    printf("num_runs: %d, c_tile value: %d\n", num_outer_runs * num_inner_runs, c_tile[0]);
     printf("Old macro\t%d\t%lf\t%lf\t%lf\n",
-           num_runs, min_t, max_t, (tx / num_runs));
+           num_outer_runs * num_inner_runs, min_t, max_t, (tx / (num_outer_runs * num_inner_runs)));
 
     // Running new version of function being tested
     QUINT8_ZERO_TILE_C(QUINT8_W_ob, QUINT8_C_ob, 0);
@@ -144,11 +150,16 @@ void test_add_performance()
     min_t = std::numeric_limits<double>::max();
     max_t = 0.;
 
-    for (int i = 0; i < num_runs; ++i)
+    for (int i = 0; i < num_outer_runs; ++i)
     {
         // Running old version of function being tested
         t.start();
-        QUINT8_ADD_TILE_C_G(I, QUINT8_W_ob, QUINT8_C_ob);
+        __asm__ volatile(
+            "new_kernel:");
+        for (int j = 0; j < num_inner_runs; ++j)
+        {
+            QUINT8_ADD_TILE_C_G(I, QUINT8_W_ob, QUINT8_C_ob);
+        }
         t.stop();
 
         double ts = t.elapsed();
@@ -157,9 +168,9 @@ void test_add_performance()
         max_t = std::max(max_t, ts);
     }
 
-    printf("num_runs: %d, c_tile value: %d\n", num_runs, c_tile[0]);
+    printf("num_runs: %d, c_tile value: %d\n", (num_inner_runs * num_outer_runs), c_tile[0]);
     printf("New macro\t%d\t%lf\t%lf\t%lf\n",
-           num_runs, min_t, max_t, (tx / num_runs));
+           (num_inner_runs * num_outer_runs), min_t, max_t, (tx / (num_inner_runs * num_outer_runs)));
 }
 //****************************************************************************
 //****************************************************************************
