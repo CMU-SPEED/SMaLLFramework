@@ -1,4 +1,5 @@
 #include "intrinsics_quint8.h"
+#include <mbed.h>
 
 // #if !defined(SMALL_HAS_QUINT8_SUPPORT)
 // #ERROR "ERROR: small does not have quint8 support"
@@ -13,12 +14,14 @@
 
 #define QUINT8_C_ob 8
 
-const int num_outer_runs = 100;
-const int num_inner_runs = 1000;
+bool run = true;
+
+const int num_outer_runs = 1;
+const int num_inner_runs = 1;
 
 void test_add_correctness()
 {
-    printf("Testing correctness\n");
+    Serial.println("Testing correctness\n");
 
     // Initialize c_tile with random values
     // Initialize c_tile2 with the same values
@@ -64,7 +67,7 @@ void test_add_correctness()
         for (int jj = 0; jj < QUINT8_C_ob; jj++)
         {
             if (c_tile[kk * QUINT8_C_ob + jj] != output_ref[kk * QUINT8_C_ob + jj]) {
-              printf("TEST FAILED");
+              Serial.println("TEST FAILED");
             }
         }
     }
@@ -72,7 +75,7 @@ void test_add_correctness()
 
 void test_add_performance()
 {
-    printf("Testing performance\n");
+    Serial.println("Testing performance\n");
 
     // Initialize c_tile with random values
     // Initialize c_tile2 with the same values
@@ -89,15 +92,20 @@ void test_add_performance()
         }
     }
 
+    mbed::Timer t;
+
     for (int i = 0; i < num_outer_runs; ++i)
     {
         // Running old version of function being tested
         __asm__ volatile(
             "old_kernel:");
+        t.start();
         for (int j = 0; j < num_inner_runs; ++j)
         {
             OLD_QUINT8_ADD_TILE_C_G(I, QUINT8_W_ob, QUINT8_C_ob);
         }
+        t.stop();
+        Serial.println(t.elapsed_time().count());
     }
 
     // Running new version of function being tested
@@ -117,9 +125,15 @@ void test_add_performance()
 }
 
 void setup() {
-  test_add_correctness();
-  test_add_performance();
-
+  Serial.begin(9600);
+  run = true;
 }
 
-void loop() {}
+void loop() {
+  // if (run) {
+    Serial.println("test starting\n");
+    test_add_performance();
+    Serial.println("test done\n");
+    run = false;
+  // }
+}
