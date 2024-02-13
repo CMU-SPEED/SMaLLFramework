@@ -23,7 +23,7 @@
 
 #define DEBUG 0
 
-
+// Schedule options for parallelization
 #define ELEMENTAL 1
 #define BLOCK 2
 
@@ -72,7 +72,6 @@ namespace detail
     }
 
 //****************************************************************************
-/// @todo add parameter: step
 #define FLOAT_ABSTRACT_OP_END(op_type, op_class, step, a_cur, b_cur, c_cur, W_elements, _C_ob) \
     if constexpr (op_type == OP_CONV)                                                    \
     {                                                                                    \
@@ -134,8 +133,6 @@ void inline compute_with_padding(dim_t H_lb, dim_t H_ub,
     constexpr dim_t _C_ob = _G_b * _K_b;
     constexpr dim_t _C_ib = _G_b * _F_cb;
     constexpr dim_t step = _stride * _C_ib;
-
-
     for (uint32_t n = H_lb; n < H_ub; n++)
     {
         int filter_offset_h = n * F_w * _F_cb * _G_b * _K_b;
@@ -163,146 +160,8 @@ void inline compute_with_padding(dim_t H_lb, dim_t H_ub,
 
 }
 
-// Edge case to handle remainder input channels
-template <typename ScalarT,
-          typename AccumT,
-          dim_t _G_b,
-          dim_t _K_b,
-          dim_t _F_cb,
-          dim_t _O_wb,
-          dim_t _stride,
-          dim_t _UNROLL,
-          // TODO: add a bool to switch between microkernel and default imp
-          // Leaf to describe abstract operation
-          OpType op_type,
-          int8_t op_class>
-void inline compute_with_padding(dim_t H_lb, dim_t H_ub,
-                                 dim_t W_lb, dim_t W_ub,
-                                 dim_t F_w,
-                                 dim_t W_elements,
-                                 dim_t input_col_stride,
-                                 ScalarT const *F,
-                                 ScalarT const *I,
-                                 c_tile_t *c_cur,
-                                 const dim_t F_c_left) 
-{
-    #if DEBUG
-    printf("F_c_left %d\n", F_c_left);
-
-    #endif
-    constexpr dim_t _C_ob = _G_b * _K_b;
-    const dim_t _C_ib = _G_b * F_c_left;
-    const dim_t step = _stride * _C_ib;
-
-        for (uint32_t n = H_lb; n < H_ub; n++)
-        {
-            int filter_offset_h = n * F_w * F_c_left * _G_b * _K_b;
-            int input_stencil_h = (n - H_lb) * input_col_stride; /*+ input_col_offset + input_row_offset*/
-
-            for (uint32_t m = W_lb; m < W_ub; m++)
-            {
-                int filter_offset_w = m * F_c_left * _G_b * _K_b + filter_offset_h;
-                /* This is C_ib because the microkernel stretches across groups*/
-                int input_stencil_w = (m - W_lb) * _C_ib + input_stencil_h;
-
-                ScalarT const *b = F + filter_offset_w;
-                ScalarT const *a = I + input_stencil_w;
-
-                // TODO: reintroduce convolution
-                for (uint32_t ii = 0; ii < F_c_left / _UNROLL; ii++)
-                {
-
-                    /// @note using platform C_ob
-                    ScalarT const *b_cur = b + ii * _UNROLL * FLOAT_C_ob;
-                    ScalarT const *a_cur = a + ii * _UNROLL;
-
-#if DEBUG
-                    printf("\t compute w padding_in channel %d\n", ii);
-                    printf("input values: %f \n", a_cur[0]);
-                    printf("filter values for output channel 0 : %f %f %f %f \n", b_cur[0 ], b_cur[1 ], b_cur[2 ], b_cur[3 ]);
-                    printf("input col stride %d\n", input_col_stride);
-
-#endif
-                    FLOAT_ABSTRACT_OP_END(op_type, op_class, step, a_cur, b_cur, c_cur, W_elements, _C_ob);
-                }
-            }
-        }
-    
-}
-
-// Edge case to handle remainder input and output channels
-// When streamlined, this is the only function that should remain
-template <typename ScalarT,
-          typename AccumT,
-          dim_t _G_b,
-          dim_t _K_b,
-          dim_t _F_cb,
-          dim_t _O_wb,
-          dim_t _stride,
-          dim_t _UNROLL, /*@todo _UNROLL should be 1, or handled if F_C_left < _UNROLL*/
-          // TODO: add a bool to switch between microkernel and default imp
-          // Leaf to describe abstract operation
-          OpType op_type,
-          int8_t op_class>
-void inline compute_with_padding(dim_t H_lb, dim_t H_ub,
-                                 dim_t W_lb, dim_t W_ub,
-                                 dim_t F_w,
-                                 dim_t W_elements,
-                                 dim_t input_col_stride,
-                                 ScalarT const *F,
-                                 ScalarT const *I,
-                                 c_tile_t *c_cur,
-                                 const dim_t F_c_left,
-                                 const dim_t G_left,
-                                 const dim_t K_left) 
-{
-#if DEBUG ==1
-    printf("_F_cb %d _G_b %d _K_b %d\n", F_c_left, _G_b, _K_b);
-
-#endif
-
-    const dim_t _C_ob = G_left * K_left;
-    const dim_t _C_ib = G_left * F_c_left;
-    const dim_t step = _stride * _C_ib;
-
-    for (uint32_t n = H_lb; n < H_ub; n++)
-    {
-        int filter_offset_h = n * F_w * F_c_left * G_left * K_left;
-        int input_stencil_h = (n - H_lb) * input_col_stride; /*+ input_col_offset + input_row_offset*/
-
-        for (uint32_t m = W_lb; m < W_ub; m++)
-        {
-            int filter_offset_w = m * F_c_left * G_left * K_left + filter_offset_h;
-            /* This is C_ib because the microkernel stretches across groups*/
-            int input_stencil_w = (m - W_lb) * _C_ib + input_stencil_h;
-
-            ScalarT const *b = F + filter_offset_w;
-            ScalarT const *a = I + input_stencil_w;
-
-            // TODO: reintroduce convolution
-            for (uint32_t ii = 0; ii < F_c_left / _UNROLL; ii++)
-            {
-
-                /// @note using platform C_ob
-                ScalarT const *b_cur = b + ii * _UNROLL * _C_ob;
-                ScalarT const *a_cur = a + ii * _UNROLL;
-
-#if DEBUG == 1 
-                printf("\t compute w padding_in channel %d\n", ii);
-                printf("input values: %f \n", a_cur[0]);
-                if (op_type == OP_CONV )
-                printf("filter values for output channel 0 : %f %f %f %f \n", b_cur[0], b_cur[1], b_cur[2], b_cur[3]);
-                printf("input col stride %d\n", input_col_stride);
-
-#endif
-                FLOAT_ABSTRACT_OP_END(op_type, op_class, step, a_cur, b_cur, c_cur, W_elements, _C_ob);
-            }
-        }
-    }
-}
 
 //****************************************************************************
-// @todo: is kernel left buggy? Needs Load_C_strided for left padding output elements in pooling
 template <typename ScalarT,
           typename AccumT,
           dim_t _G_b,
@@ -324,10 +183,7 @@ void inline kernel_left(
     ScalarT const *F,
     AccumT *O, // ScalarT -> AccumT
     dim_t H_lb = 0,
-    dim_t H_ub = 0,
-    AccumT k_zero = (AccumT)0,
-    AccumT I_offset = 0,
-    AccumT F_offset = 0)
+    dim_t H_ub = 0)
     {
     constexpr dim_t _C_ob = _G_b * _K_b;;
 
@@ -353,20 +209,17 @@ void inline kernel_left(
     // dim_t c_cur = 0;
     for (uint32_t k_p = 0; k_p < l_pad_el; k_p++)
     {
-   
-            compute_with_padding<ScalarT, AccumT,
-                                 _G_b, _K_b, _F_cb, _O_wb, _stride,
-                                 _UNROLL, op_type, op_class>(
-                                     H_lb, H_UPPER,
-                                     W_i_valid, F_w,
-                                     F_w,
-                                     1,
-                                     input_col_stride,
-                                     F,
-                                     I_ptr,
-                                     c_cur);
-        
-                                
+        compute_with_padding<ScalarT, AccumT,
+                             _G_b, _K_b, _F_cb, _O_wb, _stride,
+                             _UNROLL, op_type, op_class>(
+            H_lb, H_UPPER,
+            W_i_valid, F_w,
+            F_w,
+            1,
+            input_col_stride,
+            F,
+            I_ptr,
+            c_cur);
 
         c_cur += (_K_b * _G_b) / (FLOAT_SIMD_EPILOGUE);
         // c_cur += 1;
@@ -382,252 +235,6 @@ void inline kernel_left(
     }
     FLOAT_STORE_END_C(O_ptr, l_pad_el, _C_ob);
     O_ptr += _G_b * _K_b;
-}
-
-template <typename ScalarT,
-          typename AccumT,
-          dim_t _G_b,
-          dim_t _K_b,
-          dim_t _F_cb,
-          dim_t _O_wb,
-          dim_t _stride,
-          dim_t _UNROLL,
-          OpType op_type,
-          int8_t op_class>
-void inline rem_kernel_left(
-    bool first,
-    dim_t F_h,
-    dim_t F_w,
-    dim_t input_col_stride,
-    dim_t l_pad_el,
-    dim_t l_pad,
-    ScalarT const *I,
-    ScalarT const *F,
-    AccumT *O, // ScalarT -> AccumT
-    const dim_t G_left,
-    const dim_t K_left,
-    dim_t H_lb = 0,
-    dim_t H_ub = 0
-    )
-{
-    const dim_t _C_ob = G_left * K_left;
-
-    const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
-    FLOAT_DEF_END_C(_O_wb, _C_ob);
-
-    // left padding elements
-    AccumT *O_ptr = O; // ScalarT -> AccumT
-    ScalarT const *I_ptr = I;
-
-    int W_i_valid = l_pad;
-
-    if (first)
-    {
-        FLOAT_ZERO_END_C(l_pad_el, _C_ob);
-    }
-    else
-    {
-        FLOAT_LOAD_END_C(O_ptr, l_pad_el, _C_ob);
-    }
-
-    c_tile_t *c_cur = c_tile;
-    // dim_t c_cur = 0;
-    for (uint32_t k_p = 0; k_p < l_pad_el; k_p++)
-    {
-        // UNROLL has to be 1 for this to work (FLOAT_UNROLL == 1 for ZEN2)
-        compute_with_padding<ScalarT, AccumT,
-                             _G_b, _K_b, _F_cb, _O_wb, _stride,
-                             _UNROLL, op_type, op_class>(
-            H_lb, H_UPPER,
-            W_i_valid, F_w,
-            F_w,
-            1,
-            input_col_stride,
-            F,
-            I_ptr,
-            c_cur,
-            _F_cb,
-            G_left,
-            K_left);
-
-        c_cur += (G_left * K_left) / (FLOAT_SIMD_EPILOGUE);
-        // c_cur += 1;
-        W_i_valid -= _stride;
-        // I_ptr += ()*(_stride * _F_cb * _G_b);
-    }
-    // Fusion Slot # 1
-    //  Include division for Average Pooling
-    if (op_type == OP_AVERAGE_POOL)
-    {
-        float norm = 1.0 / (1.0 * F_h * F_w);
-        FLOAT_DIV_END_C(c_tile, norm, l_pad_el, _C_ob);
-    }
-    FLOAT_STORE_END_C(O_ptr, l_pad_el, _C_ob);
-    O_ptr += G_left * K_left;
-}
-
-// Edge case to handle remainder input channels
-template <typename ScalarT,
-          typename AccumT,
-          dim_t _G_b,
-          dim_t _K_b,
-          dim_t _F_cb,
-          dim_t _O_wb,
-          dim_t _stride,
-          dim_t _UNROLL,
-          OpType op_type,
-          int8_t op_class>
-void inline kernel_left_rem(
-    bool first,
-    dim_t F_h,
-    dim_t F_w,
-    dim_t input_col_stride,
-    dim_t l_pad_el,
-    dim_t l_pad,
-    ScalarT const *I,
-    ScalarT const *F,
-    AccumT *O, // ScalarT -> AccumT
-    const dim_t F_c_left,
-    dim_t H_lb = 0,
-    dim_t H_ub = 0)
-{
-    constexpr dim_t _C_ob = _G_b * _K_b;
-    ;
-
-    const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
-    FLOAT_DEF_END_C(_O_wb, _C_ob);
-
-    // left padding elements
-    AccumT *O_ptr = O; // ScalarT -> AccumT
-    ScalarT const *I_ptr = I;
-
-    int W_i_valid = l_pad;
-
-    if (first)
-    {
-        FLOAT_ZERO_END_C(l_pad_el, _C_ob);
-    }
-    else
-    {
-        FLOAT_LOAD_END_C(O_ptr, l_pad_el, _C_ob);
-    }
-
-    c_tile_t *c_cur = c_tile;
-    // dim_t c_cur = 0;
-    for (uint32_t k_p = 0; k_p < l_pad_el; k_p++)
-    {
-
-            compute_with_padding<ScalarT, AccumT,
-                                 _G_b, _K_b, _F_cb, _O_wb, _stride,
-                                 _UNROLL, op_type, op_class>(
-                H_lb, H_UPPER,
-                W_i_valid, F_w,
-                F_w,
-                1,
-                input_col_stride,
-                F,
-                I_ptr,
-                c_cur,
-                F_c_left);
-
-        c_cur += (_K_b * _G_b) / (FLOAT_SIMD_EPILOGUE);
-        // c_cur += 1;
-        W_i_valid -= _stride;
-        // I_ptr += ()*(_stride * _F_cb * _G_b);
-    }
-    // Fusion Slot # 1
-    //  Include division for Average Pooling
-    if (op_type == OP_AVERAGE_POOL)
-    {
-        float norm = 1.0 / (1.0 * F_h * F_w);
-        FLOAT_DIV_END_C(c_tile, norm, l_pad_el, _C_ob);
-    }
-    FLOAT_STORE_END_C(O_ptr, l_pad_el, _C_ob);
-    O_ptr += _G_b * _K_b;
-}
-
-// Edge case to handle remainder input channels
-template <typename ScalarT,
-          typename AccumT,
-          dim_t _G_b,
-          dim_t _K_b,
-          dim_t _F_cb,
-          dim_t _O_wb,
-          dim_t _stride,
-          dim_t _UNROLL,
-          OpType op_type,
-          int8_t op_class>
-void inline rem_kernel_left_rem(
-    bool first,
-    dim_t F_h,
-    dim_t F_w,
-    dim_t input_col_stride,
-    dim_t l_pad_el,
-    dim_t l_pad,
-    ScalarT const *I,
-    ScalarT const *F,
-    AccumT *O, // ScalarT -> AccumT
-    const dim_t F_c_left,
-    const dim_t G_left,
-    const dim_t K_left,
-    dim_t H_lb = 0,
-    dim_t H_ub = 0)
-{
-    const dim_t _C_ob = G_left * K_left;
-    ;
-
-    const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
-    FLOAT_DEF_END_C(_O_wb, _C_ob);
-
-    // left padding elements
-    AccumT *O_ptr = O; // ScalarT -> AccumT
-    ScalarT const *I_ptr = I;
-
-    int W_i_valid = l_pad;
-
-    if (first)
-    {
-        FLOAT_ZERO_END_C(l_pad_el, _C_ob);
-    }
-    else
-    {
-        FLOAT_LOAD_END_C(O_ptr, l_pad_el, _C_ob);
-    }
-
-    c_tile_t *c_cur = c_tile;
-    // dim_t c_cur = 0;
-    for (uint32_t k_p = 0; k_p < l_pad_el; k_p++)
-    {
-
-        compute_with_padding<ScalarT, AccumT,
-                             _G_b, _K_b, _F_cb, _O_wb, _stride,
-                             _UNROLL, op_type, op_class>(
-            H_lb, H_UPPER,
-            W_i_valid, F_w,
-            F_w,
-            1,
-            input_col_stride,
-            F,
-            I_ptr,
-            c_cur,
-            F_c_left,
-            G_left,
-            K_left);
-
-        c_cur += (K_left * G_left) / (FLOAT_SIMD_EPILOGUE);
-        // c_cur += 1;
-        W_i_valid -= _stride;
-        // I_ptr += ()*(_stride * _F_cb * _G_b);
-    }
-    // Fusion Slot # 1
-    //  Include division for Average Pooling
-    if (op_type == OP_AVERAGE_POOL)
-    {
-        float norm = 1.0 / (1.0 * F_h * F_w);
-        FLOAT_DIV_END_C(c_tile, norm, l_pad_el, _C_ob);
-    }
-    FLOAT_STORE_END_C(O_ptr, l_pad_el, _C_ob);
-    O_ptr += G_left * K_left;
 }
 
 //****************************************************************************
@@ -718,277 +325,6 @@ void inline kernel(
     //@todo support reduction-tree like store for global reductions
 }
 
-//Edge case to handle remainder output channels
-
-template <typename ScalarT,
-          typename AccumT,
-          dim_t _G_b,
-          dim_t _K_b,
-          dim_t _F_cb,
-          dim_t _O_wb,
-          dim_t _stride,
-          dim_t _UNROLL,
-          OpType op_type,
-          int8_t op_class>
-void inline rem_kernel(
-    bool first,
-    dim_t F_h,
-    dim_t F_w,
-    dim_t input_col_stride,
-    ScalarT const *I,
-    ScalarT const *F,
-    AccumT *O, // ScalarT -> AccumT
-    const dim_t G_left,
-    const dim_t K_left,
-    dim_t H_lb = 0,
-    dim_t H_ub = 0,
-    dim_t W_lb = 0,
-    dim_t W_ub = 0)
-{
-    const dim_t _C_ob = G_left * K_left;
-    const dim_t _C_ib = G_left * _F_cb;
-    const dim_t step = _stride * _C_ib;
-
-    // printf(" _C_ob %d\n", _C_ob);
-    // printf(" _C_ib %d\n", _C_ib);
-    const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
-    // const dim_t W_UPPER = ((!W_ub) * (F_w)) + (W_ub);
-
-    FLOAT_DEF_END_C(_O_wb, _C_ob);
-    if (first)
-    {
-        FLOAT_ZERO_END_C(_O_wb, _C_ob);
-        if (op_type == OP_MAX_POOL || op_type == OP_MUL)
-        {
-            /// @note using platform C_ob
-            FLOAT_LOAD_END_C_strided(I, step, _O_wb, _C_ob);
-        }
-        else if (op_type == OP_UPSAMPLE)
-        {
-            FLOAT_LOAD_END_C_upsample(I, _stride, _C_ib, _O_wb, _C_ob);
-        }
-    }
-    else
-    {
-        FLOAT_LOAD_END_C(O, _O_wb, _C_ob);
-        if constexpr (op_type == OP_UPSAMPLE)
-        {
-            FLOAT_ACCUM_END_C_upsample(I, _stride, _C_ib, _O_wb, _C_ob);
-        }
-        //@todo support reduction tree-like kernel (for global reductions)
-    }
-
-    for (uint32_t n = H_lb; n < H_UPPER; n++)
-    {
-        int filter_offset_h = n * F_w * _F_cb * G_left * K_left;
-        int input_stencil_h = (n - H_lb) * input_col_stride; /*+ input_col_offset + input_row_offset*/
-
-        for (uint32_t m = 0; m < F_w; m++)
-        {
-            int filter_offset_w = m * _F_cb * G_left * K_left + filter_offset_h;
-            // This is C_ob because the microkernel stretches across groups
-            int input_stencil_w = (m - W_lb) * _C_ib + input_stencil_h;
-
-            ScalarT const *b = F + filter_offset_w;
-            ScalarT const *a = I + input_stencil_w;
-            for (uint32_t ii = 0; ii < _F_cb / _UNROLL; ii++)
-            {
-                /// @note using platform C_ob
-                ScalarT const *b_cur = b + ii * _UNROLL * _C_ob;
-                ScalarT const *a_cur = a + ii * _UNROLL;
-                FLOAT_ABSTRACT_OP_END(op_type, op_class, step, a_cur, b_cur, c_tile, _O_wb, _C_ob); /// @todo pass _C_ob
-            }
-        }
-    }
-
-    if (op_type == OP_AVERAGE_POOL)
-    {
-        float norm = 1.0 / (1.0 * F_h * F_w);
-        FLOAT_DIV_END_C(c_tile, norm, _O_wb, _C_ob);
-    }
-
-    FLOAT_STORE_END_C(O, _O_wb, _C_ob);
-    //@todo support reduction-tree like store for global reductions
-}
-
-//Edge case to handle remainder input channels
-template <typename ScalarT,
-          typename AccumT,
-          dim_t _G_b,
-          dim_t _K_b,
-          dim_t _F_cb,
-          dim_t _O_wb,
-          dim_t _stride,
-          dim_t _UNROLL,
-          OpType op_type,
-          int8_t op_class>
-void inline kernel_rem(
-    bool first,
-    dim_t F_h,
-    dim_t F_w,
-    dim_t input_col_stride,
-    ScalarT const *I,
-    ScalarT const *F,
-    AccumT *O, // ScalarT -> AccumT
-    const dim_t F_c_left,
-    dim_t H_lb = 0,
-    dim_t H_ub = 0,
-    dim_t W_lb = 0,
-    dim_t W_ub = 0)
-{
-    constexpr dim_t _C_ob = _G_b * _K_b;
-     dim_t _C_ib = _G_b * F_c_left;
-     dim_t step = _stride * _C_ib;
-
-    const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
-    // const dim_t W_UPPER = ((!W_ub) * (F_w)) + (W_ub);
-
-    FLOAT_DEF_TILE_C(_O_wb, _C_ob);
-    if (first)
-    {
-        FLOAT_ZERO_TILE_C(_O_wb, _C_ob);
-        if (op_type == OP_MAX_POOL || op_type == OP_MUL)
-        {
-            /// @note using platform C_ob
-            FLOAT_LOAD_TILE_C_strided(I, step, _O_wb, FLOAT_C_ob);
-        }
-        else if (op_type == OP_UPSAMPLE)
-        {
-            FLOAT_LOAD_TILE_C_upsample(I, _stride, _C_ib, _O_wb, _C_ob);
-        }
-    }
-    else
-    {
-        FLOAT_LOAD_TILE_C(O, _O_wb, _C_ob);
-        if constexpr (op_type == OP_UPSAMPLE)
-        {
-            FLOAT_ACCUM_TILE_C_upsample(I, _stride, _C_ib, _O_wb, _C_ob);
-        }
-        //@todo support reduction tree-like kernel (for global reductions)
-    }
-
-    for (uint32_t n = H_lb; n < H_UPPER; n++)
-    {
-        int filter_offset_h = n * F_w * F_c_left * _G_b * _K_b;
-        int input_stencil_h = (n - H_lb) * input_col_stride; /*+ input_col_offset + input_row_offset*/
-
-        for (uint32_t m = 0; m < F_w; m++)
-        {
-            int filter_offset_w = m * F_c_left * _G_b * _K_b + filter_offset_h;
-            // This is C_ob because the microkernel stretches across groups
-            int input_stencil_w = (m - W_lb) * _C_ib + input_stencil_h;
-
-            ScalarT const *b = F + filter_offset_w;
-            ScalarT const *a = I + input_stencil_w;
-            for (uint32_t ii = 0; ii < F_c_left / _UNROLL; ii++)
-            {
-                /// @note using platform C_ob
-                ScalarT const *b_cur = b + ii * _UNROLL * FLOAT_C_ob;
-                ScalarT const *a_cur = a + ii * _UNROLL;
-                FLOAT_ABSTRACT_OP(op_type, op_class, a_cur, b_cur, _O_wb, _C_ob); /// @todo pass _C_ob
-            }
-        }
-    }
-
-    if (op_type == OP_AVERAGE_POOL)
-    {
-        float norm = 1.0 / (1.0 * F_h * F_w);
-        FLOAT_DIV_TILE_C(norm, _O_wb, _C_ob);
-    }
-    FLOAT_STORE_TILE_C(O, _O_wb, _C_ob);
-    //@todo support reduction-tree like store for global reductions
-}
-
-// Edge case to handle remainder input and output channels
-// Edge case to handle remainder input channels
-template <typename ScalarT,
-          typename AccumT,
-          dim_t _G_b,
-          dim_t _K_b,
-          dim_t _F_cb,
-          dim_t _O_wb,
-          dim_t _stride,
-          dim_t _UNROLL,
-          OpType op_type,
-          int8_t op_class>
-void inline rem_kernel_rem(
-    bool first,
-    dim_t F_h,
-    dim_t F_w,
-    dim_t input_col_stride,
-    ScalarT const *I,
-    ScalarT const *F,
-    AccumT *O, // ScalarT -> AccumT
-    const dim_t F_c_left,
-    const dim_t G_left,
-    const dim_t K_left, 
-    dim_t H_lb = 0,
-    dim_t H_ub = 0,
-    dim_t W_lb = 0,
-    dim_t W_ub = 0)
-{
-    const dim_t _C_ob = G_left * K_left;
-    dim_t _C_ib = G_left * F_c_left;
-    dim_t step = _stride * _C_ib;
-
-    const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
-    // const dim_t W_UPPER = ((!W_ub) * (F_w)) + (W_ub);
-
-    FLOAT_DEF_END_C(_O_wb, _C_ob);
-    if (first)
-    {
-        FLOAT_ZERO_END_C(_O_wb, _C_ob);
-        if (op_type == OP_MAX_POOL || op_type == OP_MUL)
-        {
-            /// @note using platform C_ob
-            FLOAT_LOAD_END_C_strided(I, step, _O_wb, FLOAT_C_ob);
-        }
-        else if (op_type == OP_UPSAMPLE)
-        {
-            FLOAT_LOAD_END_C_upsample(I, _stride, _C_ib, _O_wb, _C_ob);
-        }
-    }
-    else
-    {
-        FLOAT_LOAD_END_C(O, _O_wb, _C_ob);
-        if constexpr (op_type == OP_UPSAMPLE)
-        {
-            FLOAT_ACCUM_END_C_upsample(I, _stride, _C_ib, _O_wb, _C_ob);
-        }
-        //@todo support reduction tree-like kernel (for global reductions)
-    }
-
-    for (uint32_t n = H_lb; n < H_UPPER; n++)
-    {
-        int filter_offset_h = n * F_w * F_c_left * G_left * K_left;
-        int input_stencil_h = (n - H_lb) * input_col_stride; /*+ input_col_offset + input_row_offset*/
-
-        for (uint32_t m = 0; m < F_w; m++)
-        {
-            int filter_offset_w = m * F_c_left * G_left * K_left + filter_offset_h;
-            // This is C_ob because the microkernel stretches across groups
-            int input_stencil_w = (m - W_lb) * _C_ib + input_stencil_h;
-
-            ScalarT const *b = F + filter_offset_w;
-            ScalarT const *a = I + input_stencil_w;
-            for (uint32_t ii = 0; ii < F_c_left / _UNROLL; ii++)
-            {
-                /// @note using platform C_ob
-                ScalarT const *b_cur = b + ii * _UNROLL * _C_ob;
-                ScalarT const *a_cur = a + ii * _UNROLL;
-                FLOAT_ABSTRACT_OP_END(op_type, op_class, step, a_cur, b_cur, c_tile,  _O_wb, _C_ob); /// @todo pass _C_ob
-            }
-        }
-    }
-
-    if (op_type == OP_AVERAGE_POOL)
-    {
-        float norm = 1.0 / (1.0 * F_h * F_w);
-        FLOAT_DIV_END_C(c_tile, norm, _O_wb, _C_ob);
-    }
-    FLOAT_STORE_END_C(O, _O_wb, _C_ob);
-    //@todo support reduction-tree like store for global reductions
-}
 
 //****************************************************************************
 //The kernel pad function allows for padding in the height and width of the filter
@@ -1074,257 +410,6 @@ void inline kernel_pad(
     FLOAT_STORE_TILE_C(O, _O_wb, _C_ob);
 }
 
-//Edge case to handle remainder output channels
-template <typename ScalarT,
-          typename AccumT,
-          dim_t _G_b,
-          dim_t _K_b,
-          dim_t _F_cb,
-          dim_t _O_wb,
-          dim_t _stride,
-          dim_t _UNROLL,
-          OpType op_type,
-          int8_t op_class>
-void inline rem_kernel_pad(
-    bool first,
-    dim_t F_h,
-    dim_t F_w,
-    dim_t input_col_stride,
-    ScalarT const *I,
-    ScalarT const *F,
-    AccumT *O, // ScalarT -> AccumT
-    const dim_t G_left,
-    const dim_t K_left,
-    dim_t H_lb = 0,
-    dim_t H_ub = 0,
-    dim_t W_lb = 0,
-    dim_t W_ub = 0)
-{
-    const dim_t _C_ob = G_left * K_left;
-    const dim_t _C_ib = G_left * _F_cb;
-    const dim_t step = _stride * _C_ib;
-
-    const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
-    // const dim_t W_UPPER = ((!W_ub) * (F_w)) + (W_ub);
-
-    FLOAT_DEF_END_C(_O_wb, _C_ob);
-    if (first)
-    {
-        FLOAT_ZERO_END_C(_O_wb, _C_ob);
-
-        //@note padding  should always be 'v' for pointwise operations, so this code path should not be used
-        if(op_type == OP_MUL)
-        {
-            FLOAT_LOAD_END_C_strided(I, step, _O_wb, _C_ob);
-        }
-    }
-    else
-    {
-        FLOAT_LOAD_END_C(O, _O_wb, _C_ob);
-    }
-
-
-    for (uint32_t n = H_lb; n < H_UPPER; n++)
-    {
-        int filter_offset_h = n * F_w * _F_cb * _C_ob;
-        int input_stencil_h = /*input_col_offset + input_row_offset +*/
-            (n - H_lb) * input_col_stride;
-
-        for (uint32_t m = 0; m < F_w; m++)
-        {
-            int filter_offset_w = m * _F_cb * _C_ob + filter_offset_h;
-            // This is C_ob because the microkernel stretches across groups
-            int input_stencil_w = (m - W_lb) * _C_ib + input_stencil_h;
-
-            ScalarT const *b = F + filter_offset_w;
-            ScalarT const *a = I + input_stencil_w;
-
-            for (uint32_t ii = 0; ii < _F_cb / _UNROLL; ii++)
-            {
-                /// @note using platform C_ob
-                ScalarT const *b_cur = b + ii * _UNROLL * _C_ob;
-                ScalarT const *a_cur = a + ii * _UNROLL;
-
-                FLOAT_ABSTRACT_OP_END(op_type, op_class, step, a_cur, b_cur, c_tile, _O_wb, _C_ob);
-            }
-        }
-    }
-    if (op_type == OP_AVERAGE_POOL)
-    {
-        float norm = 1.0 / (1.0 * F_h * F_w);
-        FLOAT_DIV_END_C(c_tile, norm, _O_wb, _C_ob);
-    }
-    FLOAT_STORE_END_C(O, _O_wb, _C_ob);
-}
-
-
-//Edge case to handle remainder input channels
-template <typename ScalarT,
-          typename AccumT,
-          dim_t _G_b,
-          dim_t _K_b,
-          dim_t _F_cb,
-          dim_t _O_wb,
-          dim_t _stride,
-          dim_t _UNROLL,
-          OpType op_type,
-          int8_t op_class>
-void inline kernel_pad_rem(
-    bool first,
-    dim_t F_h,
-    dim_t F_w,
-    dim_t input_col_stride,
-    ScalarT const *I,
-    ScalarT const *F,
-    AccumT *O, // ScalarT -> AccumT
-    const dim_t F_c_left,
-    dim_t H_lb = 0,
-    dim_t H_ub = 0,
-    dim_t W_lb = 0,
-    dim_t W_ub = 0
-    )
-{
-    constexpr dim_t _C_ob = _G_b * _K_b;
-    const dim_t _C_ib = _G_b * F_c_left;
-    const dim_t step = _stride * _C_ib;
-
-    const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
-    // const dim_t W_UPPER = ((!W_ub) * (F_w)) + (W_ub);
-
-    FLOAT_DEF_TILE_C(_O_wb, _C_ob);
-    if (first)
-    {
-        FLOAT_ZERO_TILE_C(_O_wb, _C_ob);
-
-        //@note padding  should always be 'v' for pointwise operations, so this code path should not be used
-        if (op_type == OP_MUL)
-        {
-            FLOAT_LOAD_TILE_C_strided(I, step, _O_wb, _C_ob);
-        }
-    }
-    else
-    {
-        FLOAT_LOAD_TILE_C(O, _O_wb, _C_ob);
-    }
-
-    for (uint32_t n = H_lb; n < H_UPPER; n++)
-    {
-        int filter_offset_h = n * F_w * F_c_left * _G_b * _K_b;
-        int input_stencil_h = /*input_col_offset + input_row_offset +*/
-            (n - H_lb) * input_col_stride;
-
-        for (uint32_t m = 0; m < F_w; m++)
-        {
-            int filter_offset_w = m * F_c_left * _G_b * _K_b + filter_offset_h;
-            // This is C_ob because the microkernel stretches across groups
-            int input_stencil_w = (m - W_lb) * _C_ib + input_stencil_h;
-
-            ScalarT const *b = F + filter_offset_w;
-            ScalarT const *a = I + input_stencil_w;
-
-            for (uint32_t ii = 0; ii < F_c_left / _UNROLL; ii++)
-            {
-                /// @note using platform C_ob
-                ScalarT const *b_cur = b + ii * _UNROLL * _C_ob;
-                ScalarT const *a_cur = a + ii * _UNROLL;
-
-                FLOAT_ABSTRACT_OP(op_type, op_class, a_cur, b_cur, _O_wb, _C_ob);
-            }
-        }
-    }
-    if (op_type == OP_AVERAGE_POOL)
-    {
-        float norm = 1.0 / (1.0 * F_h * F_w);
-        FLOAT_DIV_TILE_C(norm, _O_wb, _C_ob);
-    }
-    FLOAT_STORE_TILE_C(O, _O_wb, _C_ob);
-}
-
-//Edge case to handle remainder input and output channels
-template <typename ScalarT,
-          typename AccumT,
-          dim_t _G_b,
-          dim_t _K_b,
-          dim_t _F_cb,
-          dim_t _O_wb,
-          dim_t _stride,
-          dim_t _UNROLL,
-          OpType op_type,
-          int8_t op_class>
-void inline rem_kernel_pad_rem(
-    bool first,
-    dim_t F_h,
-    dim_t F_w,
-    dim_t input_col_stride,
-    ScalarT const *I,
-    ScalarT const *F,
-    AccumT *O, // ScalarT -> AccumT
-    const dim_t F_c_left,
-    const dim_t G_left, 
-    const dim_t K_left,
-    dim_t H_lb = 0,
-    dim_t H_ub = 0,
-    dim_t W_lb = 0,
-    dim_t W_ub = 0)
-{
-    const dim_t _C_ob = G_left * K_left;
-    const dim_t _C_ib = G_left * F_c_left;
-    const dim_t step = _stride * _C_ib;
-
-    const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
-    // const dim_t W_UPPER = ((!W_ub) * (F_w)) + (W_ub);
-
-    FLOAT_DEF_END_C(_O_wb, _C_ob);
-    if (first)
-    {
-        FLOAT_ZERO_END_C(_O_wb, _C_ob);
-
-        //@note padding  should always be 'v' for pointwise operations, so this code path should not be used
-        if (op_type == OP_MUL)
-        {
-            FLOAT_LOAD_END_C_strided(I, step, _O_wb, _C_ob);
-        }
-    }
-    else
-    {
-        FLOAT_LOAD_END_C(O, _O_wb, _C_ob);
-    }
-
-    for (uint32_t n = H_lb; n < H_UPPER; n++)
-    {
-        int filter_offset_h = n * F_w * F_c_left * G_left * K_left;
-        int input_stencil_h = /*input_col_offset + input_row_offset +*/
-            (n - H_lb) * input_col_stride;
-
-        for (uint32_t m = 0; m < F_w; m++)
-        {
-            int filter_offset_w = m * F_c_left * G_left * K_left + filter_offset_h;
-            // This is C_ob because the microkernel stretches across groups
-            int input_stencil_w = (m - W_lb) * _C_ib + input_stencil_h;
-
-            ScalarT const *b = F + filter_offset_w;
-            ScalarT const *a = I + input_stencil_w;
-
-            for (uint32_t ii = 0; ii < F_c_left / _UNROLL; ii++)
-            {
-                /// @note using platform C_ob
-                ScalarT const *b_cur = b + ii * _UNROLL * _C_ob;
-                ScalarT const *a_cur = a + ii * _UNROLL;
-
-                FLOAT_ABSTRACT_OP_END(op_type, op_class, step, a_cur, b_cur, c_tile,  _O_wb, _C_ob);
-            }
-        }
-    }
-    if (op_type == OP_AVERAGE_POOL)
-    {
-        float norm = 1.0 / (1.0 * F_h * F_w);
-        FLOAT_DIV_END_C(c_tile, norm, _O_wb, _C_ob);
-    }
-    FLOAT_STORE_END_C(O, _O_wb, _C_ob);
-    //prinf the stored _O_wb x _C_ob output tile
-    
-}
-
 //****************************************************************************
 template <typename ScalarT,
           typename AccumT,
@@ -1355,7 +440,6 @@ void inline kernel_right(
     constexpr dim_t step = _stride * _C_ib;
     const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
     FLOAT_DEF_END_C(_O_wb, _C_ob);
-
 #if DEBUG
     printf("O_W_left %d r_pad_el %d\n", O_w_left, r_pad_el);
 #endif
@@ -1465,475 +549,6 @@ void inline kernel_right(
     FLOAT_STORE_END_C(O_ptr, r_pad_el, _C_ob);
 }
 
-//Edge case to handle remainder output channels
-template <typename ScalarT,
-          typename AccumT,
-          dim_t _G_b,
-          dim_t _K_b,
-          dim_t _F_cb,
-          dim_t _O_wb,
-          dim_t _stride,
-          dim_t _UNROLL,
-          OpType op_type,
-          int8_t op_class>
-void inline rem_kernel_right(
-    bool first,
-    dim_t F_h,
-    dim_t F_w,
-    dim_t input_col_stride,
-    dim_t O_w_left,
-    dim_t r_pad_el,
-    dim_t r_pad,
-    ScalarT const *I,
-    ScalarT const *F,
-    AccumT *O, // ScalarT -> AccumT
-    const dim_t G_left,
-    const dim_t K_left,
-    dim_t H_lb = 0,
-    dim_t H_ub = 0)
-{
-    const dim_t _C_ob = G_left * K_left;
-    const dim_t _C_ib = G_left * _F_cb;
-    const dim_t step = _stride * _C_ib;
-    const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
-    FLOAT_DEF_END_C(_O_wb, _C_ob);
-
-#if DEBUG == 1
-    printf("G_left %d K_left %d\n", G_left, K_left);
-    printf("kernel_right_rem\n");
-    printf("First 5 input values: %f %f %f %f %f\n", I[0], I[1], I[2], I[3], I[4]);
-    if(op_type == OP_CONV)
-    printf("First 5 Filter values for output channel 0 : %f %f %f %f %f \n", F[0], F[1], F[2], F[3], F[4]);
-    printf("O_W_left %d r_pad_el %d\n", O_w_left, r_pad_el);
-    printf("input col stride %d\n", input_col_stride);
-#endif
-    if (O_w_left)
-    {
-        if (first)
-        {
-            FLOAT_ZERO_END_C(O_w_left, _C_ob);
-
-            if ((op_type == OP_MUL) || (op_type == OP_MAX_POOL && H_lb == 0 && H_ub == 0))
-            {
-                FLOAT_LOAD_END_C_strided(I, step, O_w_left, _C_ob);
-            }
-            else if (op_type == OP_UPSAMPLE)
-            {
-                FLOAT_LOAD_END_C_upsample(I, _stride, _C_ib, O_w_left, _C_ob);
-            }
-        }
-        else
-        {
-            if constexpr (op_type == OP_ADD && op_class == 3)
-            {
-                FLOAT_ZERO_END_C(O_w_left, _C_ob);
-            }
-            FLOAT_LOAD_END_C(O, O_w_left, _C_ob);
-            if constexpr (op_type == OP_UPSAMPLE)
-            {
-                FLOAT_ACCUM_END_C_upsample(I, _stride, _C_ib, O_w_left, _C_ob);
-            }
-        }
-        compute_with_padding<ScalarT, AccumT,
-                             _G_b, _K_b, _F_cb, _O_wb, _stride,
-                             _UNROLL, op_type, op_class>(
-            H_lb, H_UPPER,
-            0, F_w,
-            F_w,
-            O_w_left,
-            input_col_stride,
-            F,
-            I,
-            c_tile,
-            _F_cb,
-            G_left,
-            K_left);
-
-        if (op_type == OP_AVERAGE_POOL)
-        {
-            float norm = 1.0 / (1.0 * F_h * F_w);
-            FLOAT_DIV_END_C(c_tile, norm, O_w_left, _C_ob);
-        }
-        if (op_type == OP_ADD && op_class == 3 && _C_ob == 1)
-        {
-            /* If the operation reduces the channel dimension, reduce across channel dimension of simd tile*/
-            FLOAT_REDUCE_REM_CHANNEL_END_C(O_w_left, _C_ob)
-        }
-
-        FLOAT_STORE_END_C(O, O_w_left, _C_ob);
-#if DEBUG == 1
-        printf("First output value: %f %f %f %f \n", O[0], O[1], O[2], O[3]);
-#endif
-    }
-
-    // right padding elements
-    AccumT *O_ptr = O + O_w_left * _C_ob; // ScalarT --> AccumT
-    ScalarT const *I_ptr = I + O_w_left * step;
-    int W_i_valid = F_w - 1;
-
-    if (first)
-    {
-        FLOAT_ZERO_END_C(r_pad_el, _C_ob);
-
-        // Initialize with 0 for the padding elements
-
-        //@note padding  should always be 'v' for pointwise operations, so this code path should not be used
-        if (op_type == OP_MUL)
-        {
-            FLOAT_LOAD_END_C_strided(I_ptr, step, r_pad_el, _C_ob);
-        }
-    }
-    else
-    {
-        FLOAT_LOAD_END_C(O_ptr, r_pad_el, _C_ob);
-    }
-
-    c_tile_t *c_cur = c_tile;
-    // dim_t c_cur = 0;
-    for (uint32_t k_p = 0; k_p < r_pad_el; k_p++)
-    {
-        compute_with_padding<ScalarT, AccumT,
-                             _G_b, _K_b, _F_cb, _O_wb, _stride,
-                             _UNROLL, op_type, op_class>(
-            H_lb, H_UPPER,
-            0, W_i_valid,
-            F_w,
-            1,
-            input_col_stride,
-            F,
-            I_ptr,
-            c_cur,
-            _F_cb,
-            G_left,
-            K_left);
-
-        c_cur += (K_left * G_left) / (FLOAT_SIMD_EPILOGUE);
-        W_i_valid -= _stride;
-        I_ptr += _stride * _C_ib;
-    }
-
-    if (op_type == OP_AVERAGE_POOL)
-    {
-        float norm = 1.0 / (1.0 * F_h * F_w);
-        FLOAT_DIV_END_C(c_tile, norm, r_pad_el, _C_ob);
-    }
-
-    FLOAT_STORE_END_C(O_ptr, r_pad_el, _C_ob);
-}
-
-//Edge case to handle remainder input channels
-template <typename ScalarT,
-          typename AccumT,
-          dim_t _G_b,
-          dim_t _K_b,
-          dim_t _F_cb,
-          dim_t _O_wb,
-          dim_t _stride,
-          dim_t _UNROLL,
-          OpType op_type,
-          int8_t op_class>
-void inline kernel_right_rem(
-    bool first,
-    dim_t F_h,
-    dim_t F_w,
-    dim_t input_col_stride,
-    dim_t O_w_left,
-    dim_t r_pad_el,
-    dim_t r_pad,
-    ScalarT const *I,
-    ScalarT const *F,
-    AccumT *O, // ScalarT -> AccumT
-    const dim_t F_c_left,
-    dim_t H_lb = 0,
-    dim_t H_ub = 0)
-{
-    constexpr dim_t _C_ob = _G_b * _K_b;
-    const dim_t _C_ib = _G_b * F_c_left;
-    const dim_t step = _stride * _C_ib;
-    const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
-    FLOAT_DEF_END_C(_O_wb, _C_ob);
-
-#if DEBUG
-    printf("kernel_right_rem\n");
-    printf("First 5 input values: %f %f %f %f %f\n", I[0], I[1], I[2], I[3], I[4]);
-    printf("First 5 Filter values for output channel 0 : %f %f %f %f %f \n", F[0*_C_ob], F[1*_C_ob], F[2*_C_ob], F[3*_C_ob], F[4*_C_ob]);
-    printf("O_W_left %d r_pad_el %d\n", O_w_left, r_pad_el);
-    printf("input col stride %d\n", input_col_stride);
-#endif
-    if (O_w_left)
-    {
-        if (first)
-        {
-            FLOAT_ZERO_END_C(O_w_left, _C_ob);
-
-            if ((op_type == OP_MUL) || (op_type == OP_MAX_POOL && H_lb == 0 && H_ub == 0))
-            {
-                FLOAT_LOAD_END_C_strided(I, step, O_w_left, _C_ob);
-            }
-            else if (op_type == OP_UPSAMPLE)
-            {
-                FLOAT_LOAD_END_C_upsample(I, _stride, _C_ib, O_w_left, _C_ob);
-            }
-        }
-        else
-        {
-            if constexpr (op_type == OP_ADD && op_class == 3)
-            {
-                FLOAT_ZERO_END_C(O_w_left, _C_ob);
-            }
-            FLOAT_LOAD_END_C(O, O_w_left, _C_ob);
-            if constexpr (op_type == OP_UPSAMPLE)
-            {
-                FLOAT_ACCUM_END_C_upsample(I, _stride, _C_ib, O_w_left, _C_ob);
-            }
-        }
-
-
-            compute_with_padding<ScalarT, AccumT,
-                                 _G_b, _K_b, _F_cb, _O_wb, _stride,
-                                 _UNROLL, op_type, op_class>(
-                H_lb, H_UPPER,
-                0, F_w,
-                F_w,
-                O_w_left,
-                input_col_stride,
-                F,
-                I,
-                c_tile,
-                F_c_left);
-        
-            
-
-        if (op_type == OP_AVERAGE_POOL)
-        {
-            float norm = 1.0 / (1.0 * F_h * F_w);
-            FLOAT_DIV_END_C(c_tile, norm, O_w_left, _C_ob);
-        }
-        if constexpr (op_type == OP_ADD && op_class == 3 && _C_ob == 1)
-        {
-            /* If the operation reduces the channel dimension, reduce across channel dimension of simd tile*/
-            FLOAT_REDUCE_CHANNEL_END_C(O_w_left, _C_ob)
-        }
-
-        FLOAT_STORE_END_C(O, O_w_left, _C_ob);
-    }
-
-    // right padding elements
-    AccumT *O_ptr = O + O_w_left * _C_ob; // ScalarT --> AccumT
-    ScalarT const *I_ptr = I + O_w_left * step;
-    int W_i_valid = F_w - 1;
-
-    if (first)
-    {
-        FLOAT_ZERO_END_C(r_pad_el, _C_ob);
-
-        // Initialize with 0 for the padding elements
-
-        //@note padding  should always be 'v' for pointwise operations, so this code path should not be used
-        if (op_type == OP_MUL)
-        {
-            FLOAT_LOAD_END_C_strided(I_ptr, step, r_pad_el, _C_ob);
-        }
-    }
-    else
-    {
-        FLOAT_LOAD_END_C(O_ptr, r_pad_el, _C_ob);
-    }
-
-    c_tile_t *c_cur = c_tile;
-    // dim_t c_cur = 0;
-
-    for (uint32_t k_p = 0; k_p < r_pad_el; k_p++)
-    {
-        compute_with_padding<ScalarT, AccumT,
-                             _G_b, _K_b, _F_cb, _O_wb, _stride,
-                             _UNROLL, op_type, op_class>(
-            H_lb, H_UPPER,
-            0, W_i_valid,
-            F_w,
-            1,
-            input_col_stride,
-            F,
-            I_ptr,
-            c_cur, 
-            F_c_left);
-
-        c_cur += (_K_b * _G_b) / (FLOAT_SIMD_EPILOGUE);
-        W_i_valid -= _stride;
-        I_ptr += step;
-    }
-
-    if (op_type == OP_AVERAGE_POOL)
-    {
-        float norm = 1.0 / (1.0 * F_h * F_w);
-        FLOAT_DIV_END_C(c_tile, norm, r_pad_el, _C_ob);
-    }
-
-    FLOAT_STORE_END_C(O_ptr, r_pad_el, _C_ob);
-
-    #if DEBUG
-    printf("First output value: %f %f %f %f \n", O[0], O[1], O[2], O[3]);
-    #endif
-}
-
-//Edge case to handle remainder input and output channels
-template <typename ScalarT,
-          typename AccumT,
-          dim_t _G_b,
-          dim_t _K_b,
-          dim_t _F_cb,
-          dim_t _O_wb,
-          dim_t _stride,
-          dim_t _UNROLL,
-          OpType op_type,
-          int8_t op_class>
-void inline rem_kernel_right_rem(
-    bool first,
-    dim_t F_h,
-    dim_t F_w,
-    dim_t input_col_stride,
-    dim_t O_w_left,
-    dim_t r_pad_el,
-    dim_t r_pad,
-    ScalarT const *I,
-    ScalarT const *F,
-    AccumT *O, // ScalarT -> AccumT
-    const dim_t F_c_left,
-    const dim_t G_left,
-    const dim_t K_left,
-    dim_t H_lb = 0,
-    dim_t H_ub = 0)
-{
-    const dim_t _C_ob = G_left * K_left;
-    const dim_t _C_ib = G_left * F_c_left;
-    const dim_t step = _stride * _C_ib;
-    const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
-    FLOAT_DEF_END_C(_O_wb, _C_ob);
-
-#if DEBUG
-    printf("kernel_right_rem\n");
-    printf("First 5 input values: %f %f %f %f %f\n", I[0], I[1], I[2], I[3], I[4]);
-    printf("First 5 Filter values for output channel 0 : %f %f %f %f %f \n", F[0 * _C_ob], F[1 * _C_ob], F[2 * _C_ob], F[3 * _C_ob], F[4 * _C_ob]);
-    printf("O_W_left %d r_pad_el %d\n", O_w_left, r_pad_el);
-    printf("input col stride %d\n", input_col_stride);
-#endif
-    if (O_w_left)
-    {
-        if (first)
-        {
-            FLOAT_ZERO_END_C(O_w_left, _C_ob);
-
-            if ((op_type == OP_MUL) || (op_type == OP_MAX_POOL && H_lb == 0 && H_ub == 0))
-            {
-                FLOAT_LOAD_END_C_strided(I, step, O_w_left, _C_ob);
-            }
-            else if (op_type == OP_UPSAMPLE)
-            {
-                FLOAT_LOAD_END_C_upsample(I, _stride, _C_ib, O_w_left, _C_ob);
-            }
-        }
-        else
-        {
-            if constexpr (op_type == OP_ADD && op_class == 3)
-            {
-                FLOAT_ZERO_END_C(O_w_left, _C_ob);
-            }
-            FLOAT_LOAD_END_C(O, O_w_left, _C_ob);
-            if constexpr (op_type == OP_UPSAMPLE)
-            {
-                FLOAT_ACCUM_END_C_upsample(I, _stride, _C_ib, O_w_left, _C_ob);
-            }
-        }
-
-        compute_with_padding<ScalarT, AccumT,
-                             _G_b, _K_b, _F_cb, _O_wb, _stride,
-                             _UNROLL, op_type, op_class>(
-            H_lb, H_UPPER,
-            0, F_w,
-            F_w,
-            O_w_left,
-            input_col_stride,
-            F,
-            I,
-            c_tile,
-            F_c_left,
-            G_left,
-            K_left);
-
-        if (op_type == OP_AVERAGE_POOL)
-        {
-            float norm = 1.0 / (1.0 * F_h * F_w);
-            FLOAT_DIV_END_C(c_tile, norm, O_w_left, _C_ob);
-        }
-        if  (op_type == OP_ADD && op_class == 3 && _C_ob == 1)
-        {
-            /* If the operation reduces the channel dimension, reduce across channel dimension of simd tile*/
-            FLOAT_REDUCE_REM_CHANNEL_END_C(O_w_left, _C_ob)
-        }
-
-        FLOAT_STORE_END_C(O, O_w_left, _C_ob);
-    }
-
-    // right padding elements
-    AccumT *O_ptr = O + O_w_left * _C_ob; // ScalarT --> AccumT
-    ScalarT const *I_ptr = I + O_w_left * step;
-    int W_i_valid = F_w - 1;
-
-    if (first)
-    {
-        FLOAT_ZERO_END_C(r_pad_el, _C_ob);
-
-        // Initialize with 0 for the padding elements
-
-        //@note padding  should always be 'v' for pointwise operations, so this code path should not be used
-        if (op_type == OP_MUL)
-        {
-            FLOAT_LOAD_END_C_strided(I_ptr, step, r_pad_el, _C_ob);
-        }
-    }
-    else
-    {
-        FLOAT_LOAD_END_C(O_ptr, r_pad_el, _C_ob);
-    }
-
-    c_tile_t *c_cur = c_tile;
-    // dim_t c_cur = 0;
-
-    for (uint32_t k_p = 0; k_p < r_pad_el; k_p++)
-    {
-        compute_with_padding<ScalarT, AccumT,
-                             _G_b, _K_b, _F_cb, _O_wb, _stride,
-                             _UNROLL, op_type, op_class>(
-            H_lb, H_UPPER,
-            0, W_i_valid,
-            F_w,
-            1,
-            input_col_stride,
-            F,
-            I_ptr,
-            c_cur,
-            F_c_left,
-            G_left,
-            K_left);
-
-        c_cur += (G_left * K_left) / (FLOAT_SIMD_EPILOGUE);
-        W_i_valid -= _stride;
-        I_ptr += step;
-    }
-
-    if (op_type == OP_AVERAGE_POOL)
-    {
-        float norm = 1.0 / (1.0 * F_h * F_w);
-        FLOAT_DIV_END_C(c_tile, norm, r_pad_el, _C_ob);
-    }
-
-    FLOAT_STORE_END_C(O_ptr, r_pad_el, _C_ob);
-
-#if DEBUG
-    printf("First output value: %f %f %f %f \n", O[0], O[1], O[2], O[3]);
-#endif
-}
-
 //****************************************************************************
 template <typename ScalarT,
           typename AccumT,
@@ -2038,356 +653,6 @@ void inline kernel_bottom(
 
         H_i_valid -= _stride;
         I_ptr += _stride * _F_cb * _G_b;
-    }
-}
-
-//Edge case to handle remainder output channels
-template <typename ScalarT,
-          typename AccumT,
-          dim_t _G_b,
-          dim_t _K_b,
-          dim_t _F_cb,
-          dim_t _O_wb,
-          dim_t _stride,
-          dim_t _UNROLL,
-          OpType op_type,
-          int8_t op_class>
-void inline rem_kernel_bottom(
-    bool first,
-    dim_t F_h,
-    dim_t F_w,
-    dim_t input_col_stride,
-    dim_t b_pad_el,
-    dim_t b_pad,
-    dim_t W_full_index,
-    dim_t l_pad_el,
-    dim_t l_pad,
-    dim_t O_w_w_pad,
-    dim_t O_w_full,
-    dim_t O_w_left,
-    dim_t r_pad_el,
-    dim_t r_pad,
-    ScalarT const *I,
-    ScalarT const *F,
-    AccumT *O,
-    const dim_t G_left,
-    const dim_t K_left) // ScalarT -> AccumT
-{
-    ScalarT const *I_ptr = I;
-    AccumT *O_ptr = O; // ScalarT -> AccumT
-
-    int H_i_valid = F_h - 1;
-
-    for (uint32_t j_p = 0; j_p < b_pad_el; j_p++)
-    {
-        // Prologue with left padding
-        rem_kernel_left<ScalarT, AccumT,
-                    _G_b, _K_b, _F_cb, _O_wb, _stride,
-                    _UNROLL, op_type, op_class>(
-            first,
-            F_h,
-            F_w,
-            input_col_stride,
-            l_pad_el,
-            l_pad,
-            I_ptr,
-            F,
-            O_ptr,
-            G_left,
-            K_left,
-            0,
-            H_i_valid);
-
-        ScalarT const *I_row_full = I + W_full_index * (_F_cb * G_left);
-        AccumT *O_row_full = O + l_pad_el * (G_left * K_left); // ScalarT -> AccumT
-        // Steady State with microkernel
-        for (index_t l = 0; l < O_w_full; l += _O_wb)
-        {
-            ScalarT const *I_col = I_row_full + (l * _stride) * (_F_cb * G_left);
-            ScalarT const *F_col = F + 0;
-            AccumT *O_col = O_row_full + l * (G_left * K_left); // ScalarT -> AccumT
-
-            rem_kernel_pad<ScalarT, AccumT,
-                       _G_b, _K_b, _F_cb, _O_wb, _stride,
-                       _UNROLL, op_type, op_class>(
-                first,
-                F_h,
-                F_w,
-                input_col_stride,
-                I_col,
-                F_col,
-                O_col,
-                G_left,
-                K_left,
-                0,
-                H_i_valid,
-                0,  /// @todo This was added, W_lb. Is it right?
-                0); /// @todo This was added, W_ub. Is it right?);
-        }
-
-        // Epilogue for microkernel + right padding elements
-        ScalarT const *I_col_left =
-            I_row_full + (O_w_full * _stride) * (_F_cb * G_left);
-        ScalarT const *F_col_left = F + 0;
-        AccumT *O_col_left = O_row_full + O_w_full * (G_left * K_left); // ScalarT -> AccumT
-
-        rem_kernel_right<ScalarT, AccumT,
-                     _G_b, _K_b, _F_cb, _O_wb, _stride,
-                     _UNROLL, op_type, op_class>(
-            first,
-            F_h,
-            F_w,
-            input_col_stride,
-            O_w_left,
-            r_pad_el,
-            r_pad,
-            I_col_left,
-            F_col_left,
-            O_col_left,
-            G_left, 
-            K_left,
-            0,          /// @todo confirm this, H_lb
-            H_i_valid); /// @todo confirm this, H_ub
-
-        O_ptr += O_w_w_pad * G_left * K_left;
-
-        H_i_valid -= _stride;
-        I_ptr += _stride * _F_cb * G_left;
-    }
-}
-
-// Edge case to handle remainder input channels
-template <typename ScalarT,
-          typename AccumT,
-          dim_t _G_b,
-          dim_t _K_b,
-          dim_t _F_cb,
-          dim_t _O_wb,
-          dim_t _stride,
-          dim_t _UNROLL,
-          OpType op_type,
-          int8_t op_class>
-void inline kernel_bottom_rem(
-    bool first,
-    dim_t F_h,
-    dim_t F_w,
-    dim_t input_col_stride,
-    dim_t b_pad_el,
-    dim_t b_pad,
-    dim_t W_full_index,
-    dim_t l_pad_el,
-    dim_t l_pad,
-    dim_t O_w_w_pad,
-    dim_t O_w_full,
-    dim_t O_w_left,
-    dim_t r_pad_el,
-    dim_t r_pad,
-    ScalarT const *I,
-    ScalarT const *F,
-    AccumT *O,
-    const dim_t F_c_left) // ScalarT -> AccumT
-{
-    ScalarT const *I_ptr = I;
-    AccumT *O_ptr = O; // ScalarT -> AccumT
-
-    int H_i_valid = F_h - 1;
-
-    for (uint32_t j_p = 0; j_p < b_pad_el; j_p++)
-    {
-        // Prologue with left padding
-        kernel_left_rem<ScalarT, AccumT,
-                    _G_b, _K_b, _F_cb, _O_wb, _stride,
-                    _UNROLL, op_type, op_class>(
-            first,
-            F_h,
-            F_w,
-            input_col_stride,
-            l_pad_el,
-            l_pad,
-            I_ptr,
-            F,
-            O_ptr,
-            F_c_left,
-            0,
-            H_i_valid);
-
-        ScalarT const *I_row_full = I + W_full_index * (F_c_left * _G_b);
-        AccumT *O_row_full = O + l_pad_el * (_G_b * _K_b); // ScalarT -> AccumT
-        // Steady State with microkernel
-        for (index_t l = 0; l < O_w_full; l += _O_wb)
-        {
-            ScalarT const *I_col = I_row_full + (l * _stride) * (F_c_left * _G_b);
-            ScalarT const *F_col = F + 0;
-            AccumT *O_col = O_row_full + l * (_G_b * _K_b); // ScalarT -> AccumT
-
-            kernel_pad_rem<ScalarT, AccumT,
-                       _G_b, _K_b, _F_cb, _O_wb, _stride,
-                       _UNROLL, op_type, op_class>(
-                first,
-                F_h,
-                F_w,
-                input_col_stride,
-                I_col,
-                F_col,
-                O_col,
-                F_c_left,
-                0,
-                H_i_valid,
-                0,  /// @todo This was added, W_lb. Is it right?
-                0); /// @todo This was added, W_ub. Is it right?);
-        }
-
-        // Epilogue for microkernel + right padding elements
-        ScalarT const *I_col_left =
-            I_row_full + (O_w_full * _stride) * (F_c_left * _G_b);
-        ScalarT const *F_col_left = F + 0;
-        AccumT *O_col_left = O_row_full + O_w_full * (_G_b * _K_b); // ScalarT -> AccumT
-
-        kernel_right_rem<ScalarT, AccumT,
-                     _G_b, _K_b, _F_cb, _O_wb, _stride,
-                     _UNROLL, op_type, op_class>(
-            first,
-            F_h,
-            F_w,
-            input_col_stride,
-            O_w_left,
-            r_pad_el,
-            r_pad,
-            I_col_left,
-            F_col_left,
-            O_col_left,
-            F_c_left,
-            0,          /// @todo confirm this, H_lb
-            H_i_valid); /// @todo confirm this, H_ub
-
-        O_ptr += O_w_w_pad * _K_b * _G_b;
-
-        H_i_valid -= _stride;
-        I_ptr += _stride * F_c_left * _G_b;
-    }
-}
-
-// Edge case to handle remainder input and output channels
-// Edge case to handle remainder input channels
-template <typename ScalarT,
-          typename AccumT,
-          dim_t _G_b,
-          dim_t _K_b,
-          dim_t _F_cb,
-          dim_t _O_wb,
-          dim_t _stride,
-          dim_t _UNROLL,
-          OpType op_type,
-          int8_t op_class>
-void inline rem_kernel_bottom_rem(
-    bool first,
-    dim_t F_h,
-    dim_t F_w,
-    dim_t input_col_stride,
-    dim_t b_pad_el,
-    dim_t b_pad,
-    dim_t W_full_index,
-    dim_t l_pad_el,
-    dim_t l_pad,
-    dim_t O_w_w_pad,
-    dim_t O_w_full,
-    dim_t O_w_left,
-    dim_t r_pad_el,
-    dim_t r_pad,
-    ScalarT const *I,
-    ScalarT const *F,
-    AccumT *O,
-    const dim_t F_c_left,
-    const dim_t G_left, 
-    const dim_t K_left) // ScalarT -> AccumT 
-{
-    const dim_t _C_ob = G_left * K_left;
-    const dim_t _C_ib = G_left * F_c_left;
-    const dim_t step = _stride * _C_ib;
-    
-    ScalarT const *I_ptr = I;
-    AccumT *O_ptr = O; // ScalarT -> AccumT
-
-    int H_i_valid = F_h - 1;
-
-    for (uint32_t j_p = 0; j_p < b_pad_el; j_p++)
-    {
-        // Prologue with left padding
-        rem_kernel_left_rem<ScalarT, AccumT,
-                        _G_b, _K_b, _F_cb, _O_wb, _stride,
-                        _UNROLL, op_type, op_class>(
-            first,
-            F_h,
-            F_w,
-            input_col_stride,
-            l_pad_el,
-            l_pad,
-            I_ptr,
-            F,
-            O_ptr,
-            F_c_left,
-            G_left, 
-            K_left,
-            0,
-            H_i_valid);
-
-        ScalarT const *I_row_full = I + W_full_index * (_C_ib);
-        AccumT *O_row_full = O + l_pad_el * (_C_ob); // ScalarT -> AccumT
-        // Steady State with microkernel
-        for (index_t l = 0; l < O_w_full; l += _O_wb)
-        {
-            ScalarT const *I_col = I_row_full + (l * _stride) * (_C_ib);
-            ScalarT const *F_col = F + 0;
-            AccumT *O_col = O_row_full + l * (_C_ob); // ScalarT -> AccumT
-
-            rem_kernel_pad_rem<ScalarT, AccumT,
-                           _G_b, _K_b, _F_cb, _O_wb, _stride,
-                           _UNROLL, op_type, op_class>(
-                first,
-                F_h,
-                F_w,
-                input_col_stride,
-                I_col,
-                F_col,
-                O_col,
-                F_c_left,
-                G_left,
-                K_left,
-                0,
-                H_i_valid,
-                0,  /// @todo This was added, W_lb. Is it right?
-                0); /// @todo This was added, W_ub. Is it right?);
-        }
-
-        // Epilogue for microkernel + right padding elements
-        ScalarT const *I_col_left =
-            I_row_full + (O_w_full * _stride) * (_C_ib);
-        ScalarT const *F_col_left = F + 0;
-        AccumT *O_col_left = O_row_full + O_w_full * (_C_ob); // ScalarT -> AccumT
-
-        rem_kernel_right_rem<ScalarT, AccumT,
-                         _G_b, _K_b, _F_cb, _O_wb, _stride,
-                         _UNROLL, op_type, op_class>(
-            first,
-            F_h,
-            F_w,
-            input_col_stride,
-            O_w_left,
-            r_pad_el,
-            r_pad,
-            I_col_left,
-            F_col_left,
-            O_col_left,
-            F_c_left,
-            G_left,
-            K_left, 
-            0,          /// @todo confirm this, H_lb
-            H_i_valid); /// @todo confirm this, H_ub
-
-        O_ptr += O_w_w_pad * (_C_ob);
-
-        H_i_valid -= _stride;
-        I_ptr += _stride * (_C_ib);
     }
 }
 
@@ -2500,7 +765,1766 @@ void inline kernel_top(
     }
 }
 
-//Edge case to handle remainder output channels
+//****************************************************************************
+//****************************************************************************
+//****************************************************************************
+
+//****************************************************************************
+//****************************************************************************
+// Compute with padding for remainder channels
+//****************************************************************************
+//****************************************************************************
+// Edge case to handle remainder input channels
+template <typename ScalarT,
+          typename AccumT,
+          dim_t _G_b,
+          dim_t _K_b,
+          dim_t _F_cb,
+          dim_t _O_wb,
+          dim_t _stride,
+          dim_t _UNROLL,
+          // TODO: add a bool to switch between microkernel and default imp
+          // Leaf to describe abstract operation
+          OpType op_type,
+          int8_t op_class>
+void inline compute_with_padding(dim_t H_lb, dim_t H_ub,
+                                 dim_t W_lb, dim_t W_ub,
+                                 dim_t F_w,
+                                 dim_t W_elements,
+                                 dim_t input_col_stride,
+                                 ScalarT const *F,
+                                 ScalarT const *I,
+                                 c_tile_t *c_cur,
+                                 const dim_t F_c_left)
+{
+#if DEBUG
+    printf("F_c_left %d\n", F_c_left);
+
+#endif
+    constexpr dim_t _C_ob = _G_b * _K_b;
+    const dim_t _C_ib = _G_b * F_c_left;
+    const dim_t step = _stride * _C_ib;
+
+    for (uint32_t n = H_lb; n < H_ub; n++)
+    {
+        int filter_offset_h = n * F_w * F_c_left * _G_b * _K_b;
+        int input_stencil_h = (n - H_lb) * input_col_stride; /*+ input_col_offset + input_row_offset*/
+
+        for (uint32_t m = W_lb; m < W_ub; m++)
+        {
+            int filter_offset_w = m * F_c_left * _G_b * _K_b + filter_offset_h;
+            /* This is C_ib because the microkernel stretches across groups*/
+            int input_stencil_w = (m - W_lb) * _C_ib + input_stencil_h;
+
+            ScalarT const *b = F + filter_offset_w;
+            ScalarT const *a = I + input_stencil_w;
+
+            // TODO: reintroduce convolution
+            for (uint32_t ii = 0; ii < F_c_left / _UNROLL; ii++)
+            {
+
+                /// @note using platform C_ob
+                ScalarT const *b_cur = b + ii * _UNROLL * FLOAT_C_ob;
+                ScalarT const *a_cur = a + ii * _UNROLL;
+
+#if DEBUG
+                printf("\t compute w padding_in channel %d\n", ii);
+                printf("input values: %f \n", a_cur[0]);
+                printf("filter values for output channel 0 : %f %f %f %f \n", b_cur[0], b_cur[1], b_cur[2], b_cur[3]);
+                printf("input col stride %d\n", input_col_stride);
+
+#endif
+                FLOAT_ABSTRACT_OP_END(op_type, op_class, step, a_cur, b_cur, c_cur, W_elements, _C_ob);
+            }
+        }
+    }
+}
+
+// Edge case to handle remainder input and output channels
+// When streamlined, this is the only function that should remain
+template <typename ScalarT,
+          typename AccumT,
+          dim_t _G_b,
+          dim_t _K_b,
+          dim_t _F_cb,
+          dim_t _O_wb,
+          dim_t _stride,
+          dim_t _UNROLL, /*@todo _UNROLL should be 1, or handled if F_C_left < _UNROLL*/
+          // TODO: add a bool to switch between microkernel and default imp
+          // Leaf to describe abstract operation
+          OpType op_type,
+          int8_t op_class>
+void inline compute_with_padding(dim_t H_lb, dim_t H_ub,
+                                 dim_t W_lb, dim_t W_ub,
+                                 dim_t F_w,
+                                 dim_t W_elements,
+                                 dim_t input_col_stride,
+                                 ScalarT const *F,
+                                 ScalarT const *I,
+                                 c_tile_t *c_cur,
+                                 const dim_t F_c_left,
+                                 const dim_t G_left,
+                                 const dim_t K_left)
+{
+#if DEBUG == 1
+    printf("_F_cb %d _G_b %d _K_b %d\n", F_c_left, _G_b, _K_b);
+
+#endif
+
+    const dim_t _C_ob = G_left * K_left;
+    const dim_t _C_ib = G_left * F_c_left;
+    const dim_t step = _stride * _C_ib;
+
+    for (uint32_t n = H_lb; n < H_ub; n++)
+    {
+        int filter_offset_h = n * F_w * F_c_left * G_left * K_left;
+        int input_stencil_h = (n - H_lb) * input_col_stride; /*+ input_col_offset + input_row_offset*/
+
+        for (uint32_t m = W_lb; m < W_ub; m++)
+        {
+            int filter_offset_w = m * F_c_left * G_left * K_left + filter_offset_h;
+            /* This is C_ib because the microkernel stretches across groups*/
+            int input_stencil_w = (m - W_lb) * _C_ib + input_stencil_h;
+
+            ScalarT const *b = F + filter_offset_w;
+            ScalarT const *a = I + input_stencil_w;
+
+            // TODO: reintroduce convolution
+            for (uint32_t ii = 0; ii < F_c_left / _UNROLL; ii++)
+            {
+
+                /// @note using platform C_ob
+                ScalarT const *b_cur = b + ii * _UNROLL * _C_ob;
+                ScalarT const *a_cur = a + ii * _UNROLL;
+
+#if DEBUG == 1
+                printf("\t compute w padding_in channel %d\n", ii);
+                printf("input values: %f \n", a_cur[0]);
+                if (op_type == OP_CONV)
+                    printf("filter values for output channel 0 : %f %f %f %f \n", b_cur[0], b_cur[1], b_cur[2], b_cur[3]);
+                printf("input col stride %d\n", input_col_stride);
+
+#endif
+                FLOAT_ABSTRACT_OP_END(op_type, op_class, step, a_cur, b_cur, c_cur, W_elements, _C_ob);
+            }
+        }
+    }
+}
+
+//****************************************************************************
+//****************************************************************************
+// Kernel left for rmainder channels
+//****************************************************************************
+//****************************************************************************
+template <typename ScalarT,
+          typename AccumT,
+          dim_t _G_b,
+          dim_t _K_b,
+          dim_t _F_cb,
+          dim_t _O_wb,
+          dim_t _stride,
+          dim_t _UNROLL,
+          OpType op_type,
+          int8_t op_class>
+void inline rem_kernel_left(
+    bool first,
+    dim_t F_h,
+    dim_t F_w,
+    dim_t input_col_stride,
+    dim_t l_pad_el,
+    dim_t l_pad,
+    ScalarT const *I,
+    ScalarT const *F,
+    AccumT *O, // ScalarT -> AccumT
+    const dim_t G_left,
+    const dim_t K_left,
+    dim_t H_lb = 0,
+    dim_t H_ub = 0)
+{
+    const dim_t _C_ob = G_left * K_left;
+
+    const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
+    FLOAT_DEF_END_C(_O_wb, _C_ob);
+
+    // left padding elements
+    AccumT *O_ptr = O; // ScalarT -> AccumT
+    ScalarT const *I_ptr = I;
+
+    int W_i_valid = l_pad;
+
+    if (first)
+    {
+        FLOAT_ZERO_END_C(l_pad_el, _C_ob);
+    }
+    else
+    {
+        FLOAT_LOAD_END_C(O_ptr, l_pad_el, _C_ob);
+    }
+
+    c_tile_t *c_cur = c_tile;
+    // dim_t c_cur = 0;
+    for (uint32_t k_p = 0; k_p < l_pad_el; k_p++)
+    {
+        // UNROLL has to be 1 for this to work (FLOAT_UNROLL == 1 for ZEN2)
+        compute_with_padding<ScalarT, AccumT,
+                             _G_b, _K_b, _F_cb, _O_wb, _stride,
+                             _UNROLL, op_type, op_class>(
+            H_lb, H_UPPER,
+            W_i_valid, F_w,
+            F_w,
+            1,
+            input_col_stride,
+            F,
+            I_ptr,
+            c_cur,
+            _F_cb,
+            G_left,
+            K_left);
+
+        c_cur += (G_left * K_left) / (FLOAT_SIMD_EPILOGUE);
+        // c_cur += 1;
+        W_i_valid -= _stride;
+        // I_ptr += ()*(_stride * _F_cb * _G_b);
+    }
+    // Fusion Slot # 1
+    //  Include division for Average Pooling
+    if (op_type == OP_AVERAGE_POOL)
+    {
+        float norm = 1.0 / (1.0 * F_h * F_w);
+        FLOAT_DIV_END_C(c_tile, norm, l_pad_el, _C_ob);
+    }
+    FLOAT_STORE_END_C(O_ptr, l_pad_el, _C_ob);
+    O_ptr += G_left * K_left;
+}
+
+// Edge case to handle remainder input channels
+template <typename ScalarT,
+          typename AccumT,
+          dim_t _G_b,
+          dim_t _K_b,
+          dim_t _F_cb,
+          dim_t _O_wb,
+          dim_t _stride,
+          dim_t _UNROLL,
+          OpType op_type,
+          int8_t op_class>
+void inline kernel_left_rem(
+    bool first,
+    dim_t F_h,
+    dim_t F_w,
+    dim_t input_col_stride,
+    dim_t l_pad_el,
+    dim_t l_pad,
+    ScalarT const *I,
+    ScalarT const *F,
+    AccumT *O, // ScalarT -> AccumT
+    const dim_t F_c_left,
+    dim_t H_lb = 0,
+    dim_t H_ub = 0)
+{
+    constexpr dim_t _C_ob = _G_b * _K_b;
+    ;
+
+    const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
+    FLOAT_DEF_END_C(_O_wb, _C_ob);
+
+    // left padding elements
+    AccumT *O_ptr = O; // ScalarT -> AccumT
+    ScalarT const *I_ptr = I;
+
+    int W_i_valid = l_pad;
+
+    if (first)
+    {
+        FLOAT_ZERO_END_C(l_pad_el, _C_ob);
+    }
+    else
+    {
+        FLOAT_LOAD_END_C(O_ptr, l_pad_el, _C_ob);
+    }
+
+    c_tile_t *c_cur = c_tile;
+    // dim_t c_cur = 0;
+    for (uint32_t k_p = 0; k_p < l_pad_el; k_p++)
+    {
+
+        compute_with_padding<ScalarT, AccumT,
+                             _G_b, _K_b, _F_cb, _O_wb, _stride,
+                             _UNROLL, op_type, op_class>(
+            H_lb, H_UPPER,
+            W_i_valid, F_w,
+            F_w,
+            1,
+            input_col_stride,
+            F,
+            I_ptr,
+            c_cur,
+            F_c_left);
+
+        c_cur += (_K_b * _G_b) / (FLOAT_SIMD_EPILOGUE);
+        // c_cur += 1;
+        W_i_valid -= _stride;
+        // I_ptr += ()*(_stride * _F_cb * _G_b);
+    }
+    // Fusion Slot # 1
+    //  Include division for Average Pooling
+    if (op_type == OP_AVERAGE_POOL)
+    {
+        float norm = 1.0 / (1.0 * F_h * F_w);
+        FLOAT_DIV_END_C(c_tile, norm, l_pad_el, _C_ob);
+    }
+    FLOAT_STORE_END_C(O_ptr, l_pad_el, _C_ob);
+    O_ptr += _G_b * _K_b;
+}
+
+// Edge case to handle remainder input channels
+template <typename ScalarT,
+          typename AccumT,
+          dim_t _G_b,
+          dim_t _K_b,
+          dim_t _F_cb,
+          dim_t _O_wb,
+          dim_t _stride,
+          dim_t _UNROLL,
+          OpType op_type,
+          int8_t op_class>
+void inline rem_kernel_left_rem(
+    bool first,
+    dim_t F_h,
+    dim_t F_w,
+    dim_t input_col_stride,
+    dim_t l_pad_el,
+    dim_t l_pad,
+    ScalarT const *I,
+    ScalarT const *F,
+    AccumT *O, // ScalarT -> AccumT
+    const dim_t F_c_left,
+    const dim_t G_left,
+    const dim_t K_left,
+    dim_t H_lb = 0,
+    dim_t H_ub = 0)
+{
+    const dim_t _C_ob = G_left * K_left;
+    ;
+
+    const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
+    FLOAT_DEF_END_C(_O_wb, _C_ob);
+
+    // left padding elements
+    AccumT *O_ptr = O; // ScalarT -> AccumT
+    ScalarT const *I_ptr = I;
+
+    int W_i_valid = l_pad;
+
+    if (first)
+    {
+        FLOAT_ZERO_END_C(l_pad_el, _C_ob);
+    }
+    else
+    {
+        FLOAT_LOAD_END_C(O_ptr, l_pad_el, _C_ob);
+    }
+
+    c_tile_t *c_cur = c_tile;
+    // dim_t c_cur = 0;
+    for (uint32_t k_p = 0; k_p < l_pad_el; k_p++)
+    {
+
+        compute_with_padding<ScalarT, AccumT,
+                             _G_b, _K_b, _F_cb, _O_wb, _stride,
+                             _UNROLL, op_type, op_class>(
+            H_lb, H_UPPER,
+            W_i_valid, F_w,
+            F_w,
+            1,
+            input_col_stride,
+            F,
+            I_ptr,
+            c_cur,
+            F_c_left,
+            G_left,
+            K_left);
+
+        c_cur += (K_left * G_left) / (FLOAT_SIMD_EPILOGUE);
+        // c_cur += 1;
+        W_i_valid -= _stride;
+        // I_ptr += ()*(_stride * _F_cb * _G_b);
+    }
+    // Fusion Slot # 1
+    //  Include division for Average Pooling
+    if (op_type == OP_AVERAGE_POOL)
+    {
+        float norm = 1.0 / (1.0 * F_h * F_w);
+        FLOAT_DIV_END_C(c_tile, norm, l_pad_el, _C_ob);
+    }
+    FLOAT_STORE_END_C(O_ptr, l_pad_el, _C_ob);
+    O_ptr += G_left * K_left;
+}
+
+//****************************************************************************
+//****************************************************************************
+// Kernel for remainder channels
+//****************************************************************************
+//****************************************************************************
+// Edge case to handle remainder output channels
+
+template <typename ScalarT,
+          typename AccumT,
+          dim_t _G_b,
+          dim_t _K_b,
+          dim_t _F_cb,
+          dim_t _O_wb,
+          dim_t _stride,
+          dim_t _UNROLL,
+          OpType op_type,
+          int8_t op_class>
+void inline rem_kernel(
+    bool first,
+    dim_t F_h,
+    dim_t F_w,
+    dim_t input_col_stride,
+    ScalarT const *I,
+    ScalarT const *F,
+    AccumT *O, // ScalarT -> AccumT
+    const dim_t G_left,
+    const dim_t K_left,
+    dim_t H_lb = 0,
+    dim_t H_ub = 0,
+    dim_t W_lb = 0,
+    dim_t W_ub = 0)
+{
+    const dim_t _C_ob = G_left * K_left;
+    const dim_t _C_ib = G_left * _F_cb;
+    const dim_t step = _stride * _C_ib;
+
+    // printf(" _C_ob %d\n", _C_ob);
+    // printf(" _C_ib %d\n", _C_ib);
+    const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
+    // const dim_t W_UPPER = ((!W_ub) * (F_w)) + (W_ub);
+
+    FLOAT_DEF_END_C(_O_wb, _C_ob);
+    if (first)
+    {
+        FLOAT_ZERO_END_C(_O_wb, _C_ob);
+        if (op_type == OP_MAX_POOL || op_type == OP_MUL)
+        {
+            /// @note using platform C_ob
+            FLOAT_LOAD_END_C_strided(I, step, _O_wb, _C_ob);
+        }
+        else if (op_type == OP_UPSAMPLE)
+        {
+            FLOAT_LOAD_END_C_upsample(I, _stride, _C_ib, _O_wb, _C_ob);
+        }
+    }
+    else
+    {
+        FLOAT_LOAD_END_C(O, _O_wb, _C_ob);
+        if constexpr (op_type == OP_UPSAMPLE)
+        {
+            FLOAT_ACCUM_END_C_upsample(I, _stride, _C_ib, _O_wb, _C_ob);
+        }
+        //@todo support reduction tree-like kernel (for global reductions)
+    }
+
+    for (uint32_t n = H_lb; n < H_UPPER; n++)
+    {
+        int filter_offset_h = n * F_w * _F_cb * G_left * K_left;
+        int input_stencil_h = (n - H_lb) * input_col_stride; /*+ input_col_offset + input_row_offset*/
+
+        for (uint32_t m = 0; m < F_w; m++)
+        {
+            int filter_offset_w = m * _F_cb * G_left * K_left + filter_offset_h;
+            // This is C_ob because the microkernel stretches across groups
+            int input_stencil_w = (m - W_lb) * _C_ib + input_stencil_h;
+
+            ScalarT const *b = F + filter_offset_w;
+            ScalarT const *a = I + input_stencil_w;
+            for (uint32_t ii = 0; ii < _F_cb / _UNROLL; ii++)
+            {
+                /// @note using platform C_ob
+                ScalarT const *b_cur = b + ii * _UNROLL * _C_ob;
+                ScalarT const *a_cur = a + ii * _UNROLL;
+                FLOAT_ABSTRACT_OP_END(op_type, op_class, step, a_cur, b_cur, c_tile, _O_wb, _C_ob); /// @todo pass _C_ob
+            }
+        }
+    }
+
+    if (op_type == OP_AVERAGE_POOL)
+    {
+        float norm = 1.0 / (1.0 * F_h * F_w);
+        FLOAT_DIV_END_C(c_tile, norm, _O_wb, _C_ob);
+    }
+
+    FLOAT_STORE_END_C(O, _O_wb, _C_ob);
+    //@todo support reduction-tree like store for global reductions
+}
+
+// Edge case to handle remainder input channels
+template <typename ScalarT,
+          typename AccumT,
+          dim_t _G_b,
+          dim_t _K_b,
+          dim_t _F_cb,
+          dim_t _O_wb,
+          dim_t _stride,
+          dim_t _UNROLL,
+          OpType op_type,
+          int8_t op_class>
+void inline kernel_rem(
+    bool first,
+    dim_t F_h,
+    dim_t F_w,
+    dim_t input_col_stride,
+    ScalarT const *I,
+    ScalarT const *F,
+    AccumT *O, // ScalarT -> AccumT
+    const dim_t F_c_left,
+    dim_t H_lb = 0,
+    dim_t H_ub = 0,
+    dim_t W_lb = 0,
+    dim_t W_ub = 0)
+{
+    constexpr dim_t _C_ob = _G_b * _K_b;
+    dim_t _C_ib = _G_b * F_c_left;
+    dim_t step = _stride * _C_ib;
+
+    const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
+    // const dim_t W_UPPER = ((!W_ub) * (F_w)) + (W_ub);
+
+    FLOAT_DEF_TILE_C(_O_wb, _C_ob);
+    if (first)
+    {
+        FLOAT_ZERO_TILE_C(_O_wb, _C_ob);
+        if (op_type == OP_MAX_POOL || op_type == OP_MUL)
+        {
+            /// @note using platform C_ob
+            FLOAT_LOAD_TILE_C_strided(I, step, _O_wb, FLOAT_C_ob);
+        }
+        else if (op_type == OP_UPSAMPLE)
+        {
+            FLOAT_LOAD_TILE_C_upsample(I, _stride, _C_ib, _O_wb, _C_ob);
+        }
+    }
+    else
+    {
+        FLOAT_LOAD_TILE_C(O, _O_wb, _C_ob);
+        if constexpr (op_type == OP_UPSAMPLE)
+        {
+            FLOAT_ACCUM_TILE_C_upsample(I, _stride, _C_ib, _O_wb, _C_ob);
+        }
+        //@todo support reduction tree-like kernel (for global reductions)
+    }
+
+    for (uint32_t n = H_lb; n < H_UPPER; n++)
+    {
+        int filter_offset_h = n * F_w * F_c_left * _G_b * _K_b;
+        int input_stencil_h = (n - H_lb) * input_col_stride; /*+ input_col_offset + input_row_offset*/
+
+        for (uint32_t m = 0; m < F_w; m++)
+        {
+            int filter_offset_w = m * F_c_left * _G_b * _K_b + filter_offset_h;
+            // This is C_ob because the microkernel stretches across groups
+            int input_stencil_w = (m - W_lb) * _C_ib + input_stencil_h;
+
+            ScalarT const *b = F + filter_offset_w;
+            ScalarT const *a = I + input_stencil_w;
+            for (uint32_t ii = 0; ii < F_c_left / _UNROLL; ii++)
+            {
+                /// @note using platform C_ob
+                ScalarT const *b_cur = b + ii * _UNROLL * FLOAT_C_ob;
+                ScalarT const *a_cur = a + ii * _UNROLL;
+                FLOAT_ABSTRACT_OP(op_type, op_class, a_cur, b_cur, _O_wb, _C_ob); /// @todo pass _C_ob
+            }
+        }
+    }
+
+    if (op_type == OP_AVERAGE_POOL)
+    {
+        float norm = 1.0 / (1.0 * F_h * F_w);
+        FLOAT_DIV_TILE_C(norm, _O_wb, _C_ob);
+    }
+    FLOAT_STORE_TILE_C(O, _O_wb, _C_ob);
+    //@todo support reduction-tree like store for global reductions
+}
+
+// Edge case to handle remainder input and output channels
+// Edge case to handle remainder input channels
+template <typename ScalarT,
+          typename AccumT,
+          dim_t _G_b,
+          dim_t _K_b,
+          dim_t _F_cb,
+          dim_t _O_wb,
+          dim_t _stride,
+          dim_t _UNROLL,
+          OpType op_type,
+          int8_t op_class>
+void inline rem_kernel_rem(
+    bool first,
+    dim_t F_h,
+    dim_t F_w,
+    dim_t input_col_stride,
+    ScalarT const *I,
+    ScalarT const *F,
+    AccumT *O, // ScalarT -> AccumT
+    const dim_t F_c_left,
+    const dim_t G_left,
+    const dim_t K_left,
+    dim_t H_lb = 0,
+    dim_t H_ub = 0,
+    dim_t W_lb = 0,
+    dim_t W_ub = 0)
+{
+    const dim_t _C_ob = G_left * K_left;
+    dim_t _C_ib = G_left * F_c_left;
+    dim_t step = _stride * _C_ib;
+
+    const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
+    // const dim_t W_UPPER = ((!W_ub) * (F_w)) + (W_ub);
+
+    FLOAT_DEF_END_C(_O_wb, _C_ob);
+    if (first)
+    {
+        FLOAT_ZERO_END_C(_O_wb, _C_ob);
+        if (op_type == OP_MAX_POOL || op_type == OP_MUL)
+        {
+            /// @note using platform C_ob
+            FLOAT_LOAD_END_C_strided(I, step, _O_wb, FLOAT_C_ob);
+        }
+        else if (op_type == OP_UPSAMPLE)
+        {
+            FLOAT_LOAD_END_C_upsample(I, _stride, _C_ib, _O_wb, _C_ob);
+        }
+    }
+    else
+    {
+        FLOAT_LOAD_END_C(O, _O_wb, _C_ob);
+        if constexpr (op_type == OP_UPSAMPLE)
+        {
+            FLOAT_ACCUM_END_C_upsample(I, _stride, _C_ib, _O_wb, _C_ob);
+        }
+        //@todo support reduction tree-like kernel (for global reductions)
+    }
+
+    for (uint32_t n = H_lb; n < H_UPPER; n++)
+    {
+        int filter_offset_h = n * F_w * F_c_left * G_left * K_left;
+        int input_stencil_h = (n - H_lb) * input_col_stride; /*+ input_col_offset + input_row_offset*/
+
+        for (uint32_t m = 0; m < F_w; m++)
+        {
+            int filter_offset_w = m * F_c_left * G_left * K_left + filter_offset_h;
+            // This is C_ob because the microkernel stretches across groups
+            int input_stencil_w = (m - W_lb) * _C_ib + input_stencil_h;
+
+            ScalarT const *b = F + filter_offset_w;
+            ScalarT const *a = I + input_stencil_w;
+            for (uint32_t ii = 0; ii < F_c_left / _UNROLL; ii++)
+            {
+                /// @note using platform C_ob
+                ScalarT const *b_cur = b + ii * _UNROLL * _C_ob;
+                ScalarT const *a_cur = a + ii * _UNROLL;
+                FLOAT_ABSTRACT_OP_END(op_type, op_class, step, a_cur, b_cur, c_tile, _O_wb, _C_ob); /// @todo pass _C_ob
+            }
+        }
+    }
+
+    if (op_type == OP_AVERAGE_POOL)
+    {
+        float norm = 1.0 / (1.0 * F_h * F_w);
+        FLOAT_DIV_END_C(c_tile, norm, _O_wb, _C_ob);
+    }
+    FLOAT_STORE_END_C(O, _O_wb, _C_ob);
+    //@todo support reduction-tree like store for global reductions
+}
+
+//****************************************************************************
+//****************************************************************************
+// Kernel pad for remainder channels
+//****************************************************************************
+//****************************************************************************
+
+// Edge case to handle remainder output channels
+template <typename ScalarT,
+          typename AccumT,
+          dim_t _G_b,
+          dim_t _K_b,
+          dim_t _F_cb,
+          dim_t _O_wb,
+          dim_t _stride,
+          dim_t _UNROLL,
+          OpType op_type,
+          int8_t op_class>
+void inline rem_kernel_pad(
+    bool first,
+    dim_t F_h,
+    dim_t F_w,
+    dim_t input_col_stride,
+    ScalarT const *I,
+    ScalarT const *F,
+    AccumT *O, // ScalarT -> AccumT
+    const dim_t G_left,
+    const dim_t K_left,
+    dim_t H_lb = 0,
+    dim_t H_ub = 0,
+    dim_t W_lb = 0,
+    dim_t W_ub = 0)
+{
+    const dim_t _C_ob = G_left * K_left;
+    const dim_t _C_ib = G_left * _F_cb;
+    const dim_t step = _stride * _C_ib;
+
+    const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
+    // const dim_t W_UPPER = ((!W_ub) * (F_w)) + (W_ub);
+
+    FLOAT_DEF_END_C(_O_wb, _C_ob);
+    if (first)
+    {
+        FLOAT_ZERO_END_C(_O_wb, _C_ob);
+
+        //@note padding  should always be 'v' for pointwise operations, so this code path should not be used
+        if (op_type == OP_MUL)
+        {
+            FLOAT_LOAD_END_C_strided(I, step, _O_wb, _C_ob);
+        }
+    }
+    else
+    {
+        FLOAT_LOAD_END_C(O, _O_wb, _C_ob);
+    }
+
+    for (uint32_t n = H_lb; n < H_UPPER; n++)
+    {
+        int filter_offset_h = n * F_w * _F_cb * _C_ob;
+        int input_stencil_h = /*input_col_offset + input_row_offset +*/
+            (n - H_lb) * input_col_stride;
+
+        for (uint32_t m = 0; m < F_w; m++)
+        {
+            int filter_offset_w = m * _F_cb * _C_ob + filter_offset_h;
+            // This is C_ob because the microkernel stretches across groups
+            int input_stencil_w = (m - W_lb) * _C_ib + input_stencil_h;
+
+            ScalarT const *b = F + filter_offset_w;
+            ScalarT const *a = I + input_stencil_w;
+
+            for (uint32_t ii = 0; ii < _F_cb / _UNROLL; ii++)
+            {
+                /// @note using platform C_ob
+                ScalarT const *b_cur = b + ii * _UNROLL * _C_ob;
+                ScalarT const *a_cur = a + ii * _UNROLL;
+
+                FLOAT_ABSTRACT_OP_END(op_type, op_class, step, a_cur, b_cur, c_tile, _O_wb, _C_ob);
+            }
+        }
+    }
+    if (op_type == OP_AVERAGE_POOL)
+    {
+        float norm = 1.0 / (1.0 * F_h * F_w);
+        FLOAT_DIV_END_C(c_tile, norm, _O_wb, _C_ob);
+    }
+    FLOAT_STORE_END_C(O, _O_wb, _C_ob);
+}
+
+// Edge case to handle remainder input channels
+template <typename ScalarT,
+          typename AccumT,
+          dim_t _G_b,
+          dim_t _K_b,
+          dim_t _F_cb,
+          dim_t _O_wb,
+          dim_t _stride,
+          dim_t _UNROLL,
+          OpType op_type,
+          int8_t op_class>
+void inline kernel_pad_rem(
+    bool first,
+    dim_t F_h,
+    dim_t F_w,
+    dim_t input_col_stride,
+    ScalarT const *I,
+    ScalarT const *F,
+    AccumT *O, // ScalarT -> AccumT
+    const dim_t F_c_left,
+    dim_t H_lb = 0,
+    dim_t H_ub = 0,
+    dim_t W_lb = 0,
+    dim_t W_ub = 0)
+{
+    constexpr dim_t _C_ob = _G_b * _K_b;
+    const dim_t _C_ib = _G_b * F_c_left;
+    const dim_t step = _stride * _C_ib;
+
+    const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
+    // const dim_t W_UPPER = ((!W_ub) * (F_w)) + (W_ub);
+
+    FLOAT_DEF_TILE_C(_O_wb, _C_ob);
+    if (first)
+    {
+        FLOAT_ZERO_TILE_C(_O_wb, _C_ob);
+
+        //@note padding  should always be 'v' for pointwise operations, so this code path should not be used
+        if (op_type == OP_MUL)
+        {
+            FLOAT_LOAD_TILE_C_strided(I, step, _O_wb, _C_ob);
+        }
+    }
+    else
+    {
+        FLOAT_LOAD_TILE_C(O, _O_wb, _C_ob);
+    }
+
+    for (uint32_t n = H_lb; n < H_UPPER; n++)
+    {
+        int filter_offset_h = n * F_w * F_c_left * _G_b * _K_b;
+        int input_stencil_h = /*input_col_offset + input_row_offset +*/
+            (n - H_lb) * input_col_stride;
+
+        for (uint32_t m = 0; m < F_w; m++)
+        {
+            int filter_offset_w = m * F_c_left * _G_b * _K_b + filter_offset_h;
+            // This is C_ob because the microkernel stretches across groups
+            int input_stencil_w = (m - W_lb) * _C_ib + input_stencil_h;
+
+            ScalarT const *b = F + filter_offset_w;
+            ScalarT const *a = I + input_stencil_w;
+
+            for (uint32_t ii = 0; ii < F_c_left / _UNROLL; ii++)
+            {
+                /// @note using platform C_ob
+                ScalarT const *b_cur = b + ii * _UNROLL * _C_ob;
+                ScalarT const *a_cur = a + ii * _UNROLL;
+
+                FLOAT_ABSTRACT_OP(op_type, op_class, a_cur, b_cur, _O_wb, _C_ob);
+            }
+        }
+    }
+    if (op_type == OP_AVERAGE_POOL)
+    {
+        float norm = 1.0 / (1.0 * F_h * F_w);
+        FLOAT_DIV_TILE_C(norm, _O_wb, _C_ob);
+    }
+    FLOAT_STORE_TILE_C(O, _O_wb, _C_ob);
+}
+
+// Edge case to handle remainder input and output channels
+template <typename ScalarT,
+          typename AccumT,
+          dim_t _G_b,
+          dim_t _K_b,
+          dim_t _F_cb,
+          dim_t _O_wb,
+          dim_t _stride,
+          dim_t _UNROLL,
+          OpType op_type,
+          int8_t op_class>
+void inline rem_kernel_pad_rem(
+    bool first,
+    dim_t F_h,
+    dim_t F_w,
+    dim_t input_col_stride,
+    ScalarT const *I,
+    ScalarT const *F,
+    AccumT *O, // ScalarT -> AccumT
+    const dim_t F_c_left,
+    const dim_t G_left,
+    const dim_t K_left,
+    dim_t H_lb = 0,
+    dim_t H_ub = 0,
+    dim_t W_lb = 0,
+    dim_t W_ub = 0)
+{
+    const dim_t _C_ob = G_left * K_left;
+    const dim_t _C_ib = G_left * F_c_left;
+    const dim_t step = _stride * _C_ib;
+
+    const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
+    // const dim_t W_UPPER = ((!W_ub) * (F_w)) + (W_ub);
+
+    FLOAT_DEF_END_C(_O_wb, _C_ob);
+    if (first)
+    {
+        FLOAT_ZERO_END_C(_O_wb, _C_ob);
+
+        //@note padding  should always be 'v' for pointwise operations, so this code path should not be used
+        if (op_type == OP_MUL)
+        {
+            FLOAT_LOAD_END_C_strided(I, step, _O_wb, _C_ob);
+        }
+    }
+    else
+    {
+        FLOAT_LOAD_END_C(O, _O_wb, _C_ob);
+    }
+
+    for (uint32_t n = H_lb; n < H_UPPER; n++)
+    {
+        int filter_offset_h = n * F_w * F_c_left * G_left * K_left;
+        int input_stencil_h = /*input_col_offset + input_row_offset +*/
+            (n - H_lb) * input_col_stride;
+
+        for (uint32_t m = 0; m < F_w; m++)
+        {
+            int filter_offset_w = m * F_c_left * G_left * K_left + filter_offset_h;
+            // This is C_ob because the microkernel stretches across groups
+            int input_stencil_w = (m - W_lb) * _C_ib + input_stencil_h;
+
+            ScalarT const *b = F + filter_offset_w;
+            ScalarT const *a = I + input_stencil_w;
+
+            for (uint32_t ii = 0; ii < F_c_left / _UNROLL; ii++)
+            {
+                /// @note using platform C_ob
+                ScalarT const *b_cur = b + ii * _UNROLL * _C_ob;
+                ScalarT const *a_cur = a + ii * _UNROLL;
+
+                FLOAT_ABSTRACT_OP_END(op_type, op_class, step, a_cur, b_cur, c_tile, _O_wb, _C_ob);
+            }
+        }
+    }
+    if (op_type == OP_AVERAGE_POOL)
+    {
+        float norm = 1.0 / (1.0 * F_h * F_w);
+        FLOAT_DIV_END_C(c_tile, norm, _O_wb, _C_ob);
+    }
+    FLOAT_STORE_END_C(O, _O_wb, _C_ob);
+    // prinf the stored _O_wb x _C_ob output tile
+}
+
+//****************************************************************************
+//****************************************************************************
+// Kernel right for remainder channels
+//****************************************************************************
+//****************************************************************************
+// Edge case to handle remainder output channels
+template <typename ScalarT,
+          typename AccumT,
+          dim_t _G_b,
+          dim_t _K_b,
+          dim_t _F_cb,
+          dim_t _O_wb,
+          dim_t _stride,
+          dim_t _UNROLL,
+          OpType op_type,
+          int8_t op_class>
+void inline rem_kernel_right(
+    bool first,
+    dim_t F_h,
+    dim_t F_w,
+    dim_t input_col_stride,
+    dim_t O_w_left,
+    dim_t r_pad_el,
+    dim_t r_pad,
+    ScalarT const *I,
+    ScalarT const *F,
+    AccumT *O, // ScalarT -> AccumT
+    const dim_t G_left,
+    const dim_t K_left,
+    dim_t H_lb = 0,
+    dim_t H_ub = 0)
+{
+    const dim_t _C_ob = G_left * K_left;
+    const dim_t _C_ib = G_left * _F_cb;
+    const dim_t step = _stride * _C_ib;
+    const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
+    FLOAT_DEF_END_C(_O_wb, _C_ob);
+
+#if DEBUG == 1
+    printf("G_left %d K_left %d\n", G_left, K_left);
+    printf("kernel_right_rem\n");
+    printf("First 5 input values: %f %f %f %f %f\n", I[0], I[1], I[2], I[3], I[4]);
+    if (op_type == OP_CONV)
+        printf("First 5 Filter values for output channel 0 : %f %f %f %f %f \n", F[0], F[1], F[2], F[3], F[4]);
+    printf("O_W_left %d r_pad_el %d\n", O_w_left, r_pad_el);
+    printf("input col stride %d\n", input_col_stride);
+#endif
+    if (O_w_left)
+    {
+        if (first)
+        {
+            FLOAT_ZERO_END_C(O_w_left, _C_ob);
+
+            if ((op_type == OP_MUL) || (op_type == OP_MAX_POOL && H_lb == 0 && H_ub == 0))
+            {
+                FLOAT_LOAD_END_C_strided(I, step, O_w_left, _C_ob);
+            }
+            else if (op_type == OP_UPSAMPLE)
+            {
+                FLOAT_LOAD_END_C_upsample(I, _stride, _C_ib, O_w_left, _C_ob);
+            }
+        }
+        else
+        {
+            //Global Reduction
+            if constexpr (op_type == OP_ADD && op_class == 3)
+            {
+                FLOAT_ZERO_END_C(O_w_left, _C_ob);
+            }
+            FLOAT_LOAD_END_C(O, O_w_left, _C_ob);
+            if constexpr (op_type == OP_UPSAMPLE)
+            {
+                FLOAT_ACCUM_END_C_upsample(I, _stride, _C_ib, O_w_left, _C_ob);
+            }
+        }
+        compute_with_padding<ScalarT, AccumT,
+                             _G_b, _K_b, _F_cb, _O_wb, _stride,
+                             _UNROLL, op_type, op_class>(
+            H_lb, H_UPPER,
+            0, F_w,
+            F_w,
+            O_w_left,
+            input_col_stride,
+            F,
+            I,
+            c_tile,
+            _F_cb,
+            G_left,
+            K_left);
+
+        if (op_type == OP_AVERAGE_POOL)
+        {
+            float norm = 1.0 / (1.0 * F_h * F_w);
+            FLOAT_DIV_END_C(c_tile, norm, O_w_left, _C_ob);
+        }
+        if (op_type == OP_ADD && op_class == 3 && _C_ob == 1)
+        {
+            /* If the operation reduces the channel dimension, reduce across channel dimension of simd tile*/
+            FLOAT_REDUCE_REM_CHANNEL_END_C(O_w_left, _C_ob)
+        }
+
+        FLOAT_STORE_END_C(O, O_w_left, _C_ob);
+#if DEBUG == 1
+        printf("First output value: %f %f %f %f \n", O[0], O[1], O[2], O[3]);
+#endif
+    }
+
+    // right padding elements
+    AccumT *O_ptr = O + O_w_left * _C_ob; // ScalarT --> AccumT
+    ScalarT const *I_ptr = I + O_w_left * step;
+    int W_i_valid = F_w - 1;
+
+    if (first)
+    {
+        FLOAT_ZERO_END_C(r_pad_el, _C_ob);
+
+        // Initialize with 0 for the padding elements
+
+        //@note padding  should always be 'v' for pointwise operations, so this code path should not be used
+        if (op_type == OP_MUL)
+        {
+            FLOAT_LOAD_END_C_strided(I_ptr, step, r_pad_el, _C_ob);
+        }
+    }
+    else
+    {
+        FLOAT_LOAD_END_C(O_ptr, r_pad_el, _C_ob);
+    }
+
+    c_tile_t *c_cur = c_tile;
+    // dim_t c_cur = 0;
+    for (uint32_t k_p = 0; k_p < r_pad_el; k_p++)
+    {
+        compute_with_padding<ScalarT, AccumT,
+                             _G_b, _K_b, _F_cb, _O_wb, _stride,
+                             _UNROLL, op_type, op_class>(
+            H_lb, H_UPPER,
+            0, W_i_valid,
+            F_w,
+            1,
+            input_col_stride,
+            F,
+            I_ptr,
+            c_cur,
+            _F_cb,
+            G_left,
+            K_left);
+
+        c_cur += (K_left * G_left) / (FLOAT_SIMD_EPILOGUE);
+        W_i_valid -= _stride;
+        I_ptr += _stride * _C_ib;
+    }
+
+    if (op_type == OP_AVERAGE_POOL)
+    {
+        float norm = 1.0 / (1.0 * F_h * F_w);
+        FLOAT_DIV_END_C(c_tile, norm, r_pad_el, _C_ob);
+    }
+
+    FLOAT_STORE_END_C(O_ptr, r_pad_el, _C_ob);
+}
+
+// Edge case to handle remainder input channels
+template <typename ScalarT,
+          typename AccumT,
+          dim_t _G_b,
+          dim_t _K_b,
+          dim_t _F_cb,
+          dim_t _O_wb,
+          dim_t _stride,
+          dim_t _UNROLL,
+          OpType op_type,
+          int8_t op_class>
+void inline kernel_right_rem(
+    bool first,
+    dim_t F_h,
+    dim_t F_w,
+    dim_t input_col_stride,
+    dim_t O_w_left,
+    dim_t r_pad_el,
+    dim_t r_pad,
+    ScalarT const *I,
+    ScalarT const *F,
+    AccumT *O, // ScalarT -> AccumT
+    const dim_t F_c_left,
+    dim_t H_lb = 0,
+    dim_t H_ub = 0)
+{
+    constexpr dim_t _C_ob = _G_b * _K_b;
+    const dim_t _C_ib = _G_b * F_c_left;
+    const dim_t step = _stride * _C_ib;
+    const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
+    FLOAT_DEF_END_C(_O_wb, _C_ob);
+
+#if DEBUG
+    printf("kernel_right_rem\n");
+    printf("First 5 input values: %f %f %f %f %f\n", I[0], I[1], I[2], I[3], I[4]);
+    printf("First 5 Filter values for output channel 0 : %f %f %f %f %f \n", F[0 * _C_ob], F[1 * _C_ob], F[2 * _C_ob], F[3 * _C_ob], F[4 * _C_ob]);
+    printf("O_W_left %d r_pad_el %d\n", O_w_left, r_pad_el);
+    printf("input col stride %d\n", input_col_stride);
+#endif
+    if (O_w_left)
+    {
+        if (first)
+        {
+            FLOAT_ZERO_END_C(O_w_left, _C_ob);
+
+            if ((op_type == OP_MUL) || (op_type == OP_MAX_POOL && H_lb == 0 && H_ub == 0))
+            {
+                FLOAT_LOAD_END_C_strided(I, step, O_w_left, _C_ob);
+            }
+            else if (op_type == OP_UPSAMPLE)
+            {
+                FLOAT_LOAD_END_C_upsample(I, _stride, _C_ib, O_w_left, _C_ob);
+            }
+        }
+        else
+        {//Global Reduction
+            if constexpr (op_type == OP_ADD && op_class == 3)
+            {
+                FLOAT_ZERO_END_C(O_w_left, _C_ob);
+            }
+            FLOAT_LOAD_END_C(O, O_w_left, _C_ob);
+            if constexpr (op_type == OP_UPSAMPLE)
+            {
+                FLOAT_ACCUM_END_C_upsample(I, _stride, _C_ib, O_w_left, _C_ob);
+            }
+        }
+
+        compute_with_padding<ScalarT, AccumT,
+                             _G_b, _K_b, _F_cb, _O_wb, _stride,
+                             _UNROLL, op_type, op_class>(
+            H_lb, H_UPPER,
+            0, F_w,
+            F_w,
+            O_w_left,
+            input_col_stride,
+            F,
+            I,
+            c_tile,
+            F_c_left);
+
+        if (op_type == OP_AVERAGE_POOL)
+        {
+            float norm = 1.0 / (1.0 * F_h * F_w);
+            FLOAT_DIV_END_C(c_tile, norm, O_w_left, _C_ob);
+        }
+        if constexpr (op_type == OP_ADD && op_class == 3 && _C_ob == 1)
+        {
+            /* If the operation reduces the channel dimension, reduce across channel dimension of simd tile*/
+            FLOAT_REDUCE_CHANNEL_END_C(O_w_left, _C_ob)
+        }
+
+        FLOAT_STORE_END_C(O, O_w_left, _C_ob);
+    }
+
+    // right padding elements
+    AccumT *O_ptr = O + O_w_left * _C_ob; // ScalarT --> AccumT
+    ScalarT const *I_ptr = I + O_w_left * step;
+    int W_i_valid = F_w - 1;
+
+    if (first)
+    {
+        FLOAT_ZERO_END_C(r_pad_el, _C_ob);
+
+        // Initialize with 0 for the padding elements
+
+        //@note padding  should always be 'v' for pointwise operations, so this code path should not be used
+        if (op_type == OP_MUL)
+        {
+            FLOAT_LOAD_END_C_strided(I_ptr, step, r_pad_el, _C_ob);
+        }
+    }
+    else
+    {
+        FLOAT_LOAD_END_C(O_ptr, r_pad_el, _C_ob);
+    }
+
+    c_tile_t *c_cur = c_tile;
+    // dim_t c_cur = 0;
+
+    for (uint32_t k_p = 0; k_p < r_pad_el; k_p++)
+    {
+        compute_with_padding<ScalarT, AccumT,
+                             _G_b, _K_b, _F_cb, _O_wb, _stride,
+                             _UNROLL, op_type, op_class>(
+            H_lb, H_UPPER,
+            0, W_i_valid,
+            F_w,
+            1,
+            input_col_stride,
+            F,
+            I_ptr,
+            c_cur,
+            F_c_left);
+
+        c_cur += (_K_b * _G_b) / (FLOAT_SIMD_EPILOGUE);
+        W_i_valid -= _stride;
+        I_ptr += step;
+    }
+
+    if (op_type == OP_AVERAGE_POOL)
+    {
+        float norm = 1.0 / (1.0 * F_h * F_w);
+        FLOAT_DIV_END_C(c_tile, norm, r_pad_el, _C_ob);
+    }
+
+    FLOAT_STORE_END_C(O_ptr, r_pad_el, _C_ob);
+
+#if DEBUG
+    printf("First output value: %f %f %f %f \n", O[0], O[1], O[2], O[3]);
+#endif
+}
+
+// Edge case to handle remainder input and output channels
+template <typename ScalarT,
+          typename AccumT,
+          dim_t _G_b,
+          dim_t _K_b,
+          dim_t _F_cb,
+          dim_t _O_wb,
+          dim_t _stride,
+          dim_t _UNROLL,
+          OpType op_type,
+          int8_t op_class>
+void inline rem_kernel_right_rem(
+    bool first,
+    dim_t F_h,
+    dim_t F_w,
+    dim_t input_col_stride,
+    dim_t O_w_left,
+    dim_t r_pad_el,
+    dim_t r_pad,
+    ScalarT const *I,
+    ScalarT const *F,
+    AccumT *O, // ScalarT -> AccumT
+    const dim_t F_c_left,
+    const dim_t G_left,
+    const dim_t K_left,
+    dim_t H_lb = 0,
+    dim_t H_ub = 0)
+{
+    const dim_t _C_ob = G_left * K_left;
+    const dim_t _C_ib = G_left * F_c_left;
+    const dim_t step = _stride * _C_ib;
+    const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
+    FLOAT_DEF_END_C(_O_wb, _C_ob);
+
+#if DEBUG
+    printf("kernel_right_rem\n");
+    printf("First 5 input values: %f %f %f %f %f\n", I[0], I[1], I[2], I[3], I[4]);
+    printf("First 5 Filter values for output channel 0 : %f %f %f %f %f \n", F[0 * _C_ob], F[1 * _C_ob], F[2 * _C_ob], F[3 * _C_ob], F[4 * _C_ob]);
+    printf("O_W_left %d r_pad_el %d\n", O_w_left, r_pad_el);
+    printf("input col stride %d\n", input_col_stride);
+#endif
+    if (O_w_left)
+    {
+        if (first)
+        {
+            FLOAT_ZERO_END_C(O_w_left, _C_ob);
+
+            if ((op_type == OP_MUL) || (op_type == OP_MAX_POOL && H_lb == 0 && H_ub == 0))
+            {
+                FLOAT_LOAD_END_C_strided(I, step, O_w_left, _C_ob);
+            }
+            else if (op_type == OP_UPSAMPLE)
+            {
+                FLOAT_LOAD_END_C_upsample(I, _stride, _C_ib, O_w_left, _C_ob);
+            }
+        }
+        else
+        {
+            //Global Reduction
+            if constexpr (op_type == OP_ADD && op_class == 3)
+            {
+                FLOAT_ZERO_END_C(O_w_left, _C_ob);
+            }
+            FLOAT_LOAD_END_C(O, O_w_left, _C_ob);
+            if constexpr (op_type == OP_UPSAMPLE)
+            {
+                FLOAT_ACCUM_END_C_upsample(I, _stride, _C_ib, O_w_left, _C_ob);
+            }
+        }
+
+        compute_with_padding<ScalarT, AccumT,
+                             _G_b, _K_b, _F_cb, _O_wb, _stride,
+                             _UNROLL, op_type, op_class>(
+            H_lb, H_UPPER,
+            0, F_w,
+            F_w,
+            O_w_left,
+            input_col_stride,
+            F,
+            I,
+            c_tile,
+            F_c_left,
+            G_left,
+            K_left);
+
+        if (op_type == OP_AVERAGE_POOL)
+        {
+            float norm = 1.0 / (1.0 * F_h * F_w);
+            FLOAT_DIV_END_C(c_tile, norm, O_w_left, _C_ob);
+        }
+        if (op_type == OP_ADD && op_class == 3 && _C_ob == 1)
+        {
+            /* If the operation reduces the channel dimension, reduce across channel dimension of simd tile*/
+            FLOAT_REDUCE_REM_CHANNEL_END_C(O_w_left, _C_ob)
+        }
+
+        FLOAT_STORE_END_C(O, O_w_left, _C_ob);
+    }
+
+    // right padding elements
+    AccumT *O_ptr = O + O_w_left * _C_ob; // ScalarT --> AccumT
+    ScalarT const *I_ptr = I + O_w_left * step;
+    int W_i_valid = F_w - 1;
+
+    if (first)
+    {
+        FLOAT_ZERO_END_C(r_pad_el, _C_ob);
+
+        // Initialize with 0 for the padding elements
+
+        //@note padding  should always be 'v' for pointwise operations, so this code path should not be used
+        if (op_type == OP_MUL)
+        {
+            FLOAT_LOAD_END_C_strided(I_ptr, step, r_pad_el, _C_ob);
+        }
+    }
+    else
+    {
+        FLOAT_LOAD_END_C(O_ptr, r_pad_el, _C_ob);
+    }
+
+    c_tile_t *c_cur = c_tile;
+    // dim_t c_cur = 0;
+
+    for (uint32_t k_p = 0; k_p < r_pad_el; k_p++)
+    {
+        compute_with_padding<ScalarT, AccumT,
+                             _G_b, _K_b, _F_cb, _O_wb, _stride,
+                             _UNROLL, op_type, op_class>(
+            H_lb, H_UPPER,
+            0, W_i_valid,
+            F_w,
+            1,
+            input_col_stride,
+            F,
+            I_ptr,
+            c_cur,
+            F_c_left,
+            G_left,
+            K_left);
+
+        c_cur += (G_left * K_left) / (FLOAT_SIMD_EPILOGUE);
+        W_i_valid -= _stride;
+        I_ptr += step;
+    }
+
+    if (op_type == OP_AVERAGE_POOL)
+    {
+        float norm = 1.0 / (1.0 * F_h * F_w);
+        FLOAT_DIV_END_C(c_tile, norm, r_pad_el, _C_ob);
+    }
+
+    FLOAT_STORE_END_C(O_ptr, r_pad_el, _C_ob);
+
+#if DEBUG
+    printf("First output value: %f %f %f %f \n", O[0], O[1], O[2], O[3]);
+#endif
+}
+
+//****************************************************************************
+//****************************************************************************
+// Kernel bottom for remainder channels
+//****************************************************************************
+//****************************************************************************
+// Edge case to handle remainder output channels
+template <typename ScalarT,
+          typename AccumT,
+          dim_t _G_b,
+          dim_t _K_b,
+          dim_t _F_cb,
+          dim_t _O_wb,
+          dim_t _stride,
+          dim_t _UNROLL,
+          OpType op_type,
+          int8_t op_class>
+void inline rem_kernel_bottom(
+    bool first,
+    dim_t F_h,
+    dim_t F_w,
+    dim_t input_col_stride,
+    dim_t b_pad_el,
+    dim_t b_pad,
+    dim_t W_full_index,
+    dim_t l_pad_el,
+    dim_t l_pad,
+    dim_t O_w_w_pad,
+    dim_t O_w_full,
+    dim_t O_w_left,
+    dim_t r_pad_el,
+    dim_t r_pad,
+    ScalarT const *I,
+    ScalarT const *F,
+    AccumT *O,
+    const dim_t G_left,
+    const dim_t K_left) // ScalarT -> AccumT
+{
+    ScalarT const *I_ptr = I;
+    AccumT *O_ptr = O; // ScalarT -> AccumT
+
+    int H_i_valid = F_h - 1;
+
+    for (uint32_t j_p = 0; j_p < b_pad_el; j_p++)
+    {
+        // Prologue with left padding
+        rem_kernel_left<ScalarT, AccumT,
+                        _G_b, _K_b, _F_cb, _O_wb, _stride,
+                        _UNROLL, op_type, op_class>(
+            first,
+            F_h,
+            F_w,
+            input_col_stride,
+            l_pad_el,
+            l_pad,
+            I_ptr,
+            F,
+            O_ptr,
+            G_left,
+            K_left,
+            0,
+            H_i_valid);
+
+        ScalarT const *I_row_full = I + W_full_index * (_F_cb * G_left);
+        AccumT *O_row_full = O + l_pad_el * (G_left * K_left); // ScalarT -> AccumT
+        // Steady State with microkernel
+        for (index_t l = 0; l < O_w_full; l += _O_wb)
+        {
+            ScalarT const *I_col = I_row_full + (l * _stride) * (_F_cb * G_left);
+            ScalarT const *F_col = F + 0;
+            AccumT *O_col = O_row_full + l * (G_left * K_left); // ScalarT -> AccumT
+
+            rem_kernel_pad<ScalarT, AccumT,
+                           _G_b, _K_b, _F_cb, _O_wb, _stride,
+                           _UNROLL, op_type, op_class>(
+                first,
+                F_h,
+                F_w,
+                input_col_stride,
+                I_col,
+                F_col,
+                O_col,
+                G_left,
+                K_left,
+                0,
+                H_i_valid,
+                0,  /// @todo This was added, W_lb. Is it right?
+                0); /// @todo This was added, W_ub. Is it right?);
+        }
+
+        // Epilogue for microkernel + right padding elements
+        ScalarT const *I_col_left =
+            I_row_full + (O_w_full * _stride) * (_F_cb * G_left);
+        ScalarT const *F_col_left = F + 0;
+        AccumT *O_col_left = O_row_full + O_w_full * (G_left * K_left); // ScalarT -> AccumT
+
+        rem_kernel_right<ScalarT, AccumT,
+                         _G_b, _K_b, _F_cb, _O_wb, _stride,
+                         _UNROLL, op_type, op_class>(
+            first,
+            F_h,
+            F_w,
+            input_col_stride,
+            O_w_left,
+            r_pad_el,
+            r_pad,
+            I_col_left,
+            F_col_left,
+            O_col_left,
+            G_left,
+            K_left,
+            0,          /// @todo confirm this, H_lb
+            H_i_valid); /// @todo confirm this, H_ub
+
+        O_ptr += O_w_w_pad * G_left * K_left;
+
+        H_i_valid -= _stride;
+        I_ptr += _stride * _F_cb * G_left;
+    }
+}
+
+// Edge case to handle remainder input channels
+template <typename ScalarT,
+          typename AccumT,
+          dim_t _G_b,
+          dim_t _K_b,
+          dim_t _F_cb,
+          dim_t _O_wb,
+          dim_t _stride,
+          dim_t _UNROLL,
+          OpType op_type,
+          int8_t op_class>
+void inline kernel_bottom_rem(
+    bool first,
+    dim_t F_h,
+    dim_t F_w,
+    dim_t input_col_stride,
+    dim_t b_pad_el,
+    dim_t b_pad,
+    dim_t W_full_index,
+    dim_t l_pad_el,
+    dim_t l_pad,
+    dim_t O_w_w_pad,
+    dim_t O_w_full,
+    dim_t O_w_left,
+    dim_t r_pad_el,
+    dim_t r_pad,
+    ScalarT const *I,
+    ScalarT const *F,
+    AccumT *O,
+    const dim_t F_c_left) // ScalarT -> AccumT
+{
+    ScalarT const *I_ptr = I;
+    AccumT *O_ptr = O; // ScalarT -> AccumT
+
+    int H_i_valid = F_h - 1;
+
+    for (uint32_t j_p = 0; j_p < b_pad_el; j_p++)
+    {
+        // Prologue with left padding
+        kernel_left_rem<ScalarT, AccumT,
+                        _G_b, _K_b, _F_cb, _O_wb, _stride,
+                        _UNROLL, op_type, op_class>(
+            first,
+            F_h,
+            F_w,
+            input_col_stride,
+            l_pad_el,
+            l_pad,
+            I_ptr,
+            F,
+            O_ptr,
+            F_c_left,
+            0,
+            H_i_valid);
+
+        ScalarT const *I_row_full = I + W_full_index * (F_c_left * _G_b);
+        AccumT *O_row_full = O + l_pad_el * (_G_b * _K_b); // ScalarT -> AccumT
+        // Steady State with microkernel
+        for (index_t l = 0; l < O_w_full; l += _O_wb)
+        {
+            ScalarT const *I_col = I_row_full + (l * _stride) * (F_c_left * _G_b);
+            ScalarT const *F_col = F + 0;
+            AccumT *O_col = O_row_full + l * (_G_b * _K_b); // ScalarT -> AccumT
+
+            kernel_pad_rem<ScalarT, AccumT,
+                           _G_b, _K_b, _F_cb, _O_wb, _stride,
+                           _UNROLL, op_type, op_class>(
+                first,
+                F_h,
+                F_w,
+                input_col_stride,
+                I_col,
+                F_col,
+                O_col,
+                F_c_left,
+                0,
+                H_i_valid,
+                0,  /// @todo This was added, W_lb. Is it right?
+                0); /// @todo This was added, W_ub. Is it right?);
+        }
+
+        // Epilogue for microkernel + right padding elements
+        ScalarT const *I_col_left =
+            I_row_full + (O_w_full * _stride) * (F_c_left * _G_b);
+        ScalarT const *F_col_left = F + 0;
+        AccumT *O_col_left = O_row_full + O_w_full * (_G_b * _K_b); // ScalarT -> AccumT
+
+        kernel_right_rem<ScalarT, AccumT,
+                         _G_b, _K_b, _F_cb, _O_wb, _stride,
+                         _UNROLL, op_type, op_class>(
+            first,
+            F_h,
+            F_w,
+            input_col_stride,
+            O_w_left,
+            r_pad_el,
+            r_pad,
+            I_col_left,
+            F_col_left,
+            O_col_left,
+            F_c_left,
+            0,          /// @todo confirm this, H_lb
+            H_i_valid); /// @todo confirm this, H_ub
+
+        O_ptr += O_w_w_pad * _K_b * _G_b;
+
+        H_i_valid -= _stride;
+        I_ptr += _stride * F_c_left * _G_b;
+    }
+}
+
+// Edge case to handle remainder input and output channels
+// Edge case to handle remainder input channels
+template <typename ScalarT,
+          typename AccumT,
+          dim_t _G_b,
+          dim_t _K_b,
+          dim_t _F_cb,
+          dim_t _O_wb,
+          dim_t _stride,
+          dim_t _UNROLL,
+          OpType op_type,
+          int8_t op_class>
+void inline rem_kernel_bottom_rem(
+    bool first,
+    dim_t F_h,
+    dim_t F_w,
+    dim_t input_col_stride,
+    dim_t b_pad_el,
+    dim_t b_pad,
+    dim_t W_full_index,
+    dim_t l_pad_el,
+    dim_t l_pad,
+    dim_t O_w_w_pad,
+    dim_t O_w_full,
+    dim_t O_w_left,
+    dim_t r_pad_el,
+    dim_t r_pad,
+    ScalarT const *I,
+    ScalarT const *F,
+    AccumT *O,
+    const dim_t F_c_left,
+    const dim_t G_left,
+    const dim_t K_left) // ScalarT -> AccumT
+{
+    const dim_t _C_ob = G_left * K_left;
+    const dim_t _C_ib = G_left * F_c_left;
+    const dim_t step = _stride * _C_ib;
+
+    ScalarT const *I_ptr = I;
+    AccumT *O_ptr = O; // ScalarT -> AccumT
+
+    int H_i_valid = F_h - 1;
+
+    for (uint32_t j_p = 0; j_p < b_pad_el; j_p++)
+    {
+        // Prologue with left padding
+        rem_kernel_left_rem<ScalarT, AccumT,
+                            _G_b, _K_b, _F_cb, _O_wb, _stride,
+                            _UNROLL, op_type, op_class>(
+            first,
+            F_h,
+            F_w,
+            input_col_stride,
+            l_pad_el,
+            l_pad,
+            I_ptr,
+            F,
+            O_ptr,
+            F_c_left,
+            G_left,
+            K_left,
+            0,
+            H_i_valid);
+
+        ScalarT const *I_row_full = I + W_full_index * (_C_ib);
+        AccumT *O_row_full = O + l_pad_el * (_C_ob); // ScalarT -> AccumT
+        // Steady State with microkernel
+        for (index_t l = 0; l < O_w_full; l += _O_wb)
+        {
+            ScalarT const *I_col = I_row_full + (l * _stride) * (_C_ib);
+            ScalarT const *F_col = F + 0;
+            AccumT *O_col = O_row_full + l * (_C_ob); // ScalarT -> AccumT
+
+            rem_kernel_pad_rem<ScalarT, AccumT,
+                               _G_b, _K_b, _F_cb, _O_wb, _stride,
+                               _UNROLL, op_type, op_class>(
+                first,
+                F_h,
+                F_w,
+                input_col_stride,
+                I_col,
+                F_col,
+                O_col,
+                F_c_left,
+                G_left,
+                K_left,
+                0,
+                H_i_valid,
+                0,  /// @todo This was added, W_lb. Is it right?
+                0); /// @todo This was added, W_ub. Is it right?);
+        }
+
+        // Epilogue for microkernel + right padding elements
+        ScalarT const *I_col_left =
+            I_row_full + (O_w_full * _stride) * (_C_ib);
+        ScalarT const *F_col_left = F + 0;
+        AccumT *O_col_left = O_row_full + O_w_full * (_C_ob); // ScalarT -> AccumT
+
+        rem_kernel_right_rem<ScalarT, AccumT,
+                             _G_b, _K_b, _F_cb, _O_wb, _stride,
+                             _UNROLL, op_type, op_class>(
+            first,
+            F_h,
+            F_w,
+            input_col_stride,
+            O_w_left,
+            r_pad_el,
+            r_pad,
+            I_col_left,
+            F_col_left,
+            O_col_left,
+            F_c_left,
+            G_left,
+            K_left,
+            0,          /// @todo confirm this, H_lb
+            H_i_valid); /// @todo confirm this, H_ub
+
+        O_ptr += O_w_w_pad * (_C_ob);
+
+        H_i_valid -= _stride;
+        I_ptr += _stride * (_C_ib);
+    }
+}
+
+//****************************************************************************
+//****************************************************************************
+// Kernel top for remainder channels
+//****************************************************************************
+//****************************************************************************
+// Edge case to handle remainder output channels
 template <typename ScalarT,
           typename AccumT,
           dim_t _G_b,
@@ -2545,8 +2569,8 @@ void inline rem_kernel_top(
     {
         // Prologue with left padding
         rem_kernel_left<ScalarT, AccumT,
-                    _G_b, _K_b, _F_cb, _O_wb, _stride,
-                    _UNROLL, op_type, op_class>(
+                        _G_b, _K_b, _F_cb, _O_wb, _stride,
+                        _UNROLL, op_type, op_class>(
             first,
             F_h,
             F_w,
@@ -2556,7 +2580,7 @@ void inline rem_kernel_top(
             I_ptr,
             F,
             O_ptr,
-            G_left, 
+            G_left,
             K_left,
             H_i_valid,
             F_h);
@@ -2573,8 +2597,8 @@ void inline rem_kernel_top(
             AccumT *O_col = O_row_full + l * (_C_ob); // ScalarT --> AccumT
 
             rem_kernel_pad<ScalarT, AccumT,
-                       _G_b, _K_b, _F_cb, _O_wb, _stride,
-                       _UNROLL, op_type, op_class>(
+                           _G_b, _K_b, _F_cb, _O_wb, _stride,
+                           _UNROLL, op_type, op_class>(
                 first,
                 F_h,
                 F_w,
@@ -2582,7 +2606,7 @@ void inline rem_kernel_top(
                 I_col,
                 F_col,
                 O_col,
-                G_left, 
+                G_left,
                 K_left,
                 H_i_valid, // H_lb
                 F_h,       // H_ub
@@ -2598,8 +2622,8 @@ void inline rem_kernel_top(
             O_row_full + O_w_full * (_C_ob); // ScalarT --> AccumT
 
         rem_kernel_right<ScalarT, AccumT,
-                     _G_b, _K_b, _F_cb, _O_wb, _stride,
-                     _UNROLL, op_type, op_class>(
+                         _G_b, _K_b, _F_cb, _O_wb, _stride,
+                         _UNROLL, op_type, op_class>(
             first,
             F_h,
             F_w,
@@ -2618,7 +2642,6 @@ void inline rem_kernel_top(
         O_ptr += O_w_w_pad * _C_ob;
         H_i_valid += _stride;
     }
-    
 }
 
 // Edge case to handle remainder input channels
@@ -2661,8 +2684,8 @@ void inline kernel_top_rem(
     {
         // Prologue with left padding
         kernel_left_rem<ScalarT, AccumT,
-                    _G_b, _K_b, _F_cb, _O_wb, _stride,
-                    _UNROLL, op_type, op_class>(
+                        _G_b, _K_b, _F_cb, _O_wb, _stride,
+                        _UNROLL, op_type, op_class>(
             first,
             F_h,
             F_w,
@@ -2688,8 +2711,8 @@ void inline kernel_top_rem(
             AccumT *O_col = O_row_full + l * (_G_b * _K_b); // ScalarT --> AccumT
 
             kernel_pad_rem<ScalarT, AccumT,
-                       _G_b, _K_b, _F_cb, _O_wb, _stride,
-                       _UNROLL, op_type, op_class>(
+                           _G_b, _K_b, _F_cb, _O_wb, _stride,
+                           _UNROLL, op_type, op_class>(
                 first,
                 F_h,
                 F_w,
@@ -2712,8 +2735,8 @@ void inline kernel_top_rem(
             O_row_full + O_w_full * (_G_b * _K_b); // ScalarT --> AccumT
 
         kernel_right_rem<ScalarT, AccumT,
-                     _G_b, _K_b, _F_cb, _O_wb, _stride,
-                     _UNROLL, op_type, op_class>(
+                         _G_b, _K_b, _F_cb, _O_wb, _stride,
+                         _UNROLL, op_type, op_class>(
             first,
             F_h,
             F_w,
@@ -2764,7 +2787,7 @@ void inline rem_kernel_top_rem(
     ScalarT const *F,
     AccumT *O,
     const dim_t F_c_left,
-    const dim_t G_left, 
+    const dim_t G_left,
     const dim_t K_left) // ScalarT --> AccumT
 {
     const dim_t _C_ob = G_left * K_left;
@@ -2780,8 +2803,8 @@ void inline rem_kernel_top_rem(
     {
         // Prologue with left padding
         rem_kernel_left_rem<ScalarT, AccumT,
-                        _G_b, _K_b, _F_cb, _O_wb, _stride,
-                        _UNROLL, op_type, op_class>(
+                            _G_b, _K_b, _F_cb, _O_wb, _stride,
+                            _UNROLL, op_type, op_class>(
             first,
             F_h,
             F_w,
@@ -2792,7 +2815,7 @@ void inline rem_kernel_top_rem(
             F,
             O_ptr,
             F_c_left,
-            G_left, 
+            G_left,
             K_left,
             H_i_valid,
             F_h);
@@ -2809,8 +2832,8 @@ void inline rem_kernel_top_rem(
             AccumT *O_col = O_row_full + l * (_C_ob); // ScalarT --> AccumT
 
             rem_kernel_pad_rem<ScalarT, AccumT,
-                           _G_b, _K_b, _F_cb, _O_wb, _stride,
-                           _UNROLL, op_type, op_class>(
+                               _G_b, _K_b, _F_cb, _O_wb, _stride,
+                               _UNROLL, op_type, op_class>(
                 first,
                 F_h,
                 F_w,
@@ -2819,7 +2842,7 @@ void inline rem_kernel_top_rem(
                 F_col,
                 O_col,
                 F_c_left,
-                G_left, 
+                G_left,
                 K_left,
                 H_i_valid, // H_lb
                 F_h,       // H_ub
@@ -2835,8 +2858,8 @@ void inline rem_kernel_top_rem(
             O_row_full + O_w_full * (_C_ob); // ScalarT --> AccumT
 
         rem_kernel_right_rem<ScalarT, AccumT,
-                         _G_b, _K_b, _F_cb, _O_wb, _stride,
-                         _UNROLL, op_type, op_class>(
+                             _G_b, _K_b, _F_cb, _O_wb, _stride,
+                             _UNROLL, op_type, op_class>(
             first,
             F_h,
             F_w,
@@ -2848,7 +2871,7 @@ void inline rem_kernel_top_rem(
             F_col_left,
             O_col_left,
             F_c_left,
-            G_left, 
+            G_left,
             K_left,
             H_i_valid,
             F_h);
@@ -2858,6 +2881,9 @@ void inline rem_kernel_top_rem(
         // I_ptr += _stride * _F_cb * _G_b;
     }
 }
+
+//****************************************************************************
+//****************************************************************************
 
 //****************************************************************************
 //****************************************************************************
