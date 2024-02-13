@@ -76,7 +76,9 @@ void test_add_correctness()
     }
 
     // Running old version of function being tested
-    OLD_QUINT8_ADD_TILE_C_G(I, QUINT8_W_ob, QUINT8_C_ob);
+    {
+        OLD_QUINT8_ADD_TILE_C_G(I, QUINT8_W_ob, QUINT8_C_ob);
+    }
 
     // Copy output of old version of function into ouput_ref
     c_tile_t output_ref[QUINT8_W_ob * QUINT8_C_ob];
@@ -86,7 +88,9 @@ void test_add_correctness()
     memcpy(c_tile, c_tile2, sizeof(c_tile_t) * QUINT8_W_ob * QUINT8_C_ob);
 
     // Running new version of function being tested
-    QUINT8_ADD_TILE_C_G(I, QUINT8_W_ob, QUINT8_C_ob);
+    {
+        QUINT8_ADD_TILE_C_G(I, QUINT8_W_ob, QUINT8_C_ob);
+    }
 
     // Checking values
     for (int kk = 0; kk < QUINT8_W_ob; kk++)
@@ -130,7 +134,9 @@ void test_add_performance()
             "old_kernel:");
         for (int j = 0; j < num_inner_runs; ++j)
         {
-            OLD_QUINT8_ADD_TILE_C_G(I, QUINT8_W_ob, QUINT8_C_ob);
+            {
+                OLD_QUINT8_ADD_TILE_C_G(I, QUINT8_W_ob, QUINT8_C_ob);
+            }
         }
         t.stop();
 
@@ -145,7 +151,9 @@ void test_add_performance()
            num_outer_runs * num_inner_runs, min_t, max_t, (tx / (num_outer_runs * num_inner_runs)));
 
     // Running new version of function being tested
-    QUINT8_ZERO_TILE_C(QUINT8_W_ob, QUINT8_C_ob, 0);
+    {
+        QUINT8_ZERO_TILE_C(QUINT8_W_ob, QUINT8_C_ob, 0);
+    }
     tx = 0.;
     min_t = std::numeric_limits<double>::max();
     max_t = 0.;
@@ -172,10 +180,98 @@ void test_add_performance()
     printf("New macro\t%d\t%lf\t%lf\t%lf\n",
            (num_inner_runs * num_outer_runs), min_t, max_t, (tx / (num_inner_runs * num_outer_runs)));
 }
+
+void test_zero_correctness()
+{
+    printf("\n");
+    const small::QUInt8Buffer::accum_type x = 8;
+    QUINT8_DEF_TILE_C(QUINT8_W_ob, QUINT8_C_ob);
+    QUINT8_ZERO_TILE_C(QUINT8_W_ob, QUINT8_C_ob, x);
+    // TODO check new test against old test
+
+    // print the c_tile buffer to make sure the values were assigned
+    for (int kk = 0; kk < QUINT8_W_ob; kk++)
+    {
+        for (int jj = 0; jj < QUINT8_C_ob; jj++)
+        {
+            TEST_CHECK(c_tile[kk * QUINT8_C_ob + jj] == x);
+        }
+    }
+}
+
+void test_load_correctness()
+{
+    printf("\n");
+
+    // Initialize c_tile with zero values
+    // Initialize O with random values
+    QUINT8_DEF_TILE_C(QUINT8_W_ob, QUINT8_C_ob);
+    {
+        QUINT8_ZERO_TILE_C(QUINT8_W_ob, QUINT8_C_ob, 0);
+    }
+    c_tile_t O[QUINT8_W_ob * QUINT8_C_ob];
+
+    for (uint32_t kk = 0; kk < QUINT8_W_ob; kk++)
+    {
+        for (uint32_t jj = 0; jj < QUINT8_C_ob; jj++)
+        {
+            O[kk * QUINT8_C_ob + jj] = rand();
+        }
+    }
+
+    // running the function to be tested
+    {
+        QUINT8_LOAD_TILE_C(O, QUINT8_W_ob, QUINT8_C_ob);
+    }
+
+    // Checking values
+    for (int kk = 0; kk < QUINT8_W_ob; kk++)
+    {
+        for (int jj = 0; jj < QUINT8_C_ob; jj++)
+        {
+            TEST_CHECK(c_tile[kk * QUINT8_C_ob + jj] == O[kk * QUINT8_C_ob + jj]);
+        }
+    }
+}
+
+void test_store_correctness()
+{
+    printf("\n");
+
+    // Initialize c_tile with random values
+    // Initialize O
+    QUINT8_DEF_TILE_C(QUINT8_W_ob, QUINT8_C_ob);
+
+    for (uint32_t kk = 0; kk < QUINT8_W_ob; kk++)
+    {
+        for (uint32_t jj = 0; jj < QUINT8_C_ob; jj++)
+        {
+            c_tile[kk * QUINT8_C_ob + jj] = rand();
+        }
+    }
+
+    c_tile_t O[QUINT8_W_ob * QUINT8_C_ob];
+
+    // running the function to be tested
+    {
+        QUINT8_STORE_TILE_C(O, QUINT8_W_ob, QUINT8_C_ob);
+    }
+
+    // Checking values
+    for (int kk = 0; kk < QUINT8_W_ob; kk++)
+    {
+        for (int jj = 0; jj < QUINT8_C_ob; jj++)
+        {
+            TEST_CHECK(c_tile[kk * QUINT8_C_ob + jj] == O[kk * QUINT8_C_ob + jj]);
+        }
+    }
+}
+
 //****************************************************************************
 //****************************************************************************
 TEST_LIST = {
     // {"initialization of full block of data", test_initialization},
-    {"add function, correctness test", test_add_correctness},
-    {"add function, performance test", test_add_performance},
+    {"zero function, correcteness test", test_zero_correctness},
+    {"load function, correcteness test", test_load_correctness},
+    {"store function, correcteness test", test_store_correctness},
     {NULL, NULL}};

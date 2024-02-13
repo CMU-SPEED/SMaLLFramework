@@ -48,13 +48,14 @@ namespace small
 #define QUINT8_DEF_END_C(W_ob, C_ob) \
     c_tile_t c_tile[W_ob * C_ob];
 
-#define QUINT8_ZERO_TILE_C(W_ob, C_ob, zero)   \
-    for (uint32_t kk = 0; kk < W_ob; kk++)     \
-    {                                          \
-        for (uint32_t jj = 0; jj < C_ob; jj++) \
-        {                                      \
-            c_tile[kk * C_ob + jj] = zero;     \
-        }                                      \
+#define QUINT8_ZERO_TILE_C(W_ob, C_ob, zero)              \
+    c_tile_t *c_channel = c_tile;                         \
+    c_tile_t const *end_addr = c_channel + (W_ob * C_ob); \
+    /*address of the last element in c_tile*/             \
+                                                          \
+    while (c_channel < end_addr)                          \
+    {                                                     \
+        *c_channel++ = zero;                              \
     }
 
 #define QUINT8_ZERO_END_C(_W_ob, C_ob, zero)   \
@@ -70,13 +71,24 @@ namespace small
 // Loads
 //****************************************************************************
 
-#define QUINT8_LOAD_TILE_C(O, W_ob, C_ob)                                      \
+#define OLD_QUINT8_LOAD_TILE_C(O, W_ob, C_ob)                                  \
     for (uint32_t kk = 0; kk < W_ob; kk++)                                     \
     {                                                                          \
         for (uint32_t jj = 0; jj < C_ob; jj++)                                 \
         {                                                                      \
             c_tile[kk * C_ob + jj] = static_cast<c_tile_t>(O[kk * C_ob + jj]); \
         }                                                                      \
+    }
+
+#define QUINT8_LOAD_TILE_C(O, W_ob, C_ob)                 \
+    c_tile_t *c_channel = c_tile;                         \
+    c_tile_t const *end_addr = c_channel + (W_ob * C_ob); \
+    /*address of the last element in c_tile*/             \
+    c_tile_t *o_ptr = O;                                  \
+                                                          \
+    while (c_channel < end_addr)                          \
+    {                                                     \
+        *c_channel++ = *o_ptr++;                          \
     }
 
 //  c_tile_out_t c_tile[W_ob * C_ob];
@@ -94,6 +106,7 @@ namespace small
 //****************************************************************************
 
 // strided loads
+// TODO can this be linearized?
 #define QUINT8_LOAD_TILE_C_strided(O, step, _W_ob, _C_ob)                       \
     for (uint32_t kk = 0; kk < _W_ob; kk++)                                     \
     {                                                                           \
@@ -142,13 +155,24 @@ namespace small
 // Stores
 //****************************************************************************
 
-#define QUINT8_STORE_TILE_C(O, W_ob, C_ob)              \
+#define OLD_QUINT8_STORE_TILE_C(O, W_ob, C_ob)          \
     for (uint32_t kk = 0; kk < W_ob; kk++)              \
     {                                                   \
         for (uint32_t jj = 0; jj < C_ob; jj++)          \
         {                                               \
             O[kk * C_ob + jj] = c_tile[kk * C_ob + jj]; \
         }                                               \
+    }
+
+#define QUINT8_STORE_TILE_C(O, W_ob, C_ob)               \
+    c_tile_t *c_channel = c_tile;                        \
+    c_tile_t const *end_ptr = c_channel + (W_ob * C_ob); \
+    /*address of the last element in c_tile*/            \
+    c_tile_t *o_ptr = O;                                 \
+                                                         \
+    while (c_channel < end_ptr)                          \
+    {                                                    \
+        *o_ptr++ = *c_channel++;                         \
     }
 
 #define QUINT8_STORE_END_C(O, _W_ob, C_ob)              \
@@ -220,7 +244,6 @@ namespace small
 // Pooling
 //   Max pooling
 //****************************************************************************
-
 #define QUINT8_MAX_TILE_C(step, a, W_ob, C_ob, a_offset)                                                          \
     c_tile_t *c_pixel = c_tile;                                                                                   \
     c_tile_out_t const *a_pixel = a;                                                                              \
@@ -374,7 +397,7 @@ namespace small
 #define QUINT8_ADD_TILE_C_G(I, W_ob_g, C_ob)                \
     c_tile_t *c_channel = c_tile;                           \
     c_tile_out_t const *i_channel = I;                      \
-    const c_tile_t *end_addr = c_channel + (W_ob_g * C_ob); \
+    c_tile_t const *end_addr = c_channel + (W_ob_g * C_ob); \
     /*address of the last element in c_tile*/               \
                                                             \
     while (c_channel < end_addr)                            \
