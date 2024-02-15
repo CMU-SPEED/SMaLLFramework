@@ -91,6 +91,12 @@ namespace small
         *c_channel++ = *o_ptr++;                          \
     }
 
+__asm__ volatile(
+    :)
+/*
+
+*/
+
 //  c_tile_out_t c_tile[W_ob * C_ob];
 #define QUINT8_LOAD_END_C(O, _W_ob, C_ob)                                      \
     for (uint32_t kk = 0; kk < _W_ob; kk++)                                    \
@@ -106,7 +112,6 @@ namespace small
 //****************************************************************************
 
 // strided loads
-// TODO can this be linearized?
 #define QUINT8_LOAD_TILE_C_strided(O, step, _W_ob, _C_ob)                       \
     for (uint32_t kk = 0; kk < _W_ob; kk++)                                     \
     {                                                                           \
@@ -445,6 +450,16 @@ namespace small
             *O_channel *= d;                       \
             O_channel++;                           \
         }                                          \
+    }
+
+#define QUINT8_DIV_TILE_C(norm, W_ob, C_ob)               \
+    c_tile_t *c_channel = c_tile;                         \
+    c_tile_t const *end_addr = c_channel + (W_ob * C_ob); \
+    /*address of the last element in c_tile*/             \
+                                                          \
+    while (c_channel < end_addr)                          \
+    {                                                     \
+        *c_channel++ *= norm;                             \
     }
 
 #define QUINT8_REDUCE_C(O, W_ob_g, C_ob)           \
