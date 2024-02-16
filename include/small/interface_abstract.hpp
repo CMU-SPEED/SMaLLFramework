@@ -412,40 +412,40 @@ void PartialConv2D<FloatBuffer>(
     }
     else
     {
-    // printf("Generic handling for input channels that are not a multiple\n");
-    // printf("call parameters: ");
-    if (stride == 1)
-    {
-        detail::abstract_layer<
-            FloatBuffer, 1, FLOAT_C_ob, FLOAT_C_ib,
-            FLOAT_W_ob, 1, FLOAT_UNROLL, OP_CONV, 2, 1>(
-            1,               // Output Channel Grouping
-            output_channels, // Output Channels per group
-            input_channels,
-            input_height, input_width,
-            kernel_height, kernel_width,
-            t_pad, l_pad, r_pad, b_pad,
-            &input_buf, &filter_buf, &output_buf);
-    }
-    else if (stride == 2)
-    {
-        detail::abstract_layer<
-            FloatBuffer, 1, FLOAT_C_ob, FLOAT_C_ib,
-            FLOAT_W_ob, 2, FLOAT_UNROLL, OP_CONV, 2, 1>(
-            1,               // Output Channel Grouping
-            output_channels, // Output Channels per group
-            input_channels,
-            input_height, input_width,
-            kernel_height, kernel_width,
-            t_pad, l_pad, r_pad, b_pad,
-            &input_buf, &filter_buf, &output_buf);
-    }
-    else
-    {
-        throw std::invalid_argument(
-            "Conv2D<float> ERROR: stride unsupported.");
+        if (stride == 1)
+        {
+            detail::abstract_layer<
+                FloatBuffer, 1, FLOAT_C_ob, FLOAT_C_ib,
+                FLOAT_W_ob, 1, FLOAT_UNROLL, OP_CONV, 2, 1>(
+                1,               // Output Channel Grouping
+                output_channels, // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
+        }
+        else if (stride == 2)
+        {
+            detail::abstract_layer<
+                FloatBuffer, 1, FLOAT_C_ob, FLOAT_C_ib,
+                FLOAT_W_ob, 2, FLOAT_UNROLL, OP_CONV, 2, 1>(
+                1,               // Output Channel Grouping
+                output_channels, // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
+        }
+        else
+        {
+            throw std::invalid_argument(
+                "Conv2D<float> ERROR: stride unsupported.");
+        }
     }
 }
+
 #endif
 
 //============================================================================
