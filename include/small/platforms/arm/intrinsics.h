@@ -123,23 +123,25 @@ typedef float32x4_t c_tile_t;
 
 #else
 
-#define FLOAT_LOAD_END_C(O, _W_ob, C_ob)                                \
-if constexpr(C_ob == 1)\
-{\
+#define FLOAT_LOAD_END_C(O, _W_ob, _C_ob)                                \
+if (_C_ob == 1)\
+{/*When the operation is a global reduction, load  the */\
     for(uint32_t kk = 0; kk < _W_ob; kk++)\
     {\
       float c_channel_v[FLOAT_C_ob]={0};\
-      c_channel_v[0] = O[kk * C_ob];\
+      c_channel_v[0] = O[kk * _C_ob];\
       c_tile[kk * (FLOAT_C_ob/FLOAT_SIMD)]  = vld1q_f32(c_channel_v);\
     }\
 }\
+else if()\
+
 else\
 {\
     for (uint32_t kk = 0; kk < _W_ob; kk++)                             \
     {                                                                   \
-        for (uint32_t jj = 0; jj < C_ob / FLOAT_SIMD; jj++)             \
+        for (uint32_t jj = 0; jj < _C_ob / FLOAT_SIMD; jj++)             \
         {                                                               \
-            c_tile[kk * (C_ob / FLOAT_SIMD) + jj] = vld1q_f32(O + kk * C_ob + jj * FLOAT_SIMD); \
+            c_tile[kk * (_C_ob / FLOAT_SIMD) + jj] = vld1q_f32(O + kk * _C_ob + jj * FLOAT_SIMD); \
         }                                                               \
     }\
 }
@@ -929,6 +931,31 @@ if constexpr(_C_ob == 1 && _C_ob != FLOAT_SIMD_EPILOGUE)\
         c_channel_v[3] = vdupq_n_f32(0.0);                                  \
     }\
 }
+
+#define FLOAT_REDUCE_REM_CHANNEL_END_C(O_w_left, _C_ob)                             \
+    if  (_C_ob == 1 && _C_ob != FLOAT_SIMD_EPILOGUE)                   \
+    {                                                                           \
+        float c_tile_array[FLOAT_C_ob];                                         \
+        for (uint32_t kk = 0; kk < O_w_left; kk++)                              \
+        {                                                                       \
+            float32x4_t *c_channel_v = c_tile + kk * (FLOAT_C_ob / FLOAT_SIMD); \
+            c_channel_v[0] = vaddq_f32(c_channel_v[0], c_channel_v[1]);         \
+            c_channel_v[2] = vaddq_f32(c_channel_v[2], c_channel_v[3]);         \
+            c_channel_v[0] = vaddq_f32(c_channel_v[0], c_channel_v[2]);         \
+                                                                                \
+            vst1q_f32(c_tile_array, c_channel_v[0]);                            \
+            for (uint32_t jj = 1; jj < FLOAT_SIMD; jj++)                        \
+            {                                                                   \
+                c_tile_array[0] += c_tile_array[jj];                            \
+                c_tile_array[jj] = 0;                                           \
+            }                                                                   \
+                                                                                \
+            c_channel_v[0] = vld1q_f32(c_tile_array);                           \
+            c_channel_v[1] = vdupq_n_f32(0.0);                                  \
+            c_channel_v[2] = vdupq_n_f32(0.0);                                  \
+            c_channel_v[3] = vdupq_n_f32(0.0);                                  \
+        }                                                                       \
+    }
 
 //****************************************************************************
 // AVG Pooling
