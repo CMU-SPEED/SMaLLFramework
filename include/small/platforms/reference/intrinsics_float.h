@@ -441,10 +441,10 @@ for(uint32_t u =0 ; u < _UNROLL; u++)\
         }                                                                       \
     }
 
-#define FLOAT_REDUCE_REM_CHANNEL_END_C(O_w_left, _C_ob)           \
-    if(_C_ob == 1 && _C_ob != FLOAT_SIMD_EPILOGUE) \
+#define FLOAT_REDUCE_REM_CHANNEL_END_C(O_w_left, _C_ob)       \
+    if(_C_ob == 1 && _C_ob != FLOAT_SIMD_EPILOGUE)            \
     {                                                         \
-        float c_tile_array[FLOAT_C_ob];                       \
+        /*float c_tile_array[FLOAT_C_ob];*/                   \
         for (uint32_t kk = 0; kk < O_w_left; kk++)            \
         {                                                     \
             float *c_channel_v = c_tile + kk * (FLOAT_C_ob);  \

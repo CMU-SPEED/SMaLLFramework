@@ -157,9 +157,7 @@ void inline compute_with_padding(dim_t H_lb, dim_t H_ub,
             }
         }
     }
-
 }
-
 
 //****************************************************************************
 template <typename ScalarT,
@@ -184,8 +182,8 @@ void inline kernel_left(
     AccumT *O, // ScalarT -> AccumT
     dim_t H_lb = 0,
     dim_t H_ub = 0)
-    {
-    constexpr dim_t _C_ob = _G_b * _K_b;;
+{
+    constexpr dim_t _C_ob = _G_b * _K_b;
 
     const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
     FLOAT_DEF_END_C(_O_wb, _C_ob);
@@ -212,14 +210,14 @@ void inline kernel_left(
         compute_with_padding<ScalarT, AccumT,
                              _G_b, _K_b, _F_cb, _O_wb, _stride,
                              _UNROLL, op_type, op_class>(
-            H_lb, H_UPPER,
-            W_i_valid, F_w,
-            F_w,
-            1,
-            input_col_stride,
-            F,
-            I_ptr,
-            c_cur);
+                                 H_lb, H_UPPER,
+                                 W_i_valid, F_w,
+                                 F_w,
+                                 1,
+                                 input_col_stride,
+                                 F,
+                                 I_ptr,
+                                 c_cur);
 
         c_cur += (_K_b * _G_b) / (FLOAT_SIMD_EPILOGUE);
         // c_cur += 1;
@@ -325,9 +323,8 @@ void inline kernel(
     //@todo support reduction-tree like store for global reductions
 }
 
-
 //****************************************************************************
-//The kernel pad function allows for padding in the height and width of the filter
+// The kernel pad function allows for padding in the height and width of the filter
 // If the compiler complies, kernel_pad and kernel could be combined
 template <typename ScalarT,
           typename AccumT,
@@ -369,7 +366,6 @@ void inline kernel_pad(
         {
             FLOAT_LOAD_TILE_C_strided(I, step, _O_wb, _C_ob);
         }
-
     }
     else
     {
@@ -467,7 +463,7 @@ void inline kernel_right(
             FLOAT_LOAD_END_C(O, O_w_left, _C_ob);
             if constexpr (op_type == OP_UPSAMPLE)
             {
-                             FLOAT_ACCUM_END_C_upsample(I, _stride, _C_ib, O_w_left, _C_ob);
+                FLOAT_ACCUM_END_C_upsample(I, _stride, _C_ib, O_w_left, _C_ob);
             }
         }
 
@@ -2431,7 +2427,7 @@ void inline rem_kernel_bottom_rem(
 {
     const dim_t _C_ob = G_left * K_left;
     const dim_t _C_ib = G_left * F_c_left;
-    const dim_t step = _stride * _C_ib;
+    //const dim_t step = _stride * _C_ib;
 
     ScalarT const *I_ptr = I;
     AccumT *O_ptr = O; // ScalarT -> AccumT
@@ -2558,7 +2554,7 @@ void inline rem_kernel_top(
 {
     const dim_t _C_ob = G_left * K_left;
     const dim_t _C_ib = G_left * _F_cb;
-    const dim_t step = _stride * _C_ib;
+    //const dim_t step = _stride * _C_ib;
 
     ScalarT const *I_ptr = I;
     AccumT *O_ptr = O; // ScalarT --> AccumT
@@ -2792,7 +2788,7 @@ void inline rem_kernel_top_rem(
 {
     const dim_t _C_ob = G_left * K_left;
     const dim_t _C_ib = G_left * F_c_left;
-    const dim_t step = _stride * _C_ib;
+    //const dim_t step = _stride * _C_ib;
 
     ScalarT const *I_ptr = I;
     AccumT *O_ptr = O; // ScalarT --> AccumT
@@ -2963,7 +2959,7 @@ void abstract_layer(
      * I: [G/G_b,        F_c/F_cb, I_h, I_w, F_cb, G_b     ]
      * F: [G/G_b, K/K_b, F_c/F_cb, F_h, F_w, F_cb, G_b, K_b]
      * O: [G/G_b, K/K_b,           O_h, O_w,       G_b, K_b]
-     * 
+     *
      * For the case where the number of channels is not a multiple of the blocking size,
      * I:
      * F:
@@ -3057,10 +3053,10 @@ void abstract_layer(
 
 
     //We need to do in the edge case if either K_left or G_left is non-zero
-    // HACK: THIS CALCULATE IS IMPRECISE (group convs won't work)
+    // HACK: THIS CALCULATION IS IMPRECISE (group convs won't work)
 
     const dim_t F_c_full_idx = (F_c_full == 1)? 0: F_c_full;
-    
+
     const dim_t K_full_idx = (K_full == 1)? 0: K_full;
     const dim_t K_left = K - K_full_idx;
 
@@ -3071,8 +3067,8 @@ void abstract_layer(
     const dim_t F_c_left = F_c - F_c_full_idx;
     const dim_t _C_ib_left = F_c_left * _G_b;
     const dim_t _C_ib_left_group = G_left * _F_cb;
-    const dim_t _C_ib_left_group_channels = G_left * F_c_left;
-    
+    //const dim_t _C_ib_left_group_channels = G_left * F_c_left;
+
     //Only handling the case where G_left*K_left < FLOAT_C_ob
     //There could be a case where G_left*K_left == FLOAT_C_ob
     //todo: handle remaining cases
@@ -3360,8 +3356,8 @@ void abstract_layer(
                                       F_row_bot,
                                       O_row_bot);
                 }
-            
-            
+
+
                 // Loop over remaining channels
                 // _UNROLL defaults to 1
                 //This loop should have 1 iteration
@@ -3564,7 +3560,7 @@ void abstract_layer(
                 }
             }
         }
-    
+
 
     }
 
@@ -3623,7 +3619,7 @@ void abstract_layer(
             {
                 bool first = rewrite_output && (i == 0);
 
-                
+
                 ScalarT const *I_channel_block_input =
                     I_channel_block_output + i * (I_h * I_w * _F_cb * G_left);
                 ScalarT const *F_channel_block_input =
