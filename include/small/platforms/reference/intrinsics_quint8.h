@@ -343,7 +343,7 @@ namespace small
         c_tile_t const *a_channel = a_pixel;                                                                                           \
         for (uint32_t jj = 0; jj < C_ob; jj++)                                                                                         \
         {                                                                                                                              \
-            *(c_channel) = (*(a_channel) + a_offset > *(c_channel)) ? *(a_channel) + a_offset : ((*(a_channel) * (scale)) + a_offset); \
+            *(c_channel) = (*(a_channel) + a_offset > *(c_channel)) ? *(a_channel) + a_offset : ((*(a_channel) + a_offset) * scale);   \
             c_channel++;                                                                                                               \
             a_channel++;                                                                                                               \
         }                                                                                                                              \
