@@ -384,7 +384,7 @@ namespace small
  * with the offset value.  The offset value is provided as
  * an argument to this macro.
  */
-#define QUINT8_ACCUM_TILE_C_G(I, W_ob_g, C_ob, offset)        \
+#define QUINT8_ACCUM_TILE_C(I, W_ob_g, C_ob, offset)        \
     c_tile_t *c_channel = c_tile;                           \
     c_tile_out_t const *i_channel = I;                      \
     c_tile_t const *end_addr = c_channel + (W_ob_g * C_ob); \
@@ -397,7 +397,7 @@ namespace small
         *i_channel++;                                       \
     }
 
-#define QUINT8_ACCUM_END_C_G(I, W_last, C_ob, offset) \
+#define QUINT8_ACCUM_END_C(I, W_last, C_ob, offset) \
     c_tile_out_t const *i_pixel = I;                 \
     c_tile_t *c_pixel = c_tile;                      \
     for (uint32_t mm = 0; mm < W_last; mm++)         \
