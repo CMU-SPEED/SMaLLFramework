@@ -397,7 +397,7 @@ namespace small
         *i_channel++;                                       \
     }
 
-#define QUINT8_ACCUM_LAST_C_G(I, W_last, C_ob, offset) \
+#define QUINT8_ACCUM_END_C_G(I, W_last, C_ob, offset) \
     c_tile_out_t const *i_pixel = I;                 \
     c_tile_t *c_pixel = c_tile;                      \
     for (uint32_t mm = 0; mm < W_last; mm++)         \
