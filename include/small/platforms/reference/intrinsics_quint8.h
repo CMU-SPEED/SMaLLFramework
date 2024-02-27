@@ -91,11 +91,6 @@ namespace small
         *c_channel++ = *o_ptr++;                          \
     }
 
-__asm__ volatile(
-    :)
-/*
-
-*/
 
 //  c_tile_out_t c_tile[W_ob * C_ob];
 #define QUINT8_LOAD_END_C(O, _W_ob, C_ob)                                      \
@@ -384,29 +379,12 @@ __asm__ volatile(
 // AVG Pooling
 //****************************************************************************
 
-#define OLD_QUINT8_ADD_TILE_C_G(I, W_ob_g, C_ob) \
-    c_tile_out_t const *i_pixel = I;             \
-    c_tile_t *c_pixel = c_tile;                  \
-    for (uint32_t mm = 0; mm < W_ob_g; mm++)     \
-    {                                            \
-        c_tile_t *c_channel = c_pixel;           \
-        c_tile_out_t const *i_channel = i_pixel; \
-        for (uint32_t kk = 0; kk < C_ob; kk++)   \
-        {                                        \
-            *c_channel += *i_channel;            \
-            c_channel++;                         \
-            i_channel++;                         \
-        }                                        \
-        c_pixel += C_ob;                         \
-        i_pixel += C_ob;                         \
-    }
-
 /**
  * @brief NOTE: assumes that c_tile has NOT been filled
  * with the offset value.  The offset value is provided as
  * an argument to this macro.
  */
-#define QUINT8_ADD_TILE_C_G(I, W_ob_g, C_ob, offset)        \
+#define QUINT8_ACCUM_TILE_C_G(I, W_ob_g, C_ob, offset)        \
     c_tile_t *c_channel = c_tile;                           \
     c_tile_out_t const *i_channel = I;                      \
     c_tile_t const *end_addr = c_channel + (W_ob_g * C_ob); \
@@ -419,7 +397,7 @@ __asm__ volatile(
         *i_channel++;                                       \
     }
 
-#define QUINT8_ADD_LAST_C_G(I, W_last, C_ob, offset) \
+#define QUINT8_ACCUM_LAST_C_G(I, W_last, C_ob, offset) \
     c_tile_out_t const *i_pixel = I;                 \
     c_tile_t *c_pixel = c_tile;                      \
     for (uint32_t mm = 0; mm < W_last; mm++)         \
