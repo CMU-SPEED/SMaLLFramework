@@ -219,30 +219,31 @@ else
 //****************************************************************************
 
 #define FLOAT_CONV_TILE_C(step, a, b, W_ob, C_ob)       \
+    float * a_ptr = a;                                  \
     b0 = _mm256_load_ps(b);                             \
     b1 = _mm256_load_ps(b + FLOAT_SIMD);                \
-    a_reg = _mm256_broadcast_ss(a);                     \
-    a += step;                                          \
+    a_reg = _mm256_broadcast_ss(a_ptr);                     \
+    a_ptr += step;                                          \
     c0 = _mm256_fmadd_ps(a_reg, b0, c0);                \
     c1 = _mm256_fmadd_ps(a_reg, b1, c1);                \
-    a_reg = _mm256_broadcast_ss(a);                     \
-    a += step;                                          \
+    a_reg = _mm256_broadcast_ss(a_ptr);                     \
+    a_ptr += step;                                          \
     c2 = _mm256_fmadd_ps(a_reg, b0, c2);                \
     c3 = _mm256_fmadd_ps(a_reg, b1, c3);                \
-    a_reg = _mm256_broadcast_ss(a);                     \
-    a += step;                                          \
+    a_reg = _mm256_broadcast_ss(a_ptr);                     \
+    a_ptr += step;                                          \
     c4 = _mm256_fmadd_ps(a_reg, b0, c4);                \
     c5 = _mm256_fmadd_ps(a_reg, b1, c5);                \
-    a_reg = _mm256_broadcast_ss(a);                     \
-    a += step;                                          \
+    a_reg = _mm256_broadcast_ss(a_ptr);                     \
+    a_ptr += step;                                          \
     c6 = _mm256_fmadd_ps(a_reg, b0, c6);                \
     c7 = _mm256_fmadd_ps(a_reg, b1, c7);                \
-    a_reg = _mm256_broadcast_ss(a);                     \
-    a += step;                                          \
+    a_reg = _mm256_broadcast_ss(a_ptr);                     \
+    a_ptr += step;                                          \
     c8 = _mm256_fmadd_ps(a_reg, b0, c8);                \
     c9 = _mm256_fmadd_ps(a_reg, b1, c9);                \
-    a_reg = _mm256_broadcast_ss(a);                     \
-    a += step;                                          \
+    a_reg = _mm256_broadcast_ss(a_ptr);                     \
+    a_ptr += step;                                          \
     c10 = _mm256_fmadd_ps(a_reg, b0, c10);              \
     c11 = _mm256_fmadd_ps(a_reg, b1, c11);
 
