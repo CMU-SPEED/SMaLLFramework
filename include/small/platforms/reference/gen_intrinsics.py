@@ -3,23 +3,23 @@ FLOAT_C_ob = 16
 FLOAT_SIMD = 4
 FLOAT_UNROLL = 4
 FLOAT_C_ib = FLOAT_C_ob
+B_NUM_REGS = 2
+DATA_TYPE = f"float32x{FLOAT_C_ob / FLOAT_SIMD}_t"
 
 
 def gen_def_tile():
     print("#define FLOAT_DEF_TILE_C(W_ob, C_ob)\\")
 
     for i in range(FLOAT_W_ob):
-        for j in range(FLOAT_SIMD):
-            # TODO should this value be FLOAT_UNROLL instead?
-            print(f"float32x{FLOAT_SIMD}_t c_{i}_{j};\\")
+        for j in range(FLOAT_C_ob / FLOAT_SIMD):
+            print(f"{DATA_TYPE} c_{i}_{j};\\")
 
 
 def gen_zero_tile():
     print("#define FLOAT_DEF_TILE_C(W_ob, C_ob)\\")
 
     for i in range(FLOAT_W_ob):
-        for j in range(FLOAT_SIMD):
-            # TODO should this value be FLOAT_UNROLL instead?
+        for j in range(FLOAT_C_ob / FLOAT_SIMD):
             print(f"c_{i}_{j} = vdupq_n_f32(0);\\")
 
 
@@ -27,8 +27,7 @@ def gen_load_tile(strided=False):
     print("#define FLOAT_LOAD_TILE_C(O, W_ob, C_ob)\\")
 
     for i in range(FLOAT_W_ob):
-        for j in range(FLOAT_SIMD):
-            # TODO should this value be FLOAT_UNROLL instead?
+        for j in range(FLOAT_C_ob / FLOAT_SIMD):
             if strided:
                 print(f"c_{i}_{j} = vld1q_f32(O + {i} * step + {j} * FLOAT_SIMD);\\")
             else:
@@ -39,87 +38,56 @@ def gen_store_tile():
     print("#define FLOAT_STORE_TILE_C(O, W_ob, C_ob)\\")
 
     for i in range(FLOAT_W_ob):
-        for j in range(FLOAT_SIMD):
-            # TODO should this value be FLOAT_UNROLL instead?
+        for j in range(FLOAT_C_ob / FLOAT_SIMD):
             print("vst1q_f32(O + {i} * C_ob + {j} * FLOAT_SIMD, c_{i}_{j});\\")
 
 
-def gen_conv_tile_refresh_col_major_b_reg():
+def gen_conv_tile_refresh_row_major_b_reg():
     """Uses one register for values in the B matrix.
     Refreshes thsoe values iterating through rows in B first, then cols."""
     print("#define FLOAT_CONV_TILE_C(W_stride, a, b, W_ob, C_ob)\\")
 
     # declaring registers for matrix A
     for i in range(FLOAT_W_ob):
-        print(f"float32x4_t a_{i};\\")
+        print(f"{DATA_TYPE} a_{i};\\")
 
     # declaring registers for matrix B
     # (only using one register for matrix B)
     for i in range(1):
-        print(f"float32x4_t b_{i};\\")
+        print(f"{DATA_TYPE} b_{i};\\")
 
-    # TODO difference between vld1q_dup_f32 and vld1q_f32?
+    for u in range(0, FLOAT_UNROLL, FLOAT_SIMD):
+        # this loop controls which chunk of SIMD-number of columns of A get loaded into A's regs
+        # this loop executes FLOAT_UNROLL / FLOAT_SIMD times
 
-    # filling A registers
-    for i in range(FLOAT_W_ob):
-        print(f"a_{i} = vld1q_dup_f32(a + {i} * W_stride);\\")
+        # refresh A's registers (stepping row-wise)
+        for i in range(FLOAT_W_ob):
+            print(f"a_{i} = vld1q_f32(a + {i} * W_stride + {u * FLOAT_SIMD});\\")
 
-    for b_col in range(FLOAT_C_ob):
-        # this loop controls which col of matrix B gets put into B's register upon refresh
-        for b_row in range(FLOAT_UNROLL):
-            # refresh B register to be the next row at the beginning of each iteration of this loop
-            print(f"b_{0} = vld1q_f32(b + {b_row} * C_ob + {b_col} * FLOAT_SIMD);\\")
+        for uu in range(FLOAT_SIMD):
+            # iterating through "cols" in a portion of matrix A's regs.  aka iterating through indices in A's registers
+            # similarly, this also dictates which row of matrix B is in B's regs.
 
-            for a_col in range(FLOAT_SIMD):
-                # iterating through "cols" in a portion of matrix A.  aka iterating through indices in A's registers
-                # TODO what if the number of cols that A has (FLOAT_UNROLL) is > FLOAT_SIMD?
-                for a_row in range(FLOAT_W_ob):
-                    # iterating through "rows" in matrix A, aka iterating through A's registers (sticking with the same column)
+            for b_reg_col in range(0, FLOAT_C_ob, (FLOAT_SIMD * B_NUM_REGS)):
+                # refresh B register to be the next set of SIMD number of cols
+                for i in range(B_NUM_REGS):
                     print(
-                        f'__asm__ volatile("fmla c_{a_col}_{a_row}, a_{a_row}[{a_col}], b_{0}");\\'
+                        f"b_{i} = vld1q_f32(b + {u + uu} * C_ob + {b_reg_col} + {i} * FLOAT_SIMD);\\"
                     )
-                    # TODO "fmla [output register] [input regsiter] [input broadcast with index]"
-                    # this is not correct assembly syntax at all
 
-
-def gen_conv_tile_refresh_row_major_b_reg():
-    """Uses one register for values in the B matrix.
-    Refreshes thsoe values iterating through cols in B first, then rows."""
-    print("#define FLOAT_CONV_TILE_C(W_stride, a, b, W_ob, C_ob)\\")
-
-    # declaring registers for matrix A
-    for i in range(FLOAT_W_ob):
-        print(f"float32x4_t a_{i};\\")
-
-    # declaring registers for matrix B
-    # (only using one register for matrix B)
-    for i in range(1):
-        print(f"float32x4_t b_{i};\\")
-
-    # TODO difference between vld1q_dup_f32 and vld1q_f32?
-
-    # filling A registers
-    for i in range(FLOAT_W_ob):
-        print(f"a_{i} = vld1q_dup_f32(a + {i} * W_stride);\\")
-
-    for b_row in range(FLOAT_UNROLL):
-        # this loop controls which col of matrix B gets put into B's register upon refresh
-        # refresh B register to be the next row at the beginning of each iteration of this loop
-        for b_col in range(FLOAT_C_ob):
-            print(f"b_{0} = vld1q_f32(b + {b_row} * C_ob + {b_col} * FLOAT_SIMD);\\")
-
-            for a_col in range(FLOAT_SIMD):
-                # iterating through "cols" in a portion of matrix A.  aka iterating through indices in A's registers
-                # TODO what if the number of cols that A has (FLOAT_UNROLL) is > FLOAT_SIMD?
                 for a_row in range(FLOAT_W_ob):
-                    # iterating through "rows" in matrix A, aka iterating through A's registers (sticking with the same column)
-                    print(
-                        f'__asm__ volatile("fmla c_{a_col}_{a_row}, a_{a_row}[{a_col}], b_{0}");\\'
-                    )
-                    # TODO "fmla [output register] [input regsiter] [input broadcast with index]"
-                    # this is not correct assembly syntax at all
+                    # iterating through one "col" in each of the "rows" in matrix A
+                    # aka iterating through A's registers (sticking with the same column)
+                    for b_reg in range(B_NUM_REGS):
+                        print(
+                            f'__asm__ volatile("fmla %0.4s, %1.4s, %2.s[{uu}]" : "+w"(c_{a_row}_{(b_reg_col // FLOAT_SIMD) + b_reg}) : "w"(b_{b_reg}), "w"(a_{a_row}));\\'
+                        )
+                    # TODO parameterize this assembly string for multiple architectures
 
 
 """
+def gen_conv_tile_refresh_col_major_b_reg():
 def gen_conv_tile_multiple_b_reg():
 """
+
+gen_conv_tile_refresh_row_major_b_reg()
