@@ -60,7 +60,9 @@
 #define POOL 4
 #define RELU 5
 
-
+#ifndef LAYER
+#define LAYER CONV
+#endif
 //****************************************************************************
 //****************************************************************************
 int main(int argc, char **argv)
@@ -102,7 +104,7 @@ int main(int argc, char **argv)
     //uint32_t C_o = C_i;
 #endif
 
-    print_build_info_check();
+    print_build_info_check<Buffer>();
 
     //unsigned long long t0, t1;
 
@@ -153,46 +155,46 @@ int main(int argc, char **argv)
                           input_height, input_width,
                           input_dc, out_dc);
 #elif LAYER == POOL
-    check_MaxPool2D(kernel_size, stride,
+    check_MaxPool2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
                     t_pad, b_pad, l_pad, r_pad,
                     C_i,
                     input_height, input_width,
                     input_dc, out_check_dc);
-    small::MaxPool2D(kernel_size, stride,
+    small::MaxPool2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
                      t_pad, b_pad, l_pad, r_pad,
                      C_i,
                      input_height, input_width,
                      input_dc, out_dc);
 #elif LAYER == DW_CONV
-    check_DepthwiseConv2D(kernel_size, stride,
+    check_DepthwiseConv2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
                           t_pad, b_pad, l_pad, r_pad,
                           C_i,
                           input_height, input_width,
                           input_dc, filter_dc, out_check_dc);
-    small::DepthwiseConv2D(kernel_size, stride,
+    small::DepthwiseConv2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
                            t_pad, b_pad, l_pad, r_pad,
                            C_i,
                            input_height, input_width,
                            input_dc, filter_dc, out_dc);
 #elif LAYER == CONV
-    check_Conv2D(kernel_size, stride,
+    check_Conv2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
                  t_pad, b_pad, l_pad, r_pad,
                  C_o, C_i,
                  input_height, input_width,
                  input_dc, filter_dc, out_check_dc);
-    small::Conv2D(kernel_size, stride,
+    small::Conv2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
                   t_pad, b_pad, l_pad, r_pad,
                   C_o, C_i,
                   input_height, input_width,
                   input_dc, filter_dc, out_dc);
 
 #elif LAYER == PARTIAL_CONV
-    check_PartialConv2D(kernel_size, stride,
+    check_PartialConv2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
                         t_pad, b_pad, l_pad, r_pad,
                         C_o, C_i,
                         input_height, input_width,
                         input_dc, filter_dc, out_check_dc);
-    small::PartialConv2D(kernel_size, stride,
+    small::PartialConv2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
                          t_pad, b_pad, l_pad, r_pad,
                          C_o, C_i,
                          input_height, input_width,
@@ -221,25 +223,25 @@ int main(int argc, char **argv)
                              input_height, input_width,
                              input_dc, out_check_dc);
 #elif LAYER == POOL
-        check_MaxPool2D(kernel_size, stride,
+        check_MaxPool2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
                         t_pad, b_pad, l_pad, r_pad,
                         C_i,
                         input_height, input_width,
                         input_dc, out_check_dc);
 #elif LAYER == DW_CONV
-        check_DepthwiseConv2D(kernel_size, stride,
+        check_DepthwiseConv2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
                               t_pad, b_pad, l_pad, r_pad,
                               C_i,
                               input_height, input_width,
                               input_dc, filter_dc, out_check_dc);
 #elif LAYER == CONV
-        check_Conv2D(kernel_size, stride,
+        check_Conv2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
                      t_pad, b_pad, l_pad, r_pad,
                      C_o, C_i,
                      input_height, input_width,
                      input_dc, filter_dc, out_check_dc);
 #elif LAYER == PARTIAL_CONV
-        check_PartialConv2D(kernel_size, stride,
+        check_PartialConv2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
                             t_pad, b_pad, l_pad, r_pad,
                             C_o, C_i,
                             input_height, input_width,
@@ -263,25 +265,25 @@ int main(int argc, char **argv)
                               input_height, input_width,
                               input_dc, out_dc);
 #elif LAYER == POOL
-        small::MaxPool2D(kernel_size, stride,
+        small::MaxPool2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
                          t_pad, b_pad, l_pad, r_pad,
                          C_i,
                          input_height, input_width,
                          input_dc, out_dc);
 #elif LAYER == DW_CONV
-        small::DepthwiseConv2D(kernel_size, stride,
+        small::DepthwiseConv2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
                                t_pad, b_pad, l_pad, r_pad,
                                C_i,
                                input_height, input_width,
                                input_dc, filter_dc, out_dc);
 #elif LAYER == CONV
-        small::Conv2D(kernel_size, stride,
+        small::Conv2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
                       t_pad, b_pad, l_pad, r_pad,
                       C_o, C_i,
                       input_height, input_width,
                       input_dc, filter_dc, out_dc);
 #elif LAYER == PARTIAL_CONV
-        small::PartialConv2D(kernel_size, stride,
+        small::PartialConv2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
                              t_pad, b_pad, l_pad, r_pad,
                              C_o, C_i,
                              input_height, input_width,
@@ -313,7 +315,7 @@ int main(int argc, char **argv)
     throughput = (NUM_FMA * 2.0 * SIMD);
 #elif LAYER == CONV
     compute_ops = output_els * (kernel_size * kernel_size * C_i * 2.0);
-    throughput = (NUM_FMA * 2.0 * SIMD);
+    throughput = (FLOAT_NUM_FMA * 2.0 * FLOAT_SIMD);
 #elif LAYER == PARTIAL_CONV
     /// @todo CONFIRM THESE NUMBERS
     compute_ops = output_els * (kernel_size * kernel_size * C_i * 2.0);
