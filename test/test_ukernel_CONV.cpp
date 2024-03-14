@@ -209,7 +209,7 @@ void test_performance_CONV_TILE(void)
     //FLOAT_LOAD_TILE_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
 
     //size_t a_offset = 0;
-    uint32_t const UNROLL = 1;
+    uint32_t const _UNROLL = FLOAT_UNROLL;
     my_timer.start();
     for (size_t iy = 0; iy < 1; ++iy)
     {
@@ -218,7 +218,7 @@ void test_performance_CONV_TILE(void)
         for (size_t ix = 0; ix < num_trials; ++ix)
         {
             FLOAT_CONV_TILE_C(step, a_cur, b_cur, FLOAT_W_ob, FLOAT_C_ob);
-            // NOTE: a_cur is incremented inside macro: a_cur += input_step;
+            a_cur += input_step;
             offset += input_step;
         }
     }
