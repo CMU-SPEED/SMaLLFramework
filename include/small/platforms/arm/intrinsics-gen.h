@@ -216,7 +216,7 @@
     __asm__ volatile("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_5_2) : "w"(b_2), "w"(a_5)); \
     __asm__ volatile("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_5_3) : "w"(b_3), "w"(a_5)); \
   }                                                                                    \
-  else                                                                                 \
+  else if (_UNROLL == 4)                                                                                 \
   {                                                                                    \
     /*float const *aa = a;*/                                                           \
     float const *bb = b;                                                               \

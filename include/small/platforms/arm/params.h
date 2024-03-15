@@ -20,7 +20,7 @@
 #define FLOAT_W_ob   6
 #define FLOAT_C_ob   16
 #define FLOAT_SIMD   4
-#define FLOAT_UNROLL 4
+#define FLOAT_UNROLL 4 //mst be a multiple of FLOAT_SIMD
 #define FLOAT_C_ib   FLOAT_C_ob
 
 // not used for kernels, but used in throughput calculation.
