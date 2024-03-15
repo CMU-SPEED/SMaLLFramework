@@ -22,7 +22,7 @@
 #include <small/op_type.hpp>
 
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
-#include "check_intrinsics_float.h"
+#include <small/platforms/reference/intrinsics_float.h>
 #include <small/abstract_layer.hpp> /// @todo abstract_layer_float.hpp
 #endif
 

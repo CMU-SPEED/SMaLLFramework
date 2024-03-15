@@ -296,9 +296,9 @@ int main(int argc, char **argv)
     print_cycles(platform_time);
     printf("\n");
 
-    fflush(0);
 
-    printf("reference time / platform time = %.4f ", (ref_time/platform_time));
+    printf("reference time / platform time = %.4f \n", (ref_time/platform_time));
+    fflush(0);
 
     auto output_els = out_dimensions;
     double compute_ops = 0.0;

@@ -84,8 +84,8 @@ void kernel_benchmark(
     FLOAT_LOAD_TILE_C(O, W_ob, C_ob);
     float const *a_cur = I;
     float const *b_cur = W;
-    #pragma GCC unroll 4
-    for(int p = 0; p < k/_UNROLL; p+= G_b*_UNROLL)
+    // #pragma GCC unroll 4
+    for(int p = 0; p < k; p+= G_b*_UNROLL)
     {
         FLOAT_ABSTRACT_OP(OP_TYPE, OP_CLASS, step, a_cur, b_cur, W_ob, C_ob);
         b_cur+=n*G_b*_UNROLL;
@@ -154,7 +154,7 @@ void kernel_benchmark(
 #define FREQ 1.5
 #define MIN_FREQ 0.6
 #define TRIALS 100 
-#define RUNS 1000
+#define RUNS 100
 #define NUM_IMPLEMENTATIONS 1
 #define NUM_SIZES 14
 
@@ -214,7 +214,7 @@ int main()
 
     
 
-    printf("m: %d, n: %d\n Minimum timing over %d trials, each trial averages over %d runs\n", m, n, TRIALS, RUNS);
+    printf("m: %d, n: %d unroll %d \n Minimum timing over %d trials, each trial averages over %d runs\n", m, n, FLOAT_UNROLL, TRIALS, RUNS);
 
     printf("k, ops, time (ns), ops/cyc, total time (ms)\n");
     int k_sizes[NUM_SIZES] = {16, 32, 64, 96, 128, 256, 384, 512, 1024, 2048, 4096, 8192, 16384, 32768};
@@ -236,13 +236,13 @@ int main()
         float *cur_ptr = I;
         for (int i = 0; i < m*k; i++)
         {
-            *(cur_ptr++) = 2.0 * ((float)rand() / RAND_MAX) - 1;
+            *(cur_ptr++) = 0.5;//2.0 * ((float)rand() / RAND_MAX) - 1;
         }
         
         cur_ptr = W;
         for (int i = 0; i < k*n; i++)
         {
-            *(cur_ptr++) = 2.0 * ((float)rand() / RAND_MAX) - 1;
+            *(cur_ptr++) = 1.0;//2.0 * ((float)rand() / RAND_MAX) - 1;
         }
 
         cur_ptr = O;
@@ -267,7 +267,7 @@ int main()
             timer.start();
             for (int r = 0; r < RUNS; r++)
             {
-                kernel_benchmark<FLOAT_W_ob, FLOAT_C_ob,FLOAT_UNROLL, G_b, 1, OP_TYPE, OP_CLASS>(m, n, k, I, W, O);
+                kernel_benchmark<FLOAT_W_ob, FLOAT_C_ob, G_b, FLOAT_UNROLL, 1, OP_TYPE, OP_CLASS>(m, n, k, I, W, O);
             }
             timer.stop();
             total_layer_timers[0][size] = timer.elapsed();
