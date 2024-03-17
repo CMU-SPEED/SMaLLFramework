@@ -470,11 +470,11 @@ float32x4_t a_3;\
 float32x4_t a_4;\
 float32x4_t b_0;\
 float32x4_t b_1;\
-a_0 = vld1q_f32(a + 0 * W_stride + 0);\
-a_1 = vld1q_f32(a + 1 * W_stride + 0);\
-a_2 = vld1q_f32(a + 2 * W_stride + 0);\
-a_3 = vld1q_f32(a + 3 * W_stride + 0);\
-a_4 = vld1q_f32(a + 4 * W_stride + 0);\
+a_0 = vld1q_f32(a + 0 * step + 0);\
+a_1 = vld1q_f32(a + 1 * step + 0);\
+a_2 = vld1q_f32(a + 2 * step + 0);\
+a_3 = vld1q_f32(a + 3 * step + 0);\
+a_4 = vld1q_f32(a + 4 * step + 0);\
 b_0 = vld1q_f32(b + 0 * C_ob + 0 + 0 * FLOAT_SIMD);\
 b_1 = vld1q_f32(b + 0 * C_ob + 0 + 1 * FLOAT_SIMD);\
 __asm__ volatile("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_0_0) : "w"(b_0), "w"(a_0));\
