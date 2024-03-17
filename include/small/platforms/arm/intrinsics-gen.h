@@ -31,7 +31,7 @@ else if (_UNROLL == 4 && W_ob == FLOAT_W_ob && C_ob == FLOAT_C_ob)
   b_1 = vld1q_f32(bb + 3 * C_ob + (0 * 4 + 3) * FLOAT_SIMD);
   __asm__ volatile("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_5_3) : "w"(b_1), "w"(a_5));
 }
-else if (_UNROLL == <your params> && W_ob == <your params> && C_ob == <your param>)
+else if (_UNROLL == 4 && W_ob == 5 && C_ob == 16)
 {
   float32x4_t a_0;\
   float32x4_t a_1;\
