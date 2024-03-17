@@ -90,4 +90,8 @@ def gen_conv_tile_refresh_col_major_b_reg():
 def gen_conv_tile_multiple_b_reg():
 """
 
+gen_def_tile()
+gen_zero_tile()
+gen_load_tile()
+gen_store_tile()
 gen_conv_tile_refresh_row_major_b_reg()
