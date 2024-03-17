@@ -21,6 +21,18 @@ include_directories ( ${CMAKE_SOURCE_DIR}/demo )
 add_library(check_interface.o STATIC check_interface_abstract.cpp)
 target_compile_definitions(check_interface.o PRIVATE uarch=${CMAKE_UARCH})
 
+# Test out CONV for different kernels
+set(KERNEL_W_OPTIONS 5)
+foreach( kernel_w ${KERNEL_W_OPTIONS} )
+  set(demo_name "test_interface_CONV_w${kernel_w}.exe")
+  message("Adding executable: ${demo_name}")
+  add_executable(${demo_name} layer_kernel_test_driver.cpp )
+  target_link_libraries(${demo_name} check_interface.o)
+  target_compile_definitions(${demo_name} PRIVATE KERNEL_W_ob=${kernel_w})
+endforeach( layer_name ${KERNEL_W_OPTIONS} )
+
+
+
 set(LAYER_NAMES RELU CONV PARTIAL_CONV POOL DW_CONV)
 message("In demo/CMakeLists.txt: ${LAYER_NAMES}")
 

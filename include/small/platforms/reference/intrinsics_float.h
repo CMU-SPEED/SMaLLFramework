@@ -18,6 +18,8 @@
 // scalar versions of all the float microkernels for platform portability
 // Use the FLOAT_ prefix for all macros in this file.
 
+
+
 #define FLOAT_SIMD_EPILOGUE 1
 
 namespace small
@@ -81,7 +83,7 @@ namespace small
 // Loads
 //****************************************************************************
 
-#define OLD_FLOAT_LOAD_TILE_C(O, _W_ob, _C_ob)            \
+#define FLOAT_LOAD_TILE_C(O, _W_ob, _C_ob)            \
     for (uint32_t kk = 0; kk < _W_ob; kk++)              \
     {                                                   \
         for (uint32_t jj = 0; jj < _C_ob; jj++)          \
@@ -90,16 +92,6 @@ namespace small
         }                                               \
     }
 
-#define FLOAT_LOAD_TILE_C(O, _W_ob, _C_ob)                    \
-    c_tile_t *c_channel = c_tile;                           \
-    c_tile_t *o_ptr = O;                                    \
-    const c_tile_t *end_addr = c_channel + (_W_ob * _C_ob); \
-    /*address of the last element in c_tile*/               \
-                                                            \
-    while (c_channel < end_addr)                            \
-    {                                                       \
-        *c_channel++ = *o_ptr;                                   \
-    }
 
 //  c_tile_t c_tile[_W_ob * _C_ob];
 #define FLOAT_LOAD_END_C(O, _W_ob, _C_ob)                \
@@ -207,13 +199,14 @@ namespace small
         for (uint32_t jj = 0; jj < _C_ob; jj++)    \
         {                                         \
             c_tile_t b_val = *(b + jj);           \
-            *(c_channel) += a_val * b_val;        \
+            *(c_channel) += a_val * b_val;       \
             c_channel++;                          \
         }                                         \
         a_channel += step;                        \
-        c_pixel += _C_ob;                          \
+        c_pixel += _C_ob;                         \
     }
 
+//todo: add UNROLL as a parameter to this platform.
 #define FLOAT_CONV_END_C(step, a, b, c_cur, _W_ob, _C_ob) \
     c_tile_t *c_pixel = c_cur;                           \
     c_tile_t const *a_channel = a;                       \

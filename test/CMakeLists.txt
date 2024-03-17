@@ -34,12 +34,17 @@ endforeach( testsourcefile ${TEST_SOURCES} )
 
 # kernel benchmarks
 set(LAYER_NAMES MAX_POOL DW_CONV CONV)
+set(KERNEL_W_OPTIONS 6 5)
+
 foreach(layer_name ${LAYER_NAMES})
-    set(OLD_CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
-    set(demo_name "test_ukernel_${layer_name}.exe")
+    foreach(kernel_w ${KERNEL_W_OPTIONS})
+    set(demo_name "test_ukernel_${layer_name}_w${kernel_w}.exe")
     message("Adding executable: ${demo_name}")
     add_executable(${demo_name} kernel_benchmark_test.cpp)
     target_compile_definitions(${demo_name} PRIVATE LAYER=${layer_name})
-    set(CMAKE_CXX_FLAGS ${OLD_CMAKE_CXX_FLAGS})
+    target_compile_definitions(${demo_name} PRIVATE KERNEL_W_ob=${kernel_w})
+
+    endforeach(kernel_w ${KERNEL_W_OPTIONS})
+    
+
 endforeach(layer_name ${LAYER_NAMES})

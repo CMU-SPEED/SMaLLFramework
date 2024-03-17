@@ -19,14 +19,19 @@
 #include <Buffer.hpp>
 #include <intrinsics.h>
 
-// #ifdef FLOAT_CONV_TILE_C
-// #undef
-// #endif
-
-
-
-
 // kernel specific intrinsics are already in small.h
+
+// To test different kernels make this program with different compile time arguments
+// if none are provided, test the hardware-specific parameters from params.h
+
+#ifndef KERNEL_C_ob
+#define KERNEL_C_ob FLOAT_C_ob
+#endif
+
+#ifndef KERNEL_W_ob
+#define KERNEL_W_ob FLOAT_W_ob
+#endif
+
 // The macro below can be used to produce all the kernel benchmarks using this program
 //****************************************************************************
 //****************************************************************************
@@ -74,7 +79,7 @@ typedef small::FloatBuffer::value_type c_tile_t;
 // k_max for 8-way 32KB L1: 128 (if weights are fully resident)
 // k_max for 8-way 32KB L1: 1024 (if weights are from L2)
 // This is only correct for 1x1
-template <int W_ob, int C_ob, int G_b, int _UNROLL , int stride, small::OpType OP_TYPE, int8_t OP_CLASS>
+template <int W_ob, int C_ob, int G_b, int _UNROLL, int stride, small::OpType OP_TYPE, int8_t OP_CLASS>
 void kernel_benchmark(
     const int64_t m, const int64_t n, const int64_t k,
     const float* I, const float* W, float* O)
@@ -84,12 +89,12 @@ void kernel_benchmark(
     FLOAT_LOAD_TILE_C(O, W_ob, C_ob);
     float const *a_cur = I;
     float const *b_cur = W;
-    // #pragma GCC unroll 4
+#pragma GCC unroll 16
     for(int p = 0; p < k; p+= G_b*_UNROLL)
     {
         FLOAT_ABSTRACT_OP(OP_TYPE, OP_CLASS, step, a_cur, b_cur, W_ob, C_ob);
         b_cur+=n*G_b*_UNROLL;
-        a_cur += _UNROLL*G_b;
+        a_cur += G_b*_UNROLL;
     }
     FLOAT_STORE_TILE_C(O,W_ob, C_ob);
 
@@ -129,7 +134,7 @@ void kernel_benchmark(
 #elif LAYER == DW_CONV
 #define    OP_TYPE small::OP_CONV
 #define    OP_CLASS 1
-#define G_b FLOAT_C_ob
+#define G_b KERNEL_C_ob
 
 #elif LAYER == GROUP_CONV 
 #define    OP_TYPE small::OP_CONV
@@ -144,7 +149,7 @@ void kernel_benchmark(
 #elif LAYER == MAX_POOL
 #define OP_TYPE small::OP_MAX_POOL
 #define OP_CLASS 1
-#define G_b FLOAT_C_ob
+#define G_b KERNEL_C_ob
 
 #endif
 
@@ -152,9 +157,9 @@ void kernel_benchmark(
 // num of implementations x number of sizes
 // In gigahertz
 #define FREQ 1.5
-#define MIN_FREQ 0.6
+
 #define TRIALS 100 
-#define RUNS 100
+#define RUNS 1000
 #define NUM_IMPLEMENTATIONS 1
 #define NUM_SIZES 14
 
@@ -179,7 +184,7 @@ void check_result(const int m, const int n, const int k, const int stride, const
     {
         float const *a_cur = I + (p)*G_b;
         float const *b_cur = W + p * n;
-        int step = FLOAT_C_ob * stride;
+        int step = KERNEL_C_ob * stride;
         for (int32_t i = 0; i < m; i++)
         {
             for (int32_t j = 0; j < n; j++)
@@ -196,25 +201,24 @@ void check_result(const int m, const int n, const int k, const int stride, const
         for (int32_t j = 0; j < n; j++)
         {
             out_check[i * n + j] *= ( RUNS);
-            if (fabs(out_check[i * n + j] - O[i * n + j]) / (out_check[i * n + j]) >= 1e-2)
-            {
-                printf("ERROR[%d, %d], %f %f %f\n", i, j, out_check[i * n + j], O[i * n + j], fabs(out_check[i * n + j] - O[i * n + j]) / (out_check[i * n + j]));
-            }
             assert(fabs(out_check[i * n + j] - O[i * n + j]) / (out_check[i * n + j]) < 1e-2);
         }
     }
     free(out_check);
 }
 
+
+
+
 int main()
 {
-    const int n = FLOAT_C_ob;
-    const int m = FLOAT_W_ob;
+    const int n = KERNEL_C_ob;
+    const int m = KERNEL_W_ob;
     const int stride = 1;
 
     
 
-    printf("m: %d, n: %d unroll %d \n Minimum timing over %d trials, each trial averages over %d runs\n", m, n, FLOAT_UNROLL, TRIALS, RUNS);
+    printf("m: %d, n: %d\n Minimum timing over %d trials, each trial averages over %d runs\n", m, n, TRIALS, RUNS);
 
     printf("k, ops, time (ns), ops/cyc, total time (ms)\n");
     int k_sizes[NUM_SIZES] = {16, 32, 64, 96, 128, 256, 384, 512, 1024, 2048, 4096, 8192, 16384, 32768};
@@ -236,13 +240,13 @@ int main()
         float *cur_ptr = I;
         for (int i = 0; i < m*k; i++)
         {
-            *(cur_ptr++) = 0.5;//2.0 * ((float)rand() / RAND_MAX) - 1;
+            *(cur_ptr++) = 2.0 * ((float)rand() / RAND_MAX) - 1;
         }
         
         cur_ptr = W;
         for (int i = 0; i < k*n; i++)
         {
-            *(cur_ptr++) = 1.0;//2.0 * ((float)rand() / RAND_MAX) - 1;
+            *(cur_ptr++) = 2.0 * ((float)rand() / RAND_MAX) - 1;
         }
 
         cur_ptr = O;
@@ -252,7 +256,7 @@ int main()
         }
 
         // warm up run (though the init might have done that)
-        // kernel_benchmark<FLOAT_W_ob, FLOAT_C_ob, G_b, 1, OP_TYPE, OP_CLASS>(m, n, k, I, W, O);
+        // kernel_benchmark<KERNEL_W_ob, KERNEL_C_ob, G_b, 1, OP_TYPE, OP_CLASS>(m, n, k, I, W, O);
 
         // benchmark
         small::Timer timer;
@@ -260,14 +264,14 @@ int main()
         for (int trial = 0; trial < TRIALS; trial++)
         {
             cur_ptr = O;
-            for (size_t i = 0; i < m * n; i++)
+            for (int i = 0; i < m * n; i++)
             {
                 *(cur_ptr++) = 0.0;
             }
             timer.start();
             for (int r = 0; r < RUNS; r++)
             {
-                kernel_benchmark<FLOAT_W_ob, FLOAT_C_ob, G_b, FLOAT_UNROLL, 1, OP_TYPE, OP_CLASS>(m, n, k, I, W, O);
+                kernel_benchmark<KERNEL_W_ob, KERNEL_C_ob, G_b, FLOAT_UNROLL, 1, OP_TYPE, OP_CLASS>(m, n, k, I, W, O);
             }
             timer.stop();
             total_layer_timers[0][size] = timer.elapsed();

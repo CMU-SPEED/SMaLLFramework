@@ -1,17 +1,17 @@
-FLOAT_W_ob = 6
+FLOAT_W_ob = 5
 FLOAT_C_ob = 16
 FLOAT_SIMD = 4
 FLOAT_UNROLL = 4
 FLOAT_C_ib = FLOAT_C_ob
 B_NUM_REGS = 2
-DATA_TYPE = f"float32x{FLOAT_C_ob / FLOAT_SIMD}_t"
+DATA_TYPE = f"float32x{FLOAT_C_ob // FLOAT_SIMD}_t"
 
 
 def gen_def_tile():
     print("#define FLOAT_DEF_TILE_C(W_ob, C_ob)\\")
 
     for i in range(FLOAT_W_ob):
-        for j in range(FLOAT_C_ob / FLOAT_SIMD):
+        for j in range(FLOAT_C_ob // FLOAT_SIMD):
             print(f"{DATA_TYPE} c_{i}_{j};\\")
 
 
@@ -19,7 +19,7 @@ def gen_zero_tile():
     print("#define FLOAT_DEF_TILE_C(W_ob, C_ob)\\")
 
     for i in range(FLOAT_W_ob):
-        for j in range(FLOAT_C_ob / FLOAT_SIMD):
+        for j in range(FLOAT_C_ob // FLOAT_SIMD):
             print(f"c_{i}_{j} = vdupq_n_f32(0);\\")
 
 
@@ -27,7 +27,7 @@ def gen_load_tile(strided=False):
     print("#define FLOAT_LOAD_TILE_C(O, W_ob, C_ob)\\")
 
     for i in range(FLOAT_W_ob):
-        for j in range(FLOAT_C_ob / FLOAT_SIMD):
+        for j in range(FLOAT_C_ob // FLOAT_SIMD):
             if strided:
                 print(f"c_{i}_{j} = vld1q_f32(O + {i} * step + {j} * FLOAT_SIMD);\\")
             else:
@@ -38,7 +38,7 @@ def gen_store_tile():
     print("#define FLOAT_STORE_TILE_C(O, W_ob, C_ob)\\")
 
     for i in range(FLOAT_W_ob):
-        for j in range(FLOAT_C_ob / FLOAT_SIMD):
+        for j in range(FLOAT_C_ob // FLOAT_SIMD):
             print("vst1q_f32(O + {i} * C_ob + {j} * FLOAT_SIMD, c_{i}_{j});\\")
 
 
@@ -53,7 +53,7 @@ def gen_conv_tile_refresh_row_major_b_reg():
 
     # declaring registers for matrix B
     # (only using one register for matrix B)
-    for i in range(1):
+    for i in range(B_NUM_REGS):
         print(f"{DATA_TYPE} b_{i};\\")
 
     for u in range(0, FLOAT_UNROLL, FLOAT_SIMD):

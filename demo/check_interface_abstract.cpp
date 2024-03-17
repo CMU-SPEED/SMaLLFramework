@@ -21,6 +21,14 @@
 
 #include <small/op_type.hpp>
 
+// reference only supports UNROLL==1, undef and redef FLOAT_UNROLLL
+#ifdef FLOAT_UNROLL
+#undef FLOAT_UNROLL
+#endif
+
+#define FLOAT_UNROLL 1
+// todo: add support for UNROLL in the macros
+
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
 #include <small/platforms/reference/intrinsics_float.h>
 #include <small/abstract_layer.hpp> /// @todo abstract_layer_float.hpp
