@@ -90,7 +90,7 @@ void print_stats(std::vector<T> v, const char *benchmark)
 
 #define print_cycles(time)                  \
     {                                       \
-        printf("%.2lf\t", 1.0 * (time));    \
+        printf("%.2lf ", 1.0 * (time));    \
     }
 
 //****************************************************************************

@@ -44,9 +44,11 @@
 #define H_TILE 0
 #define POOLING 1
 
+#define PERFORMANCE 1
 // from config.h, consider making command line options
 
 #define RUNS 1000
+#define TRIALS 100
 #ifndef PARALLEL
 #define PARALLEL 1
 #endif
@@ -62,6 +64,7 @@
 
 
 #define LAYER CONV
+
 
 
 #define KERNEL_W_ob 5
@@ -81,7 +84,9 @@ int main(int argc, char **argv)
     using Buffer = small::FloatBuffer;
 #endif
 
+    #if PERFORMANCE == 0
     printf("layer %d \n", LAYER);
+    #endif
     int C_i = atoi(argv[1]);
 
     int input_height = atol(argv[2]);
@@ -104,8 +109,9 @@ int main(int argc, char **argv)
     uint32_t C_o = atol(argv[7]);
 
 
+    #if PERFORMANCE == 0
     print_build_info_check<Buffer>();
-
+    #endif
     //unsigned long long t0, t1;
 
     // Direct Convolution Setup
@@ -136,9 +142,9 @@ int main(int argc, char **argv)
     Buffer filter_dc(filter_dimensions);
     init_ones(filter_dc, filter_dimensions);
 
-
+    #if PERFORMANCE == 0
     printf("Computing with reference and platform kernels.\n");
-
+    #endif
 
     check_Conv2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
                  t_pad, b_pad, l_pad, r_pad,
@@ -155,10 +161,13 @@ int main(int argc, char **argv)
     #pragma omp barrier
 
 
+    #if PERFORMANCE == 0
     printf("Checking correctness.\n");
+    #endif
     assert(equals(out_dimensions, out_check_dc, out_dc, 1e-4));
+#if PERFORMANCE == 0
     printf("end of correctness check\n");
-
+    #endif
     //Check correctness against your kernel
     small::config_Conv2D<KERNEL_W_ob>(kernel_size, kernel_size, stride,
                                       t_pad, b_pad, l_pad, r_pad,
@@ -166,7 +175,9 @@ int main(int argc, char **argv)
                                       input_height, input_width,
                                       input_dc, filter_dc, out_dc);
 
+    #if PERFORMANCE == 0
     printf("Computing with reference and platform kernels %d times.\n", RUNS);
+    #endif 
 
     small::Timer t;
     double ref_time = std::numeric_limits<double>::max();
@@ -174,82 +185,72 @@ int main(int argc, char **argv)
     for (int run = 0; run < RUNS; run++)
     {
         t.start();
-        check_Conv2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
-                     t_pad, b_pad, l_pad, r_pad,
-                     C_o, C_i,
-                     input_height, input_width,
-                     input_dc, filter_dc, out_check_dc);
-
-
-        t.stop();
-        ref_time = std::min<double>(ref_time, t.elapsed());
+        for (int t = 0; t < TRIALS; t++)
+        {
+            check_Conv2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
+                                             t_pad, b_pad, l_pad, r_pad,
+                                             C_o, C_i,
+                                             input_height, input_width,
+                                             input_dc, filter_dc, out_check_dc);
+        }
+            t.stop();
+            ref_time = std::min<double>(ref_time, (1.0*t.elapsed())/TRIALS);
     }
 
     print_cycles(ref_time);
+    printf(",");
 
     double platform_time = std::numeric_limits<double>::max();
     for (int run = 0; run < RUNS; run++)
     {
         t.start();
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
+        // clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
+        for (int t = 0; t < TRIALS; t++)
+        {
         small::Conv2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
                       t_pad, b_pad, l_pad, r_pad,
                       C_o, C_i,
                       input_height, input_width,
                       input_dc, filter_dc, out_dc);
+        }
         t.stop();
-        platform_time = std::min<double>(platform_time, t.elapsed());
+        platform_time = std::min<double>(platform_time, (t.elapsed()*1.0)/TRIALS);
     }
     print_cycles(platform_time);
+    printf(",");
 
     double config_time = std::numeric_limits<double>::max();
     for (int run = 0; run < RUNS; run++)
     {
         t.start();
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
-        small::config_Conv2D<KERNEL_W_ob>(kernel_size, kernel_size, stride,
-                                          t_pad, b_pad, l_pad, r_pad,
-                                          C_o, C_i,
-                                          input_height, input_width,
-                                          input_dc, filter_dc, out_dc);
-        t.stop();
-        config_time = std::min<double>(config_time, t.elapsed());
-    }
+        // clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
+        for (int t = 0; t < TRIALS; t++)
+        {
+            small::config_Conv2D<KERNEL_W_ob>(kernel_size, kernel_size, stride,
+                                              t_pad, b_pad, l_pad, r_pad,
+                                              C_o, C_i,
+                                              input_height, input_width,
+                                              input_dc, filter_dc, out_dc);
+        }
+            t.stop();
+            config_time = std::min<double>(config_time, (1.0*t.elapsed())/TRIALS);
+        }
 
     print_cycles(config_time);
-    printf("\n");
+    printf(",");
 
 
-    printf("reference time / platform time = %.4f \n", (ref_time/platform_time));
-    fflush(0);
+    // printf("reference time / platform time = %.4f", (ref_time/platform_time));
+    // fflush(0);
 
     auto output_els = out_dimensions;
     double compute_ops = 0.0;
     double throughput = 0.0;
 
-#if LAYER == RELU
-    compute_ops = output_els*(1.0);
-    throughput = NUM_MAX * SIMD;
-#elif LAYER == POOL
-    compute_ops = output_els * (kernel_size*kernel_size);
-    throughput = NUM_MAX * SIMD;
-#elif LAYER == DW_CONV
-    compute_ops = output_els * (kernel_size * kernel_size*2.0);
-    throughput = (NUM_FMA * 2.0 * SIMD);
-#elif LAYER == CONV
     compute_ops = output_els * (kernel_size * kernel_size * C_i * 2.0);
     throughput = (FLOAT_NUM_FMA * 2.0 * FLOAT_SIMD);
-#elif LAYER == PARTIAL_CONV
-    /// @todo CONFIRM THESE NUMBERS
-    compute_ops = output_els * (kernel_size * kernel_size * C_i * 2.0);
-    throughput = (NUM_FMA * 2.0 * SIMD);
-#elif LAYER == FC
-    compute_ops = output_els * (C_i * 2.0);
-    throughput = (NUM_FMA * 2.0 * SIMD);
-#endif
-
     //dtype peak_cycles = compute_ops/throughput;
     //dtype scaled_peak_cycles = peak_cycles;
     const int num_th = atoi(std::getenv("OMP_NUM_THREADS"));
-    printf(" %.0f %.2f \n", throughput*num_th, (compute_ops / platform_time));
+    printf(" %.0f, %.2f,  %.2f, %d,  %d \n", throughput * num_th, (compute_ops / platform_time), (compute_ops / config_time), RUNS, TRIALS);
 }
