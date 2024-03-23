@@ -209,7 +209,7 @@ void test_performance_CONV_TILE(void)
     //FLOAT_LOAD_TILE_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
 
     //size_t a_offset = 0;
-    uint32_t const _UNROLL = FLOAT_UNROLL;
+    uint32_t constexpr _UNROLL = FLOAT_UNROLL;
     my_timer.start();
     for (size_t iy = 0; iy < 1; ++iy)
     {
