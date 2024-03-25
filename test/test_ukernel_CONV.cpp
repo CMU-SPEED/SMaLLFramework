@@ -90,7 +90,6 @@ void test_correctness_CONV_TILE(void)
 
     ScalarT const filter_val = 0.5f;
     ScalarT const input_val  = 1.0f;
-    ScalarT const output_val = 0.0f;
 
     dim_t const num_input_channels = 32;
     dim_t const num_output_channels = 32;
@@ -117,6 +116,7 @@ void test_correctness_CONV_TILE(void)
     ScalarT *b_cur = filter_buf.data();
     constexpr dim_t _stride = 1U;
     constexpr dim_t step = _stride * FLOAT_C_ib;
+    constexpr uint32_t _UNROLL = FLOAT_UNROLL;  /// @todo move to template
 
     //==================================================
     FLOAT_DEF_TILE_C(FLOAT_W_ob, FLOAT_C_ob);
@@ -158,7 +158,6 @@ void test_performance_CONV_TILE(void)
 
     ScalarT const filter_val = 0.5f;
     ScalarT const input_val  = 1.0f;
-    ScalarT const output_val = 0.0f;
 
     //dim_t const num_input_channels = 64;
     //dim_t const num_output_channels = 32;
