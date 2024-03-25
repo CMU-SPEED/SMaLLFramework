@@ -708,6 +708,7 @@ if constexpr (op_type == OP_RELU)                     \
     FLOAT_STORE_END_C(O_ptr, r_pad_el, _C_ob);
 }
 
+
 //****************************************************************************
 template <typename ScalarT,
           typename AccumT,

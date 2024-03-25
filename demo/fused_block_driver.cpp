@@ -18,14 +18,27 @@
 
 #include "utils.h"
 
+#ifndef PERFORMANCE
 #define PERFORMANCE 1
-#define TIME_LAYER 1
-#define COMPUTE_BIAS true
-#define COMPUTE_RELU true
-
-#ifndef RUNS
-#define RUNS 1000
 #endif
+#define TIME_LAYER 1
+
+//if the compiler provides a def, ignore
+#ifndef COMPUTE_BIAS
+#define COMPUTE_BIAS false
+#endif
+
+#ifndef COMPUTE_RELU
+#define COMPUTE_RELU false
+#endif
+#ifndef RUNS
+#define RUNS 100
+#endif
+
+#ifndef TRIALS
+#define TRIALS 100
+#endif
+
 #ifndef PARALLEL
 #define PARALLEL 1
 #endif
@@ -927,10 +940,10 @@ int main(int argc, char **argv)
     // Unfused
     unsigned long long sum_small_conv = ULLONG_MAX;
     std::vector<unsigned long long> small_conv_timing;
-    for (int r = 0; r < RUNS / 10; r++)
+    for (int r = 0; r < RUNS; r++)
     {
         t0 = rdtsc();
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < TRIALS; i++)
         {
             small::Conv2D(conv_kernel_size, conv_kernel_size, conv_stride,
                           t_pad_conv,
@@ -945,7 +958,7 @@ int main(int argc, char **argv)
                           out_intermediate_unfused_dc);
         }
         t1 = rdtsc();
-        diff = (t1 - t0) / 10;
+        diff = (t1 - t0) / TRIALS;
         MIN(sum_small_conv, (diff));
         small_conv_timing.push_back((diff));
     }
@@ -954,11 +967,11 @@ int main(int argc, char **argv)
     // Unfused
     unsigned long long sum_small = ULLONG_MAX, sum_small_conv_relu = ULLONG_MAX, sum_small_pool = ULLONG_MAX, sum_small_pool_relu = ULLONG_MAX;
     std::vector<unsigned long long> small_timing;
-    for (int r = 0; r < RUNS/10; r++)
+    for (int r = 0; r < RUNS; r++)
     {
         int impl = 0;
         t0 = rdtsc();
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < TRIALS; i++)
         {
             small_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
                                             conv_kernel_size,
@@ -985,14 +998,14 @@ int main(int argc, char **argv)
         }
 
         t1 = rdtsc();
-        diff = (t1-t0)/10;
+        diff = (t1-t0)/TRIALS;
         MIN(sum_small, (diff));
         small_timing.push_back((diff));
 
 
 #if TIME_LAYER
 
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < TRIALS; i++)
         {
             small_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
                                             conv_kernel_size,
@@ -1037,7 +1050,7 @@ int main(int argc, char **argv)
 // #if TIME_LAYER
         for (int timer = 0; timer < 6; timer++)
         {
-            avg_layer_timers[impl][timer] /= 10;
+            avg_layer_timers[impl][timer] /= TRIALS;
             if (0 < r)
             {
                 min_layer_timers[impl][timer] = std::min<double>(min_layer_timers[impl][timer], avg_layer_timers[impl][timer]);
@@ -1064,7 +1077,7 @@ int main(int argc, char **argv)
     {
         small::Timer my_timer;
         t0 = rdtsc();
-        for(int trial = 0; trial < 10; trial++)
+        for(int trial = 0; trial < TRIALS; trial++)
         {
         small_fused_ewise_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
                                                     conv_kernel_size,
@@ -1090,12 +1103,12 @@ int main(int argc, char **argv)
                                                     output_dc);
         }
         t1 = rdtsc();
-        MIN(sum_small_fused_ewise, (t1 - t0)/10);
-        small_timing_fused_ewise.push_back((t1 - t0)/10);
+        MIN(sum_small_fused_ewise, (t1 - t0)/TRIALS);
+        small_timing_fused_ewise.push_back((t1 - t0)/TRIALS);
 
         #if TIME_LAYER
         auto impl = 1;
-        for (int trial = 0; trial < 10; trial++)
+        for (int trial = 0; trial < TRIALS; trial++)
         {
             small_fused_ewise_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
                                                         conv_kernel_size,
@@ -1134,7 +1147,7 @@ int main(int argc, char **argv)
         }
         for (int timer = 0; timer < 6; timer++)
         {
-            avg_layer_timers[impl][timer] /= 10;
+            avg_layer_timers[impl][timer] /= TRIALS;
             if (0 < r)
             {
                 min_layer_timers[impl][timer] = std::min<double>(min_layer_timers[impl][timer], avg_layer_timers[impl][timer]);
@@ -1161,7 +1174,7 @@ int main(int argc, char **argv)
     for (int r = 0; r < RUNS; r++)
     {
         t0 = rdtsc();
-        for (int trial = 0; trial < 10; trial++)
+        for (int trial = 0; trial < TRIALS; trial++)
         {
             fused_small_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
                                                   conv_kernel_size,
@@ -1187,12 +1200,12 @@ int main(int argc, char **argv)
                                                   output_dc);
         }
         t1 = rdtsc();
-        MIN(sum_small_fused, (t1 - t0)/10);
-        small_timing_fused.push_back((t1 - t0)/10);
+        MIN(sum_small_fused, (t1 - t0)/TRIALS);
+        small_timing_fused.push_back((t1 - t0)/TRIALS);
 
         #if TIME_LAYER 
         auto impl = 2;
-        for (int trial = 0; trial < 10; trial++)
+        for (int trial = 0; trial < TRIALS; trial++)
         {
         
             fused_small_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
@@ -1233,7 +1246,7 @@ int main(int argc, char **argv)
 
         for (int timer = 0; timer < 6; timer++)
         {
-            avg_layer_timers[impl][timer] /= 10;
+            avg_layer_timers[impl][timer] /= TRIALS;
             if (0 < r)
             {
                 min_layer_timers[impl][timer] = std::min<double>(min_layer_timers[impl][timer], avg_layer_timers[impl][timer]);
@@ -1280,9 +1293,9 @@ int main(int argc, char **argv)
     printf("\n");
 
     #if PARALLEL_DIST == ELEMENTAL
-    printf("ELEMENTAL\n");
+    printf("%d %d ELEMENTAL\n", RUNS, TRIALS);
     #else
-    printf("BLOCK\n");
+    printf("%d %d BLOCK\n", RUNS, TRIALS);
     #endif
 #endif
 

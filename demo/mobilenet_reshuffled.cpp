@@ -979,7 +979,7 @@ void inference()
 
     BufferT inter_0_dc(max_numel_inter_1);
     BufferT inter_1_dc(max_numel_inter_1);
-    BufferT inter_0_buffer_dc(max_numel_inter_0);
+    BufferT inter_0_buffer_dc(147456*4);
 
 
     //======================================================
