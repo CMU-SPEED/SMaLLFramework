@@ -175,6 +175,8 @@ int main(int argc, char **argv)
                                       input_height, input_width,
                                       input_dc, filter_dc, out_dc);
 
+    assert(equals(out_dimensions, out_check_dc, out_dc, 1e-4));
+
     #if PERFORMANCE == 0
     printf("Computing with reference and platform kernels %d times.\n", RUNS);
     #endif 
