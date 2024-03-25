@@ -18,15 +18,29 @@
 
 #include "utils.h"
 
+#ifndef PERFORMANCE
 #define PERFORMANCE 1
-#define TIME_LAYER 1
-#define COMPUTE_BIAS true
-
-#ifndef RUNS
-#define RUNS 1000
 #endif
+#define TIME_LAYER 1
+
+//if the compiler provides a def, ignore
+#ifndef COMPUTE_BIAS
+#define COMPUTE_BIAS false
+#endif
+
+#ifndef COMPUTE_RELU
+#define COMPUTE_RELU false
+#endif
+#ifndef RUNS
+#define RUNS 100
+#endif
+
+#ifndef TRIALS
+#define TRIALS 100
+#endif
+
 #ifndef PARALLEL
-#define PARALLEL 0
+#define PARALLEL 1
 #endif
 
 #define PREFETCH 1
@@ -205,7 +219,10 @@ inline void small_layer_block(
         layer_timers[0][0] = my_timer.elapsed();
     }
     my_timer.start();
+    if constexpr (COMPUTE_RELU)
+    {
     small::ReLUActivation(output_channels_conv, o_h, o_w, O_intermediate, O_intermediate);
+    }
     my_timer.stop();
     layer_timers[0][1] = my_timer.elapsed();
 #if LAYER == MAX_POOL
@@ -239,7 +256,10 @@ inline void small_layer_block(
         layer_timers[0][2] = my_timer.elapsed();
     }
     my_timer.start();
+    if constexpr (COMPUTE_RELU)
+    {   
     small::ReLUActivation(output_channels_conv, o_h_1, o_w_1, O, O);
+    }
     my_timer.stop();
     layer_timers[0][3] = my_timer.elapsed();
 
@@ -302,13 +322,33 @@ inline void small_fused_ewise_layer_block(
     else
     {
         my_timer.start();
-        small::Conv2D_ReLU(kernel_size_conv, kernel_size_conv, stride_conv,
-                           t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
-                           output_channels_conv, input_channels,
-                           in_dims[0], in_dims[1],
-                           I,
-                           F_conv,
-                           O_intermediate);
+        if constexpr (COMPUTE_RELU)
+        {
+            small::Conv2D_ReLU(kernel_size_conv, kernel_size_conv, stride_conv,
+                               t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
+                               output_channels_conv, input_channels,
+                               in_dims[0], in_dims[1],
+                               I,
+                               F_conv,
+                               O_intermediate);
+        }
+        else
+        {
+            small::Conv2D(kernel_size_conv, kernel_size_conv, stride_conv,
+                          t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
+                          output_channels_conv, input_channels,
+                          in_dims[0], in_dims[1],
+                          I,
+                          F_conv,
+                          O_intermediate);
+        }
+        // small::Conv2D_ReLU(kernel_size_conv, kernel_size_conv, stride_conv,
+        //                    t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
+        //                    output_channels_conv, input_channels,
+        //                    in_dims[0], in_dims[1],
+        //                    I,
+        //                    F_conv,
+        //                    O_intermediate);
         my_timer.stop();
         layer_timers[1][0] = my_timer.elapsed();
 
@@ -349,26 +389,66 @@ inline void small_fused_ewise_layer_block(
     {
         my_timer.start();
 
-        small::Conv2D_ReLU(kernel_size_conv, kernel_size_conv, stride_conv,
-                           t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
-                           output_channels_conv, input_channels,
-                           in_dims[0], in_dims[1],
-                           I,
-                           F_conv,
-                           O_intermediate);
+        if constexpr (COMPUTE_RELU)
+        {
+            small::Conv2D_ReLU(kernel_size_conv, kernel_size_conv, stride_conv,
+                               t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
+                               output_channels_conv, input_channels,
+                               in_dims[0], in_dims[1],
+                               I,
+                               F_conv,
+                               O_intermediate);
+        }
+        else
+        {
+            small::Conv2D(kernel_size_conv, kernel_size_conv, stride_conv,
+                          t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
+                          output_channels_conv, input_channels,
+                          in_dims[0], in_dims[1],
+                          I,
+                          F_conv,
+                          O_intermediate);
+        }
+        // small::Conv2D_ReLU(kernel_size_conv, kernel_size_conv, stride_conv,
+        //                    t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
+        //                    output_channels_conv, input_channels,
+        //                    in_dims[0], in_dims[1],
+        //                    I,
+        //                    F_conv,
+                        //    O_intermediate);
 
 
         my_timer.stop();
         layer_timers[1][0] = my_timer.elapsed();
 
         my_timer.start();
-        small::DepthwiseConv2D_ReLU(kernel_size_1, kernel_size_1, stride_1,
+        if constexpr(COMPUTE_RELU)
+        {
+            small::DepthwiseConv2D_ReLU(kernel_size_1, kernel_size_1, stride_1,
+                                        t_pad_1, b_pad_1, l_pad_1, r_pad_1,
+                                        output_channels_conv,
+                                        o_h, o_w,
+                                        O_intermediate,
+                                        F_layer,
+                                        O);
+        }
+        else
+        {
+            small::DepthwiseConv2D(kernel_size_1, kernel_size_1, stride_1,
                                     t_pad_1, b_pad_1, l_pad_1, r_pad_1,
                                     output_channels_conv,
                                     o_h, o_w,
                                     O_intermediate,
                                     F_layer,
                                     O);
+        }
+        // small::DepthwiseConv2D_ReLU(kernel_size_1, kernel_size_1, stride_1,
+        //                             t_pad_1, b_pad_1, l_pad_1, r_pad_1,
+        //                             output_channels_conv,
+        //                             o_h, o_w,
+        //                             O_intermediate,
+        //                             F_layer,
+        //                             O);
         my_timer.stop();
         layer_timers[1][2] = my_timer.elapsed();
     }
@@ -421,16 +501,42 @@ inline void fused_small_layer_block(
     }
     else
     {
-        small::Conv2D_ReLU_Maxpool2D(kernel_size_conv, kernel_size_conv, stride_conv,
-                                     t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
-                                     kernel_size_1, kernel_size_1, stride_1,
-                                     t_pad_1, b_pad_1, l_pad_1, r_pad_1,
-                                     output_channels_conv, input_channels,
-                                     in_dims[0], in_dims[1],
-                                     I,
-                                     F_conv,
-                                     O_intermediate,
-                                     O);
+        if constexpr(COMPUTE_RELU)
+        {
+            small::Conv2D_ReLU_Maxpool2D(kernel_size_conv, kernel_size_conv, stride_conv,
+                                          t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
+                                          kernel_size_1, kernel_size_1, stride_1,
+                                          t_pad_1, b_pad_1, l_pad_1, r_pad_1,
+                                          output_channels_conv, input_channels,
+                                          in_dims[0], in_dims[1],
+                                          I,
+                                          F_conv,
+                                          O_intermediate,
+                                          O);
+        }
+        else
+        {
+            small::Conv2D_Maxpool2D(kernel_size_conv, kernel_size_conv, stride_conv,
+                                    t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
+                                    kernel_size_1, kernel_size_1, stride_1,
+                                    t_pad_1, b_pad_1, l_pad_1, r_pad_1,
+                                    output_channels_conv, input_channels,
+                                    in_dims[0], in_dims[1],
+                                    I,
+                                    F_conv,
+                                    O_intermediate,
+                                    O);
+        }
+        // small::Conv2D_ReLU_Maxpool2D(kernel_size_conv, kernel_size_conv, stride_conv,
+        //                              t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
+        //                              kernel_size_1, kernel_size_1, stride_1,
+        //                              t_pad_1, b_pad_1, l_pad_1, r_pad_1,
+        //                              output_channels_conv, input_channels,
+        //                              in_dims[0], in_dims[1],
+        //                              I,
+        //                              F_conv,
+        //                              O_intermediate,
+        //                              O);
     }
 #elif LAYER == DW_CONV
     if constexpr (bias)
@@ -446,14 +552,36 @@ inline void fused_small_layer_block(
     }
     else
     {
-        small::Conv2D_ReLU_DepthwiseConv2D_ReLU(kernel_size_conv, kernel_size_conv, stride_conv,
-                                                t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
-                                                kernel_size_1, kernel_size_1, stride_1,
-                                                t_pad_1, b_pad_1, l_pad_1, r_pad_1,
-                                                output_channels_conv, input_channels,
-                                                in_dims[0], in_dims[1],
-                                                I, F_conv, O_intermediate,
-                                                F_layer, O);
+        if constexpr(COMPUTE_RELU)
+        {
+            small::Conv2D_ReLU_DepthwiseConv2D_ReLU(kernel_size_conv, kernel_size_conv, stride_conv,
+                                                    t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
+                                                    kernel_size_1, kernel_size_1, stride_1,
+                                                    t_pad_1, b_pad_1, l_pad_1, r_pad_1,
+                                                    output_channels_conv, input_channels,
+                                                    in_dims[0], in_dims[1],
+                                                    I, F_conv, O_intermediate,
+                                                    F_layer, O);
+        }
+        else
+        {
+            small::Conv2D_DepthwiseConv2D(kernel_size_conv, kernel_size_conv, stride_conv,
+                                          t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
+                                          kernel_size_1, kernel_size_1, stride_1,
+                                          t_pad_1, b_pad_1, l_pad_1, r_pad_1,
+                                          output_channels_conv, input_channels,
+                                          in_dims[0], in_dims[1],
+                                          I, F_conv, O_intermediate,
+                                          F_layer, O);
+        }
+        // small::Conv2D_ReLU_DepthwiseConv2D_ReLU(kernel_size_conv, kernel_size_conv, stride_conv,
+        //                                         t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
+        //                                         kernel_size_1, kernel_size_1, stride_1,
+        //                                         t_pad_1, b_pad_1, l_pad_1, r_pad_1,
+        //                                         output_channels_conv, input_channels,
+        //                                         in_dims[0], in_dims[1],
+        //                                         I, F_conv, O_intermediate,
+        //                                         F_layer, O);
     }
 #endif
 my_timer.stop();
@@ -812,10 +940,10 @@ int main(int argc, char **argv)
     // Unfused
     unsigned long long sum_small_conv = ULLONG_MAX;
     std::vector<unsigned long long> small_conv_timing;
-    for (int r = 0; r < RUNS / 10; r++)
+    for (int r = 0; r < RUNS; r++)
     {
         t0 = rdtsc();
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < TRIALS; i++)
         {
             small::Conv2D(conv_kernel_size, conv_kernel_size, conv_stride,
                           t_pad_conv,
@@ -830,7 +958,7 @@ int main(int argc, char **argv)
                           out_intermediate_unfused_dc);
         }
         t1 = rdtsc();
-        diff = (t1 - t0) / 10;
+        diff = (t1 - t0) / TRIALS;
         MIN(sum_small_conv, (diff));
         small_conv_timing.push_back((diff));
     }
@@ -839,11 +967,11 @@ int main(int argc, char **argv)
     // Unfused
     unsigned long long sum_small = ULLONG_MAX, sum_small_conv_relu = ULLONG_MAX, sum_small_pool = ULLONG_MAX, sum_small_pool_relu = ULLONG_MAX;
     std::vector<unsigned long long> small_timing;
-    for (int r = 0; r < RUNS/10; r++)
+    for (int r = 0; r < RUNS; r++)
     {
         int impl = 0;
         t0 = rdtsc();
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < TRIALS; i++)
         {
             small_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
                                             conv_kernel_size,
@@ -870,14 +998,14 @@ int main(int argc, char **argv)
         }
 
         t1 = rdtsc();
-        diff = (t1-t0)/10;
+        diff = (t1-t0)/TRIALS;
         MIN(sum_small, (diff));
         small_timing.push_back((diff));
 
 
 #if TIME_LAYER
 
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < TRIALS; i++)
         {
             small_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
                                             conv_kernel_size,
@@ -922,7 +1050,7 @@ int main(int argc, char **argv)
 // #if TIME_LAYER
         for (int timer = 0; timer < 6; timer++)
         {
-            avg_layer_timers[impl][timer] /= 10;
+            avg_layer_timers[impl][timer] /= TRIALS;
             if (0 < r)
             {
                 min_layer_timers[impl][timer] = std::min<double>(min_layer_timers[impl][timer], avg_layer_timers[impl][timer]);
@@ -949,7 +1077,7 @@ int main(int argc, char **argv)
     {
         small::Timer my_timer;
         t0 = rdtsc();
-        for(int trial = 0; trial < 10; trial++)
+        for(int trial = 0; trial < TRIALS; trial++)
         {
         small_fused_ewise_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
                                                     conv_kernel_size,
@@ -975,12 +1103,12 @@ int main(int argc, char **argv)
                                                     output_dc);
         }
         t1 = rdtsc();
-        MIN(sum_small_fused_ewise, (t1 - t0)/10);
-        small_timing_fused_ewise.push_back((t1 - t0)/10);
+        MIN(sum_small_fused_ewise, (t1 - t0)/TRIALS);
+        small_timing_fused_ewise.push_back((t1 - t0)/TRIALS);
 
         #if TIME_LAYER
         auto impl = 1;
-        for (int trial = 0; trial < 10; trial++)
+        for (int trial = 0; trial < TRIALS; trial++)
         {
             small_fused_ewise_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
                                                         conv_kernel_size,
@@ -1019,7 +1147,7 @@ int main(int argc, char **argv)
         }
         for (int timer = 0; timer < 6; timer++)
         {
-            avg_layer_timers[impl][timer] /= 10;
+            avg_layer_timers[impl][timer] /= TRIALS;
             if (0 < r)
             {
                 min_layer_timers[impl][timer] = std::min<double>(min_layer_timers[impl][timer], avg_layer_timers[impl][timer]);
@@ -1046,7 +1174,7 @@ int main(int argc, char **argv)
     for (int r = 0; r < RUNS; r++)
     {
         t0 = rdtsc();
-        for (int trial = 0; trial < 10; trial++)
+        for (int trial = 0; trial < TRIALS; trial++)
         {
             fused_small_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
                                                   conv_kernel_size,
@@ -1072,12 +1200,12 @@ int main(int argc, char **argv)
                                                   output_dc);
         }
         t1 = rdtsc();
-        MIN(sum_small_fused, (t1 - t0)/10);
-        small_timing_fused.push_back((t1 - t0)/10);
+        MIN(sum_small_fused, (t1 - t0)/TRIALS);
+        small_timing_fused.push_back((t1 - t0)/TRIALS);
 
         #if TIME_LAYER 
         auto impl = 2;
-        for (int trial = 0; trial < 10; trial++)
+        for (int trial = 0; trial < TRIALS; trial++)
         {
         
             fused_small_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
@@ -1118,7 +1246,7 @@ int main(int argc, char **argv)
 
         for (int timer = 0; timer < 6; timer++)
         {
-            avg_layer_timers[impl][timer] /= 10;
+            avg_layer_timers[impl][timer] /= TRIALS;
             if (0 < r)
             {
                 min_layer_timers[impl][timer] = std::min<double>(min_layer_timers[impl][timer], avg_layer_timers[impl][timer]);
@@ -1161,13 +1289,13 @@ int main(int argc, char **argv)
     // print_cycles(sum_small_fused_ewise_dw);
     print_cycles(sum_small_fused);
     printf(" %.4f, ", (sum_small * 1.0) / (sum_small_fused_ewise * 1.0));
-    printf("%.4f , %d", COMPUTE_BIAS, (sum_small * 1.0) / (sum_small_fused * 1.0));
+    printf("%.4f , %d", (sum_small * 1.0) / (sum_small_fused * 1.0), COMPUTE_BIAS);
     printf("\n");
 
     #if PARALLEL_DIST == ELEMENTAL
-    printf("ELEMENTAL\n");
+    printf("%d %d ELEMENTAL\n", RUNS, TRIALS);
     #else
-    printf("BLOCK\n");
+    printf("%d %d BLOCK\n", RUNS, TRIALS);
     #endif
 #endif
 

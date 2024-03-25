@@ -600,6 +600,7 @@ if constexpr (op_type == OP_RELU)                     \
         }
         else
         {
+            //Global Reduction
             if constexpr(op_type == OP_ADD && op_class == 3)
             {
                 FLOAT_ZERO_END_C(O_w_left, _C_ob);
@@ -706,6 +707,7 @@ if constexpr (op_type == OP_RELU)                     \
 
     FLOAT_STORE_END_C(O_ptr, r_pad_el, _C_ob);
 }
+
 
 //****************************************************************************
 template <typename ScalarT,
@@ -2501,6 +2503,7 @@ void fused_abstract_layer(
             {
                 I_group = I_buf + g * (F_c * I_h * I_w * _G_b);
             }
+            //Different output buffers for different threads
             ScalarT *O_group = O_inter_buf + (group_tid) * (K * O_hxO_w * _G_b);
             // ScalarT *O_group = O_inter_buf + (g) * (K * O_hxO_w * _G_b);
 
