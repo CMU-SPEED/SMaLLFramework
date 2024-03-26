@@ -11,7 +11,6 @@
 //****************************************************************************
 
 #pragma once
-
 #include <stdexcept>
 #include <stdlib.h> // for posix_memalign
 

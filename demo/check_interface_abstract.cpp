@@ -10,7 +10,6 @@
 // DM23-0126
 //****************************************************************************
 
-#pragma once
 
 #include <math.h>
 #include <stdint.h>
@@ -18,6 +17,11 @@
 #include <type_traits>
 
 #include <params.h>
+#ifdef FLOAT_W_ob 
+#undef FLOAT_W_ob
+#endif
+#define FLOAT_W_ob 1
+
 
 #include <small/op_type.hpp>
 
@@ -31,6 +35,7 @@
 
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
 #include <small/platforms/reference/intrinsics_float.h>
+// #include <small/platforms/reference/FloatBuffer.hpp>
 #include <small/abstract_layer.hpp> /// @todo abstract_layer_float.hpp
 #endif
 
@@ -66,6 +71,8 @@ void check_Conv2D(int kernel_height, int kernel_width, int stride,
                   BufferT const &filter_buf,
                   BufferT       &output_buf)
 {    //Specific case for the first layer
+
+
     if (input_channels == 3)
     {
         if (stride == 1)
