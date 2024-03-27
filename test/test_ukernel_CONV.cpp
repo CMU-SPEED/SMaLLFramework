@@ -97,6 +97,7 @@ void test_correctness_CONV_TILE(void)
     dim_t const img_width = 16;
     dim_t const filter_height = 3;
     dim_t const filter_width = 3;
+
     size_t const FILTER_SIZE =
         num_input_channels*num_output_channels*filter_height*filter_width;
     BufferT filter_buf(FILTER_SIZE);
@@ -123,7 +124,7 @@ void test_correctness_CONV_TILE(void)
 
     // WHICH SHOULD I DO...DOES IT MATTER?
     FLOAT_ZERO_TILE_C(FLOAT_W_ob, FLOAT_C_ob); // ???
-    FLOAT_LOAD_TILE_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
+    // FLOAT_LOAD_TILE_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
 
     size_t const num_trials = 1UL;
     FLOAT_CONV_TILE_C(step, a_cur, b_cur, FLOAT_W_ob, FLOAT_C_ob);
@@ -139,7 +140,7 @@ void test_correctness_CONV_TILE(void)
         {
             size_t ix = ii*FLOAT_C_ob + jj;
             // std::cout << "CONV_TILE ix=" << ix << " = " << output_buf[ix] << std::endl;
-            TEST_CHECK(output_buf[ix] == input_val*filter_val*num_trials);
+            TEST_CHECK(output_buf[ix] == input_val*filter_val*_UNROLL*num_trials);
         }
     }
 #endif
@@ -166,24 +167,30 @@ void test_performance_CONV_TILE(void)
     //dim_t const filter_height = 3;
     //dim_t const filter_width = 3;
 
+
+    uint32_t constexpr _UNROLL = FLOAT_UNROLL;
     constexpr dim_t _stride = 1U;
     constexpr dim_t step = _stride * FLOAT_C_ib;
-    constexpr dim_t input_step = FLOAT_W_ob * FLOAT_C_ob;
-    size_t const num_trials = 128; //INPUT_SIZE/input_step;
+    constexpr dim_t input_step = _UNROLL;
+    constexpr dim_t input_width = FLOAT_W_ob;
+    size_t const num_trials = 128; //INPUT_SIZE/input_step; (number of times the kernels is called)
 
-    size_t const INPUT_SIZE = num_trials*input_step;
+    //Assume input is row major (num_trials*input_step) first, then input_width
+    size_t const INPUT_SIZE = input_width * (num_trials * _UNROLL);
     // size_t const INPUT_SIZE = num_input_channels*img_height*img_width;
     BufferT input_buf(INPUT_SIZE);
     for (size_t ix = 0; ix <  INPUT_SIZE; ++ix)  input_buf[ix] = input_val;
 
-    size_t const FILTER_SIZE = FLOAT_SIMD*2;;
+    // Assume filter is row major (FLOAT_C_ob) first, then (num_trials*_UNROLL)
+    constexpr dim_t filter_step = _UNROLL* FLOAT_C_ob;
+    size_t const FILTER_SIZE = (num_trials * _UNROLL) * FLOAT_C_ob; // FLOAT_SIMD*2;;
     //size_t const FILTER_SIZE =
     //    num_input_channels*num_output_channels*filter_height*filter_width;
     BufferT filter_buf(FILTER_SIZE);
     for (size_t ix = 0; ix < FILTER_SIZE; ++ix) filter_buf[ix] = filter_val;
 
     //size_t const OUTPUT_SIZE = num_output_channels*img_height*img_width;
-    size_t const OUTPUT_SIZE = 2*input_step;
+    size_t const OUTPUT_SIZE = FLOAT_W_ob*FLOAT_C_ob;
     BufferT output_buf(OUTPUT_SIZE);
     for (size_t ix = 0; ix < OUTPUT_SIZE; ++ix) output_buf[ix] = 0.0f;
 
@@ -208,7 +215,7 @@ void test_performance_CONV_TILE(void)
     //FLOAT_LOAD_TILE_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
 
     //size_t a_offset = 0;
-    uint32_t constexpr _UNROLL = FLOAT_UNROLL;
+ 
     my_timer.start();
     for (size_t iy = 0; iy < 1; ++iy)
     {
@@ -219,6 +226,7 @@ void test_performance_CONV_TILE(void)
             FLOAT_CONV_TILE_C(step, a_cur, b_cur, FLOAT_W_ob, FLOAT_C_ob);
             a_cur += input_step;
             offset += input_step;
+            b_cur += filter_step;
         }
     }
     my_timer.stop();
@@ -230,15 +238,15 @@ void test_performance_CONV_TILE(void)
 
     std::cout << "Elapsed time: " << elapsed << " ns." << std::endl;
     // where STORE writes is different for every platform
-    std::cout << "CONV_TILE O[0] = " << output_buf[0] << std::endl;
-    std::cout << "CONV_TILE O[n] = " << output_buf[FLOAT_W_ob*FLOAT_C_ob] << std::endl;
+    // std::cout << "CONV_TILE O[0] = " << output_buf[0] << std::endl;
+    // std::cout << "CONV_TILE O[n] = " << output_buf[FLOAT_W_ob*FLOAT_C_ob - 1] << std::endl;
     for (dim_t ii = 0; ii < FLOAT_W_ob; ++ii)
     {
         for (dim_t jj = 0; jj < FLOAT_C_ob; ++jj)
         {
             size_t ix = ii*FLOAT_C_ob + jj;
-            std::cout << "CONV_TILE ix=" << ix << " = " << output_buf[ix] << std::endl;
-            //TEST_CHECK(output_buf[ix] == input_val*filter_val*num_trials);
+            // std::cout << "CONV_TILE ix=" << ix << " = " << output_buf[ix] << std::endl;
+            TEST_CHECK(output_buf[ix] == input_val*filter_val*num_trials*_UNROLL);
         }
     }
 
