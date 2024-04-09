@@ -8,23 +8,30 @@ DATA_TYPE = f"float32x{FLOAT_C_ob // FLOAT_SIMD}_t"
 
 
 def gen_def_tile():
-    print("#define FLOAT_DEF_TILE_C(W_ob, C_ob)\\")
+    # print("#define FLOAT_DEF_TILE_C(W_ob, C_ob)\\")
+    print(f"if constexpr (W_ob == {FLOAT_W_ob} && C_ob == FLOAT_C_ob){{\\")
 
     for i in range(FLOAT_W_ob):
         for j in range(FLOAT_C_ob // FLOAT_SIMD):
             print(f"{DATA_TYPE} c_{i}_{j};\\")
 
+    print("}")
+
 
 def gen_zero_tile():
-    print("#define FLOAT_DEF_TILE_C(W_ob, C_ob)\\")
+    # print("#define FLOAT_DEF_TILE_C(W_ob, C_ob)\\")
+    print(f"if constexpr (W_ob == {FLOAT_W_ob} && C_ob == FLOAT_C_ob){{\\")
 
     for i in range(FLOAT_W_ob):
         for j in range(FLOAT_C_ob // FLOAT_SIMD):
             print(f"c_{i}_{j} = vdupq_n_f32(0);\\")
 
+    print("}")
+
 
 def gen_load_tile(strided=False):
-    print("#define FLOAT_LOAD_TILE_C(O, W_ob, C_ob)\\")
+    # print("#define FLOAT_LOAD_TILE_C(O, W_ob, C_ob)\\")
+    print(f"if constexpr (W_ob == {FLOAT_W_ob} && C_ob == FLOAT_C_ob){{\\")
 
     for i in range(FLOAT_W_ob):
         for j in range(FLOAT_C_ob // FLOAT_SIMD):
@@ -32,6 +39,8 @@ def gen_load_tile(strided=False):
                 print(f"c_{i}_{j} = vld1q_f32(O + {i} * step + {j} * FLOAT_SIMD);\\")
             else:
                 print(f"c_{i}_{j} = vld1q_f32(O + {i} * C_ob + {j} * FLOAT_SIMD);\\")
+
+    print("}")
 
 
 def gen_store_tile():
@@ -45,7 +54,8 @@ def gen_store_tile():
 def gen_conv_tile_refresh_row_major_b_reg():
     """Uses one register for values in the B matrix.
     Refreshes thsoe values iterating through rows in B first, then cols."""
-    print("#define FLOAT_CONV_TILE_C(W_stride, a, b, W_ob, C_ob)\\")
+    # print("#define FLOAT_CONV_TILE_C(W_stride, a, b, W_ob, C_ob)\\")
+    print(f"if constexpr (_UNROLL == {FLOAT_UNROLL} && W_ob == {FLOAT_W_ob} && C_ob == FLOAT_C_ob) {{\\")
 
     # declaring registers for matrix A
     for i in range(FLOAT_W_ob):
@@ -83,6 +93,35 @@ def gen_conv_tile_refresh_row_major_b_reg():
                             f'__asm__ volatile("fmla %0.4s, %1.4s, %2.s[{uu}]" : "+w"(c_{a_row}_{(b_reg_col // FLOAT_SIMD) + b_reg}) : "w"(b_{b_reg}), "w"(a_{a_row}));\\'
                         )
                     # TODO parameterize this assembly string for multiple architectures
+
+    print("}")
+
+def gen_max_tile():
+    print(f"if constexpr (W_ob == {FLOAT_W_ob} && C_ob == FLOAT_C_ob){{\\")
+
+    print(f"{DATA_TYPE} av;\\")
+
+    for i in range(FLOAT_W_ob):
+        for j in range(FLOAT_C_ob // FLOAT_SIMD):
+            print(f"av = vld1q_f32(a + {i} * step + {j} * FLOAT_SIMD);\\")
+            print(f"c_{i}_{j} = vmaxq_f32(c_{i}_{j}, av);\\")
+
+    print("}")
+
+def gen_dw_tile():
+    print(f"if constexpr (W_ob == {FLOAT_W_ob} && C_ob == FLOAT_C_ob){{\\")
+
+    print(f"{DATA_TYPE} av;\\")
+
+    for i in range(FLOAT_C_ob // FLOAT_SIMD):
+        print(f"{DATA_TYPE} b_{i} = vld1q_f32(b + {i} * FLOAT_SIMD);\\")
+
+    for i in range(FLOAT_W_ob):
+        for j in range(FLOAT_C_ob // FLOAT_SIMD):
+            print(f"av = vld1q_f32(a + {i} * step + {j} * FLOAT_SIMD);\\")
+            print(f"c_{i}_{j} = fvmaq_f32(c_{i}_{j}, av, b_{j});\\")
+
+    print("}")
 
 
 """
