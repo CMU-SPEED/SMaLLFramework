@@ -132,31 +132,57 @@
 #undef FLOAT_LOAD_TILE_C_strided
 #endif
 
-#define FLOAT_LOAD_TILE_C_strided(O, step, W_ob, C_ob) \
-  c_0_0 = vld1q_f32(O + 0 * step + 0 * FLOAT_SIMD);    \
-  c_0_1 = vld1q_f32(O + 0 * step + 1 * FLOAT_SIMD);    \
-  c_0_2 = vld1q_f32(O + 0 * step + 2 * FLOAT_SIMD);    \
-  c_0_3 = vld1q_f32(O + 0 * step + 3 * FLOAT_SIMD);    \
-  c_1_0 = vld1q_f32(O + 1 * step + 0 * FLOAT_SIMD);    \
-  c_1_1 = vld1q_f32(O + 1 * step + 1 * FLOAT_SIMD);    \
-  c_1_2 = vld1q_f32(O + 1 * step + 2 * FLOAT_SIMD);    \
-  c_1_3 = vld1q_f32(O + 1 * step + 3 * FLOAT_SIMD);    \
-  c_2_0 = vld1q_f32(O + 2 * step + 0 * FLOAT_SIMD);    \
-  c_2_1 = vld1q_f32(O + 2 * step + 1 * FLOAT_SIMD);    \
-  c_2_2 = vld1q_f32(O + 2 * step + 2 * FLOAT_SIMD);    \
-  c_2_3 = vld1q_f32(O + 2 * step + 3 * FLOAT_SIMD);    \
-  c_3_0 = vld1q_f32(O + 3 * step + 0 * FLOAT_SIMD);    \
-  c_3_1 = vld1q_f32(O + 3 * step + 1 * FLOAT_SIMD);    \
-  c_3_2 = vld1q_f32(O + 3 * step + 2 * FLOAT_SIMD);    \
-  c_3_3 = vld1q_f32(O + 3 * step + 3 * FLOAT_SIMD);    \
-  c_4_0 = vld1q_f32(O + 4 * step + 0 * FLOAT_SIMD);    \
-  c_4_1 = vld1q_f32(O + 4 * step + 1 * FLOAT_SIMD);    \
-  c_4_2 = vld1q_f32(O + 4 * step + 2 * FLOAT_SIMD);    \
-  c_4_3 = vld1q_f32(O + 4 * step + 3 * FLOAT_SIMD);    \
-  c_5_0 = vld1q_f32(O + 5 * step + 0 * FLOAT_SIMD);    \
-  c_5_1 = vld1q_f32(O + 5 * step + 1 * FLOAT_SIMD);    \
-  c_5_2 = vld1q_f32(O + 5 * step + 2 * FLOAT_SIMD);    \
-  c_5_3 = vld1q_f32(O + 5 * step + 3 * FLOAT_SIMD);
+#define FLOAT_LOAD_TILE_C_strided(O, step, W_ob, C_ob)      \
+    if constexpr (W_ob == FLOAT_W_ob && C_ob == FLOAT_C_ob) \
+    {                                                       \
+        c_0_0 = vld1q_f32(O + 0 * step + 0 * FLOAT_SIMD);   \
+        c_0_1 = vld1q_f32(O + 0 * step + 1 * FLOAT_SIMD);   \
+        c_0_2 = vld1q_f32(O + 0 * step + 2 * FLOAT_SIMD);   \
+        c_0_3 = vld1q_f32(O + 0 * step + 3 * FLOAT_SIMD);   \
+        c_1_0 = vld1q_f32(O + 1 * step + 0 * FLOAT_SIMD);   \
+        c_1_1 = vld1q_f32(O + 1 * step + 1 * FLOAT_SIMD);   \
+        c_1_2 = vld1q_f32(O + 1 * step + 2 * FLOAT_SIMD);   \
+        c_1_3 = vld1q_f32(O + 1 * step + 3 * FLOAT_SIMD);   \
+        c_2_0 = vld1q_f32(O + 2 * step + 0 * FLOAT_SIMD);   \
+        c_2_1 = vld1q_f32(O + 2 * step + 1 * FLOAT_SIMD);   \
+        c_2_2 = vld1q_f32(O + 2 * step + 2 * FLOAT_SIMD);   \
+        c_2_3 = vld1q_f32(O + 2 * step + 3 * FLOAT_SIMD);   \
+        c_3_0 = vld1q_f32(O + 3 * step + 0 * FLOAT_SIMD);   \
+        c_3_1 = vld1q_f32(O + 3 * step + 1 * FLOAT_SIMD);   \
+        c_3_2 = vld1q_f32(O + 3 * step + 2 * FLOAT_SIMD);   \
+        c_3_3 = vld1q_f32(O + 3 * step + 3 * FLOAT_SIMD);   \
+        c_4_0 = vld1q_f32(O + 4 * step + 0 * FLOAT_SIMD);   \
+        c_4_1 = vld1q_f32(O + 4 * step + 1 * FLOAT_SIMD);   \
+        c_4_2 = vld1q_f32(O + 4 * step + 2 * FLOAT_SIMD);   \
+        c_4_3 = vld1q_f32(O + 4 * step + 3 * FLOAT_SIMD);   \
+        c_5_0 = vld1q_f32(O + 5 * step + 0 * FLOAT_SIMD);   \
+        c_5_1 = vld1q_f32(O + 5 * step + 1 * FLOAT_SIMD);   \
+        c_5_2 = vld1q_f32(O + 5 * step + 2 * FLOAT_SIMD);   \
+        c_5_3 = vld1q_f32(O + 5 * step + 3 * FLOAT_SIMD);   \
+    }                                                       \
+    if constexpr (W_ob == 5 && C_ob == FLOAT_C_ob) \
+    {                                                       \
+        c_0_0 = vld1q_f32(O + 0 * step + 0 * FLOAT_SIMD);   \
+        c_0_1 = vld1q_f32(O + 0 * step + 1 * FLOAT_SIMD);   \
+        c_0_2 = vld1q_f32(O + 0 * step + 2 * FLOAT_SIMD);   \
+        c_0_3 = vld1q_f32(O + 0 * step + 3 * FLOAT_SIMD);   \
+        c_1_0 = vld1q_f32(O + 1 * step + 0 * FLOAT_SIMD);   \
+        c_1_1 = vld1q_f32(O + 1 * step + 1 * FLOAT_SIMD);   \
+        c_1_2 = vld1q_f32(O + 1 * step + 2 * FLOAT_SIMD);   \
+        c_1_3 = vld1q_f32(O + 1 * step + 3 * FLOAT_SIMD);   \
+        c_2_0 = vld1q_f32(O + 2 * step + 0 * FLOAT_SIMD);   \
+        c_2_1 = vld1q_f32(O + 2 * step + 1 * FLOAT_SIMD);   \
+        c_2_2 = vld1q_f32(O + 2 * step + 2 * FLOAT_SIMD);   \
+        c_2_3 = vld1q_f32(O + 2 * step + 3 * FLOAT_SIMD);   \
+        c_3_0 = vld1q_f32(O + 3 * step + 0 * FLOAT_SIMD);   \
+        c_3_1 = vld1q_f32(O + 3 * step + 1 * FLOAT_SIMD);   \
+        c_3_2 = vld1q_f32(O + 3 * step + 2 * FLOAT_SIMD);   \
+        c_3_3 = vld1q_f32(O + 3 * step + 3 * FLOAT_SIMD);   \
+        c_4_0 = vld1q_f32(O + 4 * step + 0 * FLOAT_SIMD);   \
+        c_4_1 = vld1q_f32(O + 4 * step + 1 * FLOAT_SIMD);   \
+        c_4_2 = vld1q_f32(O + 4 * step + 2 * FLOAT_SIMD);   \
+        c_4_3 = vld1q_f32(O + 4 * step + 3 * FLOAT_SIMD);   \
+    }
 
 #ifdef FLOAT_STORE_TILE_C
 #undef FLOAT_STORE_TILE_C

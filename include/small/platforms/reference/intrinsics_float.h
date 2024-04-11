@@ -108,7 +108,7 @@ namespace small
 //****************************************************************************
 
 // strided loads
-#define OLD_FLOAT_LOAD_TILE_C_strided(O, step, _W_ob, _C_ob) \
+#define FLOAT_LOAD_TILE_C_strided(O, step, _W_ob, _C_ob) \
     for (uint32_t kk = 0; kk < _W_ob; kk++)                  \
     {                                                        \
         for (uint32_t jj = 0; jj < _C_ob; jj++)              \
@@ -117,19 +117,19 @@ namespace small
         }                                                    \
     }
 
-#define FLOAT_LOAD_TILE_C_strided(O, step, _W_ob, _C_ob)      \
-    /*TODO what kind of data types does O have?  what size?*/ \
-    c_tile_t *c_channel = c_tile;                             \
-    c_tile_t const *o_ptr = O;                                      \
-    const c_tile_t *end_addr = c_channel + (_W_ob * _C_ob);   \
-    /*address of the last element in c_tile*/                 \
-                                                              \
-    while (c_channel < end_addr)                              \
-    {                                                         \
-        *c_channel = *o_ptr;                                  \
-        c_channel++;                                          \
-        o_ptr += step;                                        \
-    }
+// #define FLOAT_LOAD_TILE_C_strided(O, step, _W_ob, _C_ob)      \
+//     /*TODO what kind of data types does O have?  what size?*/ \
+//     c_tile_t *c_channel = c_tile;                             \
+//     c_tile_t const *o_ptr = O;                                      \
+//     const c_tile_t *end_addr = c_channel + (_W_ob * _C_ob);   \
+//     /*address of the last element in c_tile*/                 \
+//                                                               \
+//     while (c_channel < end_addr)                              \
+//     {                                                         \
+//         *c_channel = *o_ptr;                                  \
+//         c_channel++;                                          \
+//         o_ptr += step;                                        \
+//     }
 
 //  c_tile_t c_tile[_W_ob * _C_ob];
 #define FLOAT_LOAD_END_C_strided(O, step, _W_ob, _C_ob)  \
@@ -229,21 +229,21 @@ namespace small
 //   Max pooling
 //****************************************************************************
 
-#define FLOAT_MAX_TILE_C(step, a, _W_ob, _C_ob)                                           \
+#define FLOAT_MAX_TILE_C(step, a, _W_ob, _C_ob)                                         \
     c_tile_t *c_pixel = c_tile;                                                         \
     c_tile_t const *a_pixel = a;                                                        \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)                                              \
+    for (uint32_t kk = 0; kk < _W_ob; kk++)                                             \
     {                                                                                   \
         c_tile_t *c_channel = c_pixel;                                                  \
         c_tile_t const *a_channel = a_pixel;                                            \
-        for (uint32_t jj = 0; jj < _C_ob; jj++)                                          \
+        for (uint32_t jj = 0; jj < _C_ob; jj++)                                         \
         {                                                                               \
             *(c_channel) = (*(a_channel) > *(c_channel)) ? *(a_channel) : *(c_channel); \
             c_channel++;                                                                \
             a_channel++;                                                                \
         }                                                                               \
         a_pixel += step;                                                                \
-        c_pixel += _C_ob;                                                                \
+        c_pixel += _C_ob;                                                               \
     }
 
 #define FLOAT_MAX_END_C(step, a, c_cur, W_last, _C_ob)                                   \

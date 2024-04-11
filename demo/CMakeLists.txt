@@ -22,7 +22,7 @@ add_library(check_interface.o STATIC check_interface_abstract.cpp)
 target_compile_definitions(check_interface.o PRIVATE uarch=${CMAKE_UARCH})
 
 # Test out CONV for different kernels
-set(LAYER_NAMES CONV DW_CONV)
+set(LAYER_NAMES CONV DW_CONV MAX_POOL)
 set(KERNEL_W_OPTIONS 5)
 foreach(layer_name ${LAYER_NAMES})
 foreach( kernel_w ${KERNEL_W_OPTIONS} )

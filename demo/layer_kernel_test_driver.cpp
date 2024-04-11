@@ -59,7 +59,7 @@
 #define PARTIAL_CONV 1 // under development
 #define DW_CONV 2      // under development
 #define GROUP_CONV 3   // under development
-#define POOL 4
+#define MAX_POOL 4
 #define RELU 5
 
 
@@ -137,9 +137,9 @@ int main(int argc, char **argv)
     // Initialize Outputs to 0
 
     // Copy Inputs to their flat buffers
-    small::init(input_dc, in_dimensions);
+    small::init_arange<small::FloatBuffer, FLOAT_C_ob>(input_dc, input_height, input_width, C_i);
 
-    #if LAYER < POOL
+    #if LAYER < MAX_POOL
     #if LAYER == CONV
     uint32_t filter_dimensions = (C_i * C_o * kernel_size * kernel_size);
     #elif LAYER == DW_CONV
@@ -198,7 +198,26 @@ int main(int argc, char **argv)
                                                 C_i,
                                                input_height, input_width,
                                                input_dc, filter_dc, out_dc_k);
-    #endif
+#elif LAYER == MAX_POOL
+    check_MaxPool2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
+                                              t_pad, b_pad, l_pad, r_pad,
+                                              C_i,
+                                              input_height, input_width,
+                                              input_dc, out_check_dc);
+    // std::cout << out_check_original << " " << out_check_dc;
+
+    small::MaxPool2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
+                                               t_pad, b_pad, l_pad, r_pad,
+                                               C_i,
+                                               input_height, input_width,
+                                               input_dc, out_dc_6);
+
+    small::config_MaxPool2D<KERNEL_W_ob>(kernel_size, kernel_size, stride,
+                                               t_pad, b_pad, l_pad, r_pad,
+                                               C_i,
+                                               input_height, input_width,
+                                               input_dc, out_dc_k);
+#endif
 
 #if PERFORMANCE == 0
     printf("Checking correctness.\n");

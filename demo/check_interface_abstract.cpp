@@ -17,10 +17,10 @@
 #include <type_traits>
 
 #include <params.h>
-#ifdef FLOAT_W_ob 
-#undef FLOAT_W_ob
-#endif
-#define FLOAT_W_ob 1
+// #ifdef FLOAT_W_ob 
+// #undef FLOAT_W_ob
+// #endif
+// #define FLOAT_W_ob 1
 
 
 #include <small/op_type.hpp>
@@ -218,6 +218,8 @@ void check_MaxPool2D(int kernel_height, int kernel_width, int stride,
                      BufferT const &input_buf,
                      BufferT       &output_buf)
 {
+    printf("Maxpool stride: %d %d %d\n", stride, FLOAT_W_ob, FLOAT_C_ob);
+    
     if (stride == 1)
     {
         small::detail::abstract_layer<BufferT, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, small::OP_MAX_POOL, 1, 1>(
@@ -231,6 +233,7 @@ void check_MaxPool2D(int kernel_height, int kernel_width, int stride,
     }
     else if (stride == 2)
     {
+        printf("stride 2\n");
         small::detail::abstract_layer<BufferT, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, small::OP_MAX_POOL, 1, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
