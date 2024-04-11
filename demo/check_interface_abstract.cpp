@@ -209,80 +209,80 @@ void check_PartialConv2D(int kernel_height, int kernel_width, int stride,
     }
 }
 
-// //****************************************************************************
-// template <typename BufferT=small::FloatBuffer>
-// void check_MaxPool2D(int kernel_height, int kernel_width, int stride,
-//                      uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
-//                      int input_channels,
-//                      int input_height, int input_width,
-//                      BufferT const &input_buf,
-//                      BufferT       &output_buf)
-// {
-//     if (stride == 1)
-//     {
-//         small::detail::abstract_layer<BufferT, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, small::OP_MAX_POOL, 1, 1>(
-//             input_channels, // Output Channel Grouping
-//             1,              // Output Channels per group
-//             1,
-//             input_height, input_width,
-//             kernel_height, kernel_width,
-//             t_pad, l_pad, r_pad, b_pad,
-//             &input_buf, (BufferT const *)nullptr, &output_buf);
-//     }
-//     else if (stride == 2)
-//     {
-//         small::detail::abstract_layer<BufferT, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, small::OP_MAX_POOL, 1, 1>(
-//             input_channels, // Output Channel Grouping
-//             1,              // Output Channels per group
-//             1,
-//             input_height, input_width,
-//             kernel_height, kernel_width,
-//             t_pad, l_pad, r_pad, b_pad,
-//             &input_buf, (BufferT const *)nullptr, &output_buf);
-//     }
-//     else
-//     {
-//         printf("This stride is unsupported, please change the interface.cpp file\n");
-//     }
-// }
+//****************************************************************************
+template <typename BufferT=small::FloatBuffer>
+void check_MaxPool2D(int kernel_height, int kernel_width, int stride,
+                     uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
+                     int input_channels,
+                     int input_height, int input_width,
+                     BufferT const &input_buf,
+                     BufferT       &output_buf)
+{
+    if (stride == 1)
+    {
+        small::detail::abstract_layer<BufferT, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, small::OP_MAX_POOL, 1, 1>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            kernel_height, kernel_width,
+            t_pad, l_pad, r_pad, b_pad,
+            &input_buf, (BufferT const *)nullptr, &output_buf);
+    }
+    else if (stride == 2)
+    {
+        small::detail::abstract_layer<BufferT, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, small::OP_MAX_POOL, 1, 1>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            kernel_height, kernel_width,
+            t_pad, l_pad, r_pad, b_pad,
+            &input_buf, (BufferT const *)nullptr, &output_buf);
+    }
+    else
+    {
+        printf("This stride is unsupported, please change the interface.cpp file\n");
+    }
+}
 
-// //****************************************************************************
-// template <typename BufferT=small::FloatBuffer>
-// void check_DepthwiseConv2D(int kernel_height, int kernel_width, int stride,
-//                            uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
-//                            int input_channels,
-//                            int input_height, int input_width,
-//                            BufferT const &input_buf,
-//                            BufferT const &filter_buf,
-//                            BufferT       &output_buf)
-// {
-//     if (stride == 1)
-//     {
-//         small::detail::abstract_layer<BufferT, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, small::OP_CONV, 1, 1>(
-//             input_channels, // Output Channel Grouping
-//             1,              // Output Channels per group
-//             1,
-//             input_height, input_width,
-//             kernel_height, kernel_width,
-//             t_pad, l_pad, r_pad, b_pad,
-//             &input_buf, &filter_buf, &output_buf);
-//     }
-//     else if (stride == 2)
-//     {
-//         small::detail::abstract_layer<BufferT, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, small::OP_CONV, 1, 1>(
-//             input_channels, // Output Channel Grouping
-//             1,              // Output Channels per group
-//             1,
-//             input_height, input_width,
-//             kernel_height, kernel_width,
-//             t_pad, l_pad, r_pad, b_pad,
-//             &input_buf, &filter_buf, &output_buf);
-//     }
-//     else
-//     {
-//         printf("This stride is unsupported, please change the interface.cpp file\n");
-//     }
-// }
+//****************************************************************************
+template <typename BufferT = small::FloatBuffer>
+void check_DepthwiseConv2D(int kernel_height, int kernel_width, int stride,
+                           uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
+                           int input_channels,
+                           int input_height, int input_width,
+                           BufferT const &input_buf,
+                           BufferT const &filter_buf,
+                           BufferT &output_buf)
+{
+    if (stride == 1)
+    {
+        small::detail::abstract_layer<BufferT, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, small::OP_CONV, 1, 1>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            kernel_height, kernel_width,
+            t_pad, l_pad, r_pad, b_pad,
+            &input_buf, &filter_buf, &output_buf);
+    }
+    else if (stride == 2)
+    {
+        small::detail::abstract_layer<BufferT, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, small::OP_CONV, 1, 1>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            kernel_height, kernel_width,
+            t_pad, l_pad, r_pad, b_pad,
+            &input_buf, &filter_buf, &output_buf);
+    }
+    else
+    {
+        printf("This stride is unsupported, please change the interface.cpp file\n");
+    }
+}
 
 // //****************************************************************************
 template <typename BufferT=small::FloatBuffer>
@@ -318,10 +318,11 @@ void check_ReLUActivation(int input_channels,
 //         0, 0, 0, 0,
 //         &input_buf, &filter_buf, &output_buf);
 // }
+auto check_DepthwiseConv2D_float = check_DepthwiseConv2D<small::FloatBuffer>;
+
 auto check_Conv2D_float = check_Conv2D<small::FloatBuffer>;
 // auto check_PartialConv2D_float = check_PartialConv2D<small::FloatBuffer>;
-// auto check_MaxPool2D_float = check_MaxPool2D<small::FloatBuffer>;
-// auto check_DepthwiseConv2D_float = check_DepthwiseConv2D<small::FloatBuffer>;
+auto check_MaxPool2D_float = check_MaxPool2D<small::FloatBuffer>;
 auto check_ReLUActivation_float = check_ReLUActivation<small::FloatBuffer>;
 // auto check_Dense_float = check_Dense<small::FloatBuffer>;
 

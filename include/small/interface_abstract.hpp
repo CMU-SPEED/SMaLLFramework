@@ -897,6 +897,69 @@ void DepthwiseConv2D<FloatBuffer>(
             "DepthwiseConv2D<float> ERROR: in_channels unsupported.");
     }
 }
+
+template <int Kernel_W_ob>
+void config_DepthwiseConv2D(
+    int kernel_height, int kernel_width, int stride,
+    uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
+    int input_channels,
+    int input_height, int input_width,
+    FloatBuffer const &input_buf,
+    FloatBuffer const &filter_buf,
+    FloatBuffer &output_buf)
+{
+#if defined(RECORD_CALLS)
+    std::cout << "DepthwiseConv2D<float>(k:"
+              << kernel_height << "x" << kernel_width
+              << ",s:" << stride
+              << ",pad:[" << (int)t_pad << "," << (int)b_pad
+              << "," << (int)l_pad << "," << (int)r_pad
+              << "],chans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I,F,O)\n";
+#endif
+    if (input_channels % FLOAT_C_ib == 0)
+    {
+        if (stride == 1)
+        {
+            detail::abstract_layer<
+                FloatBuffer, FLOAT_C_ob, 1, 1, Kernel_W_ob, 1, 1, OP_CONV, 1, 1>(
+                input_channels, // Output Channel Grouping
+                1,              // Output Channels per group
+                1,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
+        }
+        else if (stride == 2)
+        {
+
+            detail::abstract_layer<
+                FloatBuffer, FLOAT_C_ob, 1, 1, Kernel_W_ob, 2, 1, OP_CONV, 1, 1>(
+                input_channels, // Output Channel Grouping
+                1,              // Output Channels per group
+                1,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
+        }
+        else
+        {
+            throw std::invalid_argument(
+                "DepthwiseConv2D<float> ERROR: stride unsupported.");
+        }
+    }
+    else
+    {
+        throw std::invalid_argument(
+            "DepthwiseConv2D<float> ERROR: in_channels unsupported.");
+    }
+}
+
+
+
 #endif
 
 //============================================================================

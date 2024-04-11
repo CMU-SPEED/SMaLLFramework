@@ -631,6 +631,8 @@ __asm__ volatile("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_4_3) : "w"(b_1), "w"(a_4)
 #endif
 
 #define FLOAT_MAX_TILE_C(step, a, W_ob, C_ob)    \
+if constexpr(W_ob == FLOAT_W_ob && C_ob == FLOAT_C_ob)\
+{\
   float32x4_t av;                                \
   av = vld1q_f32(a + 0 * step + 0 * FLOAT_SIMD); \
   c_0_0 = vmaxq_f32(c_0_0, av);                  \
@@ -679,63 +681,158 @@ __asm__ volatile("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_4_3) : "w"(b_1), "w"(a_4)
   av = vld1q_f32(a + 5 * step + 2 * FLOAT_SIMD); \
   c_5_2 = vmaxq_f32(c_5_2, av);                  \
   av = vld1q_f32(a + 5 * step + 3 * FLOAT_SIMD); \
-  c_5_3 = vmaxq_f32(c_5_3, av);
+  c_5_3 = vmaxq_f32(c_5_3, av);\
+}\
+if constexpr (W_ob == 5 && C_ob == FLOAT_C_ob){\
+float32x4_t av;\
+av = vld1q_f32(a + 0 * step + 0 * FLOAT_SIMD);\
+c_0_0 = vmaxq_f32(c_0_0, av);\
+av = vld1q_f32(a + 0 * step + 1 * FLOAT_SIMD);\
+c_0_1 = vmaxq_f32(c_0_1, av);\
+av = vld1q_f32(a + 0 * step + 2 * FLOAT_SIMD);\
+c_0_2 = vmaxq_f32(c_0_2, av);\
+av = vld1q_f32(a + 0 * step + 3 * FLOAT_SIMD);\
+c_0_3 = vmaxq_f32(c_0_3, av);\
+av = vld1q_f32(a + 1 * step + 0 * FLOAT_SIMD);\
+c_1_0 = vmaxq_f32(c_1_0, av);\
+av = vld1q_f32(a + 1 * step + 1 * FLOAT_SIMD);\
+c_1_1 = vmaxq_f32(c_1_1, av);\
+av = vld1q_f32(a + 1 * step + 2 * FLOAT_SIMD);\
+c_1_2 = vmaxq_f32(c_1_2, av);\
+av = vld1q_f32(a + 1 * step + 3 * FLOAT_SIMD);\
+c_1_3 = vmaxq_f32(c_1_3, av);\
+av = vld1q_f32(a + 2 * step + 0 * FLOAT_SIMD);\
+c_2_0 = vmaxq_f32(c_2_0, av);\
+av = vld1q_f32(a + 2 * step + 1 * FLOAT_SIMD);\
+c_2_1 = vmaxq_f32(c_2_1, av);\
+av = vld1q_f32(a + 2 * step + 2 * FLOAT_SIMD);\
+c_2_2 = vmaxq_f32(c_2_2, av);\
+av = vld1q_f32(a + 2 * step + 3 * FLOAT_SIMD);\
+c_2_3 = vmaxq_f32(c_2_3, av);\
+av = vld1q_f32(a + 3 * step + 0 * FLOAT_SIMD);\
+c_3_0 = vmaxq_f32(c_3_0, av);\
+av = vld1q_f32(a + 3 * step + 1 * FLOAT_SIMD);\
+c_3_1 = vmaxq_f32(c_3_1, av);\
+av = vld1q_f32(a + 3 * step + 2 * FLOAT_SIMD);\
+c_3_2 = vmaxq_f32(c_3_2, av);\
+av = vld1q_f32(a + 3 * step + 3 * FLOAT_SIMD);\
+c_3_3 = vmaxq_f32(c_3_3, av);\
+av = vld1q_f32(a + 4 * step + 0 * FLOAT_SIMD);\
+c_4_0 = vmaxq_f32(c_4_0, av);\
+av = vld1q_f32(a + 4 * step + 1 * FLOAT_SIMD);\
+c_4_1 = vmaxq_f32(c_4_1, av);\
+av = vld1q_f32(a + 4 * step + 2 * FLOAT_SIMD);\
+c_4_2 = vmaxq_f32(c_4_2, av);\
+av = vld1q_f32(a + 4 * step + 3 * FLOAT_SIMD);\
+c_4_3 = vmaxq_f32(c_4_3, av);\
+}
 
 #ifdef FLOAT_DW_TILE_C
 #undef FLOAT_DW_TILE_C
 #endif
 
-#define FLOAT_DW_TILE_C(step, a, b, W_ob, C_ob)    \
-  float32x4_t av;                                  \
-  float32x4_t b_0 = vld1q_f32(b + 0 * FLOAT_SIMD); \
-  float32x4_t b_1 = vld1q_f32(b + 1 * FLOAT_SIMD); \
-  float32x4_t b_2 = vld1q_f32(b + 2 * FLOAT_SIMD); \
-  float32x4_t b_3 = vld1q_f32(b + 3 * FLOAT_SIMD); \
-  av = vld1q_f32(a + 0 * step + 0 * FLOAT_SIMD);   \
-  c_0_0 = vfmaq_f32(c_0_0, av, b_0);               \
-  av = vld1q_f32(a + 0 * step + 1 * FLOAT_SIMD);   \
-  c_0_1 = vfmaq_f32(c_0_1, av, b_1);               \
-  av = vld1q_f32(a + 0 * step + 2 * FLOAT_SIMD);   \
-  c_0_2 = vfmaq_f32(c_0_2, av, b_2);               \
-  av = vld1q_f32(a + 0 * step + 3 * FLOAT_SIMD);   \
-  c_0_3 = vfmaq_f32(c_0_3, av, b_3);               \
-  av = vld1q_f32(a + 1 * step + 0 * FLOAT_SIMD);   \
-  c_1_0 = vfmaq_f32(c_1_0, av, b_0);               \
-  av = vld1q_f32(a + 1 * step + 1 * FLOAT_SIMD);   \
-  c_1_1 = vfmaq_f32(c_1_1, av, b_1);               \
-  av = vld1q_f32(a + 1 * step + 2 * FLOAT_SIMD);   \
-  c_1_2 = vfmaq_f32(c_1_2, av, b_2);               \
-  av = vld1q_f32(a + 1 * step + 3 * FLOAT_SIMD);   \
-  c_1_3 = vfmaq_f32(c_1_3, av, b_3);               \
-  av = vld1q_f32(a + 2 * step + 0 * FLOAT_SIMD);   \
-  c_2_0 = vfmaq_f32(c_2_0, av, b_0);               \
-  av = vld1q_f32(a + 2 * step + 1 * FLOAT_SIMD);   \
-  c_2_1 = vfmaq_f32(c_2_1, av, b_1);               \
-  av = vld1q_f32(a + 2 * step + 2 * FLOAT_SIMD);   \
-  c_2_2 = vfmaq_f32(c_2_2, av, b_2);               \
-  av = vld1q_f32(a + 2 * step + 3 * FLOAT_SIMD);   \
-  c_2_3 = vfmaq_f32(c_2_3, av, b_3);               \
-  av = vld1q_f32(a + 3 * step + 0 * FLOAT_SIMD);   \
-  c_3_0 = vfmaq_f32(c_3_0, av, b_0);               \
-  av = vld1q_f32(a + 3 * step + 1 * FLOAT_SIMD);   \
-  c_3_1 = vfmaq_f32(c_3_1, av, b_1);               \
-  av = vld1q_f32(a + 3 * step + 2 * FLOAT_SIMD);   \
-  c_3_2 = vfmaq_f32(c_3_2, av, b_2);               \
-  av = vld1q_f32(a + 3 * step + 3 * FLOAT_SIMD);   \
-  c_3_3 = vfmaq_f32(c_3_3, av, b_3);               \
-  av = vld1q_f32(a + 4 * step + 0 * FLOAT_SIMD);   \
-  c_4_0 = vfmaq_f32(c_4_0, av, b_0);               \
-  av = vld1q_f32(a + 4 * step + 1 * FLOAT_SIMD);   \
-  c_4_1 = vfmaq_f32(c_4_1, av, b_1);               \
-  av = vld1q_f32(a + 4 * step + 2 * FLOAT_SIMD);   \
-  c_4_2 = vfmaq_f32(c_4_2, av, b_2);               \
-  av = vld1q_f32(a + 4 * step + 3 * FLOAT_SIMD);   \
-  c_4_3 = vfmaq_f32(c_4_3, av, b_3);               \
-  av = vld1q_f32(a + 5 * step + 0 * FLOAT_SIMD);   \
-  c_5_0 = vfmaq_f32(c_5_0, av, b_0);               \
-  av = vld1q_f32(a + 5 * step + 1 * FLOAT_SIMD);   \
-  c_5_1 = vfmaq_f32(c_5_1, av, b_1);               \
-  av = vld1q_f32(a + 5 * step + 2 * FLOAT_SIMD);   \
-  c_5_2 = vfmaq_f32(c_5_2, av, b_2);               \
-  av = vld1q_f32(a + 5 * step + 3 * FLOAT_SIMD);   \
-  c_5_3 = vfmaq_f32(c_5_3, av, b_3);
+#define FLOAT_DW_TILE_C(step, a, b, W_ob, C_ob)             \
+    if constexpr (W_ob == FLOAT_W_ob && C_ob == FLOAT_C_ob) \
+    {                                                       \
+        float32x4_t av;                                     \
+        float32x4_t b_0 = vld1q_f32(b + 0 * FLOAT_SIMD);    \
+        float32x4_t b_1 = vld1q_f32(b + 1 * FLOAT_SIMD);    \
+        float32x4_t b_2 = vld1q_f32(b + 2 * FLOAT_SIMD);    \
+        float32x4_t b_3 = vld1q_f32(b + 3 * FLOAT_SIMD);    \
+        av = vld1q_f32(a + 0 * step + 0 * FLOAT_SIMD);      \
+        c_0_0 = vfmaq_f32(c_0_0, av, b_0);                  \
+        av = vld1q_f32(a + 0 * step + 1 * FLOAT_SIMD);      \
+        c_0_1 = vfmaq_f32(c_0_1, av, b_1);                  \
+        av = vld1q_f32(a + 0 * step + 2 * FLOAT_SIMD);      \
+        c_0_2 = vfmaq_f32(c_0_2, av, b_2);                  \
+        av = vld1q_f32(a + 0 * step + 3 * FLOAT_SIMD);      \
+        c_0_3 = vfmaq_f32(c_0_3, av, b_3);                  \
+        av = vld1q_f32(a + 1 * step + 0 * FLOAT_SIMD);      \
+        c_1_0 = vfmaq_f32(c_1_0, av, b_0);                  \
+        av = vld1q_f32(a + 1 * step + 1 * FLOAT_SIMD);      \
+        c_1_1 = vfmaq_f32(c_1_1, av, b_1);                  \
+        av = vld1q_f32(a + 1 * step + 2 * FLOAT_SIMD);      \
+        c_1_2 = vfmaq_f32(c_1_2, av, b_2);                  \
+        av = vld1q_f32(a + 1 * step + 3 * FLOAT_SIMD);      \
+        c_1_3 = vfmaq_f32(c_1_3, av, b_3);                  \
+        av = vld1q_f32(a + 2 * step + 0 * FLOAT_SIMD);      \
+        c_2_0 = vfmaq_f32(c_2_0, av, b_0);                  \
+        av = vld1q_f32(a + 2 * step + 1 * FLOAT_SIMD);      \
+        c_2_1 = vfmaq_f32(c_2_1, av, b_1);                  \
+        av = vld1q_f32(a + 2 * step + 2 * FLOAT_SIMD);      \
+        c_2_2 = vfmaq_f32(c_2_2, av, b_2);                  \
+        av = vld1q_f32(a + 2 * step + 3 * FLOAT_SIMD);      \
+        c_2_3 = vfmaq_f32(c_2_3, av, b_3);                  \
+        av = vld1q_f32(a + 3 * step + 0 * FLOAT_SIMD);      \
+        c_3_0 = vfmaq_f32(c_3_0, av, b_0);                  \
+        av = vld1q_f32(a + 3 * step + 1 * FLOAT_SIMD);      \
+        c_3_1 = vfmaq_f32(c_3_1, av, b_1);                  \
+        av = vld1q_f32(a + 3 * step + 2 * FLOAT_SIMD);      \
+        c_3_2 = vfmaq_f32(c_3_2, av, b_2);                  \
+        av = vld1q_f32(a + 3 * step + 3 * FLOAT_SIMD);      \
+        c_3_3 = vfmaq_f32(c_3_3, av, b_3);                  \
+        av = vld1q_f32(a + 4 * step + 0 * FLOAT_SIMD);      \
+        c_4_0 = vfmaq_f32(c_4_0, av, b_0);                  \
+        av = vld1q_f32(a + 4 * step + 1 * FLOAT_SIMD);      \
+        c_4_1 = vfmaq_f32(c_4_1, av, b_1);                  \
+        av = vld1q_f32(a + 4 * step + 2 * FLOAT_SIMD);      \
+        c_4_2 = vfmaq_f32(c_4_2, av, b_2);                  \
+        av = vld1q_f32(a + 4 * step + 3 * FLOAT_SIMD);      \
+        c_4_3 = vfmaq_f32(c_4_3, av, b_3);                  \
+        av = vld1q_f32(a + 5 * step + 0 * FLOAT_SIMD);      \
+        c_5_0 = vfmaq_f32(c_5_0, av, b_0);                  \
+        av = vld1q_f32(a + 5 * step + 1 * FLOAT_SIMD);      \
+        c_5_1 = vfmaq_f32(c_5_1, av, b_1);                  \
+        av = vld1q_f32(a + 5 * step + 2 * FLOAT_SIMD);      \
+        c_5_2 = vfmaq_f32(c_5_2, av, b_2);                  \
+        av = vld1q_f32(a + 5 * step + 3 * FLOAT_SIMD);      \
+        c_5_3 = vfmaq_f32(c_5_3, av, b_3);                  \
+    }                                                       \
+    if constexpr (W_ob == 5 && C_ob == FLOAT_C_ob)          \
+    {                                                     \
+        float32x4_t av;                                     \
+        float32x4_t b_0 = vld1q_f32(b + 0 * FLOAT_SIMD);    \
+        float32x4_t b_1 = vld1q_f32(b + 1 * FLOAT_SIMD);    \
+        float32x4_t b_2 = vld1q_f32(b + 2 * FLOAT_SIMD);    \
+        float32x4_t b_3 = vld1q_f32(b + 3 * FLOAT_SIMD);    \
+        av = vld1q_f32(a + 0 * step + 0 * FLOAT_SIMD);      \
+        c_0_0 = vfmaq_f32(c_0_0, av, b_0);                  \
+        av = vld1q_f32(a + 0 * step + 1 * FLOAT_SIMD);      \
+        c_0_1 = vfmaq_f32(c_0_1, av, b_1);                  \
+        av = vld1q_f32(a + 0 * step + 2 * FLOAT_SIMD);      \
+        c_0_2 = vfmaq_f32(c_0_2, av, b_2);                  \
+        av = vld1q_f32(a + 0 * step + 3 * FLOAT_SIMD);      \
+        c_0_3 = vfmaq_f32(c_0_3, av, b_3);                  \
+        av = vld1q_f32(a + 1 * step + 0 * FLOAT_SIMD);      \
+        c_1_0 = vfmaq_f32(c_1_0, av, b_0);                  \
+        av = vld1q_f32(a + 1 * step + 1 * FLOAT_SIMD);      \
+        c_1_1 = vfmaq_f32(c_1_1, av, b_1);                  \
+        av = vld1q_f32(a + 1 * step + 2 * FLOAT_SIMD);      \
+        c_1_2 = vfmaq_f32(c_1_2, av, b_2);                  \
+        av = vld1q_f32(a + 1 * step + 3 * FLOAT_SIMD);      \
+        c_1_3 = vfmaq_f32(c_1_3, av, b_3);                  \
+        av = vld1q_f32(a + 2 * step + 0 * FLOAT_SIMD);      \
+        c_2_0 = vfmaq_f32(c_2_0, av, b_0);                  \
+        av = vld1q_f32(a + 2 * step + 1 * FLOAT_SIMD);      \
+        c_2_1 = vfmaq_f32(c_2_1, av, b_1);                  \
+        av = vld1q_f32(a + 2 * step + 2 * FLOAT_SIMD);      \
+        c_2_2 = vfmaq_f32(c_2_2, av, b_2);                  \
+        av = vld1q_f32(a + 2 * step + 3 * FLOAT_SIMD);      \
+        c_2_3 = vfmaq_f32(c_2_3, av, b_3);                  \
+        av = vld1q_f32(a + 3 * step + 0 * FLOAT_SIMD);      \
+        c_3_0 = vfmaq_f32(c_3_0, av, b_0);                  \
+        av = vld1q_f32(a + 3 * step + 1 * FLOAT_SIMD);      \
+        c_3_1 = vfmaq_f32(c_3_1, av, b_1);                  \
+        av = vld1q_f32(a + 3 * step + 2 * FLOAT_SIMD);      \
+        c_3_2 = vfmaq_f32(c_3_2, av, b_2);                  \
+        av = vld1q_f32(a + 3 * step + 3 * FLOAT_SIMD);      \
+        c_3_3 = vfmaq_f32(c_3_3, av, b_3);                  \
+        av = vld1q_f32(a + 4 * step + 0 * FLOAT_SIMD);      \
+        c_4_0 = vfmaq_f32(c_4_0, av, b_0);                  \
+        av = vld1q_f32(a + 4 * step + 1 * FLOAT_SIMD);      \
+        c_4_1 = vfmaq_f32(c_4_1, av, b_1);                  \
+        av = vld1q_f32(a + 4 * step + 2 * FLOAT_SIMD);      \
+        c_4_2 = vfmaq_f32(c_4_2, av, b_2);                  \
+        av = vld1q_f32(a + 4 * step + 3 * FLOAT_SIMD);      \
+        c_4_3 = vfmaq_f32(c_4_3, av, b_3);                  \
+    }

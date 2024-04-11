@@ -63,8 +63,9 @@
 #define RELU 5
 
 
+#ifndef LAYER
 #define LAYER CONV
-
+#endif
 
 
 #define KERNEL_W_ob 5
@@ -123,7 +124,7 @@ int main(int argc, char **argv)
     uint32_t output_rows =  ((input_height + t_pad + b_pad) - kernel_size)/stride + 1;
     uint32_t output_cols =  ((input_width + l_pad + r_pad) - kernel_size) / stride + 1;
     uint32_t out_dimensions = (C_o * output_rows * output_cols);
-    uint32_t filter_dimensions = (C_i * C_o * kernel_size * kernel_size);
+    
 
     Buffer input_dc(in_dimensions);
     Buffer out_dc_6(out_dimensions);
@@ -138,8 +139,16 @@ int main(int argc, char **argv)
     // Copy Inputs to their flat buffers
     small::init(input_dc, in_dimensions);
 
+    #if LAYER < POOL
+    #if LAYER == CONV
+    uint32_t filter_dimensions = (C_i * C_o * kernel_size * kernel_size);
+    #elif LAYER == DW_CONV
+    assert(C_i == C_o);
+    uint32_t filter_dimensions = (C_o * kernel_size * kernel_size);
+    #endif
     Buffer filter_dc(filter_dimensions);
     small::init(filter_dc, filter_dimensions);
+    #endif
 
     // std::cout << "out check " << out_check_dc.data() << "\n";
     // std::cout << "out 6 " << out_dc_6.data() << "\n";
@@ -151,6 +160,7 @@ int main(int argc, char **argv)
     printf("Computing with reference and platform kernels.\n");
     #endif
 
+    #if LAYER == CONV
     check_Conv2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
                  t_pad, b_pad, l_pad, r_pad,
                  C_o, C_i,
@@ -164,32 +174,45 @@ int main(int argc, char **argv)
                   input_height, input_width,
                   input_dc, filter_dc, out_dc_6);
 
-
-    #if PERFORMANCE == 0
-    printf("Checking correctness.\n");
-    #endif
-    int check_6 = equals(out_dimensions, out_check_dc, out_dc_6, 1e-4);
-    assert(check_6);
-    // std::cout << out_check_original << " " << out_check_dc;
-
-#if PERFORMANCE == 0
-    printf("end of correctness check\n");
-    #endif
-    //Check correctness against your kernel
     small::config_Conv2D<KERNEL_W_ob>(kernel_size, kernel_size, stride,
                                       t_pad, b_pad, l_pad, r_pad,
                                       C_o, C_i,
                                       input_height, input_width,
                                       input_dc, filter_dc, out_dc_k);
+    #elif LAYER == DW_CONV
+    check_DepthwiseConv2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
+                                     t_pad, b_pad, l_pad, r_pad,
+                                     C_i,
+                                     input_height, input_width,
+                                     input_dc, filter_dc, out_check_dc);
+    // std::cout << out_check_original << " " << out_check_dc;
 
-    // small::Conv2D(kernel_size, kernel_size, stride,
-    //                            t_pad, b_pad, l_pad, r_pad,
-    //                            C_o, C_i,
-    //                            input_height, input_width,
-    //                            input_dc, filter_dc, out_dc_k);
+    small::DepthwiseConv2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
+                                      t_pad, b_pad, l_pad, r_pad,
+                                      C_i,
+                                      input_height, input_width,
+                                      input_dc, filter_dc, out_dc_6);
 
-    // out_dc[0] = -0.0;
+    small::config_DepthwiseConv2D<KERNEL_W_ob>(kernel_size, kernel_size, stride,
+                                               t_pad, b_pad, l_pad, r_pad,
+                                                C_i,
+                                               input_height, input_width,
+                                               input_dc, filter_dc, out_dc_k);
+    #endif
+
+#if PERFORMANCE == 0
+    printf("Checking correctness.\n");
+#endif
+    int check_6 = small::equals(out_dimensions, out_check_dc, out_dc_6, 1e-4);
+
+    assert(check_6);
+    // std::cout << out_check_original << " " << out_check_dc;
+#if PERFORMANCE == 0
+    printf("end of correctness check\n");
+#endif
     int check_k = small::equals(out_dimensions, out_check_dc, out_dc_k, 1e-4);
+    // std::cout << out_check_dc << " " << out_dc_k;
+
     assert(check_k);
 
 
@@ -204,18 +227,34 @@ int main(int argc, char **argv)
 
     #if PERFORMANCE == 1
     small::Timer t;
+    
+    
+    #if PERFORMANCE == 0
     double ref_time = std::numeric_limits<double>::max();
-
     for (int run = 0; run < RUNS; run++)
     {
         t.start();
         for (int t = 0; t < TRIALS; t++)
         {
+            #if LAYER == CONV
             check_Conv2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
                                              t_pad, b_pad, l_pad, r_pad,
                                              C_o, C_i,
                                              input_height, input_width,
                                              input_dc, filter_dc, out_check_dc);
+            #elif LAYER == DW_CONV
+            check_DepthwiseConv2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
+                                             t_pad, b_pad, l_pad, r_pad,
+                                             C_i,
+                                             input_height, input_width,
+                                             input_dc, filter_dc, out_check_dc);
+            #elif LAYER == MAX_POOL
+            check_MaxPool2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
+                                             t_pad, b_pad, l_pad, r_pad,
+                                             C_i,
+                                             input_height, input_width,
+                                             input_dc, out_check_dc);
+            #endif
         }
             t.stop();
             ref_time = std::min<double>(ref_time, (1.0*t.elapsed())/TRIALS);
@@ -223,6 +262,7 @@ int main(int argc, char **argv)
 
     print_cycles(ref_time);
     printf(",");
+    #endif
 
     double platform_time = std::numeric_limits<double>::max();
     for (int run = 0; run < RUNS; run++)
@@ -231,11 +271,26 @@ int main(int argc, char **argv)
         // clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
         for (int t = 0; t < TRIALS; t++)
         {
-        small::Conv2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
-                      t_pad, b_pad, l_pad, r_pad,
-                      C_o, C_i,
-                      input_height, input_width,
-                      input_dc, filter_dc, out_dc_6);
+        
+#if LAYER == CONV
+            small::Conv2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
+                                              t_pad, b_pad, l_pad, r_pad,
+                                              C_o, C_i,
+                                              input_height, input_width,
+                                              input_dc, filter_dc, out_dc_6);
+#elif LAYER == DW_CONV
+        small::DepthwiseConv2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
+                                                  t_pad, b_pad, l_pad, r_pad,
+                                                  C_i,
+                                                  input_height, input_width,
+                                                  input_dc, filter_dc, out_check_dc);
+#elif LAYER == MAX_POOL
+        small::MaxPool2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
+                                            t_pad, b_pad, l_pad, r_pad,
+                                            C_i,
+                                            input_height, input_width,
+                                            input_dc, out_check_dc);
+#endif
         }
         t.stop();
         platform_time = std::min<double>(platform_time, (t.elapsed()*1.0)/TRIALS);
@@ -250,11 +305,26 @@ int main(int argc, char **argv)
         // clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
         for (int t = 0; t < TRIALS; t++)
         {
+
+#if LAYER == CONV
             small::config_Conv2D<KERNEL_W_ob>(kernel_size, kernel_size, stride,
                                               t_pad, b_pad, l_pad, r_pad,
                                               C_o, C_i,
                                               input_height, input_width,
                                               input_dc, filter_dc, out_dc_k);
+#elif LAYER == DW_CONV
+            small::config_DepthwiseConv2D<KERNEL_W_ob>(kernel_size, kernel_size, stride,
+                                                t_pad, b_pad, l_pad, r_pad,
+                                                C_i,
+                                                input_height, input_width,
+                                                input_dc, filter_dc, out_check_dc);
+#elif LAYER == MAX_POOL
+            small::config_MaxPool2D<KERNEL_W_ob>(kernel_size, kernel_size, stride,
+                                          t_pad, b_pad, l_pad, r_pad,
+                                          C_i,
+                                          input_height, input_width,
+                                          input_dc, out_check_dc);
+#endif
         }
             t.stop();
             config_time = std::min<double>(config_time, (1.0*t.elapsed())/TRIALS);
@@ -271,13 +341,21 @@ int main(int argc, char **argv)
     double compute_ops = 0.0;
     double throughput = 0.0;
 
+    #if LAYER == CONV
     compute_ops = output_els * (kernel_size * kernel_size * C_i * 2.0);
     throughput = (FLOAT_NUM_FMA * 2.0 * FLOAT_SIMD);
+    #elif LAYER == DW_CONV
+    compute_ops = output_els * (kernel_size * kernel_size * 2.0);
+    throughput = (FLOAT_NUM_FMA * 2.0 * FLOAT_SIMD);
+    #elif LAYER == MAX_POOL
+    compute_ops = output_els * (kernel_size * kernel_size);
+    throughput = (FLOAT_SIMD);
+    #endif
     //dtype peak_cycles = compute_ops/throughput;
     //dtype scaled_peak_cycles = peak_cycles;
     const int num_th = atoi(std::getenv("OMP_NUM_THREADS"));
     printf(" %.0f, %.2f,  %.2f, %d,  %d, %d, %d \n", throughput * num_th, (compute_ops / platform_time), (compute_ops / config_time), RUNS, TRIALS, check_6, check_k);
-    #endif
+#endif
 
 
 }

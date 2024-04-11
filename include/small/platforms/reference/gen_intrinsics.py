@@ -119,7 +119,7 @@ def gen_dw_tile():
     for i in range(FLOAT_W_ob):
         for j in range(FLOAT_C_ob // FLOAT_SIMD):
             print(f"av = vld1q_f32(a + {i} * step + {j} * FLOAT_SIMD);\\")
-            print(f"c_{i}_{j} = fvmaq_f32(c_{i}_{j}, av, b_{j});\\")
+            print(f"c_{i}_{j} = vfmaq_f32(c_{i}_{j}, av, b_{j});\\")
 
     print("}")
 
@@ -134,3 +134,5 @@ gen_zero_tile()
 gen_load_tile()
 gen_store_tile()
 gen_conv_tile_refresh_row_major_b_reg()
+gen_dw_tile()
+gen_max_tile()
