@@ -1,4 +1,4 @@
-FLOAT_W_ob = 5
+FLOAT_W_ob = 4
 FLOAT_C_ob = 16
 FLOAT_SIMD = 4
 FLOAT_UNROLL = 4
@@ -129,10 +129,11 @@ def gen_conv_tile_refresh_col_major_b_reg():
 def gen_conv_tile_multiple_b_reg():
 """
 
-gen_def_tile()
-gen_zero_tile()
-gen_load_tile()
-gen_store_tile()
-gen_conv_tile_refresh_row_major_b_reg()
-gen_dw_tile()
-gen_max_tile()
+# gen_def_tile()
+# gen_zero_tile()
+# gen_load_tile()
+# gen_store_tile()
+# gen_conv_tile_refresh_row_major_b_reg()
+# gen_dw_tile()
+# gen_max_tile()
+gen_load_tile(strided = True)

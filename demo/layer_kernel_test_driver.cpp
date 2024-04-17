@@ -44,7 +44,7 @@
 #define H_TILE 0
 #define POOLING 1
 
-#define PERFORMANCE 1
+#define PERFORMANCE 0
 // from config.h, consider making command line options
 
 #define RUNS 100
@@ -68,7 +68,9 @@
 #endif
 
 
+#ifndef KERNEL_W_ob 
 #define KERNEL_W_ob 5
+#endif
 //****************************************************************************
 //****************************************************************************
 int main(int argc, char **argv)
@@ -137,9 +139,10 @@ int main(int argc, char **argv)
     // Initialize Outputs to 0
 
     // Copy Inputs to their flat buffers
-    small::init_arange<small::FloatBuffer, FLOAT_C_ob>(input_dc, input_height, input_width, C_i);
+    // small::init<small::FloatBuffer, FLOAT_C_ob>(input_dc, input_height, input_width, C_i);
+    small::init(input_dc, in_dimensions);
 
-    #if LAYER < MAX_POOL
+#if LAYER < MAX_POOL
     #if LAYER == CONV
     uint32_t filter_dimensions = (C_i * C_o * kernel_size * kernel_size);
     #elif LAYER == DW_CONV

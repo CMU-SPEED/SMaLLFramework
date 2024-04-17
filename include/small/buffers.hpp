@@ -569,8 +569,8 @@ bool equals(uint32_t numel,
         if constexpr (std::is_same<float, typename BufferT::value_type>::value)
         {
             ScalarT diff = *(buf2_ptr) - *(buf1_ptr);
-            // printf("equals      : %ld, buf2/buf1 %.4f/%.4f, diff %.4f\n",
-            //        i, *(buf2_ptr), *(buf1_ptr), diff);
+            printf("equals      : %ld, buf2/buf1 %.4f/%.4f, diff %.4f\n",
+                   i, *(buf2_ptr), *(buf1_ptr), diff);
 
             if (fabs(diff) > tolerance)
             {

@@ -34,7 +34,7 @@ endforeach( testsourcefile ${TEST_SOURCES} )
 
 # kernel benchmarks
 set(LAYER_NAMES MAX_POOL DW_CONV CONV)
-set(KERNEL_W_OPTIONS 6 5)
+set(KERNEL_W_OPTIONS 6 5 4)
 
 foreach(layer_name ${LAYER_NAMES})
     foreach(kernel_w ${KERNEL_W_OPTIONS})

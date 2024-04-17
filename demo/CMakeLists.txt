@@ -23,7 +23,7 @@ target_compile_definitions(check_interface.o PRIVATE uarch=${CMAKE_UARCH})
 
 # Test out CONV for different kernels
 set(LAYER_NAMES CONV DW_CONV MAX_POOL)
-set(KERNEL_W_OPTIONS 5)
+set(KERNEL_W_OPTIONS 5 4)
 foreach(layer_name ${LAYER_NAMES})
 foreach( kernel_w ${KERNEL_W_OPTIONS} )
   set(demo_name "test_interface_${layer_name}_w${kernel_w}.exe")
