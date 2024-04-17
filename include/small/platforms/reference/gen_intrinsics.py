@@ -7,6 +7,12 @@ B_NUM_REGS = 2
 DATA_TYPE = f"float32x{FLOAT_C_ob // FLOAT_SIMD}_t"
 
 
+# Architecture Agnostic Instruction Abstractions
+LOAD_PACKED = "{reg} = vld1q_f32({addr});\\"
+# BCAST
+
+
+
 def gen_def_tile():
     # print("#define FLOAT_DEF_TILE_C(W_ob, C_ob)\\")
     print(f"if constexpr (W_ob == {FLOAT_W_ob} && C_ob == FLOAT_C_ob){{\\")
@@ -72,7 +78,8 @@ def gen_conv_tile_refresh_row_major_b_reg():
 
         # refresh A's registers (stepping row-wise)
         for i in range(FLOAT_W_ob):
-            print(f"a_{i} = vld1q_f32(a + {i} * W_stride + {u * FLOAT_SIMD});\\")
+            # print(f"a_{i} = vld1q_f32(a + {i} * W_stride + {u * FLOAT_SIMD});\\")
+            print(LOAD_PACKED.format(reg = f"a_{i}", addr = f"a + {i} * W_stride + {u * FLOAT_SIMD}"))
 
         for uu in range(FLOAT_SIMD):
             # iterating through "cols" in a portion of matrix A's regs.  aka iterating through indices in A's registers
@@ -81,10 +88,12 @@ def gen_conv_tile_refresh_row_major_b_reg():
             for b_reg_col in range(0, FLOAT_C_ob, (FLOAT_SIMD * B_NUM_REGS)):
                 # refresh B register to be the next set of SIMD number of cols
                 for i in range(B_NUM_REGS):
-                    print(
-                        f"b_{i} = vld1q_f32(b + {u + uu} * C_ob + {b_reg_col} + {i} * FLOAT_SIMD);\\"
-                    )
+                    # print(
+                    #     f"b_{i} = vld1q_f32(b + {u + uu} * C_ob + {b_reg_col} + {i} * FLOAT_SIMD);\\"
+                    # )
+                    print(LOAD_PACKED.format(reg = f"b_{i}", addr = f"b + {u + uu} * C_ob + {b_reg_col} + {i} * FLOAT_SIMD"))
 
+                #can be replaced with b_cast FMA
                 for a_row in range(FLOAT_W_ob):
                     # iterating through one "col" in each of the "rows" in matrix A
                     # aka iterating through A's registers (sticking with the same column)
