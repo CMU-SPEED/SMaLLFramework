@@ -13,59 +13,152 @@
 #pragma once
 
 #include <FloatBuffer.hpp>
-#include<cmath>
+#include <cmath>
 
 // scalar versions of all the float microkernels for platform portability
 // Use the FLOAT_ prefix for all macros in this file.
 
 #define FLOAT_SIMD_EPILOGUE 1
 
-namespace small {
-namespace detail {
+namespace small
+{
+    namespace detail
+    {
 
-/// @todo both pairs of typedefs should not be needed.
-typedef small::FloatBuffer::value_type dtype;
+        /// @todo both pairs of typedefs should not be needed.
+        typedef small::FloatBuffer::value_type dtype;
 
-typedef small::FloatBuffer::value_type c_tile_t;
+        typedef small::FloatBuffer::value_type c_tile_t;
 
+    }
 }
-}
 
-//Architecture specific tiling params
+// The macros in this file are intended to be used in a shared scope.
+//****************************************************************************
+//****************************************************************************
+// Kernel Structure
+//****************************************************************************
+//****************************************************************************
+// Steady State Kernel
+//****************************************************************************
+// Each kernel will
+// 1) define a tile (size known at run-time) of C,
+// 2) initialize it,
+// 3) perform some computation in a loop,
+// 4) and (optionally) store the result.
 
-// __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
+// The macros used in this kernel have the _TILE_C suffix.
+// Pseduocode below
+/*
+    template <W_ob, C_ob, step>
+    kernel(a, b, c)
+    {
+        DEF_TILE_C(W_ob, C_ob)
 
+        if(ZERO)
+        {
+            ZERO_TILE_C(W_ob, C_ob)
+        } else {
+            LOAD_TILE_C(a, step, W_ob, C_ob)
+        }
+
+        computation loop
+        {
+            <COMPUTE>_TILE_C(step, a, b, W_ob, C_ob)
+        }
+
+        STORE_TILE_C(c, W_ob, C_ob)
+    }
+
+*/
+//****************************************************************************
+// Edge-case kernel
+//****************************************************************************
+// Each kernel will 
+// 1) define a tile (size known at run-time) of C, 
+// 2) initialize it, 
+// 3) perform some computation in a loop, 
+// 4) and (optionally) store the result.
+
+
+// Macros have the _END_C suffix.
+// Pseduocode below
+/*
+    template <step>
+    kernel_end(a, b, c, W_ob, C_ob)
+    {
+        DEF_END_C(W_ob, C_ob)
+
+        if(ZERO)
+        {
+            ZERO_END_C(W_ob, C_ob)
+        }
+        else
+        {
+            LOAD_END_C(a, step, W_ob, C_ob)
+        }
+
+        computation loop
+        {
+            <COMPUTE>_END_C(step, a, b, W_ob, C_ob)
+        }
+
+        STORE_END_C(c, W_ob, C_ob)
+    }
+
+*/
 
 //****************************************************************************
 // Initializations
 //****************************************************************************
 
-#define FLOAT_DEF_TILE_C(W_ob, C_ob)            \
+/**
+ * @brief Macro to define a tile of C matrix with given dimensions.
+ *
+ * @param W_ob The width of the tile.              // Constant at compile time
+ * @param C_ob The number of channels in the tile. // Constant at compile time
+ */
+#define FLOAT_DEF_TILE_C(W_ob, C_ob) \
     c_tile_t c_tile[W_ob * C_ob];
 
-
-#define FLOAT_DEF_END_C(W_ob, C_ob)             \
+/**
+ * @brief Macro to define a tile of C matrix with given dimensions.
+ *
+ * @param W_ob The width of the tile.             // Variable, determined at runtime
+ * @param C_ob The number of channels in the tile.// Variable, determined at runtime
+ */
+#define FLOAT_DEF_END_C(W_ob, C_ob) \
     c_tile_t c_tile[W_ob * C_ob];
 
-
-#define FLOAT_ZERO_TILE_C(W_ob, C_ob)           \
-    for (uint32_t kk = 0; kk < W_ob; kk++)      \
-    {                                           \
-        for (uint32_t jj = 0; jj < C_ob; jj++)  \
-        {                                       \
-            c_tile[kk * C_ob + jj] = 0.f;       \
-        }                                       \
+/**
+ * @brief Macro to zero-initialize a (previously defined) tile of C matrix with given dimensions.
+ *
+ * @param W_ob The width of the tile.
+ * @param C_ob The number of channels in the tile.
+ */
+#define FLOAT_ZERO_TILE_C(W_ob, C_ob)          \
+    for (uint32_t kk = 0; kk < W_ob; kk++)     \
+    {                                          \
+        for (uint32_t jj = 0; jj < C_ob; jj++) \
+        {                                      \
+            c_tile[kk * C_ob + jj] = 0.f;      \
+        }                                      \
     }
 
-#define FLOAT_ZERO_END_C(_W_ob, C_ob)           \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)     \
-    {                                           \
-        for (uint32_t jj = 0; jj < C_ob; jj++)  \
-        {                                       \
-            c_tile[kk * C_ob + jj] = 0.f;       \
-        }                                       \
+/**x
+ * @brief Macro to zero-initialize the end of a tile of C matrix with given dimensions.
+ *
+ * @param _W_ob The width of the tile.
+ * @param C_ob The number of channels in the tile.
+ */
+#define FLOAT_ZERO_END_C(_W_ob, C_ob)          \
+    for (uint32_t kk = 0; kk < _W_ob; kk++)    \
+    {                                          \
+        for (uint32_t jj = 0; jj < C_ob; jj++) \
+        {                                      \
+            c_tile[kk * C_ob + jj] = 0.f;      \
+        }                                      \
     }
-
 
 //****************************************************************************
 // Loads
