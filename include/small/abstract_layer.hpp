@@ -2131,7 +2131,7 @@ void abstract_layer_1D(
                             // Steady State over rows
                             for (index_t j = height_tid; j < O_h; j += T_height)
                             {
-                                index_t j = 0;
+                                // index_t j = 0;
                                 ScalarT const *I_row;
                                 // @todo cast index calculation as int and make stride a float value.
                                 // I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
@@ -2236,7 +2236,7 @@ void abstract_layer_1D(
                                     O_col_left,
                                     0,
                                     0);
-                            // }
+                            }
                             // // Epilogue with bottom padding
                             // ScalarT const *I_row_bot;
                             // // @todo cast index calculation as int and make stride a float value.
