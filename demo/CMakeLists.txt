@@ -66,7 +66,7 @@ endforeach(layer_name ${LAYER_NAMES})
     set(CMAKE_CXX_FLAGS ${OLD_CMAKE_CXX_FLAGS})
     endforeach(layer_name ${LAYER_NAMES})
 
-    set(MODEL_SOURCES mobilenet.cpp mobilenet_reshuffled resnet.cpp dscnn.cpp dscnn_square.cpp autoencoder.cpp tinyyolov2.cpp)
+    set(MODEL_SOURCES mobilenet.cpp mobilenet_reshuffled resnet.cpp resnet_1D.cpp dscnn.cpp dscnn_square.cpp autoencoder.cpp tinyyolov2.cpp)
     message("In demo/CMakeLists.txt: ${MODEL_SOURCES}")
 
     foreach(model_source_file ${MODEL_SOURCES})

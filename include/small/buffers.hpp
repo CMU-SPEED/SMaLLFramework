@@ -417,7 +417,7 @@ void init(BufferT &ptr, uint32_t numel)
 
     if constexpr (std::is_same<float, typename BufferT::value_type>::value)
     {
-        srand(42);
+        // srand(42);
         float *cur_ptr = ptr.data();
         for (size_t i = 0 ; i < numel ; i++)
         {
