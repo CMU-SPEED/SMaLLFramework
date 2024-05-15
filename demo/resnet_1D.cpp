@@ -30,7 +30,7 @@
 #endif
 
 #ifndef TRIALS
-#define TRIALS 10
+#define TRIALS 100
 #endif
 
 #define TIME_LAYER 0
@@ -737,6 +737,7 @@ template <class BufferT>
 BufferT &
 model_inference(uint32_t layer_num_total,
                 uint32_t n_blocks,
+                uint32_t resnets_per_block,
                 uint16_t layer_params[60][10],
                 uint32_t intermediate_dims[60][2],
                 std::vector<BufferT *> const &filter_buf_ptrs,
@@ -746,6 +747,7 @@ model_inference(uint32_t layer_num_total,
                 BufferT &inter_2_dc,
                 uint32_t B = 1)
 {
+
     auto layer_num = 0;
 #if TIME_LAYER
     small::Timer my_timer;
@@ -807,7 +809,7 @@ model_inference(uint32_t layer_num_total,
 // #endif
     layer_num += 2;
     // 1 - n-1th blocks
-    for (uint32_t n = 0; n < n_blocks - 1; n++)
+    for (uint32_t n = 0; n < resnets_per_block - 1; n++)
     {
 // #if TIME_LAYER
 //         my_timer.start();
@@ -831,7 +833,7 @@ model_inference(uint32_t layer_num_total,
         // printf("Layer %d complete\n", layer_num);
     }
 
-    auto resnet_blocks = 3;
+    auto resnet_blocks = n_blocks;
     auto num_filters = layer_num_total - 1;
     for (int ds_layer = 1; ds_layer < resnet_blocks; ds_layer++)
     {
@@ -862,7 +864,7 @@ model_inference(uint32_t layer_num_total,
         inter_0_dc.swap(inter_2_dc);
         // printf("layer num %d 0  %d  2 %d\n", layer_num, inter_0_dc.data(), inter_2_dc.data());
 
-        for (uint32_t n = 0; n < n_blocks - 1; n++)
+        for (uint32_t n = 0; n < resnets_per_block - 1; n++)
         {
 // #if TIME_LAYER
 //             my_timer.start();
@@ -932,15 +934,15 @@ model_inference(uint32_t layer_num_total,
 //****************************************************************************
 //****************************************************************************
 template <class BufferT>
-void inference(uint32_t n_blocks = 5, uint32_t batch=64)
+void inference(uint32_t const n_blocks = 2, uint32_t const resnets_per_block = 5, uint32_t const batch=64, uint32_t const vector_length =1024)
 {
     uint32_t C_i = 3;
     uint32_t N = batch;
-    uint32_t M = 1024;
+    uint32_t M = vector_length;
     uint32_t num_classes = 16;
 
     // number of repeated resnet blocks
-    //  uint32_t n_blocks = 5;
+    //  uint32_t resnets_per_block = 5;
 
     int B = 1;
     char const *env_bt(std::getenv("OMP_BATCH_NUM_THREADS"));
@@ -1001,10 +1003,16 @@ void inference(uint32_t n_blocks = 5, uint32_t batch=64)
         (inter_dim > max_numel_inter_0) ? inter_dim : max_numel_inter_0;
 
     // common set up for model architecture
-    auto resnet_blocks = 3;
-    int layer_strides[] = {1, 2, 2};
+    // auto resnet_blocks = 3;
+    int layer_strides[n_blocks]; 
+    layer_strides[0]= 1;
+    for(int i = 1; i < n_blocks; i++)
+    {
+        layer_strides[i] = 2;
+    }
+
     // dwise 1
-    for (int ds_layer = 0; ds_layer < resnet_blocks; ds_layer++)
+    for (int ds_layer = 0; ds_layer < n_blocks; ds_layer++)
     {
         int channel_multiplier = (ds_layer > 0) ? 2 : 1;
 
@@ -1071,8 +1079,8 @@ void inference(uint32_t n_blocks = 5, uint32_t batch=64)
         intermediate_dims[layer_num][0] = O_WIDTH(layer_num);
         intermediate_dims[layer_num][1] = N; // O_HEIGHT(layer_num);
 
-        // Remaining n_blocks - 1 blocks
-        for (uint32_t b = 0; b < n_blocks - 1; b++)
+        // Remaining resnets_per_block - 1 blocks
+        for (uint32_t b = 0; b < resnets_per_block - 1; b++)
         {
 
             REDUCTION_C(layer_num) = in_channels * channel_multiplier; // input channels
@@ -1106,7 +1114,7 @@ void inference(uint32_t n_blocks = 5, uint32_t batch=64)
             small::calc_padding(I_WIDTH(layer_num), REDUCTION_W(layer_num),
                                 STRIDE(layer_num), l_pad, r_pad);
             SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad);
-            printf("%d %d \n", layer_num, GROUP_C(layer_num));
+          
             layer_num++; // 3,5,8
             inter_dim = INPUT_NUMEL(layer_num);
             max_numel_inter_0 =
@@ -1196,7 +1204,7 @@ void inference(uint32_t n_blocks = 5, uint32_t batch=64)
     std::cerr << "Warm up run (ORIG)" << std::endl;
     my_timer.start();
     auto &output_dc =
-        model_inference(layer_num_total, n_blocks, layer_params, intermediate_dims,
+        model_inference(layer_num_total, n_blocks,resnets_per_block, layer_params, intermediate_dims,
                         filter_buf_ptrs,
                         input_dc,
                         inter_0_dc,
@@ -1253,7 +1261,7 @@ void inference(uint32_t n_blocks = 5, uint32_t batch=64)
                 // {
                 // init(input_dc_p[tid], input_dimensions);
 
-                output_dc_p[tid] = model_inference(layer_num_total, n_blocks, layer_params, intermediate_dims,
+                output_dc_p[tid] = model_inference(layer_num_total, n_blocks, resnets_per_block,layer_params, intermediate_dims,
                                                    filter_buf_ptrs,
                                                    input_dc_p[tid],
                                                    inter_0_dc_p[tid],
@@ -1281,7 +1289,7 @@ void inference(uint32_t n_blocks = 5, uint32_t batch=64)
             // {
                 small::init(input_dc, input_dimensions);
 
-                auto out_dc = model_inference(layer_num_total, n_blocks, layer_params, intermediate_dims,
+                auto out_dc = model_inference(layer_num_total, n_blocks, resnets_per_block, layer_params, intermediate_dims,
                                               filter_buf_ptrs,
                                               input_dc,
                                               inter_0_dc,
@@ -1315,7 +1323,7 @@ void inference(uint32_t n_blocks = 5, uint32_t batch=64)
         }
     }
 #endif
-    std::cout << n_blocks << " Minimum time: " << min_small << " ns.\n";
+    std::cout << resnets_per_block << " Minimum time: " << min_small << " ns.\n";
 
 #if TIME_LAYER
     double sum_unfused = 0, sum_ewise = 0, sum_fused = 0;
@@ -1332,7 +1340,7 @@ void inference(uint32_t n_blocks = 5, uint32_t batch=64)
         sum_fused += min_layer_timers[2][layer];
     }
 
-    printf("sum , %f, %f, %f ,%d, %d \n", sum_unfused, sum_ewise, sum_fused, n_blocks, 64);
+    printf("sum , %f, %f, %f ,%d, %d \n", sum_unfused, sum_ewise, sum_fused, resnets_per_block, 64);
 #endif
 
     int num_th = 1;
@@ -1374,12 +1382,12 @@ void inference(uint32_t n_blocks = 5, uint32_t batch=64)
     //     size_t num_outputs = layers.back()->output_size();
     //     std::cout << "\nCHECK RESULTS: Num output elements: " << num_outputs
     //               << std::endl;
-    for (size_t ix = 0; ix < num_classes; ++ix)
-    {
-        std::cout << "Current, new " << ix
-                  << ": " << (float)output_dc[ix]
-                  << std::endl;
-    }
+    // for (size_t ix = 0; ix < num_classes; ++ix)
+    // {
+    //     std::cout << "Current, new " << ix
+    //               << ": " << (float)output_dc[ix]
+    //               << std::endl;
+    // }
 
 #if defined(NANO33BLE)
     small::detail::free_all();
@@ -1392,18 +1400,28 @@ void inference(uint32_t n_blocks = 5, uint32_t batch=64)
 #ifndef NANO33BLE
 int main(int argc, char **argv)
 {
-    int n_blocks = 5;
+    uint32_t resnets_per_block = 5;
     uint32_t batch = 64;
-    if (argc > 2)
+    uint32_t vector_length = 1024;
+    uint32_t n_blocks = 3;
+    printf("argc: %d\n", argc);
+    switch(argc-1)
     {
-        batch = atoi(argv[1]);
-        n_blocks = atoi(argv[2]);
+        case 4:
+            n_blocks = atoi(argv[4]);
+        case 3:
+            vector_length = atoi(argv[3]);
+        case 2:
+            resnets_per_block = atoi(argv[2]);
+        case 1:
+            batch = atoi(argv[1]);
     }
+
 
 #if defined(QUANTIZED)
     inference<small::QUInt8Buffer>();
 #else
-    inference<small::FloatBuffer>(n_blocks, batch);
+    inference<small::FloatBuffer>(n_blocks, resnets_per_block, batch, vector_length);
 #endif
 
     return 0;
