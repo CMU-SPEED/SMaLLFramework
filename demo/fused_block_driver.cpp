@@ -32,7 +32,7 @@
 #define COMPUTE_RELU false
 #endif
 #ifndef RUNS
-#define RUNS 100
+#define RUNS 10
 #endif
 
 #ifndef TRIALS
