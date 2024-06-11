@@ -559,6 +559,7 @@ void MaxPool2D<FloatBuffer>(
     }
     else
     {
+        printf("%d\n", input_channels);
         throw std::invalid_argument(
             "MaxPool2D<float> ERROR: in_channels unsupported.");
     }

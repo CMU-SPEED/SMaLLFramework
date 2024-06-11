@@ -33,7 +33,7 @@
 #define TRIALS 100
 #endif
 
-#define TIME_LAYER 1
+#define TIME_LAYER 0
 
 #define SUMMARY 1
 /* From https://github.com/mlcommons/tiny/blob/master/benchmark/training/image_classification/keras_model.py
@@ -246,19 +246,17 @@ def resnet_v1_eembc():
 
  */
 
-#include<small/Layer.hpp>
-#include<small/PartialConv2DLayer.hpp>
-#include<small/Conv2DLayer.hpp>
-#include<small/MaxPool2DLayer.hpp>
-#include<small/ReLULayer.hpp>
-
-
+#include <small/Layer.hpp>
+#include <small/PartialConv2DLayer.hpp>
+#include <small/Conv2DLayer.hpp>
+#include <small/MaxPool2DLayer.hpp>
+#include <small/ReLULayer.hpp>
 
 template <class BufferT>
-std::vector<small::Layer<BufferT>*> create_model(
-    std::vector<BufferT*> const &filters)
+std::vector<small::Layer<BufferT> *> create_model(
+    std::vector<BufferT *> const &filters)
 {
-    std::vector<small::Layer<BufferT>*> layers;
+    std::vector<small::Layer<BufferT> *> layers;
 
     // settings for first layers
     uint32_t kernel_size = 3;
@@ -266,8 +264,8 @@ std::vector<small::Layer<BufferT>*> create_model(
     uint32_t input_channels = 3;
     uint32_t output_channels = 16;
     uint32_t image_size = 32;
-    uint32_t num_classes = 16;  /// @todo should be 10
-    size_t   filter_num = 0;
+    uint32_t num_classes = 16; /// @todo should be 10
+    size_t filter_num = 0;
 
     small::shape_type input_shape(
         {1UL, input_channels, image_size, image_size});
@@ -292,7 +290,7 @@ std::vector<small::Layer<BufferT>*> create_model(
                                            *filters[filter_num], true);
     layers.push_back(prev);
 
-    prev =  new small::ReLULayer<BufferT>(prev->output_shape());
+    prev = new small::ReLULayer<BufferT>(prev->output_shape());
     layers.push_back(prev);
 
     ++filter_num;
@@ -303,7 +301,7 @@ std::vector<small::Layer<BufferT>*> create_model(
                                                   *filters[filter_num], true);
     layers.push_back(prev);
 
-    prev =  new small::ReLULayer<BufferT>(prev->output_shape());
+    prev = new small::ReLULayer<BufferT>(prev->output_shape());
     layers.push_back(prev);
 
     // Second and Third Stacks
@@ -314,7 +312,7 @@ std::vector<small::Layer<BufferT>*> create_model(
         //==================
         ++filter_num;
 
-        output_channels = 2*output_channels;
+        output_channels = 2 * output_channels;
         stride = 2;
         prev = new small::Conv2DLayer<BufferT>(block_prev->output_shape(),
                                                kernel_size, kernel_size,
@@ -327,13 +325,13 @@ std::vector<small::Layer<BufferT>*> create_model(
         layers.push_back(prev);
 
         //==================
-        ++filter_num;  ///@note out of order filter access here/next
+        ++filter_num; ///@note out of order filter access here/next
 
         prev = new small::Conv2DLayer<BufferT>(block_prev->output_shape(),
                                                1U, 1U,
                                                stride, small::PADDING_V,
                                                output_channels,
-                                               *filters[filter_num+1], true);
+                                               *filters[filter_num + 1], true);
         layers.push_back(prev);
 
         stride = 1;
@@ -343,13 +341,13 @@ std::vector<small::Layer<BufferT>*> create_model(
                                                       output_channels,
                                                       *filters[filter_num], true);
         layers.push_back(prev);
-        ++filter_num;  /// @note 1x1 filter order swapped
+        ++filter_num; /// @note 1x1 filter order swapped
 
         prev = new small::ReLULayer<BufferT>(prev->output_shape());
         layers.push_back(prev);
     }
 
-    kernel_size = layers.back()->output_shape()[small::HEIGHT]; //image_size;
+    kernel_size = layers.back()->output_shape()[small::HEIGHT]; // image_size;
     stride = 1;
     /// @todo should be AveragePooling2D
     prev = new small::MaxPool2DLayer<BufferT>(prev->output_shape(),
@@ -376,15 +374,15 @@ std::vector<small::Layer<BufferT>*> create_model(
 //****************************************************************************
 template <class BufferT>
 small::Tensor<BufferT> &model_inference(
-    std::vector<small::Layer<BufferT>*> const &layers,
-    small::Tensor<BufferT>                             const &input_dc,
-    small::Tensor<BufferT>                                   &inter_0_dc,
-    small::Tensor<BufferT>                                   &inter_1_dc,
-    small::Tensor<BufferT>                                   &inter_2_dc)
+    std::vector<small::Layer<BufferT> *> const &layers,
+    small::Tensor<BufferT> const &input_dc,
+    small::Tensor<BufferT> &inter_0_dc,
+    small::Tensor<BufferT> &inter_1_dc,
+    small::Tensor<BufferT> &inter_2_dc)
 {
     size_t layer_num = 0;
-    layers[layer_num++]->compute_output({&input_dc}, &inter_0_dc);   //Conv2D
-    layers[layer_num++]->compute_output({&inter_0_dc}, &inter_0_dc); //ReLU
+    layers[layer_num++]->compute_output({&input_dc}, &inter_0_dc);   // Conv2D
+    layers[layer_num++]->compute_output({&inter_0_dc}, &inter_0_dc); // ReLU
 
     layers[layer_num++]->compute_output({&inter_0_dc}, &inter_1_dc); // Conv2D
     layers[layer_num++]->compute_output({&inter_1_dc}, &inter_1_dc); // ReLU
@@ -439,11 +437,12 @@ small::Tensor<BufferT> &model_inference(
 #define INPUT_NUMEL(layer_num) \
     (O_HEIGHT(layer_num) * O_WIDTH(layer_num) * GROUP_C(layer_num - 1) * GROUPS(layer_num - 1))
 
-
 // Layer by Layer Timers
-double layer_timers[3][15];
-double min_layer_timers[3][15];
-double avg_layer_timers[3][15];
+double layer_timers[3][100];
+double min_layer_timers[3][100];
+double avg_layer_timers[3][100];
+
+int layer_timer_count = 0;
 
 //****************************************************************************
 // The output of the block is stored in O
@@ -467,38 +466,94 @@ inline void resnet_block(
     BufferT const &F_conv0,
     BufferT const &F_conv1,
     BufferT const &F_conv_1x1,
-    BufferT       &O_intermediate,
-    BufferT       &O)
+    BufferT &O_intermediate,
+    BufferT &O)
 {
     // printf("before: %d, %.2f %.2f %.2f %.2f\n", 0, I[0], I[1], I[2], I[3]);
-
+    #if TIME_LAYER
+    small::Timer my_timer;
+    my_timer.start();
+    #endif
     small::Conv2D(kernel_size_height, kernel_size_width, stride,
                   t_pad_0, b_pad_0, l_pad_0, r_pad_0,
                   output_channels, input_channels,
                   in_dims[0], in_dims[1],
                   I, F_conv0, O_intermediate);
-
+    #if TIME_LAYER
+    my_timer.stop();
+    layer_timers[0][layer_timer_count] = my_timer.elapsed();
+    layer_timer_count++;
+    #endif
     uint32_t o_h = small::output_dim(in_dims[0] + t_pad_0 + b_pad_0,
                                      stride, kernel_size_height);
     uint32_t o_w = small::output_dim(in_dims[1] + l_pad_0 + r_pad_0,
                                      stride, kernel_size_width);
 
+    #if TIME_LAYER
+    my_timer.start();
+    #endif
+
     small::ReLUActivation(output_channels,
                           o_h, o_w,
                           O_intermediate, O_intermediate);
+    
+    #if TIME_LAYER
+    my_timer.stop();
+    layer_timers[0][layer_timer_count] = my_timer.elapsed();
+    layer_timer_count++;
+    #endif
 
-    small::Conv2D(1, 1, stride,
-                  0, 0, 0, 0,
-                  output_channels, input_channels,
-                  in_dims[0], in_dims[1],
-                  I, F_conv_1x1, O);
+    // //split the O into 2 parts
+    // BufferT O_1;
+    // O_1.data() = O.data();
+    // BufferT O_2;
+    // O_2.data() = O.data() + (o_h*o_w*input_channels);
 
+    #if TIME_LAYER
+    my_timer.start();
+    #endif
+
+    small::AveragePool2D(1, 1, stride,
+                         0, 0, 0, 0,
+                         input_channels,
+                         //   input_channels,
+                         in_dims[0], in_dims[1],
+                         I,
+                         //   F_conv_1x1,
+                         O);
+
+
+    #if TIME_LAYER
+    my_timer.stop();
+    layer_timers[0][layer_timer_count] = my_timer.elapsed();
+    layer_timer_count++;
+    #endif                     
+
+
+    #if TIME_LAYER
+    my_timer.start();
+    #endif
     small::PartialConv2D(kernel_size_height, kernel_size_width, 1,
                          t_pad_1, b_pad_1, l_pad_1, r_pad_1,
                          output_channels, output_channels,
                          o_h, o_w,
                          O_intermediate, F_conv1, O);
+    #if TIME_LAYER
+    my_timer.stop();
+    layer_timers[0][layer_timer_count] = my_timer.elapsed();
+    layer_timer_count++;
+    #endif
+
+    #if TIME_LAYER
+    my_timer.start();
+    #endif
     small::ReLUActivation(output_channels, o_h, o_w, O, O);
+    #if TIME_LAYER
+    my_timer.stop();
+    layer_timers[0][layer_timer_count] = my_timer.elapsed();
+    layer_timer_count++;
+    #endif
+
 }
 
 template <class BufferT>
@@ -519,17 +574,29 @@ inline void ewise_fused_resnet_block(
     BufferT const &I,
     BufferT const &F_conv0,
     BufferT const &F_conv1,
-    BufferT const &F_conv_1x1,
+    // BufferT const &F_conv_1x1,
     BufferT &O_intermediate,
     BufferT &O)
 {
     // printf("before: %d, %.2f %.2f %.2f %.2f\n", 0, I[0], I[1], I[2], I[3]);
 
+    #if TIME_LAYER
+    small::Timer my_timer;
+    my_timer.start();
+    #endif
+
     small::Conv2D_ReLU(kernel_size_height, kernel_size_width, stride,
-                  t_pad_0, b_pad_0, l_pad_0, r_pad_0,
-                  output_channels, input_channels,
-                  in_dims[0], in_dims[1],
-                  I, F_conv0, O_intermediate);
+                       t_pad_0, b_pad_0, l_pad_0, r_pad_0,
+                       output_channels, input_channels,
+                       in_dims[0], in_dims[1],
+                       I, F_conv0, O_intermediate);
+
+    #if TIME_LAYER
+    my_timer.stop();
+    layer_timers[0][layer_timer_count] = my_timer.elapsed();
+    layer_timer_count++;
+    layer_timer_count++;
+    #endif
 
     uint32_t o_h = small::output_dim(in_dims[0] + t_pad_0 + b_pad_0,
                                      stride, kernel_size_height);
@@ -540,18 +607,45 @@ inline void ewise_fused_resnet_block(
     //                       o_h, o_w,
     //                       O_intermediate, O_intermediate);
 
-    small::Conv2D(1, 1, stride,
-                  0, 0, 0, 0,
-                  output_channels, input_channels,
-                  in_dims[0], in_dims[1],
-                  I, F_conv_1x1, O);
 
+    // #if TIME_LAYER
+    // my_timer.start();
+    // #endif
+
+    // small::Conv2D(1, 1, stride,
+    //               0, 0, 0, 0,
+    //               output_channels, input_channels,
+    //               in_dims[0], in_dims[1],
+    //               I, F_conv_1x1, O);
+    // #if TIME_LAYER
+    // my_timer.stop();
+    // layer_timers[0][layer_timer_count] = my_timer.elapsed();
+    // layer_timer_count++;
+    // #endif
+
+    #if TIME_LAYER
+    my_timer.start();
+    #endif
     small::PartialConv2D(kernel_size_height, kernel_size_width, 1,
                          t_pad_1, b_pad_1, l_pad_1, r_pad_1,
                          output_channels, output_channels,
                          o_h, o_w,
                          O_intermediate, F_conv1, O);
+    #if TIME_LAYER
+    my_timer.stop();
+    layer_timers[0][layer_timer_count] = my_timer.elapsed();
+    layer_timer_count++;
+    #endif
+
+    #if TIME_LAYER
+    my_timer.start();
+    #endif
     small::ReLUActivation(output_channels, o_h, o_w, O, O);
+    #if TIME_LAYER
+    my_timer.stop();
+    layer_timers[0][layer_timer_count] = my_timer.elapsed();
+    layer_timer_count++;
+    #endif
 }
 
 //****************************************************************************
@@ -575,48 +669,89 @@ inline void resnet_block(
     BufferT const &I,
     BufferT const &F_conv0,
     BufferT const &F_conv1,
-    BufferT       &O_intermediate,
-    BufferT       &O)
+    BufferT &O_intermediate,
+    BufferT &O)
 {
+    #if TIME_LAYER
+    small::Timer my_timer;
+    my_timer.start();
+    #endif
+
     small::Conv2D(kernel_size_height, kernel_size_width, stride,
                   t_pad_0, b_pad_0, l_pad_0, r_pad_0,
                   output_channels, input_channels,
                   in_dims[0], in_dims[1],
                   I, F_conv0, O_intermediate);
 
+    #if TIME_LAYER
+    my_timer.stop();
+    layer_timers[0][layer_timer_count] = my_timer.elapsed();
+    layer_timer_count++;
+    #endif
+
     uint32_t o_h = small::output_dim(in_dims[0] + t_pad_0 + b_pad_0,
                                      stride, kernel_size_height);
     uint32_t o_w = small::output_dim(in_dims[1] + l_pad_0 + r_pad_0,
                                      stride, kernel_size_width);
+    #if TIME_LAYER
+    my_timer.start();
+    #endif
 
     small::ReLUActivation(output_channels,
                           o_h, o_w,
                           O_intermediate, O_intermediate);
-
+    #if TIME_LAYER
+    my_timer.stop();
+    layer_timers[0][layer_timer_count] = my_timer.elapsed();
+    layer_timer_count++;
+    #endif
     /// @todo Should this really be Partial Conv2D if no 1x1?
+
+    #if TIME_LAYER
+    my_timer.start();
+    #endif
     small::PartialConv2D(kernel_size_height, kernel_size_width, 1,
                          t_pad_1, b_pad_1, l_pad_1, r_pad_1,
                          output_channels, output_channels,
                          o_h, o_w,
                          O_intermediate, F_conv1, O);
+    #if TIME_LAYER
+    my_timer.stop();
+    layer_timers[0][layer_timer_count] = my_timer.elapsed();
+    layer_timer_count++;
+    #endif
+
+    #if TIME_LAYER
+    my_timer.start();
+    #endif
     small::ReLUActivation(output_channels, o_h, o_w, O, O);
+    #if TIME_LAYER
+    my_timer.stop();
+    layer_timers[0][layer_timer_count] = my_timer.elapsed();
+    layer_timer_count++;
+    #endif
 }
 
 //****************************************************************************
 template <class BufferT>
 BufferT &
 model_inference(uint32_t layer_num_total,
-                uint16_t layer_params[30][10],
-                uint32_t intermediate_dims[30][2],
+                uint32_t n_blocks,
+                uint32_t resnets_per_block,
+                uint16_t layer_params[60][10],
+                uint32_t intermediate_dims[60][2],
                 std::vector<BufferT *> const &filter_buf_ptrs,
                 BufferT const &input_dc,
-                BufferT       &inter_0_dc,
-                BufferT       &inter_1_dc,
-                BufferT       &inter_2_dc)
+                BufferT &inter_0_dc,
+                BufferT &inter_1_dc,
+                BufferT &inter_2_dc,
+                uint32_t B = 1)
 {
+
     auto layer_num = 0;
 #if TIME_LAYER
     small::Timer my_timer;
+    layer_timer_count = 0;
 
     my_timer.start();
 #endif
@@ -627,7 +762,19 @@ model_inference(uint32_t layer_num_total,
                   I_HEIGHT(layer_num), I_WIDTH(layer_num),
                   input_dc,
                   *filter_buf_ptrs[layer_num],
-                  inter_0_dc); 
+                  inter_0_dc);
+
+#if TIME_LAYER
+    my_timer.stop();
+    layer_timers[0][layer_timer_count] = my_timer.elapsed();
+    layer_timer_count++;
+
+    layer_timer_count++;
+#endif
+
+#if TIME_LAYER
+    my_timer.start();
+#endif
     small::ReLUActivation(GROUP_C(0),
                           I_HEIGHT(layer_num), I_WIDTH(layer_num),
                           inter_0_dc,
@@ -636,13 +783,14 @@ model_inference(uint32_t layer_num_total,
 
 #if TIME_LAYER
     my_timer.stop();
-    layer_timers[0][0] = my_timer.elapsed();
+    layer_timers[0][layer_timer_count] = my_timer.elapsed();
+    layer_timer_count++;
 #endif
     layer_num++;
 
-#if TIME_LAYER
-    my_timer.start();
-#endif
+// #if TIME_LAYER
+//     my_timer.start();
+// #endif
     resnet_block(intermediate_dims[layer_num], REDUCTION_C(layer_num), // Input dimensions
                  REDUCTION_H(layer_num), REDUCTION_W(layer_num),
                  STRIDE(layer_num),
@@ -655,18 +803,43 @@ model_inference(uint32_t layer_num_total,
                  inter_1_dc,
                  inter_0_dc);
     // printf("Layer %d complete\n", layer_num);
-#if TIME_LAYER
-    my_timer.stop();
-    layer_timers[0][1] = my_timer.elapsed();
-#endif
+// #if TIME_LAYER
+//     my_timer.stop();
+//     layer_timers[0][1] = my_timer.elapsed();
+// #endif
     layer_num += 2;
-    auto resnet_blocks = 3;
+    // 1 - n-1th blocks
+    for (uint32_t n = 0; n < resnets_per_block - 1; n++)
+    {
+// #if TIME_LAYER
+//         my_timer.start();
+// #endif
+        resnet_block(intermediate_dims[layer_num], REDUCTION_C(layer_num), // Input dimensions
+                     REDUCTION_H(layer_num), REDUCTION_W(layer_num),
+                     STRIDE(layer_num),
+                     GROUP_C(layer_num),
+                     PADDING(layer_num),
+                     PADDING(layer_num + 1),
+                     inter_0_dc,
+                     *filter_buf_ptrs[layer_num],
+                     *filter_buf_ptrs[layer_num + 1],
+                     inter_1_dc,
+                     inter_0_dc);
+// #if TIME_LAYER
+//         my_timer.stop();
+//         layer_timers[0][layer_num] = my_timer.elapsed();
+// #endif
+        layer_num += 2;
+        // printf("Layer %d complete\n", layer_num);
+    }
+
+    auto resnet_blocks = n_blocks;
     auto num_filters = layer_num_total - 1;
     for (int ds_layer = 1; ds_layer < resnet_blocks; ds_layer++)
     {
-#if TIME_LAYER
-        my_timer.start();
-#endif
+// #if TIME_LAYER
+//         my_timer.start();
+// #endif
         resnet_block(intermediate_dims[layer_num], REDUCTION_C(layer_num),
                      REDUCTION_H(layer_num), REDUCTION_W(layer_num),
                      STRIDE(layer_num),
@@ -679,16 +852,44 @@ model_inference(uint32_t layer_num_total,
                      *filter_buf_ptrs[layer_num + 2],
                      inter_1_dc,
                      inter_2_dc);
-#if TIME_LAYER
-        my_timer.stop();
-        layer_timers[0][layer_num] = my_timer.elapsed();
-#endif
+// #if TIME_LAYER
+//         my_timer.stop();
+//         layer_timers[0][layer_num] = my_timer.elapsed();
+// #endif
         // printf("Layer %d complete\n", layer_num);
 
         layer_num += 3;
         // Since channels were scaled, switch the pointers between inter_2 and inter_0
 
         inter_0_dc.swap(inter_2_dc);
+        // printf("layer num %d 0  %d  2 %d\n", layer_num, inter_0_dc.data(), inter_2_dc.data());
+
+        for (uint32_t n = 0; n < resnets_per_block - 1; n++)
+        {
+// #if TIME_LAYER
+//             my_timer.start();
+// #endif
+            resnet_block(intermediate_dims[layer_num], REDUCTION_C(layer_num), // Input dimensions
+                         REDUCTION_H(layer_num), REDUCTION_W(layer_num),
+                         STRIDE(layer_num),
+                         GROUP_C(layer_num),
+                         PADDING(layer_num),
+                         PADDING(layer_num + 1),
+                         inter_0_dc,
+                         *filter_buf_ptrs[layer_num],
+                         *filter_buf_ptrs[layer_num + 1],
+                         inter_1_dc,
+                         inter_0_dc);
+            layer_num += 2;
+            // printf("layer num %d 0  %d  2 %d\n", layer_num, inter_0_dc.data(), inter_2_dc.data());
+
+// #if TIME_LAYER
+//             my_timer.stop();
+//             layer_timers[0][layer_num] = my_timer.elapsed();
+// #endif
+
+            // printf("Layer %d complete\n", layer_num);
+        }
     }
 
 #if TIME_LAYER
@@ -703,9 +904,11 @@ model_inference(uint32_t layer_num_total,
                      inter_1_dc);
 #if TIME_LAYER
     my_timer.stop();
-    layer_timers[0][layer_num] = my_timer.elapsed();
+    layer_timers[0][layer_timer_count] = my_timer.elapsed();
+    layer_timer_count++;
 #endif
 
+    layer_num++;
     // printf("Layer %d complete\n", layer_num);
 
 #if TIME_LAYER
@@ -720,7 +923,8 @@ model_inference(uint32_t layer_num_total,
                   inter_0_dc);
 #if TIME_LAYER
     my_timer.stop();
-    layer_timers[0][layer_num] = my_timer.elapsed();
+    layer_timers[0][layer_timer_count] = my_timer.elapsed();
+    layer_timer_count++;
 #endif
     // printf("Layer %d complete\n", layer_num);
 
@@ -730,12 +934,31 @@ model_inference(uint32_t layer_num_total,
 //****************************************************************************
 //****************************************************************************
 template <class BufferT>
-void inference()
+void inference(uint32_t const n_blocks = 2, uint32_t const resnets_per_block = 5, uint32_t const batch=64, uint32_t const vector_length =1024)
 {
     uint32_t C_i = 3;
-    uint32_t N = 1;
-    uint32_t M = 960;
+    uint32_t N = batch;
+    uint32_t M = vector_length;
     uint32_t num_classes = 16;
+
+    // number of repeated resnet blocks
+    //  uint32_t resnets_per_block = 5;
+
+    int B = 1;
+    char const *env_bt(std::getenv("OMP_BATCH_NUM_THREADS"));
+    if (nullptr != env_bt)
+    {
+        B = atoi(std::getenv("OMP_BATCH_NUM_THREADS"));
+    }
+
+    auto threads_for_batch = B;
+    auto thread_local_prob = N / threads_for_batch;
+    auto thread_remainder = N % threads_for_batch;
+
+    // split up batch into reused section within abstract layer(N), and loop section (batch_p_thread)
+    auto batch_p_thread = thread_local_prob + (thread_remainder > 0);
+    N = (batch_p_thread <= 8) ? batch_p_thread : 8;
+    N = batch_p_thread;
 
     // Create input tensor
     srand(1729);
@@ -745,8 +968,8 @@ void inference()
 
     // ================================================
 
-    uint16_t layer_params[30][10] = {1};
-    uint32_t intermediate_dims[30][2];
+    uint16_t layer_params[60][10] = {1};
+    uint32_t intermediate_dims[60][2];
 
     uint8_t t_pad, b_pad, r_pad, l_pad;
 
@@ -764,9 +987,11 @@ void inference()
     REDUCTION_H(layer_num) = 1;
     REDUCTION_W(layer_num) = 3;
     STRIDE(layer_num) = 1;
-    small::calc_padding(I_HEIGHT(layer_num), REDUCTION_H(layer_num),
-                        STRIDE(layer_num), t_pad, b_pad);
-    small::calc_padding(I_WIDTH(layer_num),  REDUCTION_W(layer_num),
+    // small::calc_padding(I_HEIGHT(layer_num), REDUCTION_H(layer_num),
+    //                     STRIDE(layer_num), t_pad, b_pad);
+    t_pad = 0;
+    b_pad = 0;
+    small::calc_padding(I_WIDTH(layer_num), REDUCTION_W(layer_num),
                         STRIDE(layer_num), l_pad, r_pad);
     SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad);
 
@@ -778,30 +1003,39 @@ void inference()
         (inter_dim > max_numel_inter_0) ? inter_dim : max_numel_inter_0;
 
     // common set up for model architecture
-    auto resnet_blocks = 3;
-    int layer_strides[] = {1, 2, 2};
+    // auto resnet_blocks = 3;
+    int layer_strides[n_blocks]; 
+    layer_strides[0]= 1;
+    for(int i = 1; i < n_blocks; i++)
+    {
+        layer_strides[i] = 2;
+    }
+
     // dwise 1
-    for (int ds_layer = 0; ds_layer < resnet_blocks; ds_layer++)
+    for (int ds_layer = 0; ds_layer < n_blocks; ds_layer++)
     {
         int channel_multiplier = (ds_layer > 0) ? 2 : 1;
 
         uint32_t in_channels = GROUP_C(layer_num - 1); // output channels from the previous block
 
+        // First block in the resnet repeat
         REDUCTION_C(layer_num) = in_channels; // input channels
         GROUP_C(layer_num) = in_channels * channel_multiplier;
-        GROUPS(layer_num) = 1;                       // output channels
+        GROUPS(layer_num) = 1; // output channels
         REDUCTION_H(layer_num) = 1;
         REDUCTION_W(layer_num) = 3;                  // kernel size
         STRIDE(layer_num) = layer_strides[ds_layer]; // stride
-        small::calc_padding(I_HEIGHT(layer_num), REDUCTION_H(layer_num),
-                            STRIDE(layer_num), t_pad, b_pad);
-        small::calc_padding(I_WIDTH(layer_num),  REDUCTION_W(layer_num),
+        // small::calc_padding(I_HEIGHT(layer_num), REDUCTION_H(layer_num),
+        //                     STRIDE(layer_num), t_pad, b_pad);
+        t_pad = 0;
+        b_pad = 0;
+        small::calc_padding(I_WIDTH(layer_num), REDUCTION_W(layer_num),
                             STRIDE(layer_num), l_pad, r_pad);
         SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad);
 
         layer_num++; // 2,4,7
         intermediate_dims[layer_num][0] = O_WIDTH(layer_num);
-        intermediate_dims[layer_num][1] = O_HEIGHT(layer_num);
+        intermediate_dims[layer_num][1] = N; // O_HEIGHT(layer_num);
 
         inter_dim = INPUT_NUMEL(layer_num);
         max_numel_inter_1 =
@@ -813,9 +1047,11 @@ void inference()
         REDUCTION_H(layer_num) = 1;
         REDUCTION_W(layer_num) = 3;
         STRIDE(layer_num) = 1;
-        small::calc_padding(I_HEIGHT(layer_num), REDUCTION_H(layer_num),
-                            STRIDE(layer_num), t_pad, b_pad);
-        small::calc_padding(I_WIDTH(layer_num),  REDUCTION_W(layer_num),
+        // small::calc_padding(I_HEIGHT(layer_num), REDUCTION_H(layer_num),
+        //                     STRIDE(layer_num), t_pad, b_pad);
+        t_pad = 0;
+        b_pad = 0;
+        small::calc_padding(I_WIDTH(layer_num), REDUCTION_W(layer_num),
                             STRIDE(layer_num), l_pad, r_pad);
         SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad);
 
@@ -827,13 +1063,13 @@ void inference()
         if (channel_multiplier != 1)
         {
             intermediate_dims[layer_num][0] = O_WIDTH(layer_num - 2);
-            intermediate_dims[layer_num][1] = O_HEIGHT(layer_num - 2);
+            intermediate_dims[layer_num][1] = N;  // O_HEIGHT(layer_num - 2);
             REDUCTION_C(layer_num) = in_channels; // input channels
             GROUP_C(layer_num) = in_channels * channel_multiplier;
-            GROUPS(layer_num) = 1;       // output channels
+            GROUPS(layer_num) = 1;      // output channels
             REDUCTION_H(layer_num) = 1; // kernel size
             REDUCTION_W(layer_num) = 1;
-            STRIDE(layer_num) = 2;       // stride
+            STRIDE(layer_num) = 2; // stride
             SET_PADDING(layer_num, 0, 0, 0, 0);
             layer_num++; // 6,9
             inter_dim = INPUT_NUMEL(layer_num);
@@ -841,7 +1077,52 @@ void inference()
                 (inter_dim > max_numel_inter_0) ? inter_dim : max_numel_inter_0;
         }
         intermediate_dims[layer_num][0] = O_WIDTH(layer_num);
-        intermediate_dims[layer_num][1] = O_HEIGHT(layer_num);
+        intermediate_dims[layer_num][1] = N; // O_HEIGHT(layer_num);
+
+        // Remaining resnets_per_block - 1 blocks
+        for (uint32_t b = 0; b < resnets_per_block - 1; b++)
+        {
+
+            REDUCTION_C(layer_num) = in_channels * channel_multiplier; // input channels
+            GROUP_C(layer_num) = in_channels * channel_multiplier;
+            GROUPS(layer_num) = 1; // output channels
+            REDUCTION_H(layer_num) = 1;
+            REDUCTION_W(layer_num) = 3; // kernel size
+            STRIDE(layer_num) = 1;      // stride
+            small::calc_padding(I_HEIGHT(layer_num), REDUCTION_H(layer_num),
+                                STRIDE(layer_num), t_pad, b_pad);
+            small::calc_padding(I_WIDTH(layer_num), REDUCTION_W(layer_num),
+                                STRIDE(layer_num), l_pad, r_pad);
+            SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad);
+
+            layer_num++; // 2,4,7
+            intermediate_dims[layer_num][0] = O_WIDTH(layer_num);
+            intermediate_dims[layer_num][1] = N; // O_HEIGHT(layer_num);
+
+            inter_dim = INPUT_NUMEL(layer_num);
+            max_numel_inter_1 =
+                (inter_dim > max_numel_inter_1) ? inter_dim : max_numel_inter_1;
+
+            REDUCTION_C(layer_num) = GROUP_C(layer_num - 1);
+            GROUP_C(layer_num) = GROUP_C(layer_num - 1);
+            GROUPS(layer_num) = 1;
+            REDUCTION_H(layer_num) = 1;
+            REDUCTION_W(layer_num) = 3;
+            STRIDE(layer_num) = 1;
+            small::calc_padding(I_HEIGHT(layer_num), REDUCTION_H(layer_num),
+                                STRIDE(layer_num), t_pad, b_pad);
+            small::calc_padding(I_WIDTH(layer_num), REDUCTION_W(layer_num),
+                                STRIDE(layer_num), l_pad, r_pad);
+            SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad);
+          
+            layer_num++; // 3,5,8
+            inter_dim = INPUT_NUMEL(layer_num);
+            max_numel_inter_0 =
+                (inter_dim > max_numel_inter_0) ? inter_dim : max_numel_inter_0;
+
+            intermediate_dims[layer_num][0] = O_WIDTH(layer_num);
+            intermediate_dims[layer_num][1] = N; // O_HEIGHT(layer_num);
+        }
     }
 
     // pooling dims
@@ -855,7 +1136,7 @@ void inference()
 
     layer_num++;
     intermediate_dims[layer_num][0] = O_WIDTH(layer_num);
-    intermediate_dims[layer_num][1] = O_HEIGHT(layer_num);
+    intermediate_dims[layer_num][1] = N; // O_HEIGHT(layer_num);
     REDUCTION_C(layer_num) = GROUPS(layer_num - 1);
     GROUP_C(layer_num) = num_classes;
     GROUPS(layer_num) = 1;
@@ -908,9 +1189,9 @@ void inference()
     // allocate space for intermediate outputs
     // (use the max sizes calculated previously)
 #if defined(QUANTIZED)
-    BufferT inter_0_dc(max_numel_inter_0 + QUINT8_C_ob*16*16*32); // HACK
-    BufferT inter_1_dc(max_numel_inter_1 + QUINT8_C_ob*16*16*32); // HACK
-    BufferT inter_2_dc((max_numel_inter_0 / 2) + QUINT8_C_ob*16*16*3);
+    BufferT inter_0_dc(max_numel_inter_0 + QUINT8_C_ob * 16 * 16 * 32); // HACK
+    BufferT inter_1_dc(max_numel_inter_1 + QUINT8_C_ob * 16 * 16 * 32); // HACK
+    BufferT inter_2_dc((max_numel_inter_0 / 2) + QUINT8_C_ob * 16 * 16 * 3);
 #else
     BufferT inter_0_dc(max_numel_inter_0);
     BufferT inter_1_dc(max_numel_inter_1);
@@ -923,7 +1204,7 @@ void inference()
     std::cerr << "Warm up run (ORIG)" << std::endl;
     my_timer.start();
     auto &output_dc =
-        model_inference(layer_num_total, layer_params, intermediate_dims,
+        model_inference(layer_num_total, n_blocks,resnets_per_block, layer_params, intermediate_dims,
                         filter_buf_ptrs,
                         input_dc,
                         inter_0_dc,
@@ -936,74 +1217,120 @@ void inference()
 
     double min_small = std::numeric_limits<double>::max();
     std::vector<double> small_timing;
+    int P = 1;
+    char const *env_nt(std::getenv("OMP_INTRA_OP_NUM_THREADS"));
+    if (nullptr != env_nt)
+    {
+        P = atoi(std::getenv("OMP_INTRA_OP_NUM_THREADS"));
+    }
+
+    BufferT output_dc_p[B];
+    BufferT input_dc_p[B];
+
+    BufferT inter_0_dc_p[B];
+    BufferT inter_1_dc_p[B];
+    BufferT inter_2_dc_p[B];
+
+    for (int i = 0; i < B; i++)
+    {
+        input_dc_p[i] = BufferT(input_dimensions);
+        init(input_dc_p[i], input_dimensions);
+
+        inter_0_dc_p[i] = BufferT(max_numel_inter_0);
+        inter_1_dc_p[i] = BufferT(max_numel_inter_1);
+        inter_2_dc_p[i] = BufferT(max_numel_inter_0);
+
+        // init(input_dc_p[i], input_dimensions);
+    }
 
     for (int r = 0; r < RUNS; r++)
     {
         my_timer.start();
 
-        //auto &output_dc =
-            model_inference(layer_num_total, layer_params, intermediate_dims,
-                            filter_buf_ptrs,
-                            input_dc,
-                            inter_0_dc,
-                            inter_1_dc,
-                            inter_2_dc);
+        for (int t = 0; t < TRIALS; t++)
+        {
+// auto &output_dc =
+#pragma omp parallel num_threads(B)
+            {
+                auto tid = omp_get_thread_num();
+                auto t_start = tid * thread_local_prob + ((tid < thread_remainder) ? (tid % thread_remainder) : thread_remainder);
+                auto t_end = t_start + thread_local_prob + (1 * (tid < thread_remainder));
+                // printf("tid: %d s%d e%d\n", tid, t_start, t_end);
+                auto batch_tid = t_end - t_start;
+                // for(int i =  t_start; i < t_end; i++)
+                // {
+                // init(input_dc_p[tid], input_dimensions);
+
+                output_dc_p[tid] = model_inference(layer_num_total, n_blocks, resnets_per_block,layer_params, intermediate_dims,
+                                                   filter_buf_ptrs,
+                                                   input_dc_p[tid],
+                                                   inter_0_dc_p[tid],
+                                                   inter_1_dc_p[tid],
+                                                   inter_2_dc_p[tid]);
+                // }
+            }
+        }
 
         my_timer.stop();
-        auto diff = my_timer.elapsed();
+        auto diff = my_timer.elapsed() / TRIALS;
         min_small = std::min<double>(min_small, diff);
-        
-        small_timing.push_back(diff);
+
+        // small_timing.push_back(diff);
     }
 
 #if TIME_LAYER
     int impl = 0;
 
-    for(int r = 0; r< RUNS; r++)
+    for (int r = 0; r < RUNS; r++)
     {
-    for (int i = 0; i < TRIALS; i++)
-    {
-        model_inference(layer_num_total, layer_params, intermediate_dims,
-                        filter_buf_ptrs,
-                        input_dc,
-                        inter_0_dc,
-                        inter_1_dc,
-                        inter_2_dc);
-        for (int timer = 0; timer < 15; timer++)
+        for (int i = 0; i < TRIALS; i++)
         {
-            if (0 < i)
+            // for (int b = 0; b < 64; b++)
+            // {
+                small::init(input_dc, input_dimensions);
+
+                auto out_dc = model_inference(layer_num_total, n_blocks, resnets_per_block, layer_params, intermediate_dims,
+                                              filter_buf_ptrs,
+                                              input_dc,
+                                              inter_0_dc,
+                                              inter_1_dc,
+                                              inter_2_dc);
+            // }
+            for (int timer = 0; timer < 100; timer++)
             {
-                avg_layer_timers[impl][timer] += layer_timers[impl][timer];
+                if (0 < i)
+                {
+                    avg_layer_timers[impl][timer] += layer_timers[impl][timer];
+                }
+                else
+                {
+                    avg_layer_timers[impl][timer] = layer_timers[impl][timer];
+                }
+            }
+        }
+
+        for (int timer = 0; timer < 100; timer++)
+        {
+            avg_layer_timers[impl][timer] /= TRIALS;
+            if (0 < r)
+            {
+                min_layer_timers[impl][timer] = std::min<double>(min_layer_timers[impl][timer], avg_layer_timers[impl][timer]);
             }
             else
             {
-                avg_layer_timers[impl][timer] = layer_timers[impl][timer];
+                min_layer_timers[impl][timer] = avg_layer_timers[impl][timer];
             }
         }
     }
-
-    for (int timer = 0; timer < 15; timer++)
-    {
-        avg_layer_timers[impl][timer] /= TRIALS;
-        if (0 < r)
-        {
-            min_layer_timers[impl][timer] = std::min<double>(min_layer_timers[impl][timer], avg_layer_timers[impl][timer]);
-        }
-        else
-        {
-            min_layer_timers[impl][timer] = avg_layer_timers[impl][timer];
-        }
-    }
-    }
 #endif
-    std::cout << "Minimum time: " << min_small << " ns.\n";
+    std::cout << resnets_per_block << " Minimum time: " << min_small << " ns.\n";
 
 #if TIME_LAYER
     double sum_unfused = 0, sum_ewise = 0, sum_fused = 0;
-    for (int layer = 0; layer < 15; layer++)
+    for (int layer = 0; layer < 100; layer++)
     {
         printf("%d , ", layer);
-        for (int impl = 0; impl < 3; impl++)
+        for (int impl = 0; impl < 1; impl++)
         {
             printf("%f ,", min_layer_timers[impl][layer]);
         }
@@ -1013,63 +1340,53 @@ void inference()
         sum_fused += min_layer_timers[2][layer];
     }
 
-    printf("sum , %f, %f, %f \n", sum_unfused, sum_ewise, sum_fused);
+    printf("sum , %f, %f, %f ,%d, %d \n", sum_unfused, sum_ewise, sum_fused, resnets_per_block, 64);
 #endif
 
     int num_th = 1;
 #if PARALLEL == 1
-    char const *env_nt(std::getenv("OMP_NUM_THREADS"));
-    if (nullptr != env_nt)
+    char const *env_num_th(std::getenv("OMP_NUM_THREADS"));
+    if (nullptr != env_num_th)
     {
         num_th = atoi(std::getenv("OMP_NUM_THREADS"));
     }
 #endif
-    std::cout << "Num Threads: " << num_th << std::endl;
-    print_stats(small_timing, "\nSMaLL:resnet");
+    std::cout << "Num Threads: " << num_th << " " << min_small << std::endl;
+    printf(" Threads for batch: %d, %d, Thread local prob: %d, Thread remainder: %d\n", B, P, thread_local_prob, thread_remainder);
+
+    // print_stats(small_timing, "\nSMaLL÷a:resnet");
 
     //======================================================
-//     auto layers(create_model<BufferT>(filter_buf_ptrs));
+    //     auto layers(create_model<BufferT>(filter_buf_ptrs));
 
-//     small::Tensor<BufferT> input_tensor({1, 3, 32, 32}, input_dc); // B, C_i, N, M
-// #if defined(QUANTIZED)
-//     small::Tensor<BufferT> inter_0_tensor(max_numel_inter_0 + QUINT8_C_ob*16*16*32);
-//     small::Tensor<BufferT> inter_1_tensor(max_numel_inter_1 + QUINT8_C_ob*16*16*32);
-//     small::Tensor<BufferT> inter_2_tensor((max_numel_inter_0 / 2) + QUINT8_C_ob*16*16*3);
-// #else
-//     small::Tensor<BufferT> inter_0_tensor(max_numel_inter_0);
-//     small::Tensor<BufferT> inter_1_tensor(max_numel_inter_1);
-//     small::Tensor<BufferT> inter_2_tensor(max_numel_inter_0);
-// #endif
+    //     small::Tensor<BufferT> input_tensor({1, 3, 32, 32}, input_dc); // B, C_i, N, M
+    // #if defined(QUANTIZED)
+    //     small::Tensor<BufferT> inter_0_tensor(max_numel_inter_0 + QUINT8_C_ob*16*16*32);
+    //     small::Tensor<BufferT> inter_1_tensor(max_numel_inter_1 + QUINT8_C_ob*16*16*32);
+    //     small::Tensor<BufferT> inter_2_tensor((max_numel_inter_0 / 2) + QUINT8_C_ob*16*16*3);
+    // #else
+    //     small::Tensor<BufferT> inter_0_tensor(max_numel_inter_0);
+    //     small::Tensor<BufferT> inter_1_tensor(max_numel_inter_1);
+    //     small::Tensor<BufferT> inter_2_tensor(max_numel_inter_0);
+    // #endif
 
-//     std::cerr << "Warm up run (LAYERS)" << std::endl;
-//     my_timer.start();
-//     auto &output_tensor =
-//         model_inference(layers, input_tensor,
-//                         inter_0_tensor, inter_1_tensor, inter_2_tensor);
-//     my_timer.stop();
-//     printf("\nElapsed time: %lf ns.\n", my_timer.elapsed());
+    //     std::cerr << "Warm up run (LAYERS)" << std::endl;
+    //     my_timer.start();
+    //     auto &output_tensor =
+    //         model_inference(layers, input_tensor,
+    //                         inter_0_tensor, inter_1_tensor, inter_2_tensor);
+    //     my_timer.stop();
+    //     printf("\nElapsed time: %lf ns.\n", my_timer.elapsed());
 
-//     // Compare the results
-//     size_t num_outputs = layers.back()->output_size();
-//     std::cout << "\nCHECK RESULTS: Num output elements: " << num_outputs
-//               << std::endl;
-    for (size_t ix = 0; ix < num_classes; ++ix)
-    {
-        std::cout << "Current, new " << ix
-                  << ": " << (float)output_dc[ix]
-                  << std::endl;
-    }
-
-//     // clean up model (move to model class destructor when built
-//     for (auto layer : layers) delete layer;
-
-    //======================================================
-
-    // printf("deallocing %ld filters\n", filter_buf_ptrs.size());
-    // for (size_t l = 0; l < filter_buf_ptrs.size()-1; l++)
+    //     // Compare the results
+    //     size_t num_outputs = layers.back()->output_size();
+    //     std::cout << "\nCHECK RESULTS: Num output elements: " << num_outputs
+    //               << std::endl;
+    // for (size_t ix = 0; ix < num_classes; ++ix)
     // {
-    //     printf("%d\n", l);
-    //     small::free_buffer(filter_buf_ptrs[l]);
+    //     std::cout << "Current, new " << ix
+    //               << ": " << (float)output_dc[ix]
+    //               << std::endl;
     // }
 
 #if defined(NANO33BLE)
@@ -1081,12 +1398,30 @@ void inference()
 // For non-arduino platforms.  ... move to driver.cpp?
 //****************************************************************************
 #ifndef NANO33BLE
-int main()
+int main(int argc, char **argv)
 {
+    uint32_t resnets_per_block = 5;
+    uint32_t batch = 64;
+    uint32_t vector_length = 1024;
+    uint32_t n_blocks = 3;
+    printf("argc: %d\n", argc);
+    switch(argc-1)
+    {
+        case 4:
+            n_blocks = atoi(argv[4]);
+        case 3:
+            vector_length = atoi(argv[3]);
+        case 2:
+            resnets_per_block = atoi(argv[2]);
+        case 1:
+            batch = atoi(argv[1]);
+    }
+
+
 #if defined(QUANTIZED)
     inference<small::QUInt8Buffer>();
 #else
-    inference<small::FloatBuffer>();
+    inference<small::FloatBuffer>(n_blocks, resnets_per_block, batch, vector_length);
 #endif
 
     return 0;
