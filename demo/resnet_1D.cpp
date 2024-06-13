@@ -734,7 +734,7 @@ void inference()
 {
     uint32_t C_i = 3;
     uint32_t N = 1;
-    uint32_t M = 960;
+    uint32_t M = 1024;
     uint32_t num_classes = 16;
 
     // Create input tensor
