@@ -113,7 +113,7 @@ namespace small
             if (conv_stride == 1)
             {
 
-                detail::fused_abstract_layer<
+                detail::fused_abstract_layer_1D<
                     FloatBuffer,
                     1, FLOAT_C_ob, FLOAT_C_ib,
                     FLOAT_W_ob,
@@ -152,7 +152,7 @@ namespace small
             else if (conv_stride == 2)
             {
 
-                detail::fused_abstract_layer<
+                detail::fused_abstract_layer_1D<
                     FloatBuffer,
                     1, FLOAT_C_ob, FLOAT_C_ib,
                     FLOAT_W_ob,
@@ -177,7 +177,7 @@ namespace small
             if (conv_stride == 1)
             {
 
-                detail::fused_abstract_layer<
+                detail::fused_abstract_layer_1D<
                     FloatBuffer,
                     1, FLOAT_C_ob, 3,
                     FLOAT_W_ob,
@@ -193,7 +193,7 @@ namespace small
             else if (conv_stride == 2)
             {
 
-                detail::fused_abstract_layer<
+                detail::fused_abstract_layer_1D<
                     FloatBuffer,
                     1, FLOAT_C_ob, 3,
                     FLOAT_W_ob,
@@ -1353,6 +1353,9 @@ void Conv2D_ReLU_Maxpool2D<FloatBuffer>(
 }
 
 #endif
+
+
+
 
 //****************************************************************************
 //****************************************************************************

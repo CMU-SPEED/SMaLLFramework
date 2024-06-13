@@ -559,6 +559,7 @@ void MaxPool2D<FloatBuffer>(
     }
     else
     {
+        printf("%d\n", input_channels);
         throw std::invalid_argument(
             "MaxPool2D<float> ERROR: in_channels unsupported.");
     }
@@ -1329,6 +1330,7 @@ void ReLUActivation<FloatBuffer>(int input_channels,
 
     if (input_channels % FLOAT_C_ib == 0)
     {
+        detail::abstract_layer<
         detail::abstract_layer<
             FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_RELU, 0, 1>(
             input_channels, // Output Channel Grouping

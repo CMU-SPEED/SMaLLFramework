@@ -32,7 +32,7 @@
 #define COMPUTE_RELU false
 #endif
 #ifndef RUNS
-#define RUNS 100
+#define RUNS 10
 #endif
 
 #ifndef TRIALS
@@ -938,11 +938,14 @@ int main(int argc, char **argv)
 
     // printf("runs %d, %d, \t ", RUNS, num_threads);
     // Unfused
+    small::Timer my_timer;
+
     unsigned long long sum_small_conv = ULLONG_MAX;
     std::vector<unsigned long long> small_conv_timing;
     for (int r = 0; r < RUNS; r++)
     {
-        t0 = rdtsc();
+        // t0 = rdtsc();
+        my_timer.start();
         for (int i = 0; i < TRIALS; i++)
         {
             small::Conv2D(conv_kernel_size, conv_kernel_size, conv_stride,
@@ -957,8 +960,9 @@ int main(int argc, char **argv)
                         //   conv_bias_dc,
                           out_intermediate_unfused_dc);
         }
-        t1 = rdtsc();
-        diff = (t1 - t0) / TRIALS;
+        // t1 = rdtsc();
+        my_timer.stop();
+        diff = my_timer.elapsed() / TRIALS;
         MIN(sum_small_conv, (diff));
         small_conv_timing.push_back((diff));
     }
@@ -970,7 +974,7 @@ int main(int argc, char **argv)
     for (int r = 0; r < RUNS; r++)
     {
         int impl = 0;
-        t0 = rdtsc();
+        my_timer.start();   
         for (int i = 0; i < TRIALS; i++)
         {
             small_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
@@ -997,8 +1001,8 @@ int main(int argc, char **argv)
                                             output_dc);
         }
 
-        t1 = rdtsc();
-        diff = (t1-t0)/TRIALS;
+        my_timer.stop();
+        diff = my_timer.elapsed()/TRIALS;
         MIN(sum_small, (diff));
         small_timing.push_back((diff));
 
@@ -1076,7 +1080,8 @@ int main(int argc, char **argv)
     for (int r = 0; r < RUNS; r++)
     {
         small::Timer my_timer;
-        t0 = rdtsc();
+        // t0 = rdtsc();
+        my_timer.start();
         for(int trial = 0; trial < TRIALS; trial++)
         {
         small_fused_ewise_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
@@ -1102,9 +1107,11 @@ int main(int argc, char **argv)
                                                     out_intermediate_unfused_dc,
                                                     output_dc);
         }
-        t1 = rdtsc();
-        MIN(sum_small_fused_ewise, (t1 - t0)/TRIALS);
-        small_timing_fused_ewise.push_back((t1 - t0)/TRIALS);
+        // t1 = rdtsc();
+        my_timer.stop();
+        auto diff = my_timer.elapsed()/TRIALS;
+        MIN(sum_small_fused_ewise, diff);
+        small_timing_fused_ewise.push_back(diff);
 
         #if TIME_LAYER
         auto impl = 1;
@@ -1173,7 +1180,8 @@ int main(int argc, char **argv)
     std::vector<unsigned long long> small_timing_fused;
     for (int r = 0; r < RUNS; r++)
     {
-        t0 = rdtsc();
+        // t0 = rdtsc();
+        my_timer.start();
         for (int trial = 0; trial < TRIALS; trial++)
         {
             fused_small_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
@@ -1199,9 +1207,11 @@ int main(int argc, char **argv)
                                                   out_intermediate_unfused_dc,
                                                   output_dc);
         }
-        t1 = rdtsc();
-        MIN(sum_small_fused, (t1 - t0)/TRIALS);
-        small_timing_fused.push_back((t1 - t0)/TRIALS);
+        // t1 = rdtsc();
+        my_timer.stop();
+        auto diff = my_timer.elapsed()/TRIALS;
+        MIN(sum_small_fused, diff);
+        small_timing_fused.push_back(diff);
 
         #if TIME_LAYER 
         auto impl = 2;
