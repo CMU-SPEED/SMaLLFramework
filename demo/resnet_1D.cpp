@@ -756,7 +756,7 @@ model_inference(uint32_t layer_num_total,
     my_timer.start();
 #endif
 
-    small::Conv2D(REDUCTION_H(layer_num), REDUCTION_H(layer_num),
+    small::Conv2D(REDUCTION_H(layer_num), REDUCTION_W(layer_num),
                   STRIDE(layer_num), PADDING(layer_num),
                   GROUP_C(layer_num), REDUCTION_C(layer_num),
                   I_HEIGHT(layer_num), I_WIDTH(layer_num),
