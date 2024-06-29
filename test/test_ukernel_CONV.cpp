@@ -182,7 +182,7 @@ void test_performance_CONV_TILE(void)
     for (size_t ix = 0; ix <  INPUT_SIZE; ++ix)  input_buf[ix] = input_val;
 
     // Assume filter is row major (FLOAT_C_ob) first, then (num_trials*_UNROLL)
-    constexpr dim_t filter_step = _UNROLL* FLOAT_C_ob;
+    constexpr dim_t filter_step = _UNROLL * FLOAT_C_ob;
     size_t const FILTER_SIZE = (num_trials * _UNROLL) * FLOAT_C_ob; // FLOAT_SIMD*2;;
     //size_t const FILTER_SIZE =
     //    num_input_channels*num_output_channels*filter_height*filter_width;
@@ -215,7 +215,7 @@ void test_performance_CONV_TILE(void)
     //FLOAT_LOAD_TILE_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
 
     //size_t a_offset = 0;
- 
+
     my_timer.start();
     for (size_t iy = 0; iy < 1; ++iy)
     {

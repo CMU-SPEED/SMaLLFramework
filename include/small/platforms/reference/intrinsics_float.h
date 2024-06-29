@@ -169,6 +169,8 @@ typedef small::FloatBuffer::value_type c_tile_t;
 #define FLOAT_CONV_TILE_C(step, a, b, W_ob, C_ob)       \
     c_tile_t *c_pixel = c_tile;                         \
     c_tile_t const *a_channel = a;                      \
+    size_t a_offset = 0;                                \
+    size_t c_offset = 0;                                \
     for (uint32_t kk = 0; kk < W_ob; kk++)              \
     {                                                   \
         c_tile_t a_val = *(a_channel);                  \
@@ -178,8 +180,10 @@ typedef small::FloatBuffer::value_type c_tile_t;
             c_tile_t b_val = *(b + jj);                 \
             *(c_channel) += a_val * b_val;              \
             c_channel++;                                \
+            /*std::cout << "I_idx=" << a_offset << ", F_idx=" << jj << "--> C_idx=" << c_offset++ << std::endl;*/ \
         }                                               \
         a_channel += step;                              \
+        a_offset += step;                               \
         c_pixel += C_ob;                                \
     }
 
