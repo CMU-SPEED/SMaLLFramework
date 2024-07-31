@@ -23,6 +23,12 @@
 
 #define DEBUG 0
 
+#define ELEMENTAL 1
+# define BLOCK 2
+
+#define PARALLEL_DIST BLOCK
+
+
 namespace small
 {
 namespace detail
@@ -965,12 +971,34 @@ void abstract_layer(
 #else
         auto t_id = 0;
 #endif
+
+
         auto height_tid = t_id % T_height;
         auto channel_tid = ((t_id) / (T_height)) % T_channel;
         auto group_tid = ((t_id / (T_channel * T_height))) % T_group;
 
+        // block cyclic parallelism
         // loops over output channels
+        index_t group_start, group_end;
+        dim_t num_groups = G / _G_b;
+        dim_t groups_p_thread = num_groups / T_group;
+        dim_t groups_left = num_groups % T_group;
+        group_start = groups_p_thread * group_tid + (group_tid <= groups_left) * (group_tid) + (group_tid > groups_left) * groups_left;
+        group_end = group_start + groups_p_thread + (1) * (group_tid < groups_left);
+
+        index_t channels_start, channels_end;
+        dim_t num_channels = K / _K_b;
+        dim_t channels_p_thread = num_channels / T_channel;
+        dim_t channels_left = num_channels % T_channel;
+        channels_start = channels_p_thread * channel_tid + (channel_tid <= channels_left) * (channel_tid) + (channel_tid > channels_left) * channels_left;
+        channels_end = channels_start + channels_p_thread + (1) * (channel_tid < channels_left);
+
+        // loops over output channels
+        #if PARALLEL_DIST == ELEMENTAL
         for (index_t g = group_tid; g < G / _G_b; g += T_group)
+        #else
+        for (index_t g = group_start; g < group_end; g++)
+        #endif
         {
             ScalarT const *I_group;
             if constexpr (op_type == OP_UPSAMPLE && _stride == std::numeric_limits<dim_t>::max())
@@ -995,7 +1023,11 @@ void abstract_layer(
             }
 
             // resuse O_group as a uint32_t array
+            #if PARALLEL_DIST == ELEMENTAL
             for (index_t k = channel_tid; k < K / _K_b; k += T_channel)
+            #else
+            for (index_t k = channels_start; k < channels_end; k++)
+            #endif 
             {
                 ScalarT const *I_channel_block_output =
                     I_group + 0;

@@ -44,11 +44,11 @@
 #define H_TILE 0
 #define POOLING 1
 
-#define PERFORMANCE 0
+#define PERFORMANCE 1
 // from config.h, consider making command line options
 
 #define RUNS 100
-#define TRIALS 1000
+#define TRIALS 100
 #ifndef PARALLEL
 #define PARALLEL 1
 #endif
@@ -377,6 +377,12 @@ int main(int argc, char **argv)
     //dtype scaled_peak_cycles = peak_cycles;
     const int num_th = atoi(std::getenv("OMP_NUM_THREADS"));
     printf(" %.0f, %.2f,  %.2f, %d,  %d, %d, %d \n", throughput * num_th, (compute_ops / platform_time), (compute_ops / config_time), RUNS, TRIALS, check_6, check_k);
+    // print the type of PARALLEL_DIST
+#if PARALLEL_DIST == ELEMENTAL
+    printf("%d %d ELEMENTAL\n", RUNS, TRIALS);
+#else
+    printf("%d %d BLOCK\n", RUNS, TRIALS);
+#endif
 #endif
 
 
