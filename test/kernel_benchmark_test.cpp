@@ -70,7 +70,7 @@ typedef small::FloatBuffer::value_type c_tile_t;
 template <int W_ob, int C_ob, int G_b, int _UNROLL, int stride, small::OpType OP_TYPE, int8_t OP_CLASS>
 void kernel_benchmark(
     const int64_t m, const int64_t n, const int64_t k,
-    const float* I, const float* W, float* O)
+    const float* I, const float* W, float* O) //mxk, kxn, mxn  m=W_ob, n=C_ob, k=c*_UNROLL,  k=C_i (1x1), G_b=1(CONV), mxk+kxn+mxn < L1 capacity, stride is stride
 {
     int32_t constexpr step = C_ob * stride;
     FLOAT_DEF_TILE_C(W_ob, C_ob);
@@ -110,7 +110,7 @@ void kernel_benchmark(
 #define LAYER CONV
 #endif
 
-#if LAYER == CONV 
+#if LAYER == CONV
 #define    OP_TYPE small::OP_CONV
 #define    OP_CLASS 2
 #define    G_b 1
@@ -124,7 +124,7 @@ void kernel_benchmark(
 #define    OP_CLASS 1
 #define G_b FLOAT_C_ob
 
-#elif LAYER == GROUP_CONV 
+#elif LAYER == GROUP_CONV
 #define    OP_TYPE small::OP_CONV
 #define    OP_CLASS 2
 #define G_b 4
@@ -146,7 +146,7 @@ void kernel_benchmark(
 // In gigahertz
 #define FREQ 1.5
 
-#define TRIALS 100 
+#define TRIALS 100
 #define RUNS 1000
 #define NUM_IMPLEMENTATIONS 1
 #define NUM_SIZES 14
@@ -201,7 +201,7 @@ int main()
     const int m = FLOAT_W_ob;
     const int stride = 1;
 
-    
+
 
     printf("m: %d, n: %d\n Minimum timing over %d trials, each trial averages over %d runs\n", m, n, TRIALS, RUNS);
 
@@ -227,7 +227,7 @@ int main()
         {
             *(cur_ptr++) = 2.0 * ((float)rand() / RAND_MAX) - 1;
         }
-        
+
         cur_ptr = W;
         for (int i = 0; i < k*n; i++)
         {
@@ -262,17 +262,17 @@ int main()
             total_layer_timers[0][size] = timer.elapsed();
             avg_layer_timers[0][size] = timer.elapsed()/RUNS;
             min_layer_timers[0][size] = (trial == 0) ? avg_layer_timers[0][size] : std::min(min_layer_timers[0][size], avg_layer_timers[0][size]);
-            
+
 
         }
-    
+
     printf("%f, %f , %f\n", min_layer_timers[0][size], (1.0*ops)/(min_layer_timers[0][size]*FREQ), total_layer_timers[0][size]/1e6);
 
 
     check_result(m, n, k, stride,  I, W, O);
 
     free(shared_buffer);
- 
+
 
     }
 
