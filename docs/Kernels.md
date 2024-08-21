@@ -1,54 +1,143 @@
-# Description of Kernels required to support SMaLL on a new platform
+## Description of Macros required to support SMaLL on a new platform
 
-## Elementwise Operations
-Computation for each output element uses 1 input element.
+### Kernel Structure
+Kernels are used to compose hardware-specific implementations of functionality with hardware-agnostic orchestration code.
+Functionality is implemented using macros, which use the shared context of the kernel to interact.  The macros are implemented in a platform-specifc `intrinsics.h` file.
 
-### Operations with 1 Input Element
-These operations reuse (broadcast) the input element over all elements in c_tile
- - GlobalMultiply [FLOAT_DIV_TILE_C](https://github.com/CMU-SPEED/SMaLLFramework/blob/dev/include/small/platforms/reference/intrinsics_float.h#L378)
-   _Assumptions_:  all elements in c_tile are initialized with some initial value (LOAD or ZERO)
+In general, a kernel will have 4 phases : 
+1) Definition of a sub-tile of the output C -- `c_tile`, (DEF)
+2) Initialization, (ZERO, LOAD, LOAD_STRIDED)
+3) Computation in a loop, (CONV_TILE, POOL_TILE, etc)
+4) Commit - (optionally) store the result. (STORE)
+scope is shared for these 4 phases. Each phase uses 1 or more macros.
 
-   _Input_: norm = a value to scale all values in c_tile by, \_W_ob and \_C_ob  = dimensions of c_tile (row major)
+The general structure is represented in the pseudocode below
+``` c++
 
-   _Operation_: ```c_tile[kk][jj] =  c_tile[kk][jj] * norm```
+template <W_ob, C_ob, UNROLL, ZERO, step>
 
-- Zero [FLOAT_ZERO_TILE_C](https://github.com/CMU-SPEED/SMaLLFramework/blob/dev/include/small/platforms/reference/intrinsics_float.h#L51)
+kernel(num_updates, Activations, Weights, Output)
 
-### Operations with 1 Input Buffer (1D)
+{
 
-- Load -> [FLOAT_LOAD_TILE_C](https://github.com/CMU-SPEED/SMaLLFramework/blob/dev/include/small/platforms/reference/intrinsics_float.h#L74)
+	//define c_tile
+	DEF_TILE_C(W_ob, C_ob)
+	
+	//initialize
+	if(ZERO){
+		ZERO_TILE_C(W_ob, C_ob)
+	} 
+	else{
+		LOAD_TILE_C(Activations, step, W_ob, C_ob)
+	}
+	
+	//computation loop
+	
+	for(i = 0; i < num_updates; i+= UNROLL)
+	{
+		<COMPUTE>_TILE_C(step, Activations, Weigths, W_ob, C_ob)
+	}
 
-- Strided Load -> [FLOAT_LOAD_TILE_C_strided](https://github.com/CMU-SPEED/SMaLLFramework/blob/dev/include/small/platforms/reference/intrinsics_float.h#L99)
+	//commit c_tile
+	STORE_TILE_C(Output, W_ob, C_ob)
 
-- Add [FLOAT_ACCUM_TILE_C](https://github.com/CMU-SPEED/SMaLLFramework/blob/dev/include/small/platforms/reference/intrinsics_float.h#L336)
+}
 
-  _Assumptions_:  all elements in c_tile are initialized with some initial value (LOAD or ZERO)
+```
 
-  _Input_: step= stride between rows in buffer a, a buffer a with (step x \_W_ob) rows and  \_C_ob columns (row major)
-
-  _Operation_: ```c_tile[kk][jj] =  c_tile[kk][jj] + a[kk x step][jj]```
-
-- ReLU ->[ FLOAT_MAX_TILE_C  ](https://github.com/CMU-SPEED/SMaLLFramework/blob/dev/include/small/platforms/reference/intrinsics_float.h#L209)
-  _Assumptions_:  all elements in c_tile are initialized with "zero"
-
-  _Input_: step= stride between rows in buffer a, a buffer a with (step x \_W_ob) rows and  \_C_ob columns (row major)
-
-  _Operation_: ```c_tile[kk][jj]= (x > 0) ? x: 0; where x = a[kk x step][jj]```
-
- - Store -> [FLOAT_STORE_TILE_C](https://github.com/CMU-SPEED/SMaLLFramework/blob/dev/include/small/platforms/reference/intrinsics_float.h#L146)
-
-### Operations with 1 Input Buffer (2D)
-- Upsample2D  -->[FLOAT_LOAD_TILE_C_upsample](https://github.com/CMU-SPEED/SMaLLFramework/blob/dev/include/small/platforms/reference/intrinsics_float.h#L123)
-  _Assumptions_: The values in c_tile can be over-written
-  _Input_ :  input buffer I with \_W_ob rows and \_C_ib columns (row major), and _stride_ >=1, number of columns in the output \_C_ob == \_C_ib
+  The same structure can be used for different operations by changing the type of computation used in `<COMPUTE>_TILE_C`.
   
-  _Operation_: ```c_tile[kk][jj] = I[kk/stride][jj]```
-  Load rows at a stride of 1/_stride_ and store them in the c_tile array. This has the effect of creating a buffer with the rows in I repeating stride times. [^1]
-
   
-  [^1]: I repeats min(_W_ob, stride times)
+### Output tile abstraction `c_tile`
+`c_tile` is a 3D tensor. Its height, width and depth are given by W_ob, K_b, and G_b respectively.
 
-### Operations with 1 Input Buffer and 1 Input Element
-- LeakyReLU -> [FLOAT_COND_SCALE](https://github.com/CMU-SPEED/SMaLLFramework/blob/dev/include/small/platforms/reference/intrinsics_float.h#L295)
+![C_tileAbstraction](Images/C_tileAbstraction.png)
 
+For 1 kernel, the volume of c_tile is constant. However, the values of K_b (width) and G_b (depth) are dependent on the specific operation being performed, and affect how input(s) map to the output elements in `c_tile`.
+
+ ![c_tile_interpretation](Images/c_tile_interpretation.png)
+  
+### Expressing Kernel phases `c_tile`
+For the purposes of this discussion, we will treat `c_tile` as a 1D array of scalar elements, and describe the functionality required of the macros using loops over each output dimension. However, for a specific platform, you may use platform-specific vector types or use explicit variables mapping to `c_tile` elements instead of array references. This may even be necessary for performance. We will also abstract over the data type.
+
+#### Definition phase
+Since we assume c_tile is an array. This would just be declaring an array called c_tile with the correct number of elements
+```cpp
+dtype c_tile[W_ob*C_ob];
+```
+C_ob is the product of G_b and K_b
+
+#### Initialize
+We will assume that the dimensions are K_b, G_b, W_ob from fastest to slowest. 
+To initialize c_tile with 0, we iterate over each dimensions like:
+```cpp
+for (int pixel = 0; pixel < W_ob; ++pixel) {
+	for (int group = 0; group < G_b; ++group) { 
+		for (int channel = 0; channel < K_b; ++channel) { 
+			c_tile[pixel * (G_b   *  K_b) + 
+							group * (K_b) + 
+								   channel] = 0; 
+		} 
+	} 
+}
+		
+```
+NOTE: The ordering of the loops is a representation of the functionality required, you may choose a different order in your instantiation.
+
+In fact, the same set of loops form the foundation of any computation. Below we will talk about how to use input operands such as activations and weights to compute the output.
+
+#### Computing Updates by Indexing Input Operands
+Operations in ML inference have up to 2 input operands, activations and weights. The operation specific parameters G_b and K_b are used to control how elements of the input are interpreted.  
+![Input Elements Required](Images/Input%20Elements%20Required.png)
+
+The number of  input operand elements required to compute 1 update to `c_tile` is given by
+$$ Activations = W_{ob} \times G_b $$
+$$ Weights = G_b \times K_b $$
+
+NOTE: The macro can implement UNROLL updates to `c_tile`. This can be represented in the number of elements required as:
+$$ Activations = W_{ob} \times G_b \times UNROLL $$
+$$ Weights = G_b \times K_b \times UNROLL$$
+~The UNROLLed updates always use the `C_ib` dimension of the input operands~
+
+*Stride*
+For each input operand, each dimension is associated with a stride. Stride is used to "skip" elements in the input operands to select the ones required by the operation. The strides are given by `W_stride`, `G_stride`, `K_stride`, with the prefix `A_` and `W_` for Activations and Weights respectively. The strides for the Weights are usually 1. So we leave 
+
+><Does this need a picture?>`
+
+Note: If the stride < 1, the number of elements required in that dimension of the input operand is multiplied with the stride. In the extreme case, where stride = 0, a single element from that dimension of the input operand is required.
+
+*Distance*
+Distance is the offset between consecutive elements of a dimension of an operand. Similar to stride, these could be denoted as  `W_dist`, `G_dist` ,`K_dist` , `UNROLL_dist`
+For the purposes of this discussion, however, we make a simplifying assumption
+$$K_{dist} = 1$$
+$$G_{dist} = K_b$$
+`W_dist` and `UNROLL_dist` must be provided to the macro function.
+
+
+The general loops to index input operands and output operands are given below. (Modified to include UNROLL)
+The UpdateOp is specialized based on the functionality 
+```cpp
+
+for (int pixel = 0; pixel < W_ob; ++pixel) {
+	for (int group = 0; group < G_b; ++group) { 
+		for (int channel = 0; channel < K_b; ++channel) { 
+			dtype computed_update = 0.0;
+			for(int update = 0; update < UNROLL; ++update) {
+				UpdateOP(computed_update,
+						Activations[pixel * (A_W_stride * A_W_dist) +
+									group * (A_G_stride * A_G_stride) + 
+									update * A_UNROLL_dist],
+						Weights[group * W_G_dist +
+						        channel * W_K_dist +
+								update * W_UNROLL_dist]
+								); 
+			} 
+			c_tile[pixel * (G_b   *  K_b) + 
+								group * (K_b) + 
+									   channel] = computed_update;
+		} 
+	}
+}		
+```
+Note: Loops can be re-ordered
 
