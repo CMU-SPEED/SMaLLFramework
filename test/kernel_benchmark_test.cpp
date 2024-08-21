@@ -1,8 +1,20 @@
+//****************************************************************************
+// SMaLL, Software for Machine Learning Libraries
+// Copyright 2024 by The SMaLL Contributors, All Rights Reserved.
+// SPDX-License-Identifier: BSD-3-Clause
+//
+// For additional details (including references to third party source code and
+// other files) see the LICENSE file or contact permission@sei.cmu.edu. See
+// Contributors.txt for a full list of contributors. Created, in part, with
+// funding and support from the U.S. Government (see Acknowledgments.txt file).
+// DM23-0126
+//****************************************************************************
+
 #include <math.h>
 #include <assert.h>
 #include <omp.h>
 #include <stdio.h>
-#include<string.h>
+#include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <climits>
@@ -20,7 +32,9 @@
 #include <intrinsics.h>
 
 // kernel specific intrinsics are already in small.h
-// The macro below can be used to produce all the kernel benchmarks using this program
+// The macro below can be used to produce all the kernel benchmarks using
+// this program.
+
 //****************************************************************************
 //****************************************************************************
 // Stolen from small::detail
@@ -28,7 +42,7 @@ typedef small::FloatBuffer::value_type dtype;
 typedef small::FloatBuffer::value_type c_tile_t;
 
 #define FLOAT_ABSTRACT_OP(op_type, op_class, step, a_cur, b_cur, _O_wb, _C_ob) \
-    if constexpr (op_type == small::OP_CONV)                                    \
+    if constexpr (op_type == small::OP_CONV)                             \
     {                                                                    \
         if constexpr (op_class == 1)                                     \
         {                                                                \
@@ -39,38 +53,46 @@ typedef small::FloatBuffer::value_type c_tile_t;
             FLOAT_CONV_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob);         \
         }                                                                \
     }                                                                    \
-    else if constexpr (op_type == small::OP_RELU || op_type == small::OP_MAX_POOL)     \
+    else if constexpr (op_type == small::OP_RELU ||                      \
+                       op_type == small::OP_MAX_POOL)                    \
     {                                                                    \
         FLOAT_MAX_TILE_C(step, a_cur, _O_wb, _C_ob);                     \
     }                                                                    \
-    else if constexpr (op_type == small::OP_LEAKY_RELU)                         \
+    else if constexpr (op_type == small::OP_LEAKY_RELU)                  \
     {                                                                    \
         FLOAT_COND_SCALE_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob);       \
     }                                                                    \
-    else if constexpr (op_type == small::OP_ADD || op_type == small::OP_AVERAGE_POOL)  \
-    {                                                                     \
+    else if constexpr (op_type == small::OP_ADD ||                       \
+                       op_type == small::OP_AVERAGE_POOL)                \
+    {                                                                    \
         FLOAT_ACCUM_TILE_C(step, a_cur, _O_wb, _C_ob);                   \
     }                                                                    \
-    else if constexpr (op_type == small::OP_MUL)                                \
+    else if constexpr (op_type == small::OP_MUL)                         \
     {                                                                    \
         float drop_out_rate = b_cur[0];                                  \
         FLOAT_DIV_TILE_C(drop_out_rate, _O_wb, _C_ob)                    \
     }                                                                    \
-    else if constexpr (op_type == small::OP_EXP)                                \
+    else if constexpr (op_type == small::OP_EXP)                         \
     {                                                                    \
         FLOAT_EXP_TILE_C(step, a_cur, _O_wb, _C_ob)                      \
     }
 
 
-
+//****************************************************************************
 // kernel benchmark: Work on 1 output tile, input fits in L1
 // k_max for 8-way 32KB L1: 128 (if weights are fully resident)
 // k_max for 8-way 32KB L1: 1024 (if weights are from L2)
 // This is only correct for 1x1
-template <int W_ob, int C_ob, int G_b, int _UNROLL, int stride, small::OpType OP_TYPE, int8_t OP_CLASS>
+//
+// I: mxk, W: kxn, O: mxn, where  m=W_ob, n=C_ob, k=c*_UNROLL,
+// k=C_i (1x1), G_b=1(CONV), mxk+kxn+mxn < L1 capacity, stride is stride
+//
+template <int W_ob, int C_ob, int G_b,
+          int _UNROLL, int stride,
+          small::OpType OP_TYPE, int8_t OP_CLASS>
 void kernel_benchmark(
     const int64_t m, const int64_t n, const int64_t k,
-    const float* I, const float* W, float* O) //mxk, kxn, mxn  m=W_ob, n=C_ob, k=c*_UNROLL,  k=C_i (1x1), G_b=1(CONV), mxk+kxn+mxn < L1 capacity, stride is stride
+    const float* I, const float* W, float* O)
 {
     int32_t constexpr step = C_ob * stride;
     FLOAT_DEF_TILE_C(W_ob, C_ob);
@@ -85,7 +107,6 @@ void kernel_benchmark(
         a_cur += G_b*_UNROLL;
     }
     FLOAT_STORE_TILE_C(O,W_ob, C_ob);
-
 }
 
 
@@ -156,8 +177,11 @@ double avg_layer_timers[NUM_IMPLEMENTATIONS][NUM_SIZES];
 double total_layer_timers[NUM_IMPLEMENTATIONS][NUM_SIZES] = {0};
 double layer_flops[NUM_IMPLEMENTATIONS][NUM_SIZES];
 
-//todo: This should change the computation so that it is correct for different layer types
-void check_result(const int m, const int n, const int k, const int stride, const float *I, const float *W, const float *O)
+//****************************************************************************
+// todo: This should change the computation so that it is correct for
+//       different layer types
+void check_result(const int m, const int n, const int k, const int stride,
+                  const float *I, const float *W, const float *O)
 {
     float *out_check = (float *)malloc(m * n * sizeof(float));
     float * cur_ptr = out_check;
@@ -195,32 +219,37 @@ void check_result(const int m, const int n, const int k, const int stride, const
     free(out_check);
 }
 
+//****************************************************************************
 int main()
 {
     const int n = FLOAT_C_ob;
     const int m = FLOAT_W_ob;
     const int stride = 1;
 
-
-
     printf("m: %d, n: %d\n Minimum timing over %d trials, each trial averages over %d runs\n", m, n, TRIALS, RUNS);
 
     printf("k, ops, time (ns), ops/cyc, total time (ms)\n");
-    int k_sizes[NUM_SIZES] = {16, 32, 64, 96, 128, 256, 384, 512, 1024, 2048, 4096, 8192, 16384, 32768};
-    //allocate aligned memory
-    for(int size = 0; size < NUM_SIZES; size++)
-    {
+    int k_sizes[NUM_SIZES] = {16, 32, 64, 96, 128, 256, 384, 512,
+                              1024, 2048, 4096, 8192, 16384, 32768};
 
+    //allocate aligned memory
+    for (int size = 0; size < NUM_SIZES; size++)
+    {
         int k = k_sizes[size];
         int64_t ops = m * n * k * ((OP_TYPE == small::OP_CONV) ? 2 : 1);
         printf("%d, %ld, ", k, ops);
         float *I, *W, *O;
         float *shared_buffer;
-        posix_memalign((void **)&shared_buffer, 64, (m * k + k*n + m*n) * sizeof(float));
+        int ret = posix_memalign((void **)&shared_buffer, 64,
+                                 (m * k + k*n + m*n) * sizeof(float));
+        if (ret != 0)
+        {
+            fprintf(stderr, "ERROR: posix_memalign failed, return code %d, for size=%d", ret, size);
+            continue;
+        }
         I = shared_buffer;
         W = I + m * k;
         O = W + k * n;
-
 
         float *cur_ptr = I;
         for (int i = 0; i < m*k; i++)
@@ -261,17 +290,18 @@ int main()
             timer.stop();
             total_layer_timers[0][size] = timer.elapsed();
             avg_layer_timers[0][size] = timer.elapsed()/RUNS;
-            min_layer_timers[0][size] = (trial == 0) ? avg_layer_timers[0][size] : std::min(min_layer_timers[0][size], avg_layer_timers[0][size]);
-
-
+            min_layer_timers[0][size] =
+                (trial == 0) ?
+                avg_layer_timers[0][size] :
+                std::min(min_layer_timers[0][size], avg_layer_timers[0][size]);
         }
 
-    printf("%f, %f , %f\n", min_layer_timers[0][size], (1.0*ops)/(min_layer_timers[0][size]*FREQ), total_layer_timers[0][size]/1e6);
+        printf("%f, %f , %f\n", min_layer_timers[0][size], (1.0*ops)/(min_layer_timers[0][size]*FREQ), total_layer_timers[0][size]/1e6);
 
 
-    check_result(m, n, k, stride,  I, W, O);
+        check_result(m, n, k, stride,  I, W, O);
 
-    free(shared_buffer);
+        free(shared_buffer);
 
 
     }
