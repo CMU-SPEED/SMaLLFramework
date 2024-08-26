@@ -39,9 +39,9 @@
 #include <small/abstract_layer.hpp> /// @todo abstract_layer_float.hpp
 #endif
 
-#if defined(SMALL_HAS_QUINT8_SUPPORT)
-#include <small/q_abstract_layer.hpp> /// @todo abstract_layer_quint8.hpp
-#endif
+// #if defined(SMALL_HAS_QUINT8_SUPPORT)
+// #include <small/q_abstract_layer.hpp> /// @todo abstract_layer_quint8.hpp
+// #endif
 
 // #define RECORD_CALLS
 

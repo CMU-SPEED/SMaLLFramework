@@ -1,4 +1,7 @@
 // The CMakeLists.txt file finds the path to this header file when -DCMAKE_UARCH=REF
+// TODO: This file doesn't work because the intrinsics file is not in included correctly
+// We should use this as a stub to test out quantized operations.
+
 #include <intrinsics_quint8.h>
 #include <stdio.h>
 #include <acutest.h>
