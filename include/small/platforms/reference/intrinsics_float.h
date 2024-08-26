@@ -353,7 +353,7 @@ namespace small
 // Accumulation kernels
 //****************************************************************************
 
-#define OLD_FLOAT_ACCUM_TILE_C(step, a, _W_ob, _C_ob) \
+#define FLOAT_ACCUM_TILE_C(step, a, _W_ob, _C_ob) \
     float *c_pixel = c_tile;                        \
     float const *a_pixel = a;                       \
     for (uint32_t kk = 0; kk < _W_ob; kk++)          \
@@ -370,16 +370,16 @@ namespace small
         c_pixel += _C_ob;                            \
     }
 
-#define FLOAT_ACCUM_TILE_C(step, a, _W_ob, _C_ob)             \
-    c_tile_t *c_channel = c_tile;                           \
-    c_tile_t const *i_channel = I;                      \
-    const c_tile_t *end_addr = c_channel + (_W_ob * _C_ob); \
-    /*address of the last element in c_tile*/               \
-                                                            \
-    while (c_channel < end_addr)                            \
-    {                                                       \
-        *c_channel++ += *i_channel++;                       \
-    }
+// #define FLOAT_ACCUM_TILE_C(step, a, _W_ob, _C_ob)             \
+//     c_tile_t *c_channel = c_tile;                           \
+//     c_tile_t const *i_channel = I;                      \
+//     const c_tile_t *end_addr = c_channel + (_W_ob * _C_ob); \
+//     /*address of the last element in c_tile*/               \
+//                                                             \
+//     while (c_channel < end_addr)                            \
+//     {                                                       \
+//         *c_channel++ += *i_channel++;                       \
+//     }
 
 #define FLOAT_ACCUM_END_C(step, a, c_cur, W_last, _C_ob) \
     float const *a_in_channel = a;                      \
@@ -406,7 +406,7 @@ namespace small
 // Broadcast multiplication kernels
 //****************************************************************************
 
-#define OLD_FLOAT_DIV_TILE_C(norm, _W_ob, _C_ob) \
+#define FLOAT_DIV_TILE_C(norm, _W_ob, _C_ob) \
     float *c_pixel = c_tile;                   \
     for (uint32_t kk = 0; kk < _W_ob; kk++)     \
     {                                          \
@@ -419,15 +419,15 @@ namespace small
         c_pixel += _C_ob;                       \
     }
 
-#define FLOAT_DIV_TILE_C(norm, _W_ob, _C_ob)             \
-    float *c_pixel = c_tile;                           \
-    const float *end_addr = c_pixel + (_W_ob * _C_ob); \
-    /*address of the last element in c_tile*/          \
-                                                       \
-    while (c_pixel < end_addr)                         \
-    {                                                  \
-        *c_pixel++ /= norm;                            \
-    }
+// #define FLOAT_DIV_TILE_C(norm, _W_ob, _C_ob)             \
+//     float *c_pixel = c_tile;                           \
+//     const float *end_addr = c_pixel + (_W_ob * _C_ob); \
+//     /*address of the last element in c_tile*/          \
+//                                                        \
+//     while (c_pixel < end_addr)                         \
+//     {                                                  \
+//         *c_pixel++ /= norm;                            \
+//     }
 
 #define FLOAT_DIV_END_C(c_cur, norm, W_last, _C_ob) \
     float *c_pixel = c_cur;                        \

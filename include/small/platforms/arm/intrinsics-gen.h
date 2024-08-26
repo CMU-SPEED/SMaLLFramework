@@ -15,31 +15,31 @@
 #undef FLOAT_DEF_TILE_C
 #endif
 
-#define FLOAT_DEF_TILE_C(W_ob, C_ob) \
-  /*float c_tile[W_ob * C_ob];*/     \
-  float32x4_t c_0_0;                 \
-  float32x4_t c_0_1;                 \
-  float32x4_t c_0_2;                 \
-  float32x4_t c_0_3;                 \
-  float32x4_t c_1_0;                 \
-  float32x4_t c_1_1;                 \
-  float32x4_t c_1_2;                 \
-  float32x4_t c_1_3;                 \
-  float32x4_t c_2_0;                 \
-  float32x4_t c_2_1;                 \
-  float32x4_t c_2_2;                 \
-  float32x4_t c_2_3;                 \
-  float32x4_t c_3_0;                 \
-  float32x4_t c_3_1;                 \
-  float32x4_t c_3_2;                 \
-  float32x4_t c_3_3;                 \
-  float32x4_t c_4_0;                 \
-  float32x4_t c_4_1;                 \
-  float32x4_t c_4_2;                 \
-  float32x4_t c_4_3;                 \
-  float32x4_t c_5_0;                 \
-  float32x4_t c_5_1;                 \
-  float32x4_t c_5_2;                 \
+#define FLOAT_DEF_TILE_C(W_ob, C_ob)\
+  /*float c_tile[W_ob * C_ob];*/\
+  float32x4_t c_0_0;\
+  float32x4_t c_0_1;\
+  float32x4_t c_0_2;\
+  float32x4_t c_0_3;\
+  float32x4_t c_1_0;\
+  float32x4_t c_1_1;\
+  float32x4_t c_1_2;\
+  float32x4_t c_1_3;\
+  float32x4_t c_2_0;\
+  float32x4_t c_2_1;\
+  float32x4_t c_2_2;\
+  float32x4_t c_2_3;\
+  float32x4_t c_3_0;\
+  float32x4_t c_3_1;\
+  float32x4_t c_3_2;\
+  float32x4_t c_3_3;\
+  float32x4_t c_4_0;\
+  float32x4_t c_4_1;\
+  float32x4_t c_4_2;\
+  float32x4_t c_4_3;\
+  float32x4_t c_5_0;\
+  float32x4_t c_5_1;\
+  float32x4_t c_5_2;\
   float32x4_t c_5_3;
 
 #ifdef FLOAT_ZERO_TILE_C
