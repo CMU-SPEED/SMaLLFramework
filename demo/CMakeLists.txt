@@ -21,6 +21,11 @@ include_directories ( ${CMAKE_SOURCE_DIR}/demo )
 add_library(check_interface.o STATIC check_interface_abstract.cpp)
 target_compile_definitions(check_interface.o PRIVATE uarch=${CMAKE_UARCH})
 
+
+# add_library(static_interface.o STATIC static_interface_abstract.cpp)
+# target_compile_definitions(static_interface.o PRIVATE uarch=${CMAKE_UARCH})
+
+
 # Test out CONV for different kernels
 set(LAYER_NAMES CONV DW_CONV MAX_POOL)
 set(KERNEL_W_OPTIONS 5 4)
@@ -42,13 +47,13 @@ endforeach(layer_name ${LAYER_NAMES})
 set(LAYER_NAMES RELU CONV PARTIAL_CONV POOL DW_CONV)
 message("In demo/CMakeLists.txt: ${LAYER_NAMES}")
 
-foreach( layer_name ${LAYER_NAMES} )
-  set(demo_name "test_interface_${layer_name}.exe")
-  message("Adding executable: ${demo_name}")
-  add_executable(${demo_name} generic_driver.cpp )
-  target_link_libraries(${demo_name} check_interface.o)
-  target_compile_definitions(${demo_name} PRIVATE LAYER=${layer_name})
-endforeach( layer_name ${LAYER_NAMES} )
+# foreach( layer_name ${LAYER_NAMES} )
+#   set(demo_name "test_interface_${layer_name}.exe")
+#   message("Adding executable: ${demo_name}")
+#   add_executable(${demo_name} generic_driver.cpp )
+#   target_link_libraries(${demo_name} check_interface.o)
+#   target_compile_definitions(${demo_name} PRIVATE LAYER=${layer_name})
+# endforeach( layer_name ${LAYER_NAMES} )
 
 set(MODEL_SOURCES mobilenet.cpp resnet.cpp dscnn.cpp dscnn_square.cpp autoencoder.cpp tinyyolov2.cpp)
 message("In demo/CMakeLists.txt: ${MODEL_SOURCES}")
