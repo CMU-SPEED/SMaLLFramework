@@ -22,9 +22,6 @@ add_library(check_interface.o STATIC check_interface_abstract.cpp)
 target_compile_definitions(check_interface.o PRIVATE uarch=${CMAKE_UARCH})
 
 
-# add_library(static_interface.o STATIC static_interface_abstract.cpp)
-# target_compile_definitions(static_interface.o PRIVATE uarch=${CMAKE_UARCH})
-
 
 # Test out CONV for different kernels
 set(LAYER_NAMES CONV DW_CONV MAX_POOL)
