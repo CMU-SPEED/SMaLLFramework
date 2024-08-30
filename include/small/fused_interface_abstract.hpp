@@ -113,7 +113,7 @@ namespace small
             if (conv_stride == 1)
             {
 
-                detail::fused_abstract_layer_1D<
+                detail::fused_abstract_layer<
                     FloatBuffer,
                     1, FLOAT_C_ob, FLOAT_C_ib,
                     FLOAT_W_ob,
@@ -135,7 +135,7 @@ namespace small
                 //     OP_CONV, 2,
                 //     1,
 
-                //     FLOAƒT_C_ob, 1, 1,
+                //     FLOAT_C_ob, 1, 1,
                 //     FLOAT_W_ob,
                 //     1,
                 //     FLOAT_UNROLL,
@@ -152,7 +152,7 @@ namespace small
             else if (conv_stride == 2)
             {
 
-                detail::fused_abstract_layer_1D<
+                detail::fused_abstract_layer<
                     FloatBuffer,
                     1, FLOAT_C_ob, FLOAT_C_ib,
                     FLOAT_W_ob,
@@ -177,7 +177,7 @@ namespace small
             if (conv_stride == 1)
             {
 
-                detail::fused_abstract_layer_1D<
+                detail::fused_abstract_layer<
                     FloatBuffer,
                     1, FLOAT_C_ob, 3,
                     FLOAT_W_ob,
@@ -193,7 +193,7 @@ namespace small
             else if (conv_stride == 2)
             {
 
-                detail::fused_abstract_layer_1D<
+                detail::fused_abstract_layer<
                     FloatBuffer,
                     1, FLOAT_C_ob, 3,
                     FLOAT_W_ob,
@@ -471,7 +471,7 @@ void Conv2D_Bias_ReLU_Maxpool2D<FloatBuffer>(
                 FLOAT_C_ob, 1, 1,
                 FLOAT_W_ob,
                 1,
-                FLOAT_UNROLL,
+                1,
                 OP_MAX_POOL, 1,
                 1,
 
@@ -497,7 +497,7 @@ void Conv2D_Bias_ReLU_Maxpool2D<FloatBuffer>(
                 FLOAT_C_ob, 1, 1,
                 FLOAT_W_ob,
                 2,
-                FLOAT_UNROLL,
+                1,
                 OP_MAX_POOL, 1,
                 1,
 
@@ -523,7 +523,7 @@ void Conv2D_Bias_ReLU_Maxpool2D<FloatBuffer>(
                 FLOAT_C_ob, 1, 1,
                 FLOAT_W_ob,
                 1,
-                FLOAT_UNROLL,
+                1,
                 OP_MAX_POOL, 1,
                 1,
 
@@ -549,7 +549,7 @@ void Conv2D_Bias_ReLU_Maxpool2D<FloatBuffer>(
                 FLOAT_C_ob, 1, 1,
                 FLOAT_W_ob,
                 2,
-                FLOAT_UNROLL,
+                1,
                 OP_MAX_POOL, 1,
                 1,
 
@@ -584,7 +584,7 @@ void Conv2D_Bias_ReLU_Maxpool2D<FloatBuffer>(
                 FLOAT_C_ob, 1, 1,
                 FLOAT_W_ob,
                 1,
-                FLOAT_UNROLL,
+                1,
                 OP_MAX_POOL, 1,
                 1,
 
@@ -612,7 +612,7 @@ void Conv2D_Bias_ReLU_Maxpool2D<FloatBuffer>(
                 FLOAT_C_ob, 1, 1,
                 FLOAT_W_ob,
                 2,
-                FLOAT_UNROLL,
+                1,
                 OP_MAX_POOL, 1,
                 1,
 
@@ -640,7 +640,7 @@ void Conv2D_Bias_ReLU_Maxpool2D<FloatBuffer>(
                 FLOAT_C_ob, 1, 1,
                 FLOAT_W_ob,
                 1,
-                FLOAT_UNROLL,
+                1,
                 OP_MAX_POOL, 1,
                 1,
 
@@ -668,7 +668,7 @@ void Conv2D_Bias_ReLU_Maxpool2D<FloatBuffer>(
                 FLOAT_C_ob, 1, 1,
                 FLOAT_W_ob,
                 2,
-                FLOAT_UNROLL,
+                1,
                 OP_MAX_POOL, 1,
                 1,
 
@@ -802,7 +802,7 @@ void Conv2D_Maxpool2D(
                     FLOAT_C_ob, 1, 1,
                     FLOAT_W_ob,
                     1,
-                    FLOAT_UNROLL,
+                    1,
                     OP_MAX_POOL, 1,
                     1,
 
@@ -828,7 +828,7 @@ void Conv2D_Maxpool2D(
                     FLOAT_C_ob, 1, 1,
                     FLOAT_W_ob,
                     2,
-                    FLOAT_UNROLL,
+                    1,
                     OP_MAX_POOL, 1,
                     1,
 
@@ -854,7 +854,7 @@ void Conv2D_Maxpool2D(
                     FLOAT_C_ob, 1, 1,
                     FLOAT_W_ob,
                     1,
-                    FLOAT_UNROLL,
+                    1,
                     OP_MAX_POOL, 1,
                     1,
 
@@ -880,7 +880,7 @@ void Conv2D_Maxpool2D(
                     FLOAT_C_ob, 1, 1,
                     FLOAT_W_ob,
                     2,
-                    FLOAT_UNROLL,
+                    1,
                     OP_MAX_POOL, 1,
                     1,
 
@@ -916,7 +916,7 @@ void Conv2D_Maxpool2D(
                     FLOAT_C_ob, 1, 1,
                     FLOAT_W_ob,
                     1,
-                    FLOAT_UNROLL,
+                    1,
                     OP_MAX_POOL, 1,
                     1,
 
@@ -944,7 +944,7 @@ void Conv2D_Maxpool2D(
                     FLOAT_C_ob, 1, 1,
                     FLOAT_W_ob,
                     2,
-                    FLOAT_UNROLL,
+                    1,
                     OP_MAX_POOL, 1,
                     1,
 
@@ -972,7 +972,7 @@ void Conv2D_Maxpool2D(
                     FLOAT_C_ob, 1, 1,
                     FLOAT_W_ob,
                     1,
-                    FLOAT_UNROLL,
+                    1,
                     OP_MAX_POOL, 1,
                     1,
 
@@ -1000,7 +1000,7 @@ void Conv2D_Maxpool2D(
                     FLOAT_C_ob, 1, 1,
                     FLOAT_W_ob,
                     2,
-                    FLOAT_UNROLL,
+                    1,
                     OP_MAX_POOL, 1,
                     1,
 
@@ -1141,7 +1141,7 @@ void Conv2D_ReLU_Maxpool2D<FloatBuffer>(
                 FLOAT_C_ob, 1, 1,
                 FLOAT_W_ob,
                 1,
-                FLOAT_UNROLL,
+                1,
                 OP_MAX_POOL, 1,
                 1,
 
@@ -1167,7 +1167,7 @@ void Conv2D_ReLU_Maxpool2D<FloatBuffer>(
                 FLOAT_C_ob, 1, 1,
                 FLOAT_W_ob,
                 2,
-                FLOAT_UNROLL,
+                1,
                 OP_MAX_POOL, 1,
                 1,
 
@@ -1193,7 +1193,7 @@ void Conv2D_ReLU_Maxpool2D<FloatBuffer>(
                 FLOAT_C_ob, 1, 1,
                 FLOAT_W_ob,
                 1,
-                FLOAT_UNROLL,
+                1,
                 OP_MAX_POOL, 1,
                 1,
 
@@ -1219,7 +1219,7 @@ void Conv2D_ReLU_Maxpool2D<FloatBuffer>(
                 FLOAT_C_ob, 1, 1,
                 FLOAT_W_ob,
                 2,
-                FLOAT_UNROLL,
+                1,
                 OP_MAX_POOL, 1,
                 1,
 
@@ -1255,7 +1255,7 @@ void Conv2D_ReLU_Maxpool2D<FloatBuffer>(
                 FLOAT_C_ob, 1, 1,
                 FLOAT_W_ob,
                 1,
-                FLOAT_UNROLL,
+                1,
                 OP_MAX_POOL, 1,
                 1,
 
@@ -1283,7 +1283,7 @@ void Conv2D_ReLU_Maxpool2D<FloatBuffer>(
                 FLOAT_C_ob, 1, 1,
                 FLOAT_W_ob,
                 2,
-                FLOAT_UNROLL,
+                1,
                 OP_MAX_POOL, 1,
                 1,
 
@@ -1311,7 +1311,7 @@ void Conv2D_ReLU_Maxpool2D<FloatBuffer>(
                 FLOAT_C_ob, 1, 1,
                 FLOAT_W_ob,
                 1,
-                FLOAT_UNROLL,
+                1,
                 OP_MAX_POOL, 1,
                 1,
 
@@ -1339,7 +1339,7 @@ void Conv2D_ReLU_Maxpool2D<FloatBuffer>(
                 FLOAT_C_ob, 1, 1,
                 FLOAT_W_ob,
                 2,
-                FLOAT_UNROLL,
+                1,
                 OP_MAX_POOL, 1,
                 1,
 
@@ -1446,7 +1446,7 @@ void DepthwiseConv2D_ReLU<FloatBuffer>(
                 FLOAT_C_ob, 1, 1, 
                 FLOAT_W_ob, 
                 1, 
-                FLOAT_UNROLL, 
+                1, 
                 OP_CONV, 1, 
                 1, 
                 OP_NONE, OP_RELU>(
@@ -1462,7 +1462,7 @@ void DepthwiseConv2D_ReLU<FloatBuffer>(
                 FLOAT_C_ob, 1, 1, 
                 FLOAT_W_ob, 
                 2, 
-                FLOAT_UNROLL, 
+                1, 
                 OP_CONV, 1, 
                 1, 
                 OP_NONE, OP_RELU>(
@@ -1546,7 +1546,7 @@ void DepthwiseConv2D_Bias_ReLU<FloatBuffer>(
                 FLOAT_C_ob, 1, 1, 
                 FLOAT_W_ob, 
                 1, 
-                FLOAT_UNROLL, 
+                1, 
                 OP_CONV, 1, 
                 1, 
                 OP_UPSAMPLE, OP_RELU, 
@@ -1563,7 +1563,7 @@ void DepthwiseConv2D_Bias_ReLU<FloatBuffer>(
                 FLOAT_C_ob, 1, 1, 
                 FLOAT_W_ob, 
                 2, 
-                FLOAT_UNROLL, 
+                1, 
                 OP_CONV, 1, 
                 1, 
                 OP_UPSAMPLE, OP_RELU, 
@@ -1689,7 +1689,7 @@ void Conv2D_DepthwiseConv2D(
                     FLOAT_C_ob, 1, 1,
                     FLOAT_W_ob,
                     1,
-                    FLOAT_UNROLL,
+                    1,
                     OP_CONV, 1,
                     1,
 
@@ -1717,7 +1717,7 @@ void Conv2D_DepthwiseConv2D(
                     FLOAT_C_ob, 1, 1,
                     FLOAT_W_ob,
                     2,
-                    FLOAT_UNROLL,
+                    1,
                     OP_CONV, 1,
                     1,
 
@@ -1745,7 +1745,7 @@ void Conv2D_DepthwiseConv2D(
                     FLOAT_C_ob, 1, 1,
                     FLOAT_W_ob,
                     1,
-                    FLOAT_UNROLL,
+                    1,
                     OP_CONV, 1,
                     1,
 
@@ -1773,7 +1773,7 @@ void Conv2D_DepthwiseConv2D(
                     FLOAT_C_ob, 1, 1,
                     FLOAT_W_ob,
                     2,
-                    FLOAT_UNROLL,
+                    1,
                     OP_CONV, 1,
                     1,
 
@@ -1810,7 +1810,7 @@ void Conv2D_DepthwiseConv2D(
                     FLOAT_C_ob, 1, 1,
                     FLOAT_W_ob,
                     1,
-                    FLOAT_UNROLL,
+                    1,
                     OP_CONV, 1,
                     1,
 
@@ -1838,7 +1838,7 @@ void Conv2D_DepthwiseConv2D(
                     FLOAT_C_ob, 1, 1,
                     FLOAT_W_ob,
                     2,
-                    FLOAT_UNROLL,
+                    1,
                     OP_CONV, 1,
                     1,
 
@@ -1866,7 +1866,7 @@ void Conv2D_DepthwiseConv2D(
                     FLOAT_C_ob, 1, 1,
                     FLOAT_W_ob,
                     1,
-                    FLOAT_UNROLL,
+                    1,
                     OP_CONV, 1,
                     1,
 
@@ -1894,7 +1894,7 @@ void Conv2D_DepthwiseConv2D(
                     FLOAT_C_ob, 1, 1,
                     FLOAT_W_ob,
                     2,
-                    FLOAT_UNROLL,
+                    1,
                     OP_CONV, 1,
                     1,
 
@@ -2033,7 +2033,7 @@ void Conv2D_DepthwiseConv2D(
                     FLOAT_C_ob, 1, 1,
                     FLOAT_W_ob,
                     1,
-                    FLOAT_UNROLL,
+                    1,
                     OP_CONV, 1,
                     1,
 
@@ -2061,7 +2061,7 @@ void Conv2D_DepthwiseConv2D(
                     FLOAT_C_ob, 1, 1,
                     FLOAT_W_ob,
                     2,
-                    FLOAT_UNROLL,
+                    1,
                     OP_CONV, 1,
                     1,
 
@@ -2089,7 +2089,7 @@ void Conv2D_DepthwiseConv2D(
                     FLOAT_C_ob, 1, 1,
                     FLOAT_W_ob,
                     1,
-                    FLOAT_UNROLL,
+                    1,
                     OP_CONV, 1,
                     1,
 
@@ -2117,7 +2117,7 @@ void Conv2D_DepthwiseConv2D(
                     FLOAT_C_ob, 1, 1,
                     FLOAT_W_ob,
                     2,
-                    FLOAT_UNROLL,
+                    1,
                     OP_CONV, 1,
                     1,
 
@@ -2154,7 +2154,7 @@ void Conv2D_DepthwiseConv2D(
                     FLOAT_C_ob, 1, 1,
                     FLOAT_W_ob,
                     1,
-                    FLOAT_UNROLL,
+                    1,
                     OP_CONV, 1,
                     1,
 
@@ -2182,7 +2182,7 @@ void Conv2D_DepthwiseConv2D(
                     FLOAT_C_ob, 1, 1,
                     FLOAT_W_ob,
                     2,
-                    FLOAT_UNROLL,
+                    1,
                     OP_CONV, 1,
                     1,
 
@@ -2210,7 +2210,7 @@ void Conv2D_DepthwiseConv2D(
                     FLOAT_C_ob, 1, 1,
                     FLOAT_W_ob,
                     1,
-                    FLOAT_UNROLL,
+                    1,
                     OP_CONV, 1,
                     1,
 
@@ -2238,7 +2238,7 @@ void Conv2D_DepthwiseConv2D(
                     FLOAT_C_ob, 1, 1,
                     FLOAT_W_ob,
                     2,
-                    FLOAT_UNROLL,
+                    1,
                     OP_CONV, 1,
                     1,
 
@@ -2383,7 +2383,7 @@ void Conv2D_Bias_ReLU_DepthwiseConv2D_Bias_ReLU<FloatBuffer>(
                 FLOAT_C_ob, 1, 1,
                 FLOAT_W_ob,
                 1,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 1,
                 1,
 
@@ -2412,7 +2412,7 @@ void Conv2D_Bias_ReLU_DepthwiseConv2D_Bias_ReLU<FloatBuffer>(
                 FLOAT_C_ob, 1, 1,
                 FLOAT_W_ob,
                 2,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 1,
                 1,
 
@@ -2441,7 +2441,7 @@ void Conv2D_Bias_ReLU_DepthwiseConv2D_Bias_ReLU<FloatBuffer>(
                 FLOAT_C_ob, 1, 1,
                 FLOAT_W_ob,
                 1,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 1,
                 1,
 
@@ -2469,7 +2469,7 @@ void Conv2D_Bias_ReLU_DepthwiseConv2D_Bias_ReLU<FloatBuffer>(
                 FLOAT_C_ob, 1, 1,
                 FLOAT_W_ob,
                 2,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 1,
                 1,
 
@@ -2507,7 +2507,7 @@ void Conv2D_Bias_ReLU_DepthwiseConv2D_Bias_ReLU<FloatBuffer>(
                 FLOAT_C_ob, 1, 1,
                 FLOAT_W_ob,
                 1,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 1,
                 1,
 
@@ -2535,7 +2535,7 @@ void Conv2D_Bias_ReLU_DepthwiseConv2D_Bias_ReLU<FloatBuffer>(
                 FLOAT_C_ob, 1, 1,
                 FLOAT_W_ob,
                 2,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 1,
                 1,
 
@@ -2563,7 +2563,7 @@ void Conv2D_Bias_ReLU_DepthwiseConv2D_Bias_ReLU<FloatBuffer>(
                 FLOAT_C_ob, 1, 1,
                 FLOAT_W_ob,
                 1,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 1,
                 1,
 
@@ -2591,7 +2591,7 @@ void Conv2D_Bias_ReLU_DepthwiseConv2D_Bias_ReLU<FloatBuffer>(
                 FLOAT_C_ob, 1, 1,
                 FLOAT_W_ob,
                 2,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 1,
                 1,
 

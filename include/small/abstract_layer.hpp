@@ -159,11 +159,11 @@ FLOAT_ACCUM_TILE_C(step, b_cur, _O_wb, _C_ob);                                  
     else if constexpr (op_type == OP_MUL)                                                        \
     {                                                                                            \
 float drop_out_rate = b_cur[0];                                                                  \
-FLOAT_DIV_TILE_C(drop_out_rate, _O_wb, _C_ob)                                         \
+FLOAT_DIV_TILE_C(drop_out_rate, _O_wb, _C_ob);                                         \
     }                                                                                            \
     else if constexpr (op_type == OP_EXP)                                                        \
     {                                                                                            \
-FLOAT_FUSED_EXP_TILE_C(_O_wb, _C_ob)                                           \
+FLOAT_FUSED_EXP_TILE_C(_O_wb, _C_ob) ;                                          \
     }
 
 //****************************************************************************
@@ -171,7 +171,7 @@ FLOAT_FUSED_EXP_TILE_C(_O_wb, _C_ob)                                           \
 #define FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_END(step, op_type, op_class, b_cur, c_cur, W_elements, _C_ob)\
 if constexpr (op_type == OP_RELU)                     \
     {                                                                                    \
-        printf("fused relu\n");FLOAT_FUSED_RELU_END_C(c_cur, W_elements, _C_ob);                          \
+       FLOAT_FUSED_RELU_END_C(c_cur, W_elements, _C_ob);                          \
     }                                                                                    \
     else if constexpr (op_type == OP_LEAKY_RELU)                                         \
     {                                                                                    \
@@ -184,11 +184,11 @@ if constexpr (op_type == OP_RELU)                     \
     else if constexpr (op_type == OP_MUL)                                                \
     {                                                                                    \
         float drop_out_rate = b_cur[0];                                                  \
-        FLOAT_DIV_END_C(c_cur, drop_out_rate, W_elements, _C_ob)                         \
+        FLOAT_DIV_END_C(c_cur, drop_out_rate, W_elements, _C_ob);                         \
     }                                                                                    \
     else if constexpr (op_type == OP_EXP)                                                \
     {                                                                                    \
-        FLOAT_FUSED_EXP_END_C(c_cur, W_elements, _C_ob)                           \
+        FLOAT_FUSED_EXP_END_C(c_cur, W_elements, _C_ob) ;                          \
     }
 
 #define FLOAT_ABSTRACT_SINGLE_ELEMENT_UPSAMPLE_OP_END(out_step, op_type, op_class)                     \
