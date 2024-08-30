@@ -12,15 +12,4 @@
 
 #pragma once
 
-#define SMALL_HAS_FLOAT_SUPPORT  1
-
-#define FLOAT_W_ob   6
-#define FLOAT_C_ob   16
-#define FLOAT_SIMD   8
-#define FLOAT_UNROLL 16
-#define FLOAT_C_ib   FLOAT_C_ob
-
-#define FLOAT_NUM_FMA 2
-#define FLOAT_NUM_MAX 1
-#define FLOAT_NUM_LOAD 2
-#define FLOAT_NUM_STORE 1
+#include "../zen2/params.h"
