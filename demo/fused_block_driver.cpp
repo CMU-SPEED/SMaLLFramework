@@ -32,7 +32,7 @@
 #define COMPUTE_RELU false
 #endif
 #ifndef RUNS
-#define RUNS 100
+#define RUNS 10
 #endif
 
 #ifndef TRIALS
@@ -513,6 +513,7 @@ inline void fused_small_layer_block(
                                           F_conv,
                                           O_intermediate,
                                           O);
+                                          
         }
         else
         {
@@ -526,6 +527,7 @@ inline void fused_small_layer_block(
                                     F_conv,
                                     O_intermediate,
                                     O);
+
         }
         // small::Conv2D_ReLU_Maxpool2D(kernel_size_conv, kernel_size_conv, stride_conv,
         //                              t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
