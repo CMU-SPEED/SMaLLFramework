@@ -68,7 +68,7 @@ inline bool almost_equal(T v1, T v2, float rtol = 5e-03, float atol = 1e-05)
 
 
 
-#define TIME_LAYER 0
+#define TIME_LAYER 1
 
 
 #define REDUCTION_C(layer_num) layer_params[layer_num][0]
@@ -106,9 +106,10 @@ inline bool almost_equal(T v1, T v2, float rtol = 5e-03, float atol = 1e-05)
 //
 
 //timers
-double layer_timers[3][15];
-double min_layer_timers[3][15];
-double avg_layer_timers[3][15];
+double layer_timers[3][20];
+double min_layer_timers[3][20];
+double avg_layer_timers[3][20];
+int pool_layer_num = 0;
 
 template <class BufferT>
 inline void vgg_block(
@@ -135,6 +136,11 @@ inline void vgg_block(
     uint32_t i_w = in_dims[0];
     uint32_t i_h = in_dims[1];
 
+    #if TIME_LAYER 
+    small::Timer my_timer;
+    my_timer.start();
+    #endif
+    
     small::Conv2D(kernel_size_conv, kernel_size_conv, stride_conv,
                            t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
                   output_channels, input_channels,
@@ -149,20 +155,27 @@ inline void vgg_block(
     uint32_t o_h_p2 = small::output_dim(i_h + t_pad_conv + b_pad_conv,
                                         stride_conv, kernel_size_conv); 
 
+    #if TIME_LAYER
+    my_timer.stop();
+    layer_timers[0][pool_layer_num-1] = my_timer.elapsed();
+    #endif
+
+    #if TIME_LAYER 
+    // small::Timer my_timer;
+    my_timer.start();
+    #endif
     small::MaxPool2D(kernel_size, kernel_size, stride,
                            t_pad, b_pad, l_pad, r_pad,
                            output_channels,
                            o_h_p2, o_w_p2,
                            O_intermediate,O);
 
-    // uint32_t o_w_p2 = small::output_dim(i_w + l_pad + r_pad,
-    //                                  stride, kernel_size);
-    // uint32_t o_h_p2 = small::output_dim(i_h + t_pad + b_pad,
-    //                                  stride, kernel_size);
+    #if TIME_LAYER
+    my_timer.stop();
+    layer_timers[0][pool_layer_num] = my_timer.elapsed();
+    #endif
 
-    // small::ReLUActivation(output_channels,
-    //                       o_h_p2, o_w_p2,
-    //                       O, O);
+
 
 }
 
@@ -193,11 +206,20 @@ inline void fused_ewise_vgg_block(
     uint32_t i_w = in_dims[0];
     uint32_t i_h = in_dims[1];
 
+    #if TIME_LAYER 
+    small::Timer my_timer;
+    my_timer.start();
+    #endif
     small::Conv2D_ReLU(kernel_size_conv, kernel_size_conv, stride_conv,
                            t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
                   output_channels, input_channels,
                   i_h, i_w,
                   I, F_conv, O_intermediate);
+
+    #if TIME_LAYER
+    my_timer.stop();
+    layer_timers[1][pool_layer_num-1] = my_timer.elapsed();
+    #endif
 
     //Calculate output dimensions of Conv
     uint32_t o_w_p2 = small::output_dim(i_w + l_pad_conv + r_pad_conv,
@@ -205,11 +227,20 @@ inline void fused_ewise_vgg_block(
     uint32_t o_h_p2 = small::output_dim(i_h + t_pad_conv + b_pad_conv
                                         , stride_conv, kernel_size_conv);
 
+     #if TIME_LAYER 
+    // small::Timer my_timer;
+    my_timer.start();
+    #endif
     small::MaxPool2D(kernel_size, kernel_size, stride,
                            t_pad, b_pad, l_pad, r_pad,
                            output_channels,
                            o_h_p2, o_w_p2,
                            O_intermediate,O);
+    
+    #if TIME_LAYER
+    my_timer.stop();
+    layer_timers[1][pool_layer_num] = my_timer.elapsed();
+    #endif
 }
 
 template <class BufferT>
@@ -234,6 +265,13 @@ inline void fused_vgg_block(
     BufferT &O
     )
 {
+//    uint32_t i_w = in_dims[0];
+//     uint32_t i_h = in_dims[1];
+//         small::Conv2D_ReLU(kernel_size_conv, kernel_size_conv, stride_conv,
+//                            t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
+//                   output_channels, input_channels,
+//                   i_h, i_w,
+//                   I, F_conv, O_intermediate);
     small::Conv2D_ReLU_Maxpool2D( kernel_size_conv, kernel_size_conv, stride_conv, 
                                             t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv, 
                                             kernel_size, kernel_size, stride,
@@ -260,6 +298,7 @@ model_inference(uint32_t layer_num_total,
                 BufferT       &inter_1_dc)
 {
     auto layer_num = 0;
+    auto impl = 0;
     #if TIME_LAYER
     small::Timer my_timer;
 
@@ -284,12 +323,13 @@ model_inference(uint32_t layer_num_total,
 
      #if TIME_LAYER
     my_timer.stop();
-    layer_timers[0][0] = my_timer.elapsed();
+    layer_timers[impl][0] = my_timer.elapsed();
     #endif
 
 
     #if TIME_LAYER
-       my_timer.start();
+        pool_layer_num = 2;
+    //    my_timer.start();
     #endif
     vgg_block(intermediate_dims[1], REDUCTION_C(1), // Input dimensions
     REDUCTION_HW(1),
@@ -306,12 +346,13 @@ model_inference(uint32_t layer_num_total,
 
     layer_num+=2;
      #if TIME_LAYER
-    my_timer.stop();
-    layer_timers[0][1] = my_timer.elapsed();
+    // my_timer.stop();
+    // layer_timers[impl][1] = my_timer.elapsed();
     #endif
 
     for (int vgg_layer = 1; vgg_layer < 5; vgg_layer++)
     {
+   
     #if TIME_LAYER
     my_timer.start();
     #endif
@@ -331,7 +372,7 @@ model_inference(uint32_t layer_num_total,
 
      #if TIME_LAYER
     my_timer.stop();
-    layer_timers[0][layer_num] = my_timer.elapsed();
+    layer_timers[impl][layer_num] = my_timer.elapsed();
     #endif
     layer_num++;
 
@@ -360,7 +401,7 @@ model_inference(uint32_t layer_num_total,
 
         #if TIME_LAYER
         my_timer.stop();
-        layer_timers[0][layer_num] = my_timer.elapsed();
+        layer_timers[impl][layer_num] = my_timer.elapsed();
         #endif
 
         layer_num++; 
@@ -372,7 +413,8 @@ model_inference(uint32_t layer_num_total,
 
 
        #if TIME_LAYER
-       my_timer.start();
+       pool_layer_num = layer_num + 1;
+    //    my_timer.start();
        #endif
 
         vgg_block(intermediate_dims[layer_num], REDUCTION_C(layer_num), // Input dimensions
@@ -390,8 +432,8 @@ model_inference(uint32_t layer_num_total,
 
         
         #if TIME_LAYER
-        my_timer.stop();
-        layer_timers[0][layer_num] = my_timer.elapsed();
+        // my_timer.stop();
+        // layer_timers[impl][layer_num] = my_timer.elapsed();
         #endif
 
         layer_num += 2;
@@ -419,6 +461,7 @@ fused_ewise_model_inference(uint32_t layer_num_total,
 {
  
     auto layer_num = 0;
+    auto impl = 1;
     #if TIME_LAYER
     small::Timer my_timer;
 
@@ -436,12 +479,13 @@ fused_ewise_model_inference(uint32_t layer_num_total,
 
      #if TIME_LAYER
     my_timer.stop();
-    layer_timers[0][0] = my_timer.elapsed();
+    layer_timers[impl][0] = my_timer.elapsed();
     #endif
 
 
     #if TIME_LAYER
-       my_timer.start();
+    pool_layer_num = 2;
+    //    my_timer.start();
     #endif
     fused_ewise_vgg_block(intermediate_dims[1], REDUCTION_C(1), // Input dimensions
     REDUCTION_HW(1),
@@ -458,8 +502,8 @@ fused_ewise_model_inference(uint32_t layer_num_total,
 
     layer_num+=2;
      #if TIME_LAYER
-    my_timer.stop();
-    layer_timers[0][1] = my_timer.elapsed();
+    // my_timer.stop();
+    // layer_timers[impl][1] = my_timer.elapsed();
     #endif
 
     for (int vgg_layer = 1; vgg_layer < 5; vgg_layer++)
@@ -477,7 +521,7 @@ fused_ewise_model_inference(uint32_t layer_num_total,
 
      #if TIME_LAYER
     my_timer.stop();
-    layer_timers[0][layer_num] = my_timer.elapsed();
+    layer_timers[impl][layer_num] = my_timer.elapsed();
     #endif
     layer_num++;
 
@@ -500,7 +544,7 @@ fused_ewise_model_inference(uint32_t layer_num_total,
 
         #if TIME_LAYER
         my_timer.stop();
-        layer_timers[0][layer_num] = my_timer.elapsed();
+        layer_timers[impl][layer_num] = my_timer.elapsed();
         #endif
 
         layer_num++; 
@@ -512,7 +556,8 @@ fused_ewise_model_inference(uint32_t layer_num_total,
 
 
        #if TIME_LAYER
-       my_timer.start();
+       pool_layer_num = layer_num + 1;
+    //    my_timer.start();
        #endif
 
         fused_ewise_vgg_block(intermediate_dims[layer_num], REDUCTION_C(layer_num), // Input dimensions
@@ -530,8 +575,8 @@ fused_ewise_model_inference(uint32_t layer_num_total,
 
         
         #if TIME_LAYER
-        my_timer.stop();
-        layer_timers[0][layer_num] = my_timer.elapsed();
+        // my_timer.stop();
+        // layer_timers[impl][layer_num] = my_timer.elapsed();
         #endif
 
         layer_num += 2;
@@ -559,6 +604,7 @@ fused_model_inference(uint32_t layer_num_total,
 {
     
     auto layer_num = 0;
+    auto impl = 2;
     #if TIME_LAYER
     small::Timer my_timer;
 
@@ -576,13 +622,16 @@ fused_model_inference(uint32_t layer_num_total,
 
      #if TIME_LAYER
     my_timer.stop();
-    layer_timers[0][0] = my_timer.elapsed();
+    layer_timers[impl][0] = my_timer.elapsed();
     #endif
 
 
     #if TIME_LAYER
        my_timer.start();
     #endif
+    // Run this layer sinmgle threaded to save memory
+    char *num_threads = getenv("OMP_NUM_THREADS");
+    setenv("OMP_NUM_THREADS", "1", 1);
     fused_vgg_block(intermediate_dims[1], REDUCTION_C(1), // Input dimensions
     REDUCTION_HW(1),
     STRIDE(1),
@@ -599,9 +648,9 @@ fused_model_inference(uint32_t layer_num_total,
     layer_num+=2;
      #if TIME_LAYER
     my_timer.stop();
-    layer_timers[0][1] = my_timer.elapsed();
+    layer_timers[impl][1] = my_timer.elapsed();
     #endif
-
+    setenv("OMP_NUM_THREADS", num_threads, 1);
     for (int vgg_layer = 1; vgg_layer < 5; vgg_layer++)
     {
     #if TIME_LAYER
@@ -617,8 +666,9 @@ fused_model_inference(uint32_t layer_num_total,
 
      #if TIME_LAYER
     my_timer.stop();
-    layer_timers[0][layer_num] = my_timer.elapsed();
+    layer_timers[impl][layer_num] = my_timer.elapsed();
     #endif
+
     layer_num++;
 
 
@@ -640,7 +690,7 @@ fused_model_inference(uint32_t layer_num_total,
 
         #if TIME_LAYER
         my_timer.stop();
-        layer_timers[0][layer_num] = my_timer.elapsed();
+        layer_timers[impl][layer_num] = my_timer.elapsed();
         #endif
 
         layer_num++; 
@@ -671,7 +721,7 @@ fused_model_inference(uint32_t layer_num_total,
         
         #if TIME_LAYER
         my_timer.stop();
-        layer_timers[0][layer_num] = my_timer.elapsed();
+        layer_timers[impl][layer_num] = my_timer.elapsed();
         #endif
 
         layer_num += 2;
@@ -1101,237 +1151,140 @@ void inference()
     std::cout << "Minimum time: " << min_small_fused << " ns.\n";
     
 
+    #if TIME_LAYER
+   
+    std::cout << "Performing timing "<< RUNS <<" runs unfused ...\n";
+    for (int r = 0; r < RUNS; r++)
+    {
+       
+        int impl = 0;
 
-//     std::cerr << "Warm up run (ORIG)" << std::endl;
-//     my_timer.start();
-//     auto &output_dc =
-//         fused_model_inference(layer_num_total, layer_params, intermediate_dims,
-//                         filter_buf_ptrs,
-//                         input_dc,
-//                         inter_0_dc,
-//                         inter_1_dc, inter_0_buffer_dc);
-//     my_timer.stop();
-//     printf("\nElapsed time: %lf ns.\n", my_timer.elapsed());
-
-//     //======================================================
-
-//     auto layers(create_model<BufferT>(filter_buf_ptrs));
-
-//     small::Tensor<BufferT> input_tensor({1, 3, 96, 96}, input_dc);
-// #if defined(QUANTIZED)
-//     small::Tensor<small::QUInt8Buffer> inter_0_tensor(max_numel_inter_0*2);
-//     small::Tensor<small::QUInt8Buffer> inter_1_tensor(max_numel_inter_1);
-// #else
-//     small::Tensor<small::FloatBuffer> inter_0_tensor(max_numel_inter_0);
-//     small::Tensor<small::FloatBuffer> inter_1_tensor(max_numel_inter_1);
-// #endif
-
-//     std::cerr << "Warm up run (LAYERS)" << std::endl;
-//     my_timer.start();
-//     auto &output_tensor =
-//         model_inference(layers, input_tensor, inter_0_tensor, inter_1_tensor);
-//     my_timer.stop();
-//     printf("\nElapsed time: %lf ns.\n", my_timer.elapsed());
-
-//     // Compare the results
-//     size_t num_outputs = layers.back()->output_size();
-//     std::cout << "\nCHECK RESULTS: Num output elements: " << num_outputs << std::endl;
-//     bool check =1;
-//     for (size_t ix = 0; ix < num_outputs; ++ix)
-//     {
-//         bool cur_check = output_dc[ix] == output_tensor.buffer()[ix];
-//         std::cout << "Current, new " << ix
-//                   << ": " << (float)output_dc[ix]
-//                   << ", " << (float)output_tensor.buffer()[ix]
-//                   << ((cur_check) ? " (pass)" : " (fail)")
-//                   << std::endl;
-//         check &= cur_check;
-//     }
-//     assert(check);
-
-//     // clean up model (move to model class destructor when built
-//     for (auto layer : layers) delete layer;
-//     //======================================================
-
-//     double min_small = std::numeric_limits<double>::max();
-//     std::vector<double> small_timing;
-//     std::cout << "Performing timing "<< RUNS <<" runs unfused ...\n";
-//     for (int r = 0; r < RUNS; r++)
-//     {
-//         my_timer.start();
-
-//         for (int i = 0; i < TRIALS; i++)
-//         {
-//             // auto &output_dc =
-//             model_inference(layer_num_total, layer_params, intermediate_dims,
-//                             filter_buf_ptrs,
-//                             input_dc, inter_0_dc, inter_1_dc);
-//         }
-//         my_timer.stop();
-//         auto diff = my_timer.elapsed() / TRIALS;
-//         min_small = std::min<double>(min_small, diff);
-//         small_timing.push_back(diff);
+        for (int i = 0; i < TRIALS; i++)
+        {
+            model_inference(layer_num_total, layer_params, vgg_blocks, num_convs, intermediate_dims,
+                                        filter_buf_ptrs,
+                                        input_dc, inter_0_dc, inter_1_dc);
+            for (int timer = 0; timer < layer_num_total; timer++)
+            {
+                if (0 < i)
+                {
+                    avg_layer_timers[impl][timer] += layer_timers[impl][timer];
+                }
+                else
+                {
+                    avg_layer_timers[impl][timer] = layer_timers[impl][timer];
+                }
+            }
+        }
+        for (int timer = 0; timer < layer_num_total; timer++)
+        {
+            avg_layer_timers[impl][timer] /= TRIALS;
+            if (0 < r)
+            {
+                min_layer_timers[impl][timer] = std::min<double>(min_layer_timers[impl][timer], avg_layer_timers[impl][timer]);
+            }
+            else
+            {
+                min_layer_timers[impl][timer] = avg_layer_timers[impl][timer];
+            }
+        }
+    }
 
 
-//     #if TIME_LAYER
-//         int impl = 0;
 
-//         for (int i = 0; i < TRIALS; i++)
-//         {
-//             model_inference(layer_num_total, layer_params, intermediate_dims,
-//                                         filter_buf_ptrs,
-//                                         input_dc, inter_0_dc, inter_1_dc);
-//             for (int timer = 0; timer < 15; timer++)
-//             {
-//                 if (0 < i)
-//                 {
-//                     avg_layer_timers[impl][timer] += layer_timers[impl][timer];
-//                 }
-//                 else
-//                 {
-//                     avg_layer_timers[impl][timer] = layer_timers[impl][timer];
-//                 }
-//             }
-//         }
-//         for (int timer = 0; timer < 15; timer++)
-//         {
-//             avg_layer_timers[impl][timer] /= TRIALS;
-//             if (0 < r)
-//             {
-//                 min_layer_timers[impl][timer] = std::min<double>(min_layer_timers[impl][timer], avg_layer_timers[impl][timer]);
-//             }
-//             else
-//             {
-//                 min_layer_timers[impl][timer] = avg_layer_timers[impl][timer];
-//             }
-//         }
-//     #endif
-//     }
+    std::cout << "Performing timing runs ewise layers fused...\n";
+    for (int r = 0; r < RUNS; r++)
+    {
+       
+        int impl = 1;
 
-//     std::cout << "Minimum time: " << min_small << " ns.\n";
-
-//     double min_small_fused_ewise = std::numeric_limits<double>::max();
-//     // std::vector<double> small_fused_ewise_timing;
-//     std::cout << "Performing timing runs ewise layers fused...\n";
-//     for (int r = 0; r < RUNS; r++)
-//     {
-//         my_timer.start();
-//         for(int i = 0; i < TRIALS; i++)
-//         {
-//         fused_ewise_model_inference(layer_num_total, layer_params, intermediate_dims,
-//                               filter_buf_ptrs,
-//                               input_dc, inter_0_dc, inter_1_dc);
-//         }
-
-//         my_timer.stop();
-//         auto diff = (my_timer.elapsed())/TRIALS;
-//         min_small_fused_ewise = std::min<double>(min_small_fused_ewise, diff);
-
-//         #if TIME_LAYER
-//         int impl = 1;
-
-//         for (int i = 0; i < TRIALS; i++)
-//         {
-//             fused_ewise_model_inference(layer_num_total, layer_params, intermediate_dims,
-//                                   filter_buf_ptrs,
-//                                   input_dc, inter_0_dc, inter_1_dc);
-//             for (int timer = 0; timer < 15; timer++)
-//             {
-//                 if (0 < i)
-//                 {
-//                     avg_layer_timers[impl][timer] += layer_timers[impl][timer];
-//                 }
-//                 else
-//                 {
-//                     avg_layer_timers[impl][timer] = layer_timers[impl][timer];
-//                 }
-//             }
-//         }
-//         for (int timer = 0; timer < 15; timer++)
-//         {
-//             avg_layer_timers[impl][timer] /= TRIALS;
-//             if (0 < r)
-//             {
-//                 min_layer_timers[impl][timer] = std::min<double>(min_layer_timers[impl][timer], avg_layer_timers[impl][timer]);
-//             }
-//             else
-//             {
-//                 min_layer_timers[impl][timer] = avg_layer_timers[impl][timer];
-//             }
-//         }
-//         #endif
-//         // small_fused_ewise_timing.push_back(diff);
-//     }
-
-//     std::cout << "Minimum time: " << min_small_fused_ewise << " ns.\n";
-
-//     double min_small_fused = std::numeric_limits<double>::max();
-//     // std::vector<double> small_fused_timing;
-//     std::cout << "Performing timing runs fused block...\n";
-//     for (int r = 0; r < RUNS; r++)
-//     {
-//         my_timer.start();
-//         for(int i = 0; i < TRIALS; i++)
-//         {
-//         fused_model_inference(layer_num_total, layer_params, intermediate_dims,
-//                         filter_buf_ptrs,
-//                         input_dc, inter_0_dc, inter_1_dc, inter_0_buffer_dc);
-
-//         }
-//         my_timer.stop();
-//         auto diff = my_timer.elapsed()/TRIALS;
-//         min_small_fused = std::min<double>(min_small_fused, diff);
-
-//         #if TIME_LAYER
-//         int impl = 2;
-//         for (int i = 0; i < TRIALS; i++) {
-//             fused_model_inference(layer_num_total, layer_params, intermediate_dims,
-//                                   filter_buf_ptrs,
-//                                   input_dc, inter_0_dc, inter_1_dc, inter_0_buffer_dc);
-//             for (int timer = 0; timer < 15; timer++){
-//                 if (0 < i) {
-//                     avg_layer_timers[impl][timer] += layer_timers[impl][timer];
-//                 } else {
-//                     avg_layer_timers[impl][timer] = layer_timers[impl][timer];
-//                 }
-//             }
-//         }
-//         for (int timer = 0; timer < 15; timer++)
-//         {
-//             avg_layer_timers[impl][timer] /= TRIALS;
-//             if (0 < r) {
-//                 min_layer_timers[impl][timer] = std::min<double>(min_layer_timers[impl][timer], avg_layer_timers[impl][timer]);
-//             } else {
-//                 min_layer_timers[impl][timer] = avg_layer_timers[impl][timer];
-
-//             }
-//         }
-//         #endif
-//         // small_fused_timing.push_back(diff);
-//     }
-
-//     std::cout << "Minimum time: " << min_small_fused << " ns.\n";
+        for (int i = 0; i < TRIALS; i++)
+        {
+            fused_ewise_model_inference(layer_num_total, layer_params, vgg_blocks, num_convs, intermediate_dims,
+                                  filter_buf_ptrs,
+                                  input_dc, inter_0_dc, inter_1_dc);
+            for (int timer = 0; timer < layer_num_total; timer++)
+            {
+                if (0 < i)
+                {
+                    avg_layer_timers[impl][timer] += layer_timers[impl][timer];
+                }
+                else
+                {
+                    avg_layer_timers[impl][timer] = layer_timers[impl][timer];
+                }
+            }
+        }
+        for (int timer = 0; timer < layer_num_total; timer++)
+        {
+            avg_layer_timers[impl][timer] /= TRIALS;
+            if (0 < r)
+            {
+                min_layer_timers[impl][timer] = std::min<double>(min_layer_timers[impl][timer], avg_layer_timers[impl][timer]);
+            }
+            else
+            {
+                min_layer_timers[impl][timer] = avg_layer_timers[impl][timer];
+            }
+        }
+      
+        // small_fused_ewise_timing.push_back(diff);
+    }
 
 
-//     #if TIME_LAYER
-//     double sum_unfused = 0, sum_ewise = 0, sum_fused = 0;
-//     for(int layer = 0 ; layer < 15; layer++)
-//     {
-//         printf("%d , ",layer);
-//         for(int impl = 0; impl < 3; impl++)
-//         {
-//             printf("%f ,", min_layer_timers[impl][layer]);
-//         }
-//         printf("\n");
-//         sum_unfused += min_layer_timers[0][layer];
-//         sum_ewise   += min_layer_timers[1][layer];
-//         sum_fused   += min_layer_timers[2][layer];
-//     }
+    std::cout << "Performing timing runs fused block...\n";
+    for (int r = 0; r < RUNS; r++)
+    {
 
-//     printf("sum , %f, %f, %f \n", sum_unfused, sum_ewise, sum_fused);
-//     #endif
 
-//     printf("sum , %f, %f, %f \n", min_small, min_small_fused_ewise, min_small_fused);
+        int impl = 2;
+        for (int i = 0; i < TRIALS; i++) {
+            fused_model_inference(layer_num_total, layer_params, vgg_blocks, num_convs, intermediate_dims,
+                                  filter_buf_ptrs,
+                                  input_dc, inter_0_dc, inter_1_dc, inter_0_buffer_dc);
+            for (int timer = 0; timer < layer_num_total; timer++){
+                if (0 < i) {
+                    avg_layer_timers[impl][timer] += layer_timers[impl][timer];
+                } else {
+                    avg_layer_timers[impl][timer] = layer_timers[impl][timer];
+                }
+            }
+        }
+        for (int timer = 0; timer < layer_num_total; timer++)
+        {
+            avg_layer_timers[impl][timer] /= TRIALS;
+            if (0 < r) {
+                min_layer_timers[impl][timer] = std::min<double>(min_layer_timers[impl][timer], avg_layer_timers[impl][timer]);
+            } else {
+                min_layer_timers[impl][timer] = avg_layer_timers[impl][timer];
+
+            }
+        }
+  
+        // small_fused_timing.push_back(diff);
+    }
+
+
+
+    
+    double sum_unfused = 0, sum_ewise = 0, sum_fused = 0;
+    for(int layer = 0 ; layer < layer_num_total; layer++)
+    {
+        printf("%d , ",layer);
+        for(int impl = 0; impl < 3; impl++)
+        {
+            printf("%f ,", min_layer_timers[impl][layer]);
+        }
+        printf("\n");
+        sum_unfused += min_layer_timers[0][layer];
+        sum_ewise   += min_layer_timers[1][layer];
+        sum_fused   += min_layer_timers[2][layer];
+    }
+
+    printf("sum , %f, %f, %f \n", sum_unfused, sum_ewise, sum_fused);
+    #endif
+
+//     printf("sum , %f, %f, %f \n", mins_small, min_small_fused_ewise, min_small_fused);
 
 
 //     int num_th = 1;
@@ -1350,15 +1303,8 @@ void inference()
 // #endif
 //     // print_stats(small_fused_timing, "\nSMaLL:mobilenet");
 
-//     printf("deallocing %ld filters\n", filter_buf_ptrs.size());
-//     for (size_t l = 0; l < filter_buf_ptrs.size(); l++)
-//     {
-//         small::free_buffer(filter_buf_ptrs[l]);
-//     }
 
-// #if defined(NANO33BLE)
-//     small::detail::free_all();
-// #endif
+
 }
 
 //****************************************************************************

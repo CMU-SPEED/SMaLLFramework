@@ -676,7 +676,8 @@ fused_model_inference(uint32_t layer_num_total,
     //                                         input_dc,
     //                                         *filter_buf_ptrs[layer_num],
     //                                         inter_0_dc);
-
+    // char *num_threads = getenv("OMP_NUM_THREADS");
+    // setenv("OMP_NUM_THREADS", "1", 1);
     small::Conv2D_ReLU_DepthwiseConv2D_ReLU(REDUCTION_HW(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num),
                                             PADDING(layer_num),
                                             REDUCTION_HW(layer_num + 1), REDUCTION_HW(layer_num + 1), STRIDE(layer_num + 1),
@@ -720,6 +721,7 @@ fused_model_inference(uint32_t layer_num_total,
         my_timer.stop();
         layer_timers[2][0] = my_timer.elapsed();
         #endif
+        // setenv("OMP_NUM_THREADS", num_threads, 1);
     /**/
 
 
