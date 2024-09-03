@@ -1391,13 +1391,16 @@ void abstract_layer(
     // Pointers to buffers inside Buffer class
     ScalarT const *I_buf = I->data(); //__restrict__ ?
 
+    ScalarT *O_buf = O->data(); //__restrict__ ?
+
     ScalarT const *F_buf = nullptr;
     if constexpr (op_type == OP_CONV || op_type == OP_LEAKY_RELU || op_type == OP_MUL) // if (F != nullptr)
                  {
                      F_buf = F->data();
+
                  }
 
-    ScalarT *O_buf = O->data(); //__restrict__ ?
+
 
 #if DEBUG == 1
     if (op_type == OP_CONV)
