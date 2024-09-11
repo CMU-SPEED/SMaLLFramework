@@ -496,7 +496,7 @@ inline void resnet_block(
     small::ReLUActivation1D(output_channels,
                           o_h, o_w,
                           O_intermediate, O_intermediate);
-    
+
     #if TIME_LAYER
     my_timer.stop();
     layer_timers[0][layer_timer_count] = my_timer.elapsed();
@@ -527,7 +527,7 @@ inline void resnet_block(
     my_timer.stop();
     layer_timers[0][layer_timer_count] = my_timer.elapsed();
     layer_timer_count++;
-    #endif                     
+    #endif
 
 
     #if TIME_LAYER
@@ -747,8 +747,7 @@ model_inference(uint32_t layer_num_total,
                 BufferT &inter_2_dc,
                 uint32_t B = 1)
 {
-
-    auto layer_num = 0;
+    auto layer_num = 0u;
 #if TIME_LAYER
     small::Timer my_timer;
     layer_timer_count = 0;
@@ -835,7 +834,7 @@ model_inference(uint32_t layer_num_total,
 
     auto resnet_blocks = n_blocks;
     auto num_filters = layer_num_total - 1;
-    for (int ds_layer = 1; ds_layer < resnet_blocks; ds_layer++)
+    for (uint32_t ds_layer = 1u; ds_layer < resnet_blocks; ds_layer++)
     {
 // #if TIME_LAYER
 //         my_timer.start();
@@ -1004,17 +1003,17 @@ void inference(uint32_t const n_blocks = 2, uint32_t const resnets_per_block = 5
 
     // common set up for model architecture
     // auto resnet_blocks = 3;
-    int layer_strides[n_blocks]; 
+    uint32_t layer_strides[n_blocks];
     layer_strides[0]= 1;
-    for(int i = 1; i < n_blocks; i++)
+    for(uint32_t i = 1; i < n_blocks; i++)
     {
         layer_strides[i] = 2;
     }
 
     // dwise 1
-    for (int ds_layer = 0; ds_layer < n_blocks; ds_layer++)
+    for (uint32_t ds_layer = 0; ds_layer < n_blocks; ds_layer++)
     {
-        int channel_multiplier = (ds_layer > 0) ? 2 : 1;
+        uint32_t channel_multiplier = (ds_layer > 0) ? 2 : 1;
 
         uint32_t in_channels = GROUP_C(layer_num - 1); // output channels from the previous block
 
@@ -1082,7 +1081,6 @@ void inference(uint32_t const n_blocks = 2, uint32_t const resnets_per_block = 5
         // Remaining resnets_per_block - 1 blocks
         for (uint32_t b = 0; b < resnets_per_block - 1; b++)
         {
-
             REDUCTION_C(layer_num) = in_channels * channel_multiplier; // input channels
             GROUP_C(layer_num) = in_channels * channel_multiplier;
             GROUPS(layer_num) = 1; // output channels
@@ -1114,7 +1112,7 @@ void inference(uint32_t const n_blocks = 2, uint32_t const resnets_per_block = 5
             small::calc_padding(I_WIDTH(layer_num), REDUCTION_W(layer_num),
                                 STRIDE(layer_num), l_pad, r_pad);
             SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad);
-          
+
             layer_num++; // 3,5,8
             inter_dim = INPUT_NUMEL(layer_num);
             max_numel_inter_0 =
@@ -1149,10 +1147,10 @@ void inference(uint32_t const n_blocks = 2, uint32_t const resnets_per_block = 5
     size_t num_filters = layer_num_total - 1;
 
 #if SUMMARY == 1
-    printf("Layer num total: %d", layer_num_total);
-    for (auto i = 0; i < layer_num_total; i++)
+    printf("Layer num total: %ld", layer_num_total);
+    for (size_t i = 0; i < layer_num_total; i++)
     {
-        printf("layer %d: ", i);
+        printf("layer %ld: ", i);
         printf(" input_dims: %d %d , \t", I_HEIGHT(i), I_WIDTH(i));
         for (auto j = 0; j < 10; j++)
         {
@@ -1203,7 +1201,7 @@ void inference(uint32_t const n_blocks = 2, uint32_t const resnets_per_block = 5
 
     std::cerr << "Warm up run (ORIG)" << std::endl;
     my_timer.start();
-    auto &output_dc =
+    //auto &output_dc =
         model_inference(layer_num_total, n_blocks,resnets_per_block, layer_params, intermediate_dims,
                         filter_buf_ptrs,
                         input_dc,
@@ -1252,16 +1250,17 @@ void inference(uint32_t const n_blocks = 2, uint32_t const resnets_per_block = 5
 // auto &output_dc =
 #pragma omp parallel num_threads(B)
             {
-                auto tid = omp_get_thread_num();
-                auto t_start = tid * thread_local_prob + ((tid < thread_remainder) ? (tid % thread_remainder) : thread_remainder);
-                auto t_end = t_start + thread_local_prob + (1 * (tid < thread_remainder));
+                uint32_t tid = omp_get_thread_num();  /// @todo bad cast?
+                //auto t_start = tid * thread_local_prob + ((tid < thread_remainder) ? (tid % thread_remainder) : thread_remainder);
+                //auto t_end = t_start + thread_local_prob + (1 * (tid < thread_remainder));
                 // printf("tid: %d s%d e%d\n", tid, t_start, t_end);
-                auto batch_tid = t_end - t_start;
+                // auto batch_tid = t_end - t_start;
                 // for(int i =  t_start; i < t_end; i++)
                 // {
                 // init(input_dc_p[tid], input_dimensions);
 
-                output_dc_p[tid] = model_inference(layer_num_total, n_blocks, resnets_per_block,layer_params, intermediate_dims,
+                output_dc_p[tid] = model_inference(layer_num_total, n_blocks, resnets_per_block,
+                                                   layer_params, intermediate_dims,
                                                    filter_buf_ptrs,
                                                    input_dc_p[tid],
                                                    inter_0_dc_p[tid],

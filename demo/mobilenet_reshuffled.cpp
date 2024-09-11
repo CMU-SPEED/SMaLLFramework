@@ -212,7 +212,7 @@ small::Tensor<BufferT> &model_inference(
     layers[layer_num++]->compute_output({&input_dc}, &inter_0_dc);   // Conv2D
     layers[layer_num++]->compute_output({&inter_0_dc}, &inter_0_dc); // ReLU
 
-    auto ds_blocks = 13;
+    auto ds_blocks = 13U;
     for (auto ix = 0U; ix < ds_blocks; ++ix)
     {
         layers[layer_num++]->compute_output({&inter_0_dc}, &inter_1_dc); // DWConv
@@ -366,8 +366,8 @@ inline void fused_dscnn_block(
     BufferT &O_intermediate,
     BufferT &O)
 {
-    small::Conv2D_ReLU_DepthwiseConv2D_ReLU( 1, 1, 1, 
-                                            0, 0, 0, 0, 
+    small::Conv2D_ReLU_DepthwiseConv2D_ReLU( 1, 1, 1,
+                                            0, 0, 0, 0,
                                             kernel_size, kernel_size, stride,
                            t_pad, b_pad, l_pad, r_pad,
                            output_channels, input_channels,
@@ -409,7 +409,7 @@ model_inference(uint32_t layer_num_total,
                           I_HEIGHT(layer_num), I_WIDTH(layer_num),
                           inter_0_dc,
                           inter_0_dc);
-    
+
     /**/
 
     // {
@@ -417,31 +417,31 @@ model_inference(uint32_t layer_num_total,
     uint32_t input_channels = GROUPS(layer_num);
     uint32_t kernel_size = REDUCTION_HW(layer_num);
     uint32_t stride = STRIDE(layer_num);
-    uint32_t output_channels = GROUP_C(layer_num + 1);
+    //uint32_t output_channels = GROUP_C(layer_num + 1);
     uint8_t t_pad = layer_params[layer_num][5];
     uint8_t b_pad = layer_params[layer_num][6];
     uint8_t l_pad = layer_params[layer_num][7];
     uint8_t r_pad = layer_params[layer_num][8];
-    BufferT const &I = inter_0_dc;
+    //BufferT const &I = inter_0_dc;
     BufferT const &F_dw = *filter_buf_ptrs[layer_num];
-    BufferT const &F_1x1 = *filter_buf_ptrs[layer_num + 1];
-    BufferT       &O_intermediate = inter_1_dc;
-    BufferT       &O = inter_0_dc;
+    //BufferT const &F_1x1 = *filter_buf_ptrs[layer_num + 1];
+    //BufferT       &O_intermediate = inter_1_dc;
+    //BufferT       &O = inter_0_dc;
 
     small::DepthwiseConv2D(kernel_size, kernel_size, stride,
-                        t_pad, b_pad, l_pad, r_pad,
-                        input_channels,
-                        in_dims[1], in_dims[0],
-                        inter_0_dc, F_dw, inter_1_dc);
+                           t_pad, b_pad, l_pad, r_pad,
+                           input_channels,
+                           in_dims[1], in_dims[0],
+                           inter_0_dc, F_dw, inter_1_dc);
 
     uint32_t o_w = small::output_dim(in_dims[0] + l_pad + r_pad,
-                                    stride, kernel_size);
+                                     stride, kernel_size);
     uint32_t o_h = small::output_dim(in_dims[1] + t_pad + b_pad,
-                                    stride, kernel_size);
+                                     stride, kernel_size);
 
     small::ReLUActivation(input_channels,
-                        o_h, o_w,
-                        inter_1_dc, inter_1_dc);
+                          o_h, o_w,
+                          inter_1_dc, inter_1_dc);
 
     layer_num++;
     #if TIME_LAYER
@@ -554,16 +554,16 @@ fused_ewise_model_inference(uint32_t layer_num_total,
     uint32_t input_channels = GROUPS(layer_num);
     uint32_t kernel_size = REDUCTION_HW(layer_num);
     uint32_t stride = STRIDE(layer_num);
-    uint32_t output_channels = GROUP_C(layer_num + 1);
+    //uint32_t output_channels = GROUP_C(layer_num + 1);
     uint8_t t_pad = layer_params[layer_num][5];
     uint8_t b_pad = layer_params[layer_num][6];
     uint8_t l_pad = layer_params[layer_num][7];
     uint8_t r_pad = layer_params[layer_num][8];
-    BufferT const &I = inter_0_dc;
+    //BufferT const &I = inter_0_dc;
     BufferT const &F_dw = *filter_buf_ptrs[layer_num];
-    BufferT const &F_1x1 = *filter_buf_ptrs[layer_num + 1];
-    BufferT &O_intermediate = inter_1_dc;
-    BufferT &O = inter_0_dc;
+    //BufferT const &F_1x1 = *filter_buf_ptrs[layer_num + 1];
+    //BufferT &O_intermediate = inter_1_dc;
+    //BufferT &O = inter_0_dc;
 
     small::DepthwiseConv2D_ReLU(kernel_size, kernel_size, stride,
                            t_pad, b_pad, l_pad, r_pad,
@@ -574,11 +574,10 @@ fused_ewise_model_inference(uint32_t layer_num_total,
     my_timer.stop();
     layer_timers[1][0] = my_timer.elapsed();
     #endif
-    uint32_t o_w = small::output_dim(in_dims[0] + l_pad + r_pad,
-                                     stride, kernel_size);
-    uint32_t o_h = small::output_dim(in_dims[1] + t_pad + b_pad,
-                                     stride, kernel_size);
-
+    // uint32_t o_w = small::output_dim(in_dims[0] + l_pad + r_pad,
+    //                                  stride, kernel_size);
+    // uint32_t o_h = small::output_dim(in_dims[1] + t_pad + b_pad,
+    //                                  stride, kernel_size);
     // small::ReLUActivation(input_channels,
     //                       o_h, o_w,
     //                       inter_1_dc, inter_1_dc);
@@ -662,7 +661,7 @@ fused_model_inference(uint32_t layer_num_total,
                 BufferT &inter_1_dc,
                 BufferT &inter_0_buffer_dc)
 {
-    
+
 
     auto layer_num = 0;
     #if TIME_LAYER
@@ -755,7 +754,7 @@ fused_model_inference(uint32_t layer_num_total,
 
         layer_num += 2;
 
-        
+
         inter_1_dc = inter_0_dc;
 
         // printf("1:%d 0:%d\n", inter_1_dc.data(), inter_0_dc.data());

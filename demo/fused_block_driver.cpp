@@ -257,7 +257,7 @@ inline void small_layer_block(
     }
     my_timer.start();
     if constexpr (COMPUTE_RELU)
-    {   
+    {
     small::ReLUActivation(output_channels_conv, o_h_1, o_w_1, O, O);
     }
     my_timer.stop();
@@ -317,7 +317,7 @@ inline void small_fused_ewise_layer_block(
         small::MaxPool2D(kernel_size_1, kernel_size_1, stride_1, t_pad_1, b_pad_1, l_pad_1, r_pad_1, output_channels_conv, o_h, o_w, O_intermediate, O);
         my_timer.stop();
         layer_timers[1][2] = my_timer.elapsed();
-   
+
     }
     else
     {
@@ -513,7 +513,7 @@ inline void fused_small_layer_block(
                                           F_conv,
                                           O_intermediate,
                                           O);
-                                          
+
         }
         else
         {
@@ -633,7 +633,7 @@ int main(int argc, char **argv)
     uint8_t t_pad_conv = 0, b_pad_conv = 0;
     uint8_t l_pad_conv = 0, r_pad_conv = 0;
 
-    int conv_padding_front = 0, conv_padding_back = 0;
+    //int conv_padding_front = 0, conv_padding_back = 0;
 
     if (conv_padding == 'f')
     {
@@ -709,7 +709,7 @@ int main(int argc, char **argv)
     uint8_t t_pad = 0, b_pad = 0;
     uint8_t l_pad = 0, r_pad = 0;
 
-    int padding_front = 0, padding_back = 0;
+    // int padding_front = 0, padding_back = 0;
 
     auto conv_output_height = small::output_dim_new((input_height + t_pad_conv + b_pad_conv),
                                                     conv_stride, conv_kernel_size);
@@ -749,10 +749,10 @@ int main(int argc, char **argv)
     // std::cout << "conv padding(t,b,l,r): ";
     // printf("%u %u %u %u \n", t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv);
 
-    uint32_t num_threads = 1;
+    //uint32_t num_threads = 1;
 #if PARALLEL
-    if (NULL != std::getenv("OMP_NUM_THREADS"))
-        num_threads = atoi(std::getenv("OMP_NUM_THREADS"));
+    //if (NULL != std::getenv("OMP_NUM_THREADS"))
+    //    num_threads = atoi(std::getenv("OMP_NUM_THREADS"));
 #endif
 
     // Direct Convolution Setup
@@ -773,13 +773,13 @@ int main(int argc, char **argv)
     size_t conv_filter_buffer_size(C_i*C_o_conv*conv_kernel_size*conv_kernel_size);
     size_t conv_bias_buffer_size(C_o_conv*COMPUTE_BIAS);
 #if LAYER == MAX_POOL
-    size_t filter_buffer_size(0);
-    size_t bias_buffer_size(0);
+    // size_t filter_buffer_size(0);
+    // size_t bias_buffer_size(0);
 #elif LAYER == DW_CONV
     size_t filter_buffer_size(C_o_conv*kernel_size*kernel_size);
     size_t bias_buffer_size(C_o_conv*COMPUTE_BIAS);
 #endif
-    size_t out_intermediate_buffer_size(conv_output_height * conv_output_width * FLOAT_C_ob * num_threads);
+    // size_t out_intermediate_buffer_size(conv_output_height * conv_output_width * FLOAT_C_ob * num_threads);
     //@todo: work this out
     size_t out_intermediate_unfused_buffer_size(conv_output_height * conv_output_width * C_o_conv);
     size_t out_buffer_size(output_height*output_width*C_o_conv);
@@ -823,9 +823,9 @@ int main(int argc, char **argv)
 
 
 
-    unsigned long long sum = ULLONG_MAX, sum_pool = ULLONG_MAX;
-    volatile unsigned long long sum_fused = ULLONG_MAX,
-                                sum_conv = ULLONG_MAX;
+    // unsigned long long sum = ULLONG_MAX, sum_pool = ULLONG_MAX;
+    // volatile unsigned long long sum_fused = ULLONG_MAX,
+    //                             sum_conv = ULLONG_MAX;
     std::vector<uint64_t> unfused_timing;
 
     // printf("running unfused ");
@@ -934,7 +934,7 @@ int main(int argc, char **argv)
 #endif
 //_________________________________________________________________
 
-    unsigned long long t0, t1;
+    // unsigned long long t0, t1;
 // performance comparison
 #if PERFORMANCE == 1
 
@@ -964,19 +964,22 @@ int main(int argc, char **argv)
         }
         // t1 = rdtsc();
         my_timer.stop();
-        diff = my_timer.elapsed() / TRIALS;
+        unsigned long long diff = my_timer.elapsed() / TRIALS;  /// @todo bad cast?
         MIN(sum_small_conv, (diff));
         small_conv_timing.push_back((diff));
     }
     fflush(0);
 
     // Unfused
-    unsigned long long sum_small = ULLONG_MAX, sum_small_conv_relu = ULLONG_MAX, sum_small_pool = ULLONG_MAX, sum_small_pool_relu = ULLONG_MAX;
+    unsigned long long sum_small = ULLONG_MAX;
+    // unsigned long long sum_small_conv_relu = ULLONG_MAX;
+    // unsigned long long sum_small_pool = ULLONG_MAX;
+    // unsigned long long sum_small_pool_relu = ULLONG_MAX;
     std::vector<unsigned long long> small_timing;
     for (int r = 0; r < RUNS; r++)
     {
         int impl = 0;
-        my_timer.start();   
+        my_timer.start();
         for (int i = 0; i < TRIALS; i++)
         {
             small_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
@@ -1004,7 +1007,7 @@ int main(int argc, char **argv)
         }
 
         my_timer.stop();
-        diff = my_timer.elapsed()/TRIALS;
+        unsigned long long diff = my_timer.elapsed()/TRIALS;  /// @todo bad cast?
         MIN(sum_small, (diff));
         small_timing.push_back((diff));
 
@@ -1051,8 +1054,8 @@ int main(int argc, char **argv)
 
 
 // #endif
-        
-       
+
+
 // #if TIME_LAYER
         for (int timer = 0; timer < 6; timer++)
         {
@@ -1075,8 +1078,8 @@ int main(int argc, char **argv)
     // Fused ewise
     unsigned long long sum_small_fused_ewise = ULLONG_MAX;
 
-    unsigned long long sum_small_fused_ewise_conv = ULLONG_MAX;
-    unsigned long long sum_small_fused_ewise_dw = ULLONG_MAX;
+    // unsigned long long sum_small_fused_ewise_conv = ULLONG_MAX;
+    // unsigned long long sum_small_fused_ewise_dw = ULLONG_MAX;
 
     std::vector<unsigned long long> small_timing_fused_ewise;
     for (int r = 0; r < RUNS; r++)
@@ -1169,12 +1172,12 @@ int main(int argc, char **argv)
 #endif
 
     }
-  
+
     // print_cycles(sum_small_fused_ewise_dw + sum_small_fused_ewise_conv);
 
     fflush(0);
 
-  
+
     printf("\t");
 
     // Fused block
@@ -1215,11 +1218,11 @@ int main(int argc, char **argv)
         MIN(sum_small_fused, diff);
         small_timing_fused.push_back(diff);
 
-        #if TIME_LAYER 
+        #if TIME_LAYER
         auto impl = 2;
         for (int trial = 0; trial < TRIALS; trial++)
         {
-        
+
             fused_small_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
                                                   conv_kernel_size,
                                                   conv_stride, // Covolution parameters

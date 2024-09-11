@@ -418,16 +418,16 @@ void Conv2D_Bias_ReLU_Maxpool2D<FloatBuffer>(
               << "],ochans:" << output_channels
               << ",img:" << input_height << "x" << input_width
               << ",I,O)\n";
-    
+
 #endif
 
     /// @todo add an assert for invalid numbers of output channels
     ///       (layer classes should be responsible for padding filters).
 
-    auto conv_output_height = small::output_dim_new((input_height + conv_t_pad + conv_b_pad),
-                                                    conv_stride, conv_kernel_height);
-    auto conv_output_width = small::output_dim_new((input_width + conv_l_pad + conv_r_pad),
-                                                   conv_stride, conv_kernel_width);
+    // auto conv_output_height = small::output_dim_new((input_height + conv_t_pad + conv_b_pad),
+    //                                                 conv_stride, conv_kernel_height);
+    // auto conv_output_width = small::output_dim_new((input_width + conv_l_pad + conv_r_pad),
+    //                                                conv_stride, conv_kernel_width);
 
     small::Mapping<FloatBuffer> convolution_params;
     convolution_params.G = 1;
@@ -692,7 +692,7 @@ void Conv2D_Bias_ReLU_Maxpool2D<FloatBuffer>(
         //                  output_channels,
         //                  conv_output_height, conv_output_width,
         //                  inter_output_buf, output_buf);
-        
+
     }
     else
     {
@@ -756,10 +756,10 @@ void Conv2D_Maxpool2D(
         /// @todo add an assert for invalid numbers of output channels
         ///       (layer classes should be responsible for padding filters).
 
-        auto conv_output_height = small::output_dim_new((input_height + conv_t_pad + conv_b_pad),
-                                                        conv_stride, conv_kernel_height);
-        auto conv_output_width = small::output_dim_new((input_width + conv_l_pad + conv_r_pad),
-                                                       conv_stride, conv_kernel_width);
+        // auto conv_output_height = small::output_dim_new((input_height + conv_t_pad + conv_b_pad),
+        //                                                 conv_stride, conv_kernel_height);
+        // auto conv_output_width = small::output_dim_new((input_width + conv_l_pad + conv_r_pad),
+        //                                                conv_stride, conv_kernel_width);
 
         small::Mapping<FloatBuffer> convolution_params;
         convolution_params.G = 1;
@@ -1094,10 +1094,10 @@ void Conv2D_ReLU_Maxpool2D<FloatBuffer>(
     /// @todo add an assert for invalid numbers of output channels
     ///       (layer classes should be responsible for padding filters).
 
-    auto conv_output_height = small::output_dim_new((input_height + conv_t_pad + conv_b_pad),
-                                                    conv_stride, conv_kernel_height);
-    auto conv_output_width = small::output_dim_new((input_width + conv_l_pad + conv_r_pad),
-                                                   conv_stride, conv_kernel_width);
+    // auto conv_output_height = small::output_dim_new((input_height + conv_t_pad + conv_b_pad),
+    //                                                 conv_stride, conv_kernel_height);
+    // auto conv_output_width = small::output_dim_new((input_width + conv_l_pad + conv_r_pad),
+    //                                                conv_stride, conv_kernel_width);
 
 
     small::Mapping<FloatBuffer> convolution_params;
@@ -1442,13 +1442,13 @@ void DepthwiseConv2D_ReLU<FloatBuffer>(
         {
 
             detail::fused_abstract_layer<
-                FloatBuffer, 
-                FLOAT_C_ob, 1, 1, 
-                FLOAT_W_ob, 
-                1, 
-                1, 
-                OP_CONV, 1, 
-                1, 
+                FloatBuffer,
+                FLOAT_C_ob, 1, 1,
+                FLOAT_W_ob,
+                1,
+                1,
+                OP_CONV, 1,
+                1,
                 OP_NONE, OP_RELU>(
                 &dwise_convolution_params,
                 input_height, input_width,
@@ -1458,13 +1458,13 @@ void DepthwiseConv2D_ReLU<FloatBuffer>(
         {
 
             detail::fused_abstract_layer<
-                FloatBuffer, 
-                FLOAT_C_ob, 1, 1, 
-                FLOAT_W_ob, 
-                2, 
-                1, 
-                OP_CONV, 1, 
-                1, 
+                FloatBuffer,
+                FLOAT_C_ob, 1, 1,
+                FLOAT_W_ob,
+                2,
+                1,
+                OP_CONV, 1,
+                1,
                 OP_NONE, OP_RELU>(
                 &dwise_convolution_params,
                 input_height, input_width,
@@ -1542,14 +1542,14 @@ void DepthwiseConv2D_Bias_ReLU<FloatBuffer>(
         {
 
             detail::fused_abstract_layer<
-                FloatBuffer, 
-                FLOAT_C_ob, 1, 1, 
-                FLOAT_W_ob, 
-                1, 
-                1, 
-                OP_CONV, 1, 
-                1, 
-                OP_UPSAMPLE, OP_RELU, 
+                FloatBuffer,
+                FLOAT_C_ob, 1, 1,
+                FLOAT_W_ob,
+                1,
+                1,
+                OP_CONV, 1,
+                1,
+                OP_UPSAMPLE, OP_RELU,
                 std::numeric_limits<dim_t>::max()>(
                 &dwise_convolution_params,
                 input_height, input_width,
@@ -1559,14 +1559,14 @@ void DepthwiseConv2D_Bias_ReLU<FloatBuffer>(
         {
 
             detail::fused_abstract_layer<
-                FloatBuffer, 
-                FLOAT_C_ob, 1, 1, 
-                FLOAT_W_ob, 
-                2, 
-                1, 
-                OP_CONV, 1, 
-                1, 
-                OP_UPSAMPLE, OP_RELU, 
+                FloatBuffer,
+                FLOAT_C_ob, 1, 1,
+                FLOAT_W_ob,
+                2,
+                1,
+                OP_CONV, 1,
+                1,
+                OP_UPSAMPLE, OP_RELU,
                 std::numeric_limits<dim_t>::max()>(
                 &dwise_convolution_params,
                 input_height, input_width,
@@ -1643,10 +1643,10 @@ void Conv2D_DepthwiseConv2D(
         /// @todo add an assert for invalid numbers of output channels
         ///       (layer classes should be responsible for padding filters).
 
-        auto conv_output_height = small::output_dim_new((input_height + conv_t_pad + conv_b_pad),
-                                                        conv_stride, conv_kernel_height);
-        auto conv_output_width = small::output_dim_new((input_width + conv_l_pad + conv_r_pad),
-                                                       conv_stride, conv_kernel_width);
+        // auto conv_output_height = small::output_dim_new((input_height + conv_t_pad + conv_b_pad),
+        //                                                 conv_stride, conv_kernel_height);
+        // auto conv_output_width = small::output_dim_new((input_width + conv_l_pad + conv_r_pad),
+        //                                                conv_stride, conv_kernel_width);
 
         small::Mapping<FloatBuffer> convolution_params;
         convolution_params.G = 1;
@@ -1987,10 +1987,10 @@ void Conv2D_DepthwiseConv2D(
         /// @todo add an assert for invalid numbers of output channels
         ///       (layer classes should be responsible for padding filters).
 
-        auto conv_output_height = small::output_dim_new((input_height + conv_t_pad + conv_b_pad),
-                                                        conv_stride, conv_kernel_height);
-        auto conv_output_width = small::output_dim_new((input_width + conv_l_pad + conv_r_pad),
-                                                       conv_stride, conv_kernel_width);
+        // auto conv_output_height = small::output_dim_new((input_height + conv_t_pad + conv_b_pad),
+        //                                                 conv_stride, conv_kernel_height);
+        // auto conv_output_width = small::output_dim_new((input_width + conv_l_pad + conv_r_pad),
+        //                                                conv_stride, conv_kernel_width);
 
         small::Mapping<FloatBuffer> convolution_params;
         convolution_params.G = 1;
@@ -2887,10 +2887,10 @@ void GroupConv2D_ReLU(
         /// @todo add an assert for invalid numbers of output channels
         ///       (layer classes should be responsible for padding filters).
 
-        auto conv_output_height = small::output_dim_new((input_height + conv_t_pad + conv_b_pad),
-                                                        conv_stride, conv_kernel_height);
-        auto conv_output_width = small::output_dim_new((input_width + conv_l_pad + conv_r_pad),
-                                                       conv_stride, conv_kernel_width);
+        // auto conv_output_height = small::output_dim_new((input_height + conv_t_pad + conv_b_pad),
+        //                                                 conv_stride, conv_kernel_height);
+        // auto conv_output_width = small::output_dim_new((input_width + conv_l_pad + conv_r_pad),
+        //                                                conv_stride, conv_kernel_width);
 
         small::Mapping<FloatBuffer> convolution_params;
         convolution_params.G = 1;
@@ -3232,10 +3232,10 @@ void GroupConv2D_ReLU(
         /// @todo add an assert for invalid numbers of output channels
         ///       (layer classes should be responsible for padding filters).
 
-        auto conv_output_height = small::output_dim_new((input_height + conv_t_pad + conv_b_pad),
-                                                        conv_stride, conv_kernel_height);
-        auto conv_output_width = small::output_dim_new((input_width + conv_l_pad + conv_r_pad),
-                                                       conv_stride, conv_kernel_width);
+        // auto conv_output_height = small::output_dim_new((input_height + conv_t_pad + conv_b_pad),
+        //                                                 conv_stride, conv_kernel_height);
+        // auto conv_output_width = small::output_dim_new((input_width + conv_l_pad + conv_r_pad),
+        //                                                conv_stride, conv_kernel_width);
 
         small::Mapping<FloatBuffer> convolution_params;
         convolution_params.G = 1;
@@ -3575,7 +3575,7 @@ void GroupConv2D_ReLU(
                     << "],ochans:" << output_channels
                     << ",img:" << input_height << "x" << input_width
                     << ",I,F,O)\n";
-                  
+
 #endif
 
         /// @todo add an assert for invalid numbers of output channels

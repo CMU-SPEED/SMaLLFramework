@@ -32,6 +32,7 @@ namespace quint8_detail
 {
 
 //****************************************************************************
+//****************************************************************************
 /// @todo add parameters: step, _O_wb, _C_ob
 /// @todo use constexpr if on op_type and op_class in calling code
 #define QUINT8_ABSTRACT_OP(op_type, op_class, a_cur, b_cur, a_offset, b_offset) \
@@ -578,8 +579,6 @@ void inline kernel_right(
     {
         QUINT8_STORE_END_C(O_ptr, r_pad_el, _C_ob);
     }
-
-
 }
 
 //****************************************************************************
@@ -1452,7 +1451,7 @@ void abstract_layer(
                         {
                             ScalarT const *I_col;
                             // @todo cast index calculation as int and make stride a float value.
-                            //I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
+                            // I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
                             if constexpr (op_type == 'u')
                             {
                                 /// @todo VERIFY Copied from float version
@@ -1569,6 +1568,41 @@ void abstract_layer(
             }
         }
     }
+}
+
+
+//****************************************************************************
+//abstract layer where the filter height is set to 1
+template <typename BufferT,
+          dim_t _G_b,
+          dim_t _K_b,
+          dim_t _F_cb,
+          dim_t _O_wb,
+          dim_t _stride,
+          dim_t _UNROLL,
+          char   op_type,
+          int8_t op_class,     //  2  (conv),  1  (dense,pool), or '0' (activation, upsample)
+          bool rewrite_output> // 0 (partial conv, accum), 1 (otherwise)
+void abstract_layer_1D(
+    dim_t G,   // Output Channel Grouping
+    dim_t K,   // Output Channels per group
+    dim_t F_c, // Channel Reduction Dimension
+    dim_t I_h, // Input Height
+    dim_t I_w, // Input Width
+
+    dim_t F_h, // Filter height
+    dim_t F_w, // Filter width
+
+    dim_t pad_top, // Padding values
+    dim_t pad_left,
+    dim_t pad_right,
+    dim_t pad_bottom,
+
+    BufferT const * /*__restrict__*/ I, // Data
+    BufferT const *__restrict__ F,
+    BufferT * /*__restrict__*/ O)
+{
+    //small::unimplemented_function();
 }
 
 } // ns detail

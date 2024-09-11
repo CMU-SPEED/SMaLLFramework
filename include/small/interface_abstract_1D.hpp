@@ -559,7 +559,6 @@ void MaxPool1D<FloatBuffer>(
     }
     else
     {
-        printf("%d\n", input_channels);
         throw std::invalid_argument(
             "MaxPool1D<float> ERROR: in_channels unsupported.");
     }
@@ -719,8 +718,8 @@ void AveragePool1D<FloatBuffer>(
 
 //============================================================================
 
-// //****************************************************************************
-// //****************************************************************************
+//****************************************************************************
+//****************************************************************************
 // template <class BufferT>
 // void DepthwiseConv1D(int kernel_size, int stride,
 //                      uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
@@ -1006,53 +1005,51 @@ void AveragePool1D<FloatBuffer>(
 //============================================================================
 //****************************************************************************
 // Assumes that output channels = input channels, output groups splits input channels evenly
-
-                                                                                                                      //****************************************************************************
-                                                                                                                      //****************************************************************************
-    template <class BufferT>
-    void GroupConv1D(int kernel_height, int kernel_width, int stride,
-                     int output_groups,
-
-                     uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
-                     int input_channels,
-                     int input_height, int input_width,
-                     BufferT const &input_buf,
-                     BufferT const &filter_buf,
-                     BufferT &output_buf)
+//****************************************************************************
+//****************************************************************************
+template <class BufferT>
+void GroupConv1D(int kernel_height, int kernel_width, int stride,
+                 int output_groups,
+                 uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
+                 int input_channels,
+                 int input_height, int input_width,
+                 BufferT const &input_buf,
+                 BufferT const &filter_buf,
+                 BufferT &output_buf)
 {
     BufferT::unimplemented_function();
 }
 
 //============================================================================
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
-    template <>
-    void GroupConv1D<FloatBuffer>(
-        int kernel_height, int kernel_width, int stride,
-        int output_groups,
+template <>
+void GroupConv1D<FloatBuffer>(
+    int kernel_height, int kernel_width, int stride,
+    int output_groups,
 
-        uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
-        int input_channels,
-        int input_height, int input_width,
-        FloatBuffer const &input_buf,
-        FloatBuffer const &filter_buf,
-        FloatBuffer &output_buf)
-    {
+    uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
+    int input_channels,
+    int input_height, int input_width,
+    FloatBuffer const &input_buf,
+    FloatBuffer const &filter_buf,
+    FloatBuffer &output_buf)
+{
 #if defined(RECORD_CALLS)
-        std::cout << "GroupConv1D<float>(k:"
-                  << kernel_height << "x" << kernel_width
-                  << ",s:" << stride
-                  << ",pad:[" << (int)t_pad << "," << (int)b_pad
-                  << "," << (int)l_pad << "," << (int)r_pad
-                  << "],chans:" << input_channels
-                  << ",img:" << input_height << "x" << input_width
-                  << ",I,F,O)\n";
+    std::cout << "GroupConv1D<float>(k:"
+              << kernel_height << "x" << kernel_width
+              << ",s:" << stride
+              << ",pad:[" << (int)t_pad << "," << (int)b_pad
+              << "," << (int)l_pad << "," << (int)r_pad
+              << "],chans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I,F,O)\n";
 #endif
-        if (input_channels % FLOAT_C_ib == 0)
+    if (input_channels % FLOAT_C_ib == 0)
+    {
+        if (stride == 1)
         {
-            if (stride == 1)
-            {
-                detail::abstract_layer_1D<
-                    FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_CONV, 2, 1>(
+            detail::abstract_layer_1D<
+                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_CONV, 2, 1>(
                     output_groups,  // Output Channel Grouping
                     input_channels, // Output Channels per group
                     input_channels,
@@ -1060,12 +1057,12 @@ void AveragePool1D<FloatBuffer>(
                     kernel_height, kernel_width,
                     t_pad, l_pad, r_pad, b_pad,
                     &input_buf, &filter_buf, &output_buf);
-            }
-            else if (stride == 2)
-            {
+        }
+        else if (stride == 2)
+        {
 
-                detail::abstract_layer_1D<
-                    FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, OP_CONV, 2, 1>(
+            detail::abstract_layer_1D<
+                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, OP_CONV, 2, 1>(
                     output_groups,  // Output Channel Grouping
                     input_channels, // Output Channels per group
                     input_channels,
@@ -1073,51 +1070,51 @@ void AveragePool1D<FloatBuffer>(
                     kernel_height, kernel_width,
                     t_pad, l_pad, r_pad, b_pad,
                     &input_buf, &filter_buf, &output_buf);
-            }
-            else
-            {
-                throw std::invalid_argument(
-                    "GroupConv1D<float> ERROR: stride unsupported.");
-            }
         }
         else
         {
             throw std::invalid_argument(
-                "GroupConv1D<float> ERROR: in_channels unsupported.");
+                "GroupConv1D<float> ERROR: stride unsupported.");
         }
     }
+    else
+    {
+        throw std::invalid_argument(
+            "GroupConv1D<float> ERROR: in_channels unsupported.");
+    }
+}
 #endif
 
 //============================================================================
 #if defined(SMALL_HAS_QUINT8_SUPPORT)
-    template <>
-    void GroupConv1D<QUInt8Buffer>(
-        int kernel_height, int kernel_width, int stride,
-        int output_groups,
+template <>
+void GroupConv1D<QUInt8Buffer>(
+    int kernel_height, int kernel_width, int stride,
+    int output_groups,
 
-        uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
-        int input_channels,
-        int input_height, int input_width,
-        QUInt8Buffer const &input_buf,
-        QUInt8Buffer const &filter_buf,
-        QUInt8Buffer &output_buf)
-    {
+    uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
+    int input_channels,
+    int input_height, int input_width,
+    QUInt8Buffer const &input_buf,
+    QUInt8Buffer const &filter_buf,
+    QUInt8Buffer &output_buf)
+{
 #if defined(RECORD_CALLS)
-        std::cout << "GroupConv1D<quint8>(k:"
-                  << kernel_height << "x" << kernel_width
-                  << ",s:" << stride
-                  << ",pad:[" << (int)t_pad << "," << (int)b_pad
-                  << "," << (int)l_pad << "," << (int)r_pad
-                  << "],chans:" << input_channels
-                  << ",img:" << input_height << "x" << input_width
-                  << ",I,F,O)\n";
+    std::cout << "GroupConv1D<quint8>(k:"
+              << kernel_height << "x" << kernel_width
+              << ",s:" << stride
+              << ",pad:[" << (int)t_pad << "," << (int)b_pad
+              << "," << (int)l_pad << "," << (int)r_pad
+              << "],chans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I,F,O)\n";
 #endif
-        if (input_channels % QUINT8_C_ib == 0)
+    if (input_channels % QUINT8_C_ib == 0)
+    {
+        if (stride == 1)
         {
-            if (stride == 1)
-            {
-                quint8_detail::abstract_layer_1D<
-                    QUInt8Buffer, QUINT8_C_ob, 1, 1, QUINT8_W_ob, 1, 1, 'c', 1, 1>(
+            quint8_detail::abstract_layer_1D<
+                QUInt8Buffer, QUINT8_C_ob, 1, 1, QUINT8_W_ob, 1, 1, 'c', 1, 1>(
                     output_groups, // Output Channel Grouping
                     input_channels,              // Output Channels per group
                     input_channels,
@@ -1125,12 +1122,12 @@ void AveragePool1D<FloatBuffer>(
                     kernel_height, kernel_width,
                     t_pad, l_pad, r_pad, b_pad,
                     &input_buf, &filter_buf, &output_buf);
-            }
-            else if (stride == 2)
-            {
+        }
+        else if (stride == 2)
+        {
 
-                quint8_detail::abstract_layer_1D<
-                    QUInt8Buffer, QUINT8_C_ob, 1, 1, QUINT8_W_ob, 2, 1, 'c', 1, 1>(
+            quint8_detail::abstract_layer_1D<
+                QUInt8Buffer, QUINT8_C_ob, 1, 1, QUINT8_W_ob, 2, 1, 'c', 1, 1>(
                     output_groups,  // Output Channel Grouping
                     input_channels, // Output Channels per group
                     input_channels,
@@ -1138,67 +1135,67 @@ void AveragePool1D<FloatBuffer>(
                     kernel_height, kernel_width,
                     t_pad, l_pad, r_pad, b_pad,
                     &input_buf, &filter_buf, &output_buf);
-            }
-            else
-            {
-                throw std::invalid_argument(
-                    "GroupConv1D<quint8> ERROR: stride unsupported.");
-            }
         }
         else
         {
             throw std::invalid_argument(
-                "GroupConv1D<quint8> ERROR: in_channels unsupported.");
+                "GroupConv1D<quint8> ERROR: stride unsupported.");
         }
     }
+    else
+    {
+        throw std::invalid_argument(
+            "GroupConv1D<quint8> ERROR: in_channels unsupported.");
+    }
+}
 #endif
 
-    //****************************************************************************
-    //****************************************************************************
-    template <class BufferT>
-    void PartialGroupConv1D(int kernel_height, int kernel_width, int stride,
-        int output_groups,
+//****************************************************************************
+//****************************************************************************
+template <class BufferT>
+void PartialGroupConv1D(int kernel_height, int kernel_width, int stride,
+                        int output_groups,
 
-                                uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
-                                int input_channels,
-                                int input_height, int input_width,
-                                BufferT const &input_buf,
-                                BufferT const &filter_buf,
-                                BufferT &output_buf)
-    {
-        BufferT::unimplemented_function();
-    }
+                        uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
+                        int input_channels,
+                        int input_height, int input_width,
+                        BufferT const &input_buf,
+                        BufferT const &filter_buf,
+                        BufferT &output_buf)
+{
+    BufferT::unimplemented_function();
+}
 
 //============================================================================
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
-    template <>
-    void PartialGroupConv1D<FloatBuffer>(
-        int kernel_height, int kernel_width, int stride,
-        int output_groups,
-        uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
-        int input_channels,
-        int input_height, int input_width,
-        FloatBuffer const &input_buf,
-        FloatBuffer const &filter_buf,
-        FloatBuffer &output_buf)
-    {
+template <>
+void PartialGroupConv1D<FloatBuffer>(
+    int kernel_height, int kernel_width, int stride,
+    int output_groups,
+    uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
+    int input_channels,
+    int input_height, int input_width,
+    FloatBuffer const &input_buf,
+    FloatBuffer const &filter_buf,
+    FloatBuffer &output_buf)
+{
 #if defined(RECORD_CALLS)
-        std::cout << "PartialGroupConv1D<float>(k:"
-                  << kernel_height << "x" << kernel_width
-                  << ",s:" << stride
-                  << ",pad:[" << (int)t_pad << "," << (int)b_pad
-                  << "," << (int)l_pad << "," << (int)r_pad
-                  << "],chans:" << input_channels
-                  << ",img:" << input_height << "x" << input_width
-                  << ",I,F,O)\n";
+    std::cout << "PartialGroupConv1D<float>(k:"
+              << kernel_height << "x" << kernel_width
+              << ",s:" << stride
+              << ",pad:[" << (int)t_pad << "," << (int)b_pad
+              << "," << (int)l_pad << "," << (int)r_pad
+              << "],chans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I,F,O)\n";
 #endif
-        if (input_channels % FLOAT_C_ib == 0)
+    if (input_channels % FLOAT_C_ib == 0)
+    {
+        if (stride == 1)
         {
-            if (stride == 1)
-            {
-                detail::abstract_layer_1D<
-                    FloatBuffer, FLOAT_C_ob, 1, 1,
-                    FLOAT_W_ob, 1, 1, OP_CONV, 2, 0>(
+            detail::abstract_layer_1D<
+                FloatBuffer, FLOAT_C_ob, 1, 1,
+                FLOAT_W_ob, 1, 1, OP_CONV, 2, 0>(
                     output_groups,  // Output Channel Grouping
                     input_channels, // Output Channels per group
                     input_channels,
@@ -1206,13 +1203,13 @@ void AveragePool1D<FloatBuffer>(
                     kernel_height, kernel_width,
                     t_pad, l_pad, r_pad, b_pad,
                     &input_buf, &filter_buf, &output_buf);
-            }
-            else if (stride == 2)
-            {
+        }
+        else if (stride == 2)
+        {
 
-                detail::abstract_layer_1D<
-                    FloatBuffer, FLOAT_C_ob, 1, 1,
-                    FLOAT_W_ob, 2, 1, OP_CONV, 2, 0>(
+            detail::abstract_layer_1D<
+                FloatBuffer, FLOAT_C_ob, 1, 1,
+                FLOAT_W_ob, 2, 1, OP_CONV, 2, 0>(
                     output_groups,  // Output Channel Grouping
                     input_channels, // Output Channels per group
                     input_channels,
@@ -1220,53 +1217,53 @@ void AveragePool1D<FloatBuffer>(
                     kernel_height, kernel_width,
                     t_pad, l_pad, r_pad, b_pad,
                     &input_buf, &filter_buf, &output_buf);
-            }
-            else
-            {
-                throw std::invalid_argument(
-                    "PartialGroupConv1D<float> ERROR: stride unsupported.");
-            }
         }
         else
         {
             throw std::invalid_argument(
-                "PartialGroupConv1D<float> ERROR: in_channels unsupported.");
+                "PartialGroupConv1D<float> ERROR: stride unsupported.");
         }
     }
+    else
+    {
+        throw std::invalid_argument(
+            "PartialGroupConv1D<float> ERROR: in_channels unsupported.");
+    }
+}
 #endif
 
 //============================================================================
 #if defined(SMALL_HAS_QUINT8_SUPPORT)
-    template <>
-    void PartialGroupConv1D<QUInt8Buffer>(
-        int kernel_height, int kernel_width, int stride,
-        int output_groups,
+template <>
+void PartialGroupConv1D<QUInt8Buffer>(
+    int kernel_height, int kernel_width, int stride,
+    int output_groups,
 
-        uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
-        int input_channels,
-        int input_height, int input_width,
+    uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
+    int input_channels,
+    int input_height, int input_width,
 
-        QUInt8Buffer const &input_buf,
-        QUInt8Buffer const &filter_buf,
-        QUInt8Buffer &output_buf)
-    {
+    QUInt8Buffer const &input_buf,
+    QUInt8Buffer const &filter_buf,
+    QUInt8Buffer &output_buf)
+{
 #if defined(RECORD_CALLS)
-        std::cout << "PartialGroupConv1D<quint8>(k:"
-                  << kernel_height << "x" << kernel_width
-                  << ",s:" << stride
-                  << ",pad:[" << (int)t_pad << "," << (int)b_pad
-                  << "," << (int)l_pad << "," << (int)r_pad
-                  << "],chans:" << input_channels
-                  << ",img:" << input_height << "x" << input_width
-                  << ",I,F,O)\n";
+    std::cout << "PartialGroupConv1D<quint8>(k:"
+              << kernel_height << "x" << kernel_width
+              << ",s:" << stride
+              << ",pad:[" << (int)t_pad << "," << (int)b_pad
+              << "," << (int)l_pad << "," << (int)r_pad
+              << "],chans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I,F,O)\n";
 #endif
-        if (input_channels % QUINT8_C_ib == 0)
+    if (input_channels % QUINT8_C_ib == 0)
+    {
+        if (stride == 1)
         {
-            if (stride == 1)
-            {
-                quint8_detail::abstract_layer_1D<
-                    QUInt8Buffer, QUINT8_C_ob, 1, 1,
-                    QUINT8_W_ob, 1, 1, 'c', 1, 0>(
+            quint8_detail::abstract_layer_1D<
+                QUInt8Buffer, QUINT8_C_ob, 1, 1,
+                QUINT8_W_ob, 1, 1, 'c', 1, 0>(
                     output_groups, // Output Channel Grouping
                     input_channels,              // Output Channels per group
                     input_channels,
@@ -1274,13 +1271,13 @@ void AveragePool1D<FloatBuffer>(
                     kernel_height, kernel_width,
                     t_pad, l_pad, r_pad, b_pad,
                     &input_buf, &filter_buf, &output_buf);
-            }
-            else if (stride == 2)
-            {
+        }
+        else if (stride == 2)
+        {
 
-                quint8_detail::abstract_layer_1D<
-                    QUInt8Buffer, QUINT8_C_ob, 1, 1,
-                    QUINT8_W_ob, 2, 1, 'c', 1, 0>(
+            quint8_detail::abstract_layer_1D<
+                QUInt8Buffer, QUINT8_C_ob, 1, 1,
+                QUINT8_W_ob, 2, 1, 'c', 1, 0>(
                     output_groups,  // Output Channel Grouping
                     input_channels, // Output Channels per group
                     input_channels,
@@ -1288,41 +1285,41 @@ void AveragePool1D<FloatBuffer>(
                     kernel_height, kernel_width,
                     t_pad, l_pad, r_pad, b_pad,
                     &input_buf, &filter_buf, &output_buf);
-            }
-            else
-            {
-                throw std::invalid_argument(
-                    "PartialGroupConv1D<quint8> ERROR: stride unsupported.");
-            }
         }
         else
         {
             throw std::invalid_argument(
-                "PartialGroupConv1D<quint8> ERROR: in_channels unsupported.");
+                "PartialGroupConv1D<quint8> ERROR: stride unsupported.");
         }
     }
+    else
+    {
+        throw std::invalid_argument(
+            "PartialGroupConv1D<quint8> ERROR: in_channels unsupported.");
+    }
+}
 #endif
 
-    //****************************************************************************
-    //****************************************************************************
-    /// @todo In the original q_interface_abstract.hpp, why was this the only
-    ///       layer with 'zero' param?
-    template <class BufferT>
-    void ReLUActivation1D(int input_channels,
-                        int input_height, int input_width,
-                        BufferT const &input_buf,
-                        BufferT &output_buf) //, int zero = 0)
-    {
-        BufferT::unimplemented_function();
-    }
+//****************************************************************************
+//****************************************************************************
+/// @todo In the original q_interface_abstract.hpp, why was this the only
+///       layer with 'zero' param?
+template <class BufferT>
+void ReLUActivation1D(int input_channels,
+                      int input_height, int input_width,
+                      BufferT const &input_buf,
+                      BufferT &output_buf) //, int zero = 0)
+{
+    BufferT::unimplemented_function();
+}
 
 //============================================================================
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
 template <>
 void ReLUActivation1D<FloatBuffer>(int input_channels,
-                                 int input_height, int input_width,
-                                 FloatBuffer const &input_buf,
-                                 FloatBuffer &output_buf)
+                                   int input_height, int input_width,
+                                   FloatBuffer const &input_buf,
+                                   FloatBuffer &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "ReLUActivation<float>(chans:" << input_channels
@@ -1354,9 +1351,9 @@ void ReLUActivation1D<FloatBuffer>(int input_channels,
 #if defined(SMALL_HAS_QUINT8_SUPPORT)
 template <>
 void ReLUActivation1D<QUInt8Buffer>(int input_channels,
-                                  int input_height, int input_width,
-                                  QUInt8Buffer const &input_buf,
-                                  QUInt8Buffer &output_buf)
+                                    int input_height, int input_width,
+                                    QUInt8Buffer const &input_buf,
+                                    QUInt8Buffer &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "ReLUActivation<quint8>(chans:" << input_channels
@@ -1450,10 +1447,10 @@ void UpSample1D<FloatBuffer>(int scale_factor,
 #if 0 // defined(SMALL_HAS_QUINT8_SUPPORT)
 template <>
 void UpSample1D<QUInt8Buffer>(int scale_factor,
-                             int input_channels,
-                             int input_height, int input_width,
-                             QUInt8Buffer const &input_buf,
-                             QUInt8Buffer       &output_buf)
+                              int input_channels,
+                              int input_height, int input_width,
+                              QUInt8Buffer const &input_buf,
+                              QUInt8Buffer       &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "UpSample1D<quint8>(chans:" << input_channels
@@ -1495,7 +1492,5 @@ void UpSample1D<QUInt8Buffer>(int scale_factor,
     }
 }
 #endif
-
-
 
 } // small
