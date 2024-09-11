@@ -31,9 +31,8 @@ foreach(layer_name ${LAYER_NAMES})
   target_compile_definitions(${demo_name} PRIVATE LAYER=${layer_name})
   target_compile_definitions(${demo_name} PRIVATE COMPUTE_BIAS=true)
   target_compile_definitions(${demo_name} PRIVATE COMPUTE_RELU=true)
-
-
 endforeach(layer_name ${LAYER_NAMES})
+
 foreach( layer_name ${LAYER_NAMES} )
   set(demo_name "conv_fused_${layer_name}_n_bias.exe")
   message("Adding executable: ${demo_name}")
@@ -41,7 +40,6 @@ foreach( layer_name ${LAYER_NAMES} )
   target_compile_definitions(${demo_name} PRIVATE LAYER=${layer_name})
   target_compile_definitions(${demo_name} PRIVATE COMPUTE_BIAS=false)
   target_compile_definitions(${demo_name} PRIVATE COMPUTE_RELU=true)
-
 endforeach( layer_name ${LAYER_NAMES} )
 
 foreach(layer_name ${LAYER_NAMES})
@@ -51,10 +49,9 @@ foreach(layer_name ${LAYER_NAMES})
   target_compile_definitions(${demo_name} PRIVATE LAYER=${layer_name})
   target_compile_definitions(${demo_name} PRIVATE COMPUTE_BIAS=false)
   target_compile_definitions(${demo_name} PRIVATE COMPUTE_RELU=false)
-
 endforeach(layer_name ${LAYER_NAMES})
 
-    foreach(layer_name ${LAYER_NAMES})
+foreach(layer_name ${LAYER_NAMES})
     set(OLD_CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
     set(CMAKE_CXX_FLAGS "-g {CMAKE_CXX_FLAGS}")
     set(demo_name "conv_fused_${layer_name}_cache.exe")
@@ -64,12 +61,12 @@ endforeach(layer_name ${LAYER_NAMES})
     target_compile_definitions(${demo_name} PRIVATE RUNS=1)
     # Reset CMAKE_CXX_FLAGS after compiling
     set(CMAKE_CXX_FLAGS ${OLD_CMAKE_CXX_FLAGS})
-    endforeach(layer_name ${LAYER_NAMES})
+endforeach(layer_name ${LAYER_NAMES})
 
-    set(MODEL_SOURCES mobilenet.cpp mobilenet_reshuffled resnet.cpp resnet_1D.cpp dscnn.cpp dscnn_square.cpp autoencoder.cpp tinyyolov2.cpp)
-    message("In demo/CMakeLists.txt: ${MODEL_SOURCES}")
+set(MODEL_SOURCES mobilenet.cpp mobilenet_reshuffled.cpp resnet.cpp resnet_1D.cpp dscnn.cpp dscnn_square.cpp autoencoder.cpp tinyyolov2.cpp)
+message("In demo/CMakeLists.txt: ${MODEL_SOURCES}")
 
-    foreach(model_source_file ${MODEL_SOURCES})
+foreach(model_source_file ${MODEL_SOURCES})
     get_filename_component(justname ${model_source_file} NAME)
     string(REPLACE ".cpp" ".exe" model_exename ${justname})
     set(model_exename "model_${model_exename}")
@@ -77,9 +74,5 @@ endforeach(layer_name ${LAYER_NAMES})
     add_executable(${model_exename} ${model_source_file})
 
     # target_link_libraries( ${model_exename} check_interface.o)
-    endforeach(model_source_file ${MODEL_SOURCES})
-    message("In demo/CMakeLists.txt: ${MODEL_SOURCES}")
-
-
-
+endforeach(model_source_file ${MODEL_SOURCES})
   
