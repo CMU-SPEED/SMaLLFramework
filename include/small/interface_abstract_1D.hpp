@@ -181,7 +181,7 @@ void Conv1D(
         {
             quint8_detail::abstract_layer_1D<
                 QUInt8Buffer, 1, QUINT8_C_ob, QUINT8_C_ib,
-                QUINT8_W_ob, 1, QUINT8_UNROLL, 'c', 2, 1>(
+                QUINT8_W_ob, 1, QUINT8_UNROLL, OP_CONV, 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -194,7 +194,7 @@ void Conv1D(
         {
             quint8_detail::abstract_layer_1D<
                 QUInt8Buffer, 1, QUINT8_C_ob, QUINT8_C_ib,
-                QUINT8_W_ob, 2, QUINT8_UNROLL, 'c', 2, 1>(
+                QUINT8_W_ob, 2, QUINT8_UNROLL, OP_CONV, 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -217,7 +217,7 @@ void Conv1D(
         {
             quint8_detail::abstract_layer_1D<
                 QUInt8Buffer, 1, QUINT8_C_ob, 3,
-                QUINT8_W_ob, 1, 1, 'c', 2, 1>(
+                QUINT8_W_ob, 1, 1, OP_CONV, 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -230,7 +230,7 @@ void Conv1D(
         {
             quint8_detail::abstract_layer_1D<
                 QUInt8Buffer, 1, QUINT8_C_ob, 3,
-                QUINT8_W_ob, 2, 1, 'c', 2, 1>( // unroll?
+                QUINT8_W_ob, 2, 1, OP_CONV, 2, 1>( // unroll?
                 1,                             // Output Channel Grouping
                 output_channels,               // Output Channels per group
                 input_channels,
@@ -393,7 +393,7 @@ void PartialConv1D(
         {
             quint8_detail::abstract_layer_1D<
                 QUInt8Buffer, 1, QUINT8_C_ob, QUINT8_C_ib,
-                QUINT8_W_ob, 1, QUINT8_UNROLL, 'c', 2, 0>(
+                QUINT8_W_ob, 1, QUINT8_UNROLL, OP_CONV, 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -407,7 +407,7 @@ void PartialConv1D(
 
             quint8_detail::abstract_layer_1D<
                 QUInt8Buffer, 1, QUINT8_C_ob, QUINT8_C_ib,
-                QUINT8_W_ob, 2, QUINT8_UNROLL, 'c', 2, 0>(
+                QUINT8_W_ob, 2, QUINT8_UNROLL, OP_CONV, 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -429,7 +429,7 @@ void PartialConv1D(
         if (stride == 1)
         {
             quint8_detail::abstract_layer_1D<
-                QUInt8Buffer, 1, QUINT8_C_ob, 3, QUINT8_W_ob, 1, 1, 'c', 2, 0>(
+                QUInt8Buffer, 1, QUINT8_C_ob, 3, QUINT8_W_ob, 1, 1, OP_CONV, 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -441,7 +441,7 @@ void PartialConv1D(
         else if (stride == 2)
         {
             quint8_detail::abstract_layer_1D<
-                QUInt8Buffer, 1, QUINT8_C_ob, 3, QUINT8_W_ob, 2, 1, 'c', 2, 0>(
+                QUInt8Buffer, 1, QUINT8_C_ob, 3, QUINT8_W_ob, 2, 1, OP_CONV, 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -564,7 +564,7 @@ void MaxPool1D(
         if (stride == 1)
         {
             quint8_detail::abstract_layer_1D<
-                QUInt8Buffer, QUINT8_C_ob, 1, 1, QUINT8_W_ob, 1, 1, 'p', 1, 1>(
+                QUInt8Buffer, QUINT8_C_ob, 1, 1, QUINT8_W_ob, 1, 1, OP_MAX_POOL, 1, 1>(
                 input_channels, // Output Channel Grouping
                 1,              // Output Channels per group
                 1,
@@ -576,7 +576,7 @@ void MaxPool1D(
         else if (stride == 2)
         {
             quint8_detail::abstract_layer_1D<
-                QUInt8Buffer, QUINT8_C_ob, 1, 1, QUINT8_W_ob, 2, 1, 'p', 1, 1>(
+                QUInt8Buffer, QUINT8_C_ob, 1, 1, QUINT8_W_ob, 2, 1, OP_MAX_POOL, 1, 1>(
                 input_channels, // Output Channel Grouping
                 1,              // Output Channels per group
                 1,
@@ -778,7 +778,7 @@ void AveragePool1D(
 //         if (stride == 1)
 //         {
 //             quint8_detail::abstract_layer_1D<
-//                 QUInt8Buffer, QUINT8_C_ob, 1, 1, QUINT8_W_ob, 1, 1, 'c', 1, 1>(
+//                 QUInt8Buffer, QUINT8_C_ob, 1, 1, QUINT8_W_ob, 1, 1, OP_CONV, 1, 1>(
 //                 input_channels, // Output Channel Grouping
 //                 1,              // Output Channels per group
 //                 1,
@@ -791,7 +791,7 @@ void AveragePool1D(
 //         {
 
 //             quint8_detail::abstract_layer_1D<
-//                 QUInt8Buffer, QUINT8_C_ob, 1, 1, QUINT8_W_ob, 2, 1, 'c', 1, 1>(
+//                 QUInt8Buffer, QUINT8_C_ob, 1, 1, QUINT8_W_ob, 2, 1, OP_CONV, 1, 1>(
 //                 input_channels, // Output Channel Grouping
 //                 1,              // Output Channels per group
 //                 1,
@@ -913,7 +913,7 @@ void AveragePool1D(
 //         {
 //             quint8_detail::abstract_layer_1D<
 //                 QUInt8Buffer, QUINT8_C_ob, 1, 1,
-//                 QUINT8_W_ob, 1, 1, 'c', 1, 0>(
+//                 QUINT8_W_ob, 1, 1, OP_CONV, 1, 0>(
 //                     input_channels, // Output Channel Grouping
 //                     1,              // Output Channels per group
 //                     1,
@@ -926,7 +926,7 @@ void AveragePool1D(
 //         {
 //             quint8_detail::abstract_layer_1D<
 //                 QUInt8Buffer, QUINT8_C_ob, 1, 1,
-//                 QUINT8_W_ob, 2, 1, 'c', 1, 0>(
+//                 QUINT8_W_ob, 2, 1, OP_CONV, 1, 0>(
 //                     input_channels, // Output Channel Grouping
 //                     1,              // Output Channels per group
 //                     1,
@@ -1052,7 +1052,7 @@ void GroupConv1D(
         if (stride == 1)
         {
             quint8_detail::abstract_layer_1D<
-                QUInt8Buffer, QUINT8_C_ob, 1, 1, QUINT8_W_ob, 1, 1, 'c', 1, 1>(
+                QUInt8Buffer, QUINT8_C_ob, 1, 1, QUINT8_W_ob, 1, 1, OP_CONV, 1, 1>(
                     output_groups, // Output Channel Grouping
                     input_channels,              // Output Channels per group
                     input_channels,
@@ -1065,7 +1065,7 @@ void GroupConv1D(
         {
 
             quint8_detail::abstract_layer_1D<
-                QUInt8Buffer, QUINT8_C_ob, 1, 1, QUINT8_W_ob, 2, 1, 'c', 1, 1>(
+                QUInt8Buffer, QUINT8_C_ob, 1, 1, QUINT8_W_ob, 2, 1, OP_CONV, 1, 1>(
                     output_groups,  // Output Channel Grouping
                     input_channels, // Output Channels per group
                     input_channels,
@@ -1190,7 +1190,7 @@ void PartialGroupConv1D(
         {
             quint8_detail::abstract_layer_1D<
                 QUInt8Buffer, QUINT8_C_ob, 1, 1,
-                QUINT8_W_ob, 1, 1, 'c', 1, 0>(
+                QUINT8_W_ob, 1, 1, OP_CONV, 1, 0>(
                     output_groups, // Output Channel Grouping
                     input_channels,              // Output Channels per group
                     input_channels,
@@ -1204,7 +1204,7 @@ void PartialGroupConv1D(
 
             quint8_detail::abstract_layer_1D<
                 QUInt8Buffer, QUINT8_C_ob, 1, 1,
-                QUINT8_W_ob, 2, 1, 'c', 1, 0>(
+                QUINT8_W_ob, 2, 1, OP_CONV, 1, 0>(
                     output_groups,  // Output Channel Grouping
                     input_channels, // Output Channels per group
                     input_channels,
@@ -1286,7 +1286,7 @@ void ReLUActivation1D(int input_channels,
     if (input_channels % QUINT8_C_ib == 0)
     {
         quint8_detail::abstract_layer_1D<
-            QUInt8Buffer, QUINT8_C_ob, 1, 1, QUINT8_W_ob, 1, 1, 'a', 0, 1>(
+            QUInt8Buffer, QUINT8_C_ob, 1, 1, QUINT8_W_ob, 1, 1, OP_RELU, 0, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
@@ -1398,7 +1398,7 @@ void UpSample1D(int scale_factor,
         if (input_channels % QUINT8_C_ib == 0)
         {
             quint8_detail::abstract_layer_1D<
-                QUInt8Buffer, QUINT8_C_ob, 1, 1, QUINT8_W_ob, 2, 1, 'u', 0, 1>(
+                QUInt8Buffer, QUINT8_C_ob, 1, 1, QUINT8_W_ob, 2, 1, OP_UPSAMPLE, 0, 1>(
                     input_channels, // Output Channel Grouping
                     1,              // Output Channels per group
                     1,

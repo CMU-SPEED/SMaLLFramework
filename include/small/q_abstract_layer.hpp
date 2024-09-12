@@ -18,7 +18,7 @@
 #include <omp.h>
 #endif
 
-#include <small/op_type.hpp>
+#include <small/op_type.hpp> /// @todo Add support: ADD, AVG_POOL, etc
 #include <small/utils.hpp>
 
 #define DEBUG 0
@@ -36,7 +36,7 @@ namespace quint8_detail
 /// @todo add parameters: step, _O_wb, _C_ob
 /// @todo use constexpr if on op_type and op_class in calling code
 #define QUINT8_ABSTRACT_OP(op_type, op_class, a_cur, b_cur, a_offset, b_offset) \
-    if constexpr (op_type == 'c')                                       \
+    if constexpr (op_type == OP_CONV)                                   \
     {                                                                   \
         if constexpr (op_class == 1)                                    \
         {                                                               \
@@ -47,25 +47,25 @@ namespace quint8_detail
             QUINT8_CONV_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob, a_offset, b_offset); \
         }                                                               \
     }                                                                   \
-    else if constexpr (op_type == 'a' || op_type == 'p')                \
+    else if constexpr (op_type == OP_RELU || op_type == OP_MAX_POOL)    \
     {                                                                   \
         QUINT8_MAX_TILE_C(step, a_cur, _O_wb, _C_ob, a_offset);         \
     }                                                                   \
-    else if constexpr (op_type == 'l')                                  \
+    else if constexpr (op_type == OP_LEAKY_RELU)                        \
     {                                                                   \
         /*QUINT8_COND_SCALE_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob);*/ \
-        throw std::invalid_argument("*_ABSTRACT_OP ERROR: no support for op_type 'l'"); \
+        throw std::invalid_argument("*_ABSTRACT_OP ERROR: no support for op_type OP_LEAKY_RELU"); \
     }                                                                   \
-    else if constexpr (op_type == 'd')                                  \
+    else if constexpr (op_type == OP_ADD)                               \
     {                                                                   \
         /*QUINT8_ACCUM_TILE_C(step, a_cur, _O_wb, _C_ob);*/             \
-        throw std::invalid_argument("*_ABSTRACT_OP ERROR: no support for op_type 'd'"); \
+        throw std::invalid_argument("*_ABSTRACT_OP ERROR: no support for op_type OP_ADD"); \
     }
 
 //****************************************************************************
 /// @todo add parameters: step, W_elements, _C_ob
 #define QUINT8_ABSTRACT_OP_END(op_type, op_class, a_cur, b_cur, c_cur, a_offset, b_offset) \
-    if constexpr (op_type == 'c')                                       \
+    if constexpr (op_type == OP_CONV)                                   \
     {                                                                   \
         if constexpr (op_class == 1)                                    \
         {                                                               \
@@ -76,19 +76,19 @@ namespace quint8_detail
             QUINT8_CONV_END_C(step, a_cur, b_cur, c_cur, W_elements, _C_ob, a_offset, b_offset); \
         }                                                               \
     }                                                                   \
-    else if constexpr (op_type == 'a' || op_type == 'p')                \
+    else if constexpr (op_type == OP_RELU || op_type == OP_MAX_POOL)    \
     {                                                                   \
         QUINT8_MAX_END_C(step, a_cur, c_cur, W_elements, _C_ob, a_offset); \
     }                                                                   \
-    else if constexpr (op_type == 'l')                                  \
+    else if constexpr (op_type == OP_LEAKY_RELU)                        \
     {                                                                   \
         /*QUINT8_COND_SCALE_END_C(step, a_cur, b_cur, c_cur, W_elements, _C_ob, a_offset, b_offset);*/ \
-        throw std::invalid_argument("*_ABSTRACT_OP_END ERROR: no support for op_type 'l'"); \
+        throw std::invalid_argument("*_ABSTRACT_OP_END ERROR: no support for op_type OP_LEAKY_RELU"); \
     }                                                                   \
-    else if constexpr (op_type == 'd')                                  \
+    else if constexpr (op_type == OP_ADD)                               \
     {                                                                   \
         /*QUINT8_ACCUM_END_C(step, a_cur, c_cur, W_elements, _C_ob, a_offset);*/ \
-        throw std::invalid_argument("*_ABSTRACT_OP_END ERROR: no support for op_type 'd'"); \
+        throw std::invalid_argument("*_ABSTRACT_OP_END ERROR: no support for op_type OP_ADD"); \
     }
 
 //****************************************************************************
@@ -102,7 +102,7 @@ template <typename ScalarT,
           dim_t _UNROLL,
           // TODO: add a bool to switch between microkernel and default imp
           // Leaf to describe abstract operation
-          char   op_type,
+          OpType op_type,
           int8_t op_class>
 void inline compute_with_padding(dim_t H_lb, dim_t H_ub,
                                  dim_t W_lb, dim_t W_ub,
@@ -154,7 +154,7 @@ template <typename ScalarT,
           dim_t _O_wb,
           dim_t _stride,
           dim_t _UNROLL,
-          char   op_type,
+          OpType op_type,
           int8_t op_class,
           bool   quantize = false,
           ScalarT max_val = 255, // std::numeric_limits<ScalarT>::max()
@@ -249,7 +249,7 @@ template <typename ScalarT,
           dim_t _O_wb,
           dim_t _stride,
           dim_t _UNROLL,
-          char   op_type,
+          OpType op_type,
           int8_t op_class,
           bool   quantize = false,
           ScalarT max_val = 255, // std::numeric_limits<ScalarT>::max()
@@ -286,16 +286,16 @@ void inline kernel(
     if (first)
     {
         QUINT8_ZERO_TILE_C(_O_wb, _C_ob, k_zero);
-        if (op_type == 'p')
+        if (op_type == OP_MAX_POOL)
         {
             /// @note using platform C_ob
             QUINT8_LOAD_TILE_C_strided(I, step, _O_wb, QUINT8_C_ob);
         }
-        else if (op_type == 'u')
+        else if (op_type == OP_UPSAMPLE)
         {
             //QUINT8_LOAD_TILE_C_upsample(I, _stride, _C_ib, _O_wb, _C_ob);
             throw std::invalid_argument("*kernel ERROR: "
-                                        "no support for op_type 'u'.");
+                                        "no support for op_type OP_UPSAMPLE.");
 
         }
     }
@@ -350,7 +350,7 @@ template <typename ScalarT,
           dim_t _O_wb,
           dim_t _stride,
           dim_t _UNROLL,
-          char   op_type,
+          OpType op_type,
           int8_t op_class,
           bool   quantize = false,
           ScalarT max_val = 255, // std::numeric_limits<ScalarT>::max()
@@ -444,7 +444,7 @@ template <typename ScalarT,
           dim_t _O_wb,
           dim_t _stride,
           dim_t _UNROLL,
-          char   op_type,
+          OpType op_type,
           int8_t op_class,
           bool quantize = false,
           ScalarT max_val = 255, // std::numeric_limits<ScalarT>::max()
@@ -483,15 +483,15 @@ void inline kernel_right(
         {
             QUINT8_ZERO_END_C(O_w_left, _C_ob, k_zero);
 
-            if (op_type == 'p' && H_lb == 0 && H_ub == 0)
+            if (op_type == OP_MAX_POOL && H_lb == 0 && H_ub == 0)
             {
                 QUINT8_LOAD_END_C_strided(I, step, O_w_left, _C_ob);
             }
-            else if (op_type == 'u')
+            else if (op_type == OP_UPSAMPLE)
             {
                 //QUINT8_LOAD_END_C_upsample(I, _stride, _C_ib, O_w_left, _C_ob);
                 throw std::invalid_argument("*kernel_right ERROR: "
-                                            "no support for op_type 'u'.");
+                                            "no support for op_type OP_UPSAMPLE.");
             }
         }
         else
@@ -536,7 +536,7 @@ void inline kernel_right(
 
         // Initialize with 0 for the padding elements
 
-        // if (op_type=='p')
+        // if (op_type==OP_MAX_POOL)
         // {
         //     LOAD_END_C_strided(I_ptr, step, r_pad_el, _C_ob);
         // }
@@ -590,7 +590,7 @@ template <typename ScalarT,
           dim_t _O_wb,
           dim_t _stride,
           dim_t _UNROLL,
-          char   op_type,
+          OpType op_type,
           int8_t op_class,
           bool   quantize = false,
           ScalarT max_val = 255, // std::numeric_limits<ScalarT>::max()
@@ -737,7 +737,7 @@ template <typename ScalarT,
           dim_t _O_wb,
           dim_t _stride,
           dim_t _UNROLL,
-          char   op_type,
+          OpType op_type,
           int8_t op_class,
           bool   quantize = false,
           ScalarT max_val = 255, // std::numeric_limits<ScalarT>::max()
@@ -888,8 +888,8 @@ template <typename BufferT,
           dim_t _O_wb,
           dim_t _stride,
           dim_t _UNROLL,
-          char   op_type,  // 'c' (conv,dense), 'p' (pool), or 'a' (activation)
-          int8_t op_class, //  2  (conv),  1  (dense,pool), or '0' (activation)
+          OpType op_type,
+          int8_t op_class, //  2  (conv),  1  (dense,pool), or 0 (activation)
           bool   rewrite_output>  // 0 (partial conv), 1 (otherwise)
 void abstract_layer(
     dim_t G,   // Output Channel Grouping
@@ -923,7 +923,7 @@ void abstract_layer(
 
     ScalarT const *F_buf = nullptr;
     AccumT         F_offset(0);
-    if constexpr (op_type == 'c' ||  op_type == 'l')  // if (F != nullptr)
+    if constexpr (op_type == OP_CONV ||  op_type == OP_LEAKY_RELU)  // if (F != nullptr)
     {
         F_buf = F->data();
         F_offset = F->zero();
@@ -939,15 +939,15 @@ void abstract_layer(
     //============QUANTIZED==============
 
 #if DEBUG == 1
-    if (op_type == 'c')
+    if (op_type == OP_CONV)
     {
         printf("conv class: %d \n", op_class);
     }
-    else if (op_type == 'p')
+    else if (op_type == OP_MAX_POOL)
     {
         printf("pool class: %d \n", op_class);
     }
-    else if (op_type == 'a')
+    else if (op_type == OP_RELU)
     {
         printf("activation class: %d \n", op_class);
     }
@@ -977,7 +977,7 @@ void abstract_layer(
     //  To calculate offsets to next output row, next output block
     // @todo fix this in small::output_dim
     dim_t H_o_w_pad, W_o_w_pad;
-    if constexpr (op_type == 'u')
+    if constexpr (op_type == OP_UPSAMPLE)
     {
         /// @todo VERIFY Copied from float version
         if constexpr(_stride == std::numeric_limits<dim_t>::max())
@@ -1009,7 +1009,7 @@ void abstract_layer(
 
     // Full kernel output elements
     dim_t H_o, W_o_full;
-    if constexpr (op_type == 'u')
+    if constexpr (op_type == OP_UPSAMPLE)
     {
         /// @todo VERIFY Copied from float version
         H_o = H_o_w_pad;
@@ -1025,7 +1025,7 @@ void abstract_layer(
     dim_t H_back_index = H_full_index + _stride * (H_o);
     dim_t W_back_index = W_full_index + _stride * (W_o_full);
     dim_t b_pad_el, r_pad_el;
-    if constexpr (op_type == 'u')
+    if constexpr (op_type == OP_UPSAMPLE)
     {
         /// @todo VERIFY Copied from float version
         b_pad_el = 0;
@@ -1107,7 +1107,7 @@ void abstract_layer(
         for (index_t g = group_tid; g < G / _G_b; g += T_group)
         {
             ScalarT const *I_group;
-            if constexpr (op_type == 'u' && _stride == std::numeric_limits<dim_t>::max())
+            if constexpr (op_type == OP_UPSAMPLE && _stride == std::numeric_limits<dim_t>::max())
             {
                 /// @todo VERIFY Copied from float version
                 I_group = I_buf + g * (F_c * 1 * 1* _G_b);
@@ -1120,7 +1120,7 @@ void abstract_layer(
             //if leaky relu, the weight pointer does not change with the group id
 
             ScalarT const *F_group ;
-            if constexpr (op_type == 'l')
+            if constexpr (op_type == OP_LEAKY_RELU)
             {
                 /// @todo VERIFY Copied from float version
                 F_group = F_buf;
@@ -1199,7 +1199,7 @@ void abstract_layer(
                         ScalarT const *I_row;
                         // @todo cast index calculation as int and make stride a float value.
                         //I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
-                        if constexpr (op_type == 'u')
+                        if constexpr (op_type == OP_UPSAMPLE)
                         {
                             /// @todo VERIFY Copied from float version
                             I_row = I_row_full + (j / _stride) * (I_w * _F_cb * _G_b);
@@ -1239,7 +1239,7 @@ void abstract_layer(
                             ScalarT const *I_col;
                             // @todo cast index calculation as int and make stride a float value.
                             //I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
-                            if constexpr (op_type == 'u')
+                            if constexpr (op_type == OP_UPSAMPLE)
                             {
                                 /// @todo VERIFY Copied from float version
                                 I_col = I_col_full + (l / _stride) * (_F_cb * _G_b);
@@ -1272,7 +1272,7 @@ void abstract_layer(
 
                         // Epilogue for microkernel + right padding elements
                         ScalarT const *I_col_left;
-                        if constexpr (op_type == 'u')
+                        if constexpr (op_type == OP_UPSAMPLE)
                         {
                             /// @todo VERIFY Copied from float version
                             I_col_left =
@@ -1401,7 +1401,7 @@ void abstract_layer(
                     for (index_t j = height_tid; j < O_h; j += T_height)
                     {
                         ScalarT const *I_row;
-                        if constexpr (op_type == 'u')
+                        if constexpr (op_type == OP_UPSAMPLE)
                         {
                             /// @todo VERIFY Copied from float version
                             I_row = I_row_full + (j / _stride) * (I_w * _F_cb * _G_b);
@@ -1452,7 +1452,7 @@ void abstract_layer(
                             ScalarT const *I_col;
                             // @todo cast index calculation as int and make stride a float value.
                             // I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
-                            if constexpr (op_type == 'u')
+                            if constexpr (op_type == OP_UPSAMPLE)
                             {
                                 /// @todo VERIFY Copied from float version
                                 I_col = I_col_full + (l / _stride) * (_F_cb * _G_b);
@@ -1491,7 +1491,7 @@ void abstract_layer(
 
                         // Epilogue for microkernel + right padding elements
                         ScalarT const *I_col_left;
-                        if constexpr (op_type == 'u')
+                        if constexpr (op_type == OP_UPSAMPLE)
                         {
                             /// @todo VERIFY Copied from float version
                             I_col_left = I_col_full + (O_w_full / _stride) * (_F_cb * _G_b);
@@ -1580,7 +1580,7 @@ template <typename BufferT,
           dim_t _O_wb,
           dim_t _stride,
           dim_t _UNROLL,
-          char   op_type,
+          OpType op_type,
           int8_t op_class,     //  2  (conv),  1  (dense,pool), or '0' (activation, upsample)
           bool rewrite_output> // 0 (partial conv, accum), 1 (otherwise)
 void abstract_layer_1D(
