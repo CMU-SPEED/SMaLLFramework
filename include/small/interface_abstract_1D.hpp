@@ -38,37 +38,20 @@ namespace small
 
 //****************************************************************************
 //****************************************************************************
-template <class BufferT>
-void Conv1D(int kernel_height, int kernel_width, int stride,
-            uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
-            int output_channels, int input_channels,
-            int input_height, int input_width,
-            BufferT const &input_buf,
-            BufferT const &filter_buf,
-            BufferT &output_buf)
-{
-    BufferT::unimplemented_function();
-}
-
-// Other options for not defining the base template:
-// 1. use "= delete;"
-// 2. use the following:
-// {
-//     static_assert(sizeof(BufferT) == 0,
-//                   "Only specializations of Conv1D can be used.");
-// }
 
 //============================================================================
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
-template <>
-void Conv1D<FloatBuffer>(
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<FloatBuffer, BufferT>::value, bool> = true>
+void Conv1D(
     int kernel_height, int kernel_width, int stride,
     uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
     int output_channels, int input_channels,
     int input_height, int input_width,
-    FloatBuffer const &input_buf,
-    FloatBuffer const &filter_buf,
-    FloatBuffer &output_buf)
+    BufferT const &input_buf,
+    BufferT const &filter_buf,
+    BufferT &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "Conv1D<float>(k:"
@@ -165,15 +148,17 @@ void Conv1D<FloatBuffer>(
 
 //============================================================================
 #if defined(SMALL_HAS_QUINT8_SUPPORT)
-template <>
-void Conv1D<QUInt8Buffer>(
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<QUInt8Buffer, BufferT>::value, bool> = true>
+void Conv1D(
     int kernel_height, int kernel_width, int stride,
     uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
     int output_channels, int input_channels,
     int input_height, int input_width,
-    QUInt8Buffer const &input_buf,
-    QUInt8Buffer const &filter_buf,
-    QUInt8Buffer &output_buf)
+    BufferT const &input_buf,
+    BufferT const &filter_buf,
+    BufferT &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "Conv1D<quint8>(k:"
@@ -271,30 +256,20 @@ void Conv1D<QUInt8Buffer>(
 
 //****************************************************************************
 //****************************************************************************
-/// @todo add support for rectangular kernels
-template <class BufferT>
-void PartialConv1D(int kernel_height, int kernel_width, int stride,
-                   uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
-                   int output_channels, int input_channels,
-                   int input_height, int input_width,
-                   BufferT const &input_buf,
-                   BufferT const &filter_buf,
-                   BufferT &output_buf)
-{
-    BufferT::unimplemented_function();
-}
 
 //============================================================================
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
-template <>
-void PartialConv1D<FloatBuffer>(
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<FloatBuffer, BufferT>::value, bool> = true>
+void PartialConv1D(
     int kernel_height, int kernel_width, int stride,
     uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
     int output_channels, int input_channels,
     int input_height, int input_width,
-    FloatBuffer const &input_buf,
-    FloatBuffer const &filter_buf,
-    FloatBuffer &output_buf)
+    BufferT const &input_buf,
+    BufferT const &filter_buf,
+    BufferT &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "PartialConv1D<float>(k:"
@@ -389,15 +364,17 @@ void PartialConv1D<FloatBuffer>(
 
 //============================================================================
 #if defined(SMALL_HAS_QUINT8_SUPPORT)
-template <>
-void PartialConv1D<QUInt8Buffer>(
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<QUInt8Buffer, BufferT>::value, bool> = true>
+void PartialConv1D(
     int kernel_height, int kernel_width, int stride,
     uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
     int output_channels, int input_channels,
     int input_height, int input_width,
-    QUInt8Buffer const &input_buf,
-    QUInt8Buffer const &filter_buf,
-    QUInt8Buffer &output_buf)
+    BufferT const &input_buf,
+    BufferT const &filter_buf,
+    BufferT &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "PartialConv1D<quint8>(k:"
@@ -492,27 +469,19 @@ void PartialConv1D<QUInt8Buffer>(
 
 //****************************************************************************
 //****************************************************************************
-template <class BufferT>
-void MaxPool1D(int kernel_height, int kernel_width, int stride,
-               uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
-               int input_channels,
-               int input_height, int input_width,
-               BufferT const &input_buf,
-               BufferT &output_buf)
-{
-    BufferT::unimplemented_function();
-}
 
 //============================================================================
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
-template <>
-void MaxPool1D<FloatBuffer>(
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<FloatBuffer, BufferT>::value, bool> = true>
+void MaxPool1D(
     int kernel_height, int kernel_width, int stride,
     uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
     int input_channels,
     int input_height, int input_width,
-    FloatBuffer const &input_buf,
-    FloatBuffer &output_buf)
+    BufferT const &input_buf,
+    BufferT &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "MaxPool1D<float>(k:"
@@ -568,14 +537,16 @@ void MaxPool1D<FloatBuffer>(
 
 //============================================================================
 #if defined(SMALL_HAS_QUINT8_SUPPORT)
-template <>
-void MaxPool1D<QUInt8Buffer>(
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<QUInt8Buffer, BufferT>::value, bool> = true>
+void MaxPool1D(
     int kernel_height, int kernel_width, int stride,
     uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
     int input_channels,
     int input_height, int input_width,
-    QUInt8Buffer const &input_buf,
-    QUInt8Buffer &output_buf)
+    BufferT const &input_buf,
+    BufferT &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "MaxPool1D<quint8>(k:"
@@ -630,27 +601,19 @@ void MaxPool1D<QUInt8Buffer>(
 
 //****************************************************************************
 //****************************************************************************
-template <class BufferT>
-void AveragePool1D(int kernel_height, int kernel_width, int stride,
-                   uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
-                   int input_channels,
-                   int input_height, int input_width,
-                   BufferT const &input_buf,
-                   BufferT &output_buf)
-{
-    BufferT::unimplemented_function();
-}
 
 //============================================================================
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
-template <>
-void AveragePool1D<FloatBuffer>(
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<FloatBuffer, BufferT>::value, bool> = true>
+void AveragePool1D(
     int kernel_height, int kernel_width, int stride,
     uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
     int input_channels,
     int input_height, int input_width,
-    FloatBuffer const &input_buf,
-    FloatBuffer &output_buf)
+    BufferT const &input_buf,
+    BufferT &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "AveragePool1D<float>(k:"
@@ -717,32 +680,23 @@ void AveragePool1D<FloatBuffer>(
 #endif
 
 //============================================================================
+/// @todo AveragePool1D support for quint8
+//============================================================================
 
 //****************************************************************************
 //****************************************************************************
-// template <class BufferT>
-// void DepthwiseConv1D(int kernel_size, int stride,
-//                      uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
-//                      int input_channels,
-//                      int input_height, int input_width,
-//                      BufferT const &input_buf,
-//                      BufferT const &filter_buf,
-//                      BufferT &output_buf)
-// {
-//     BufferT::unimplemented_function();
-// }
-
-// //============================================================================
 // #if defined(SMALL_HAS_FLOAT_SUPPORT)
-// template <>
-// void DepthwiseConv1D<FloatBuffer>(
+// template <class BufferT,
+//           std::enable_if_t<
+//               std::is_same<FloatBuffer, BufferT>::value, bool> = true>
+// void DepthwiseConv1D(
 //     int kernel_height, int kernel_width, int stride,
 //     uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
 //     int input_channels,
 //     int input_height, int input_width,
-//     FloatBuffer const &input_buf,
-//     FloatBuffer const &filter_buf,
-//     FloatBuffer &output_buf)
+//     BufferT const &input_buf,
+//     BufferT const &filter_buf,
+//     BufferT &output_buf)
 // {
 // #if defined(RECORD_CALLS)
 //     std::cout << "DepthwiseConv1D<float>(k:"
@@ -797,15 +751,17 @@ void AveragePool1D<FloatBuffer>(
 
 // //============================================================================
 // #if defined(SMALL_HAS_QUINT8_SUPPORT)
-// template <>
-// void DepthwiseConv1D<QUInt8Buffer>(
+// template <class BufferT,
+//           std::enable_if_t<
+//               std::is_same<QUInt8Buffer, BufferT>::value, bool> = true>
+// void DepthwiseConv1D(
 //     int kernel_height, int kernel_width, int stride,
 //     uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
 //     int input_channels,
 //     int input_height, int input_width,
-//     QUInt8Buffer const &input_buf,
-//     QUInt8Buffer const &filter_buf,
-//     QUInt8Buffer &output_buf)
+//     BufferT const &input_buf,
+//     BufferT const &filter_buf,
+//     BufferT &output_buf)
 // {
 // #if defined(RECORD_CALLS)
 //     std::cout << "DepthwiseConv1D<quint8>(k:"
@@ -860,29 +816,20 @@ void AveragePool1D<FloatBuffer>(
 
 // //****************************************************************************
 // //****************************************************************************
-// template <class BufferT>
-// void PartialDepthwiseConv1D(int kernel_size, int stride,
-//                      uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
-//                      int input_channels,
-//                      int input_height, int input_width,
-//                      BufferT const &input_buf,
-//                      BufferT const &filter_buf,
-//                      BufferT &output_buf)
-// {
-//     BufferT::unimplemented_function();
-// }
 
 // //============================================================================
 // #if defined(SMALL_HAS_FLOAT_SUPPORT)
-// template <>
-// void PartialDepthwiseConv1D<FloatBuffer>(
+// template <class BufferT,
+//           std::enable_if_t<
+//               std::is_same<FloatBuffer, BufferT>::value, bool> = true>
+// void PartialDepthwiseConv1D(
 //     int kernel_height, int kernel_width, int stride,
 //     uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
 //     int input_channels,
 //     int input_height, int input_width,
-//     FloatBuffer const &input_buf,
-//     FloatBuffer const &filter_buf,
-//     FloatBuffer       &output_buf)
+//     BufferT const &input_buf,
+//     BufferT const &filter_buf,
+//     BufferT       &output_buf)
 // {
 // #if defined(RECORD_CALLS)
 //     std::cout << "PartialDepthwiseConv1D<float>(k:"
@@ -911,7 +858,6 @@ void AveragePool1D<FloatBuffer>(
 //         }
 //         else if (stride == 2)
 //         {
-
 //             detail::abstract_layer_1D<
 //                 FloatBuffer, FLOAT_C_ob, 1, 1,
 //                 FLOAT_W_ob, 2, 1, OP_CONV, 1, 0>(
@@ -939,15 +885,17 @@ void AveragePool1D<FloatBuffer>(
 
 // //============================================================================
 // #if defined(SMALL_HAS_QUINT8_SUPPORT)
-// template <>
-// void PartialDepthwiseConv1D<QUInt8Buffer>(
+// template <class BufferT,
+//           std::enable_if_t<
+//               std::is_same<QUInt8Buffer, BufferT>::value, bool> = true>
+// void PartialDepthwiseConv1D(
 //     int kernel_height, int kernel_width, int stride,
 //     uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
 //     int input_channels,
 //     int input_height, int input_width,
-//     QUInt8Buffer const &input_buf,
-//     QUInt8Buffer const &filter_buf,
-//     QUInt8Buffer       &output_buf)
+//     BufferT const &input_buf,
+//     BufferT const &filter_buf,
+//     BufferT       &output_buf)
 // {
 // #if defined(RECORD_CALLS)
 //     std::cout << "PartialDepthwiseConv1D<quint8>(k:"
@@ -976,7 +924,6 @@ void AveragePool1D<FloatBuffer>(
 //         }
 //         else if (stride == 2)
 //         {
-
 //             quint8_detail::abstract_layer_1D<
 //                 QUInt8Buffer, QUINT8_C_ob, 1, 1,
 //                 QUINT8_W_ob, 2, 1, 'c', 1, 0>(
@@ -1002,37 +949,27 @@ void AveragePool1D<FloatBuffer>(
 // }
 // #endif
 
-//============================================================================
+//****************************************************************************
+//****************************************************************************
+
 //****************************************************************************
 // Assumes that output channels = input channels, output groups splits input channels evenly
 //****************************************************************************
-//****************************************************************************
-template <class BufferT>
-void GroupConv1D(int kernel_height, int kernel_width, int stride,
-                 int output_groups,
-                 uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
-                 int input_channels,
-                 int input_height, int input_width,
-                 BufferT const &input_buf,
-                 BufferT const &filter_buf,
-                 BufferT &output_buf)
-{
-    BufferT::unimplemented_function();
-}
 
 //============================================================================
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
-template <>
-void GroupConv1D<FloatBuffer>(
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<FloatBuffer, BufferT>::value, bool> = true>
+void GroupConv1D(
     int kernel_height, int kernel_width, int stride,
     int output_groups,
-
     uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
     int input_channels,
     int input_height, int input_width,
-    FloatBuffer const &input_buf,
-    FloatBuffer const &filter_buf,
-    FloatBuffer &output_buf)
+    BufferT const &input_buf,
+    BufferT const &filter_buf,
+    BufferT &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "GroupConv1D<float>(k:"
@@ -1087,17 +1024,18 @@ void GroupConv1D<FloatBuffer>(
 
 //============================================================================
 #if defined(SMALL_HAS_QUINT8_SUPPORT)
-template <>
-void GroupConv1D<QUInt8Buffer>(
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<QUInt8Buffer, BufferT>::value, bool> = true>
+void GroupConv1D(
     int kernel_height, int kernel_width, int stride,
     int output_groups,
-
     uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
     int input_channels,
     int input_height, int input_width,
-    QUInt8Buffer const &input_buf,
-    QUInt8Buffer const &filter_buf,
-    QUInt8Buffer &output_buf)
+    BufferT const &input_buf,
+    BufferT const &filter_buf,
+    BufferT &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "GroupConv1D<quint8>(k:"
@@ -1152,32 +1090,21 @@ void GroupConv1D<QUInt8Buffer>(
 
 //****************************************************************************
 //****************************************************************************
-template <class BufferT>
-void PartialGroupConv1D(int kernel_height, int kernel_width, int stride,
-                        int output_groups,
-
-                        uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
-                        int input_channels,
-                        int input_height, int input_width,
-                        BufferT const &input_buf,
-                        BufferT const &filter_buf,
-                        BufferT &output_buf)
-{
-    BufferT::unimplemented_function();
-}
 
 //============================================================================
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
-template <>
-void PartialGroupConv1D<FloatBuffer>(
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<FloatBuffer, BufferT>::value, bool> = true>
+void PartialGroupConv1D(
     int kernel_height, int kernel_width, int stride,
     int output_groups,
     uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
     int input_channels,
     int input_height, int input_width,
-    FloatBuffer const &input_buf,
-    FloatBuffer const &filter_buf,
-    FloatBuffer &output_buf)
+    BufferT const &input_buf,
+    BufferT const &filter_buf,
+    BufferT &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "PartialGroupConv1D<float>(k:"
@@ -1234,18 +1161,18 @@ void PartialGroupConv1D<FloatBuffer>(
 
 //============================================================================
 #if defined(SMALL_HAS_QUINT8_SUPPORT)
-template <>
-void PartialGroupConv1D<QUInt8Buffer>(
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<QUInt8Buffer, BufferT>::value, bool> = true>
+void PartialGroupConv1D(
     int kernel_height, int kernel_width, int stride,
     int output_groups,
-
     uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
     int input_channels,
     int input_height, int input_width,
-
-    QUInt8Buffer const &input_buf,
-    QUInt8Buffer const &filter_buf,
-    QUInt8Buffer &output_buf)
+    BufferT const &input_buf,
+    BufferT const &filter_buf,
+    BufferT &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "PartialGroupConv1D<quint8>(k:"
@@ -1301,25 +1228,18 @@ void PartialGroupConv1D<QUInt8Buffer>(
 #endif
 
 //****************************************************************************
+// ReLUActivation: 1D not necessary?
 //****************************************************************************
-/// @todo In the original q_interface_abstract.hpp, why was this the only
-///       layer with 'zero' param?
-template <class BufferT>
-void ReLUActivation1D(int input_channels,
-                      int input_height, int input_width,
-                      BufferT const &input_buf,
-                      BufferT &output_buf) //, int zero = 0)
-{
-    BufferT::unimplemented_function();
-}
 
 //============================================================================
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
-template <>
-void ReLUActivation1D<FloatBuffer>(int input_channels,
-                                   int input_height, int input_width,
-                                   FloatBuffer const &input_buf,
-                                   FloatBuffer &output_buf)
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<FloatBuffer, BufferT>::value, bool> = true>
+void ReLUActivation1D(int input_channels,
+                      int input_height, int input_width,
+                      BufferT const &input_buf,
+                      BufferT &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "ReLUActivation<float>(chans:" << input_channels
@@ -1349,11 +1269,13 @@ void ReLUActivation1D<FloatBuffer>(int input_channels,
 
 //============================================================================
 #if defined(SMALL_HAS_QUINT8_SUPPORT)
-template <>
-void ReLUActivation1D<QUInt8Buffer>(int input_channels,
-                                    int input_height, int input_width,
-                                    QUInt8Buffer const &input_buf,
-                                    QUInt8Buffer &output_buf)
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<QUInt8Buffer, BufferT>::value, bool> = true>
+void ReLUActivation1D(int input_channels,
+                      int input_height, int input_width,
+                      BufferT const &input_buf,
+                      BufferT &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "ReLUActivation<quint8>(chans:" << input_channels
@@ -1382,27 +1304,31 @@ void ReLUActivation1D<QUInt8Buffer>(int input_channels,
 #endif
 
 //****************************************************************************
+// LeakyReLUActivation - 1D not necessary?
 //****************************************************************************
-// nearest neighbor upsampling
-template <typename BufferT>
+
+//****************************************************************************
+// Dropout - 1D not necessary?
+//****************************************************************************
+
+//****************************************************************************
+// SoftMax - 1D not necessary?
+//****************************************************************************
+
+//****************************************************************************
+//****************************************************************************
+
+//============================================================================
+#if defined(SMALL_HAS_FLOAT_SUPPORT)
+// only scales width dim of input
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<FloatBuffer, BufferT>::value, bool> = true>
 void UpSample1D(int scale_factor,
                 int input_channels,
                 int input_height, int input_width,
                 BufferT const &input_buf,
                 BufferT &output_buf)
-{
-    BufferT::unimplemented_function();
-}
-
-//============================================================================
-#if defined(SMALL_HAS_FLOAT_SUPPORT)
-// only scales width dim of input
-template <>
-void UpSample1D<FloatBuffer>(int scale_factor,
-                             int input_channels,
-                             int input_height, int input_width,
-                             FloatBuffer const &input_buf,
-                             FloatBuffer &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "UpSample1D<float>(chans:" << input_channels
@@ -1445,12 +1371,14 @@ void UpSample1D<FloatBuffer>(int scale_factor,
 
 //============================================================================
 #if 0 // defined(SMALL_HAS_QUINT8_SUPPORT)
-template <>
-void UpSample1D<QUInt8Buffer>(int scale_factor,
-                              int input_channels,
-                              int input_height, int input_width,
-                              QUInt8Buffer const &input_buf,
-                              QUInt8Buffer       &output_buf)
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<QUInt8Buffer, BufferT>::value, bool> = true>
+void UpSample1D(int scale_factor,
+                int input_channels,
+                int input_height, int input_width,
+                BufferT const &input_buf,
+                BufferT       &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "UpSample1D<quint8>(chans:" << input_channels
@@ -1492,5 +1420,21 @@ void UpSample1D<QUInt8Buffer>(int scale_factor,
     }
 }
 #endif
+
+//****************************************************************************
+// Accum - 1D not necessary
+//****************************************************************************
+
+//****************************************************************************
+// Bias - 1D not necessary
+//****************************************************************************
+
+//****************************************************************************
+// PartialBias - 1D not necessary
+//****************************************************************************
+
+//****************************************************************************
+// Dense - no 1D equivalent
+//****************************************************************************
 
 } // small
