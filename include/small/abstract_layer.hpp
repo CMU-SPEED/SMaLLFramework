@@ -71,73 +71,73 @@ namespace detail
 /// @todo add parameter: step
 /// @todo use constexpr if on op_type and op_class in calling code
 #define FLOAT_ABSTRACT_OP(op_type, op_class, a_cur, b_cur, _O_wb, _C_ob) \
-    if constexpr (op_type == OP_CONV)                                   \
-    {                                                                   \
-        if constexpr (op_class == 1)                                    \
-        {                                                               \
-            FLOAT_DW_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob);          \
-        }                                                               \
-        else if constexpr (op_class == 2)                               \
-        {                                                               \
-            FLOAT_CONV_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob);        \
-        }                                                               \
-    }                                                                   \
-    else if constexpr (op_type == OP_RELU || op_type == OP_MAX_POOL)    \
-    {                                                                   \
-        FLOAT_MAX_TILE_C(step, a_cur, _O_wb, _C_ob);                    \
-    }                                                                   \
-    else if constexpr (op_type == OP_LEAKY_RELU)                        \
-    {                                                                   \
-        FLOAT_COND_SCALE_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob);      \
-    }                                                                   \
-    else if constexpr (op_type == OP_ADD || op_type == OP_AVERAGE_POOL) \
-    {                                                                   \
-        FLOAT_ACCUM_TILE_C(step, a_cur, _O_wb, _C_ob);                  \
-    }                                                                   \
-    else if constexpr (op_type == OP_MUL)                               \
-    {                                                                   \
-        float drop_out_rate = b_cur[0];                                 \
-        FLOAT_DIV_TILE_C(drop_out_rate, _O_wb, _C_ob)                   \
-    }                                                                   \
-    else if constexpr (op_type == OP_EXP)                               \
-    {                                                                   \
-        FLOAT_EXP_TILE_C(step, a_cur, _O_wb, _C_ob)                     \
+    if constexpr (op_type == OP_CONV)                                    \
+    {                                                                    \
+        if constexpr (op_class == 1)                                     \
+        {                                                                \
+            FLOAT_DW_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob);           \
+        }                                                                \
+        else if constexpr (op_class == 2)                                \
+        {                                                                \
+            FLOAT_CONV_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob);         \
+        }                                                                \
+    }                                                                    \
+    else if constexpr (op_type == OP_RELU || op_type == OP_MAX_POOL)     \
+    {                                                                    \
+        FLOAT_MAX_TILE_C(step, a_cur, _O_wb, _C_ob);                     \
+    }                                                                    \
+    else if constexpr (op_type == OP_LEAKY_RELU)                         \
+    {                                                                    \
+        FLOAT_COND_SCALE_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob);       \
+    }                                                                    \
+    else if constexpr (op_type == OP_ADD || op_type == OP_AVERAGE_POOL)  \
+    {                                                                    \
+        FLOAT_ACCUM_TILE_C(step, a_cur, _O_wb, _C_ob);                   \
+    }                                                                    \
+    else if constexpr (op_type == OP_MUL)                                \
+    {                                                                    \
+        float drop_out_rate = b_cur[0];                                  \
+        FLOAT_DIV_TILE_C(drop_out_rate, _O_wb, _C_ob)                    \
+    }                                                                    \
+    else if constexpr (op_type == OP_EXP)                                \
+    {                                                                    \
+        FLOAT_EXP_TILE_C(step, a_cur, _O_wb, _C_ob)                      \
     }
 
 //****************************************************************************
 /// @todo add parameter: step
 #define FLOAT_ABSTRACT_OP_END(op_type, op_class, a_cur, b_cur, c_cur, W_elements, _C_ob) \
-    if constexpr (op_type == OP_CONV)                                   \
-    {                                                                   \
-        if constexpr (op_class == 1)                                    \
-        {                                                               \
-            FLOAT_DW_END_C(step, a_cur, b_cur, c_cur, W_elements, _C_ob); \
-        }                                                               \
-        else if constexpr (op_class == 2)                               \
-        {                                                               \
-            FLOAT_CONV_END_C(step, a_cur, b_cur, c_cur, W_elements, _C_ob); \
-        }                                                               \
-    }                                                                   \
-    else if constexpr (op_type == OP_RELU || op_type == OP_MAX_POOL)    \
-    {                                                                   \
-        FLOAT_MAX_END_C(step, a_cur, c_cur, W_elements, _C_ob);         \
-    }                                                                   \
-    else if constexpr (op_type == OP_LEAKY_RELU)                        \
-    {                                                                   \
-        FLOAT_COND_SCALE_END_C(step, a_cur, b_cur, c_cur, W_elements, _C_ob); \
-    }                                                                   \
-    else if constexpr (op_type == OP_ADD || op_type == OP_AVERAGE_POOL) \
-    {                                                                   \
-        FLOAT_ACCUM_END_C(step, a_cur, c_cur, W_elements, _C_ob);       \
-    }                                                                   \
-    else if constexpr (op_type == OP_MUL)                               \
-    {                                                                   \
-        float drop_out_rate = b_cur[0];                                 \
-        FLOAT_DIV_END_C(c_cur, drop_out_rate, W_elements, _C_ob)        \
-    }                                                                   \
-    else if constexpr (op_type == OP_EXP)                               \
-    {                                                                   \
-        FLOAT_EXP_END_C(step, a_cur, c_cur,  W_elements, _C_ob)         \
+    if constexpr (op_type == OP_CONV)                                                    \
+    {                                                                                    \
+        if constexpr (op_class == 1)                                                     \
+        {                                                                                \
+            FLOAT_DW_END_C(step, a_cur, b_cur, c_cur, W_elements, _C_ob);                \
+        }                                                                                \
+        else if constexpr (op_class == 2)                                                \
+        {                                                                                \
+            FLOAT_CONV_END_C(step, a_cur, b_cur, c_cur, W_elements, _C_ob);              \
+        }                                                                                \
+    }                                                                                    \
+    else if constexpr (op_type == OP_RELU || op_type == OP_MAX_POOL)                     \
+    {                                                                                    \
+        FLOAT_MAX_END_C(step, a_cur, c_cur, W_elements, _C_ob);                          \
+    }                                                                                    \
+    else if constexpr (op_type == OP_LEAKY_RELU)                                         \
+    {                                                                                    \
+        FLOAT_COND_SCALE_END_C(step, a_cur, b_cur, c_cur, W_elements, _C_ob);            \
+    }                                                                                    \
+    else if constexpr (op_type == OP_ADD || op_type == OP_AVERAGE_POOL)                  \
+    {                                                                                    \
+        FLOAT_ACCUM_END_C(step, a_cur, c_cur, W_elements, _C_ob);                        \
+    }                                                                                    \
+    else if constexpr (op_type == OP_MUL)                                                \
+    {                                                                                    \
+        float drop_out_rate = b_cur[0];                                                  \
+        FLOAT_DIV_END_C(c_cur, drop_out_rate, W_elements, _C_ob)                         \
+    }                                                                                    \
+    else if constexpr (op_type == OP_EXP)                                                \
+    {                                                                                    \
+        FLOAT_EXP_END_C(step, a_cur, c_cur,  W_elements, _C_ob)                          \
     }
 
 //****************************************************************************

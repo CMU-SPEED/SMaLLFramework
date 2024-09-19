@@ -26,22 +26,19 @@
 
 namespace small
 {
-    namespace detail
-    {
+namespace detail
+{
+    /// @todo both pairs of typedefs should not be needed.
+    typedef small::FloatBuffer::value_type dtype;
 
-        /// @todo both pairs of typedefs should not be needed.
-        typedef small::FloatBuffer::value_type dtype;
-
-        // typedef small::FloatBuffer::value_type c_tile_t;
-        #if FLOAT_SIMD_EPILOGUE == 1
-//typedef float c_tile_t;
-typedef small::FloatBuffer::value_type  c_tile_t;
+    // typedef small::FloatBuffer::value_type c_tile_t;
+#if FLOAT_SIMD_EPILOGUE == 1
+    // typedef float c_tile_t;
+    typedef small::FloatBuffer::value_type  c_tile_t;
 #else
-typedef __m256 c_tile_t;
+    typedef __m256 c_tile_t;
 #endif
-
-
-    }
+}
 }
 
 
@@ -61,14 +58,15 @@ typedef __m256 c_tile_t;
 
 /// @todo VERIFY this. Args are _W_ob/_C_ob but does not use them
 #if FLOAT_SIMD_EPILOGUE == 1
-#define FLOAT_DEF_END_C(_W_ob, _C_ob) \
+#define FLOAT_DEF_END_C(_W_ob, _C_ob)           \
     c_tile_t c_tile[FLOAT_W_ob * FLOAT_C_ob];
 #elif FLOAT_SIMD_EPILOGUE == 8
-    __m256 a_0, a_1, a_2, a_3, b_0, b_1;\
+#define FLOAT_DEF_END_C(_W_ob, _C_ob)                   \
+    __m256 a_0, a_1, a_2, a_3, b_0, b_1;                \
     __m256 c_tile[FLOAT_W_ob * FLOAT_C_ob/FLOAT_SIMD];
 #endif
 
-#define FLOAT_ZERO_TILE_C(W_ob, C_ob) \
+#define FLOAT_ZERO_TILE_C(W_ob, C_ob)     \
         c0 = _mm256_setzero_ps();         \
         c1 = _mm256_setzero_ps();         \
         c2 = _mm256_setzero_ps();         \
@@ -83,7 +81,7 @@ typedef __m256 c_tile_t;
         c11 = _mm256_setzero_ps();
 
 #if FLOAT_SIMD_EPILOGUE == 1
-#define FLOAT_ZERO_END_C(_W_ob, _C_ob)          \
+#define FLOAT_ZERO_END_C(_W_ob, _C_ob)              \
         for (uint32_t kk = 0; kk < _W_ob; kk++)     \
         {                                           \
             for (uint32_t jj = 0; jj < _C_ob; jj++) \
@@ -563,7 +561,7 @@ for (uint32_t kk = 0; kk < W_last; kk++)             \
     {                                                 \
         c_cur[kk * C_ob/FLOAT_SIMD + 0] = _mm256_max_ps(c_cur[kk * C_ob/FLOAT_SIMD + 0], a_0); \
         c_cur[kk * C_ob/FLOAT_SIMD + 1] = _mm256_max_ps(c_cur[kk * C_ob/FLOAT_SIMD + 1], a_0); \
-    }   
+    }
 #endif
 //****************************************************************************
 // Leaky ReLU activation

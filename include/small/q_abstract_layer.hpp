@@ -1590,13 +1590,13 @@ void abstract_layer_1D(
     dim_t I_h, // Input Height
     dim_t I_w, // Input Width
 
-    dim_t F_h, // Filter height
+    //dim_t F_h, // Filter height
     dim_t F_w, // Filter width
 
-    dim_t pad_top, // Padding values
+    //dim_t pad_top, // Padding values
     dim_t pad_left,
     dim_t pad_right,
-    dim_t pad_bottom,
+    //dim_t pad_bottom,
 
     BufferT const * /*__restrict__*/ I, // Data
     BufferT const *__restrict__ F,

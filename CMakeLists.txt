@@ -63,7 +63,7 @@ set(CMAKE_PLATFORM_DIR ${CMAKE_SOURCE_DIR}/include/small/platforms/)
 
 if(CMAKE_UARCH STREQUAL "ZEN4")
   SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DZEN2 -DUARCH_ZEN2 -mavx2 -mfma -march=native")
-  message("Microarchitecture target: ZEN2 (Epyc)")
+  message("Microarchitecture target: ZEN4 (Epyc)")
   include_directories ( ${CMAKE_PLATFORM_DIR}/zen4 )
 
 elseif(CMAKE_UARCH STREQUAL "ZEN2")
