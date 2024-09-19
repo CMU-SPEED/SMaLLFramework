@@ -137,6 +137,82 @@ void Conv2D(
                 "Conv2D<float> ERROR: stride unsupported.");
         }
     }
+
+    // Specific case for the first layer
+    else if ((input_channels == 2) && (input_channels < FLOAT_C_ib))
+    {
+        if (stride == 1)
+        {
+            detail::abstract_layer<
+                FloatBuffer, 1, FLOAT_C_ob, 2,
+                FLOAT_W_ob, 1, 1, OP_CONV, 2, 1>(
+                1,               // Output Channel Grouping
+                output_channels, // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
+        }
+        else if (stride == 2)
+        {
+            detail::abstract_layer<
+                FloatBuffer, 1, FLOAT_C_ob, 2,
+                FLOAT_W_ob, 2, 1, OP_CONV, 2, 1>( // unroll?
+                1,                                     // Output Channel Grouping
+                output_channels,                       // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
+        }
+        else
+        {
+            throw std::invalid_argument(
+                "Conv2D<float> ERROR: stride unsupported.");
+        }
+    }
+
+    // Specific case for the first layer
+    else if ((input_channels == 1) && (input_channels < FLOAT_C_ib))
+    {
+        if (stride == 1)
+        {
+            detail::abstract_layer<
+                FloatBuffer, 1, FLOAT_C_ob, 1,
+                FLOAT_W_ob, 1, 1, OP_CONV, 2, 1>(
+                1,               // Output Channel Grouping
+                output_channels, // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
+        }
+        else if (stride == 2)
+        {
+            detail::abstract_layer<
+                FloatBuffer, 1, FLOAT_C_ob, 1,
+                FLOAT_W_ob, 2, 1, OP_CONV, 2, 1>( // unroll?
+                1,                                     // Output Channel Grouping
+                output_channels,                       // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
+        }
+        else
+        {
+            throw std::invalid_argument(
+                "Conv2D<float> ERROR: stride unsupported.");
+        }
+    }
+
+    /// @todo Do we need other specific cases for input_channels > 3?
+
+    // everything else.
     else
     {
         throw std::invalid_argument(
@@ -244,6 +320,82 @@ void Conv2D(
                 "Conv2D<quint8> ERROR: stride unsupported.");
         }
     }
+
+    // Specific case for the first layer
+    else if ((input_channels == 2) && (input_channels < QUINT8_C_ib))
+    {
+        if (stride == 1)
+        {
+            quint8_detail::abstract_layer<
+                QUInt8Buffer, 1, QUINT8_C_ob, 2,
+                QUINT8_W_ob, 1, 1, OP_CONV, 2, 1>(
+                1,               // Output Channel Grouping
+                output_channels, // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
+        }
+        else if (stride == 2)
+        {
+            quint8_detail::abstract_layer<
+                QUInt8Buffer, 1, QUINT8_C_ob, 2,
+                QUINT8_W_ob, 2, 1, OP_CONV, 2, 1>( // unroll?
+                1,                             // Output Channel Grouping
+                output_channels,               // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
+        }
+        else
+        {
+            throw std::invalid_argument(
+                "Conv2D<quint8> ERROR: stride unsupported.");
+        }
+    }
+
+    // Specific case for the first layer
+    else if ((input_channels == 1) && (input_channels < QUINT8_C_ib))
+    {
+        if (stride == 1)
+        {
+            quint8_detail::abstract_layer<
+                QUInt8Buffer, 1, QUINT8_C_ob, 1,
+                QUINT8_W_ob, 1, 1, OP_CONV, 2, 1>(
+                1,               // Output Channel Grouping
+                output_channels, // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
+        }
+        else if (stride == 2)
+        {
+            quint8_detail::abstract_layer<
+                QUInt8Buffer, 1, QUINT8_C_ob, 1,
+                QUINT8_W_ob, 2, 1, OP_CONV, 2, 1>( // unroll?
+                1,                             // Output Channel Grouping
+                output_channels,               // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
+        }
+        else
+        {
+            throw std::invalid_argument(
+                "Conv2D<quint8> ERROR: stride unsupported.");
+        }
+    }
+
+    /// @todo Do we need other specific cases for input_channels > 3?
+
+    // everything else.
     else
     {
         throw std::invalid_argument(
@@ -323,7 +475,8 @@ void PartialConv2D(
         if (stride == 1)
         {
             detail::abstract_layer<
-                FloatBuffer, 1, FLOAT_C_ob, 3, FLOAT_W_ob, 1, 1, OP_CONV, 2, 0>(
+                FloatBuffer, 1, FLOAT_C_ob, 3,
+                FLOAT_W_ob, 1, 1, OP_CONV, 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -335,7 +488,8 @@ void PartialConv2D(
         else if (stride == 2)
         {
             detail::abstract_layer<
-                FloatBuffer, 1, FLOAT_C_ob, 3, FLOAT_W_ob, 2, 1, OP_CONV, 2, 0>(
+                FloatBuffer, 1, FLOAT_C_ob, 3,
+                FLOAT_W_ob, 2, 1, OP_CONV, 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -351,7 +505,79 @@ void PartialConv2D(
         }
     }
 
-    /// @todo We need another specific case for input_channels==1 (maybe more)
+    // Specific case for the first layer
+    else if ((input_channels == 2) && (input_channels < FLOAT_C_ib))
+    {
+        if (stride == 1)
+        {
+            detail::abstract_layer<
+                FloatBuffer, 1, FLOAT_C_ob, 2,
+                FLOAT_W_ob, 1, 1, OP_CONV, 2, 0>(
+                1,               // Output Channel Grouping
+                output_channels, // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
+        }
+        else if (stride == 2)
+        {
+            detail::abstract_layer<
+                FloatBuffer, 1, FLOAT_C_ob, 2,
+                FLOAT_W_ob, 2, 1, OP_CONV, 2, 0>(
+                1,               // Output Channel Grouping
+                output_channels, // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
+        }
+        else
+        {
+            throw std::invalid_argument(
+                "PartialConv2D<float> ERROR: stride unsupported.");
+        }
+    }
+
+    // Specific case for the first layer
+    else if ((input_channels == 1) && (input_channels < FLOAT_C_ib))
+    {
+        if (stride == 1)
+        {
+            detail::abstract_layer<
+                FloatBuffer, 1, FLOAT_C_ob, 1,
+                FLOAT_W_ob, 1, 1, OP_CONV, 2, 0>(
+                1,               // Output Channel Grouping
+                output_channels, // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
+        }
+        else if (stride == 2)
+        {
+            detail::abstract_layer<
+                FloatBuffer, 1, FLOAT_C_ob, 1,
+                FLOAT_W_ob, 2, 1, OP_CONV, 2, 0>(
+                1,               // Output Channel Grouping
+                output_channels, // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
+        }
+        else
+        {
+            throw std::invalid_argument(
+                "PartialConv2D<float> ERROR: stride unsupported.");
+        }
+    }
+
+    /// @todo Do we need other specific cases for input_channels > 3?
 
     else
     {
@@ -428,7 +654,8 @@ void PartialConv2D(
         if (stride == 1)
         {
             quint8_detail::abstract_layer<
-                QUInt8Buffer, 1, QUINT8_C_ob, 3, QUINT8_W_ob, 1, 1, OP_CONV, 2, 0>(
+                QUInt8Buffer, 1, QUINT8_C_ob, 3,
+                QUINT8_W_ob, 1, 1, OP_CONV, 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -440,7 +667,8 @@ void PartialConv2D(
         else if (stride == 2)
         {
             quint8_detail::abstract_layer<
-                QUInt8Buffer, 1, QUINT8_C_ob, 3, QUINT8_W_ob, 2, 1, OP_CONV, 2, 0>(
+                QUInt8Buffer, 1, QUINT8_C_ob, 3,
+                QUINT8_W_ob, 2, 1, OP_CONV, 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -456,8 +684,81 @@ void PartialConv2D(
         }
     }
 
-    /// @todo We need another specific case for input_channels==1 (maybe more)
+    // Specific case for the first layer
+    else if ((input_channels == 2) && (input_channels < QUINT8_C_ib))
+    {
+        if (stride == 1)
+        {
+            quint8_detail::abstract_layer<
+                QUInt8Buffer, 1, QUINT8_C_ob, 2,
+                QUINT8_W_ob, 1, 1, OP_CONV, 2, 0>(
+                1,               // Output Channel Grouping
+                output_channels, // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
+        }
+        else if (stride == 2)
+        {
+            quint8_detail::abstract_layer<
+                QUInt8Buffer, 1, QUINT8_C_ob, 2,
+                QUINT8_W_ob, 2, 1, OP_CONV, 2, 0>(
+                1,               // Output Channel Grouping
+                output_channels, // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
+        }
+        else
+        {
+            throw std::invalid_argument(
+                "PartialConv2D<quint8> ERROR: stride unsupported.");
+        }
+    }
 
+    // Specific case for the first layer
+    else if ((input_channels == 1) && (input_channels < QUINT8_C_ib))
+    {
+        if (stride == 1)
+        {
+            quint8_detail::abstract_layer<
+                QUInt8Buffer, 1, QUINT8_C_ob, 1,
+                QUINT8_W_ob, 1, 1, OP_CONV, 2, 0>(
+                1,               // Output Channel Grouping
+                output_channels, // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
+        }
+        else if (stride == 2)
+        {
+            quint8_detail::abstract_layer<
+                QUInt8Buffer, 1, QUINT8_C_ob, 1,
+                QUINT8_W_ob, 2, 1, OP_CONV, 2, 0>(
+                1,               // Output Channel Grouping
+                output_channels, // Output Channels per group
+                input_channels,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, &filter_buf, &output_buf);
+        }
+        else
+        {
+            throw std::invalid_argument(
+                "PartialConv2D<quint8> ERROR: stride unsupported.");
+        }
+    }
+
+    /// @todo Do we need other specific cases for input_channels > 3?
+
+    // everything else.
     else
     {
         throw std::invalid_argument(

@@ -58,10 +58,10 @@ void Conv2D(int kernel_height, int kernel_width, int stride,
 //****************************************************************************
 /// @todo document this interface
 template <class BufferT, bool>
-void Conv1D(int kernel_height, int kernel_width, int stride,
-            uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
+void Conv1D(int kernel_width, int stride,
+            uint8_t l_pad, uint8_t r_pad,
             int output_channels, int input_channels,
-            int input_height, int input_width,
+            int batch_size, int input_width,
             BufferT const &input_buf,
             BufferT const &filter_buf,
             BufferT       &output_buf);
@@ -103,10 +103,10 @@ void PartialConv2D(int kernel_height, int kernel_width, int stride,
 //****************************************************************************
 /// @todo document this interface
 template <class BufferT, bool>
-void PartialConv1D(int kernel_height, int kernel_width, int stride,
-                   uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
+void PartialConv1D(int kernel_width, int stride,
+                   uint8_t l_pad, uint8_t r_pad,
                    int output_channels, int input_channels,
-                   int input_height, int input_width,
+                   int batch_size, int input_width,
                    BufferT const &input_buf,
                    BufferT const &filter_buf,
                    BufferT       &output_buf);
@@ -147,10 +147,10 @@ void DepthwiseConv2D(int kernel_height, int kernel_width, int stride,
 //****************************************************************************
 /// @todo document this interface
 // template <class BufferT>
-// void DepthwiseConv1D(int kernel_size, int stride,
-//                      uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
+// void DepthwiseConv1D(int kernel_width, int stride,
+//                      uint8_t l_pad, uint8_t r_pad,
 //                      int input_channels,
-//                      int input_height, int input_width,
+//                      int batch_size, int input_width,
 //                      BufferT const &input_buf,
 //                      BufferT const &filter_buf,
 //                      BufferT &output_buf);
@@ -193,12 +193,12 @@ void PartialDepthwiseConv2D(int kernel_height, int kernel_width, int stride,
 /// @todo document this interface
 // template <class BufferT, bool>
 // void PartialDepthwiseConv1D(int kernel_size, int stride,
-//                      uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
-//                      int input_channels,
-//                      int input_height, int input_width,
-//                      BufferT const &input_buf,
-//                      BufferT const &filter_buf,
-//                      BufferT &output_buf);
+//                             uint8_t l_pad, uint8_t r_pad,
+//                             int input_channels,
+//                             int batch_size, int input_width,
+//                             BufferT const &input_buf,
+//                             BufferT const &filter_buf,
+//                             BufferT &output_buf);
 
 //****************************************************************************
 /// @todo document this interface
@@ -230,11 +230,11 @@ void PartialGroupConv2D(
 //****************************************************************************
 /// @todo document this interface
 template <class BufferT, bool>
-void GroupConv1D(int kernel_height, int kernel_width, int stride,
+void GroupConv1D(int kernel_width, int stride,
                  int output_groups,
-                 uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
+                 uint8_t l_pad, uint8_t r_pad,
                  int input_channels,
-                 int input_height, int input_width,
+                 int batch_size, int input_width,
                  BufferT const &input_buf,
                  BufferT const &filter_buf,
                  BufferT       &output_buf);
@@ -242,11 +242,11 @@ void GroupConv1D(int kernel_height, int kernel_width, int stride,
 //****************************************************************************
 /// @todo document this interface
 template <class BufferT, bool>
-void PartialGroupConv1D(int kernel_height, int kernel_width, int stride,
+void PartialGroupConv1D(int kernel_width, int stride,
                         int output_groups,
-                        uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
+                        uint8_t l_pad, uint8_t r_pad,
                         int input_channels,
-                        int input_height, int input_width,
+                        int batch_size, int input_width,
                         BufferT const &input_buf,
                         BufferT const &filter_buf,
                         BufferT       &output_buf);
@@ -284,10 +284,10 @@ void MaxPool2D(int kernel_height, int kernel_width, int stride,
 //****************************************************************************
 /// @todo document this interface
 template <class BufferT, bool>
-void MaxPool1D(int kernel_height, int kernel_width, int stride,
-               uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
+void MaxPool1D(int kernel_width, int stride,
+               uint8_t l_pad, uint8_t r_pad,
                int input_channels,
-               int input_height, int input_width,
+               int batch_size, int input_width,
                BufferT const &input_buf,
                BufferT       &output_buf);
 
@@ -324,10 +324,10 @@ void AveragePool2D(int kernel_height, int kernel_width, int stride,
 //****************************************************************************
 /// @todo document this interface
 template <class BufferT, bool>
-void AveragePool1D(int kernel_height, int kernel_width, int stride,
-                   uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
+void AveragePool1D(int kernel_width, int stride,
+                   uint8_t l_pad, uint8_t r_pad,
                    int input_channels,
-                   int input_height, int input_width,
+                   int batch_size, int input_width,
                    BufferT const &input_buf,
                    BufferT       &output_buf);
 
@@ -361,7 +361,7 @@ void UpSample2D(int scale_factor,
 template <class BufferT, bool>
 void UpSample1D(int scale_factor,
                 int input_channels,
-                int input_height, int input_width,
+                int batch_size, int input_width,
                 BufferT const &input_buf,
                 BufferT &output_buf);
 
@@ -389,7 +389,7 @@ void ReLUActivation(int input_channels,
 /// @todo document this interface
 template <class BufferT, bool>
 void ReLUActivation1D(int input_channels,
-                      int input_height, int input_width,
+                      int batch_size, int input_width,
                       BufferT const &input_buf,
                       BufferT &output_buf);
 
