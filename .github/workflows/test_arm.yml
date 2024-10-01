@@ -12,10 +12,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - uses: pguyot/arm-runner-action@v2.6.5
+      - uses: pguyot/arm-runner-action@v2.6.4
         with:
           base_image: https://dietpi.com/downloads/images/DietPi_RPi-ARMv8-Bullseye.img.xz
-          cpu: cortex-a53
+          cpu: cortex-a72
           image_additional_mb: 4000
           copy_repository_path: /SMaLLFramework
           commands:
