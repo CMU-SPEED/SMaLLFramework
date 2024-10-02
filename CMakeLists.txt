@@ -77,7 +77,7 @@ elseif(CMAKE_UARCH STREQUAL "ZEN2")
 #   include_directories ( ${CMAKE_PLATFORM_DIR}/arm )
 
 elseif(CMAKE_UARCH STREQUAL "ARM-A72")
-  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=armv8.2-a -lrt")
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native -lrt") #-march=armv8.2-a -lrt")
   message("Microarchitecture target: ARM-A72")
   include_directories ( ${CMAKE_PLATFORM_DIR}/arm_a72 )
 
