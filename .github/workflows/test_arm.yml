@@ -1,4 +1,4 @@
-name: Test ARM Build
+name: Test ARM Build for an RPi
 
 on: [push]
 
