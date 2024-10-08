@@ -62,9 +62,9 @@ public:
         auto const &output_shape(this->output_shape());
 
         small::SoftMax(output_shape[CHANNEL],
-                              output_shape[HEIGHT], output_shape[WIDTH],
-                              input[0]->buffer(),
-                              output->buffer());
+                       output_shape[HEIGHT], output_shape[WIDTH],
+                       input[0]->buffer(),
+                       output->buffer());
 
         output->set_shape(output_shape);
     }
