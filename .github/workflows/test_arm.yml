@@ -1,4 +1,4 @@
-name: Test ARM Build
+name: Test ARM Build for an RPi
 
 on: [push]
 
@@ -8,14 +8,14 @@ on: [push]
 jobs:
   build-and-test:
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
-      - uses: actions/checkout@v3
-      - uses: pguyot/arm-runner-action@v2.5.2
+      - uses: actions/checkout@v4
+      - uses: pguyot/arm-runner-action@v2.6.5
         with:
           base_image: https://dietpi.com/downloads/images/DietPi_RPi-ARMv8-Bullseye.img.xz
-          cpu: cortex-a53
+          cpu: cortex-a72
           image_additional_mb: 4000
           copy_repository_path: /SMaLLFramework
           commands:
