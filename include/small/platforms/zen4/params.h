@@ -12,22 +12,4 @@
 
 #pragma once
 
-namespace small
-{
-
-/// op_types used to control how abstract_layer() performs computation.
-enum OpType
-{
-    OP_CONV = 0,          // 'c'
-    OP_RELU = 1,          // 'a'
-    OP_MAX_POOL = 2,      // 'p'
-    OP_LEAKY_RELU = 3,    // 'l'
-    OP_ADD = 4,           // 'd'
-    OP_AVERAGE_POOL = 5,  // 's'
-    OP_MUL = 6,
-    OP_UPSAMPLE = 7,      // 'u'
-    OP_EXP = 8,
-    OP_NONE = -1
-};
-
-}
+#include "../zen2/params.h"
