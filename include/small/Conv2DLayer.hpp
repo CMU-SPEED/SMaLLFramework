@@ -670,6 +670,14 @@ Conv2DLayer<BufferT>::Conv2DLayer(
                   << "x" << output_shape[WIDTH]
                   << ")" << std::endl;
     }
+    else if (activation_type == SOFTMAX)
+    {
+        std::cerr << "SoftMax(batches:" << output_shape[BATCH]
+                  << ",chans:" << output_shape[CHANNEL]
+                  << ",img:" << output_shape[HEIGHT]
+                  << "x" << output_shape[WIDTH]
+                  << ")" << std::endl;
+    }
 #endif
 }
 
