@@ -384,7 +384,38 @@ namespace small
         }                                                       \
     }
 
+//****************************************************************************
+// ReLU Activation
+//****************************************************************************
 
+// Same kernel as Pooling, set to zero to start.
+
+// When Fused, compare with a register of zeros
+#define FLOAT_FUSED_RELU_TILE_C(W_ob, C_ob)                           \
+    float *c_pixel = c_tile;                                          \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                            \
+    {                                                                 \
+        float *c_channel = c_pixel;                                   \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                        \
+        {                                                             \
+            *(c_channel) = (0.0 > *(c_channel)) ? 0.0 : *(c_channel); \
+            c_channel++;                                              \
+        }                                                             \
+        c_pixel += C_ob;                                              \
+    }
+
+#define FLOAT_FUSED_RELU_END_C(c_cur, W_last, C_ob)                   \
+    float *c_pixel = c_cur;                                           \
+    for (uint32_t kk = 0; kk < W_last; kk++)                          \
+    {                                                                 \
+        float *c_channel = c_pixel;                                   \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                        \
+        {                                                             \
+            *(c_channel) = (0.0 > *(c_channel)) ? 0.0 : *(c_channel); \
+            c_channel++;                                              \
+        }                                                             \
+        c_pixel += C_ob;                                              \
+    }
 //****************************************************************************
 // Leaky ReLU activation
 //****************************************************************************
@@ -425,6 +456,33 @@ namespace small
         c_pixel += C_ob;                                                \
     }
 
+#define FLOAT_FUSED_COND_SCALE_TILE_C(b, W_ob, C_ob)                                       \
+    float *c_pixel = c_tile;                                                               \
+    float scale = b[0];                                                                    \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                                                 \
+    {                                                                                      \
+        float *c_channel = c_pixel;                                                        \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                                             \
+        {                                                                                  \
+            *(c_channel) = (0.0 > *(c_channel)) ? (*(c_channel) * (scale)) : *(c_channel); \
+            c_channel++;                                                                   \
+        }                                                                                  \
+        c_pixel += C_ob;                                                                   \
+    }
+
+#define FLOAT_FUSED_COND_SCALE_END_C(b, c_cur, W_last, C_ob)                               \
+    float *c_pixel = c_cur;                                                                \
+    float scale = b[0];                                                                    \
+    for (uint32_t kk = 0; kk < W_last; kk++)                                               \
+    {                                                                                      \
+        float *c_channel = c_pixel;                                                        \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                                             \
+        {                                                                                  \
+            *(c_channel) = (0.0 > *(c_channel)) ? (*(c_channel) * (scale)) : *(c_channel); \
+            c_channel++;                                                                   \
+        }                                                                                  \
+        c_pixel += C_ob;                                                                   \
+    }
 
 //****************************************************************************
 // Accumulation kernels
@@ -486,38 +544,38 @@ namespace small
         c_pixel += C_ob;                       \
     }
 
-#define FLOAT_DIV_END_C(c_cur, norm, W_last, C_ob)      \
-    float *c_pixel = c_cur;                             \
-    for (uint32_t kk = 0; kk < W_last; kk++)            \
-    {                                                   \
-        float *c_channel = c_pixel;                     \
-        for (uint32_t jj = 0; jj < C_ob; jj++)          \
-        {                                               \
-            *(c_channel) *= norm;                       \
-            c_channel++;                                \
-        }                                               \
-        c_pixel += C_ob;                                \
+#define FLOAT_DIV_END_C(c_cur, norm, W_last, C_ob)    \
+    float *c_pixel = c_cur;                           \
+    for (uint32_t kk = 0; kk < W_last; kk++)          \
+    {                                                 \
+        float *c_channel = c_pixel;                   \
+        for (uint32_t jj = 0; jj < C_ob; jj++)        \
+        {                                             \
+            *(c_channel) *= norm;                     \
+            c_channel++;                              \
+        }                                             \
+        c_pixel += C_ob;                              \
     }
 
 //****************************************************************************
 // Accumulate upsampling
 //****************************************************************************
-#define FLOAT_ACCUM_TILE_C_upsample(I, stride, _C_ib, W_ob, C_ob)       \
-    for (uint32_t kk = 0; kk < W_ob; kk++)                              \
-    {                                                                   \
-        for (uint32_t jj = 0; jj < C_ob; jj++)                          \
-        {                                                               \
-            c_tile[kk * C_ob + jj] += I[(kk / stride) * (_C_ib) + jj];  \
-        }                                                               \
+#define FLOAT_ACCUM_TILE_C_upsample(I, stride, _C_ib, _W_ob, C_ob)     \
+    for (uint32_t kk = 0; kk < _W_ob; kk++)                            \
+    {                                                                  \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                         \
+        {                                                              \
+            c_tile[kk * C_ob + jj] += I[(kk / stride) * (_C_ib) + jj]; \
+        }                                                              \
     }
 
-#define FLOAT_ACCUM_END_C_upsample(I, stride, _C_ib, W_ob, C_ob)        \
-    for (uint32_t kk = 0; kk < W_ob; kk++)                              \
-    {                                                                   \
-        for (uint32_t jj = 0; jj < C_ob; jj++)                          \
-        {                                                               \
-            c_tile[kk * C_ob + jj] += I[(kk / stride) * (_C_ib) + jj];  \
-        }                                                               \
+#define FLOAT_ACCUM_END_C_upsample(I, stride, _C_ib, _W_ob, C_ob)      \
+    for (uint32_t kk = 0; kk < _W_ob; kk++)                            \
+    {                                                                  \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                         \
+        {                                                              \
+            c_tile[kk * C_ob + jj] += I[(kk / stride) * (_C_ib) + jj]; \
+        }                                                              \
     }
 
 //****************************************************************************
@@ -642,4 +700,30 @@ namespace small
         }                                             \
         a_pixel += step;                              \
         c_pixel += C_ob;                              \
+    }
+
+#define FLOAT_FUSED_EXP_TILE_C(W_ob, C_ob)       \
+    c_tile_t *c_pixel = c_tile;                  \
+    for (uint32_t kk = 0; kk < W_ob; kk++)       \
+    {                                            \
+        c_tile_t *c_channel = c_pixel;           \
+        for (uint32_t jj = 0; jj < C_ob; jj++)   \
+        {                                        \
+            *(c_channel) = std::exp(*c_channel); \
+            c_channel++;                         \
+        }                                        \
+        c_pixel += C_ob;                         \
+    }
+
+#define FLOAT_FUSED_EXP_END_C(c_cur, W_last, C_ob) \
+    c_tile_t *c_pixel = c_cur;                     \
+    for (uint32_t kk = 0; kk < W_last; kk++)       \
+    {                                              \
+        c_tile_t *c_channel = c_pixel;             \
+        for (uint32_t jj = 0; jj < C_ob; jj++)     \
+        {                                          \
+            *(c_channel) = std::exp(*c_channel);   \
+            c_channel++;                           \
+        }                                          \
+        c_pixel += C_ob;                           \
     }

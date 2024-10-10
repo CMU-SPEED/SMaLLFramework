@@ -21,96 +21,80 @@ namespace small
 {
 //****************************************************************************
 template <typename BufferT>
-class DepthwiseConv2DLayer : public Layer<BufferT>
+class Conv1DLayer : public Layer<BufferT>
 {
 public:
     typedef typename BufferT::value_type value_type;
 
-    //DepthwiseConv2DLayer () delete;
+    //Conv1DLayer () delete;
 
     // No bias, no batch normalization
-    DepthwiseConv2DLayer(shape_type const &input_shape,
-                         uint32_t          kernel_height,
-                         uint32_t          kernel_width,
-                         uint32_t          stride,
-                         PaddingEnum       padding_type,
-                         BufferT    const &filters,
-                         bool              buffers_are_packed = true,
-                         ActivationType    activation_type = NONE,
-                         float             leaky_slope = 1.e-2);
+    Conv1DLayer(shape_type const &input_shape,    //pred.output_shape()
+                uint32_t          kernel_width,
+                uint32_t          stride,
+                PaddingEnum       padding_type,
+                uint32_t          num_output_channels,
+                BufferT    const &filters,
+                bool              buffers_are_packed = true,
+                ActivationType    activation_type = NONE,
+                float             leaky_slope = 1.e-2);
 
     // With bias term
-    DepthwiseConv2DLayer(shape_type const &input_shape,
-                         uint32_t          kernel_height,
-                         uint32_t          kernel_width,
-                         uint32_t          stride,
-                         PaddingEnum       padding_type,
-                         BufferT    const &filters,
-                         BufferT    const &bias,
-                         bool              buffers_are_packed = true,
-                         ActivationType    activation_type = NONE,
-                         float             leaky_slope = 1.e-2);
+    Conv1DLayer(shape_type const &input_shape,    //pred.output_shape()
+                uint32_t          kernel_width,
+                uint32_t          stride,
+                PaddingEnum       padding_type,
+                uint32_t          num_output_channels,
+                BufferT    const &filters,
+                BufferT    const &bias,
+                bool              buffers_are_packed = true,
+                ActivationType    activation_type = NONE,
+                float             leaky_slope = 1.e-2);
 
     // With fused batch normalization
-    DepthwiseConv2DLayer(
-        shape_type const &input_shape,
-        uint32_t          kernel_height,
-        uint32_t          kernel_width,
-        uint32_t          stride,
-        PaddingEnum       padding_type,
-        BufferT    const &filters,
-        BufferT    const &bn_weight,            // gamma
-        BufferT    const &bn_bias,              // beta
-        BufferT    const &bn_running_mean,      // mu_hat
-        BufferT    const &bn_running_variance,  // sigma_hat^2
-        float      const &bn_eps = 1.e-3,       // float?
-        bool              buffers_are_packed = true,
-        ActivationType    activation_type = NONE,
-        float             leaky_slope = 1.e-2);
+    Conv1DLayer(shape_type const &input_shape,    //pred.output_shape()
+                uint32_t          kernel_width,
+                uint32_t          stride,
+                PaddingEnum       padding_type,
+                uint32_t          num_output_channels,
+                BufferT    const &filters,
+                BufferT    const &bn_weight,            // gamma
+                BufferT    const &bn_bias,              // beta
+                BufferT    const &bn_running_mean,      // mu_hat
+                BufferT    const &bn_running_variance,  // sigma_hat^2
+                float      const &bn_eps = 1.e-5,       // float?
+                bool              buffers_are_packed = true,
+                ActivationType    activation_type = NONE,
+                float             leaky_slope = 1.e-2);
 
-    // With bias and fused batch normalization
-    DepthwiseConv2DLayer(
-        shape_type const &input_shape,    //pred.output_shape()
-        uint32_t          kernel_height,
-        uint32_t          kernel_width,
-        uint32_t          stride,
-        PaddingEnum       padding_type,
-        BufferT    const &filters,
-        BufferT    const &bias,
-        BufferT    const &bn_weight,            // gamma
-        BufferT    const &bn_bias,              // beta
-        BufferT    const &bn_running_mean,      // mu_hat
-        BufferT    const &bn_running_variance,  // sigma_hat^2
-        float      const &bn_eps = 1.e-3,       // float?
-        bool              buffers_are_packed = true,
-        ActivationType    activation_type = NONE,
-        float             leaky_slope = 1.e-2);
+    virtual ~Conv1DLayer() {}
 
-    virtual ~DepthwiseConv2DLayer() {}
+    inline uint32_t get_effective_output_channels() const
+    {
+        return m_effective_output_channels;
+    }
 
     virtual void compute_output(
         std::vector<Tensor<BufferT> const *> input,
         Tensor<BufferT>*                     output) const;
 
-    BufferT const &get_packed_filters() const { return m_packed_filters; }
-    BufferT const &get_packed_bias()    const { return m_packed_bias; }
-
 private:
     void compute_padding_output_shape(shape_type const &input_shape,
-                                      uint32_t          kernel_height,
                                       uint32_t          kernel_width,
                                       uint32_t          stride,
-                                      PaddingEnum       padding_type);
+                                      PaddingEnum       padding_type,
+                                      uint32_t          num_output_channels);
 
     shape_type const m_input_shape;
 
-    uint32_t   const m_kernel_height, m_kernel_width;
+    uint32_t   const m_kernel_width;
     uint32_t   const m_stride;
+    uint32_t   const m_effective_output_channels;
 
     ActivationType const m_activation_type;
 
     /// @todo: how to make const?
-    uint8_t          m_t_pad, m_b_pad, m_l_pad, m_r_pad;
+    uint8_t          m_l_pad, m_r_pad;
 
     BufferT          m_leaky_slope;
     BufferT          m_packed_filters;
@@ -123,9 +107,10 @@ namespace detail
 {
     //************************************************************************
     template <class BufferT>
-    void initialize_dw_conv2d_buffers(
-        uint32_t          num_channels,
-        uint32_t          kernel_height,
+    void initialize_conv1d_buffers(
+        uint32_t          num_output_channels,
+        uint32_t          num_effective_output_channels,
+        uint32_t          num_input_channels,
         uint32_t          kernel_width,
         BufferT    const &filters,
         BufferT    const &bias,
@@ -140,41 +125,65 @@ namespace detail
     {
         // ============ Filter weights ===========
         if (filters.size() !=   /// @todo consider allowing larger filter buffers??
-            num_channels*kernel_height*kernel_width)
+            num_effective_output_channels*num_input_channels*kernel_width)
         {
             throw std::invalid_argument(
-                "DepthwiseConv2DLayer::ctor ERROR: "
-                "filters buffer is incorrect size.");
+                "*Conv1DLayer::ctor ERROR: filters buffer is incorrect size.");
         }
 
         // Allocate packed filters if necessary
         if (packed_filters.size() == 0)
         {
-            BufferT filters(num_channels*kernel_height*kernel_width);
-            // OPTIONAL: Uncomment when using effective output channels
-            //small::init_zeros(filters, filters.size());
+            BufferT filters(num_input_channels*kernel_width*num_output_channels);
+            small::init_zeros(filters, filters.size()); // optional
             packed_filters = std::move(filters);
         }
         else if (packed_filters.size() !=
-                 num_channels*kernel_height*kernel_width)
+                 num_input_channels*kernel_width*num_output_channels)
         {
             throw std::invalid_argument(
-                "DepthwiseConv2DLayer::ctor ERROR: "
+                "*Conv1DLayer::ctor ERROR: "
                 "packed filters buffer incorrect size.");
         }
 
         if (!buffers_are_packed)
         {
-            // Pack the filter buffers for SMaLL use
-            small::pack_buffer(filters,
-                               FILTER_DW,
-                               num_channels, 1U,
-                               kernel_height, kernel_width,
-                               BufferT::C_ib, BufferT::C_ob,
-                               packed_filters);
+            if (num_output_channels != num_effective_output_channels)
+            {
+                // pad out the unpacked
+                size_t unpacked_idx = 0;
+                for (size_t co = 0; co < num_effective_output_channels; ++co)
+                    for (size_t ci = 0; ci < num_input_channels; ++ci)
+                        for (size_t w = 0; w < kernel_width; ++w)
+                        {
+                            size_t packed_idx = small::packed_weight_index(
+                                num_output_channels, num_input_channels,
+                                1, kernel_width,
+                                BufferT::C_ob, BufferT::C_ib,
+                                co, ci, 1, w);
+                            //std::cerr << "unpacked-->packed: " << unpacked_idx
+                            //          << "-->" << packed_idx << std::endl;
+                            packed_filters[packed_idx] = filters[unpacked_idx++];
+                        }
+            }
+            else
+            {
+                // Pack the filter buffers for SMaLL use
+                small::pack_buffer(filters,
+                                   FILTER_CONV,
+                                   num_output_channels, num_input_channels,
+                                   1, kernel_width,
+                                   BufferT::C_ib, BufferT::C_ob,
+                                   packed_filters);
+            }
         }
         else
         {
+            if (num_output_channels != num_effective_output_channels)
+            {
+                throw std::invalid_argument(
+                    "Conv1DLayer::ctor error: invalid number of output channels.");
+            }
             std::copy(filters.data(),
                       filters.data() + packed_filters.size(),
                       packed_filters.data());
@@ -183,18 +192,18 @@ namespace detail
         // ============ Bias term ===========
         if (bias.size() > 0)
         {
-            if (bias.size() != num_channels)
+            if (bias.size() != num_effective_output_channels)
             {
                 throw std::invalid_argument(
-                    "DepthwiseConv2DLayer::ctor ERROR: "
+                    "*Conv1DLayer::ctor ERROR: "
                     "bias buffer incorrect size.");
             }
 
             // if (!buffers_are_packed)
-            BufferT local_bias(num_channels);
-            //small::init_zeros(local_bias, local_bias.size());  // optional
+            BufferT local_bias(num_output_channels);
+            small::init_zeros(local_bias, local_bias.size());  // optional
             std::copy(bias.data(),
-                      bias.data() + num_channels,
+                      bias.data() + num_effective_output_channels,
                       local_bias.data());
             packed_bias = std::move(local_bias);
         }
@@ -206,13 +215,13 @@ namespace detail
             (bn_running_mean.size() > 0) ||
             (bn_running_variance.size() > 0))
         {
-            if ((bn_weight.size() != num_channels) ||
-                (bn_bias.size() != num_channels) ||
-                (bn_running_mean.size() != num_channels) ||
-                (bn_running_variance.size() != num_channels))
+            if ((bn_weight.size() != num_effective_output_channels) ||
+                (bn_bias.size() != num_effective_output_channels) ||
+                (bn_running_mean.size() != num_effective_output_channels) ||
+                (bn_running_variance.size() != num_effective_output_channels))
             {
                 throw std::invalid_argument(
-                    "DepthwiseConv2DLayer::ctor ERROR: "
+                    "*Conv1DLayer::ctor ERROR: "
                     "BN buffers incorrect size.");
             }
 
@@ -242,16 +251,16 @@ namespace detail
             bool no_bias = false;
             if (packed_bias.size() == 0)
             {
-                packed_bias = std::move(BufferT(num_channels));
+                packed_bias = std::move(BufferT(num_output_channels));
                 small::init_zeros(packed_bias, packed_bias.size());
                 no_bias = true;
             }
 
-            for (size_t ochan = 0; ochan < num_channels; ++ochan)
+            for (size_t ochan = 0; ochan < num_effective_output_channels; ++ochan)
             {
                 // compute scaling factor for filters of this output channel
-                float rsq = 1.0f/std::sqrt(bn_running_variance[ochan] + bn_eps);
-                float filter_scale = bn_weight[ochan] * rsq;
+                float filter_scale =
+                    bn_weight[ochan]/std::sqrt(bn_running_variance[ochan] + bn_eps);
 
                 /// @todo REVISIT: this does not look like python code above
                 if (no_bias)
@@ -261,25 +270,25 @@ namespace detail
                 }
                 else
                 {
-                    packed_bias[ochan] = bn_bias[ochan] +
-                        filter_scale*(packed_bias[ochan]- bn_running_mean[ochan]);
+                    packed_bias[ochan] = filter_scale*packed_bias[ochan] +
+                        bn_bias[ochan] - bn_running_mean[ochan]*filter_scale;
                 }
                 //std::cerr << ": packed_bias(" << ochan << ") = "
                 //          << packed_bias[ochan]
                 //          << std::endl;
 
-                for (size_t fh = 0; fh < kernel_height; ++fh)
+                for (size_t ichan = 0; ichan < num_input_channels; ++ichan)
                 {
                     for (size_t fw = 0; fw < kernel_width; ++fw)
                     {
                         size_t packed_index =
-                            packed_weight_index(num_channels,  // num_output_channels
-                                                1U,            // num_input_channels
-                                                kernel_height,
+                            packed_weight_index(num_output_channels,
+                                                num_input_channels,
+                                                1,
                                                 kernel_width,
                                                 BufferT::C_ob,
-                                                1U,            //BufferT::C_ib,
-                                                ochan, 0U, fh, fw);
+                                                BufferT::C_ib,
+                                                ochan, ichan, 0, fw);
                         //std::cerr << "packed_index = " << packed_index
                         //          << std::endl;
                         packed_filters[packed_index] *= filter_scale;
@@ -287,11 +296,13 @@ namespace detail
                 }
             }
         }
-
 #if defined(DEBUG_LAYERS)
-        std::cerr << "DWConv2D: packed_bias.size():    "
+        std::cerr << "*Conv1D: ochans:" << num_output_channels
+                  << ",effective_ochans:" << num_effective_output_channels
+                  << std::endl;
+        std::cerr << "*Conv1D: packed_bias.size():    "
                   << packed_bias.size() << std::endl;
-        std::cerr << "DWConv2D: packed_filters.size(): "
+        std::cerr << "*Conv1D: packed_filters.size(): "
                   << packed_filters.size() << std::endl;
 #endif
     }
@@ -304,47 +315,71 @@ namespace detail
 ///                     {in_chans, out_chans, kern_h, kern_w}
 ///
 template <class BufferT>
-DepthwiseConv2DLayer<BufferT>::DepthwiseConv2DLayer(
+Conv1DLayer<BufferT>::Conv1DLayer(
     shape_type const &input_shape,
-    uint32_t          kernel_height,
     uint32_t          kernel_width,
     uint32_t          stride,
     PaddingEnum       padding_type,
+    uint32_t          num_output_channels,
     BufferT    const &filters,
     bool              buffers_are_packed,
     ActivationType    activation_type,
     float             leaky_slope)
     : Layer<BufferT>(),
       m_input_shape(input_shape),
-      m_kernel_height(kernel_height),
       m_kernel_width(kernel_width),
       m_stride(stride),
+      m_effective_output_channels(num_output_channels),
       m_activation_type(activation_type),
-      m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0),
+      m_l_pad(0), m_r_pad(0),
       m_leaky_slope(1),  /// @note Allocating 1-element buffer
       m_packed_filters(),
       m_packed_bias()
 {
 #if defined(DEBUG_LAYERS)
-    std::cerr << "DWConv2D(batches:" << m_input_shape[BATCH]
-              << ",k:" << kernel_height << "x" << kernel_width
-              << ",s:" << stride
+    std::cerr << "Conv1D(batches:" << m_input_shape[BATCH]
+              << ",k:" << m_kernel_width
+              << ",s:" << m_stride
               << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
-              << ",chans:" << m_input_shape[CHANNEL]
+              << ",ichans:" << m_input_shape[CHANNEL]
+              << ",ochans:" << num_output_channels
               << ",img:" << m_input_shape[HEIGHT]
               << "x" << m_input_shape[WIDTH]
               << "), filters.size=" << filters.size() << std::endl;
 #endif
+    if (((input_shape[CHANNEL] % BufferT::C_ib) != 0) &&
+        (input_shape[CHANNEL] != 3))
+    {
+        throw std::invalid_argument(
+            "Conv1DLayer::ctor ERROR: invalid number of input channels.");
+    }
+
+    // Deal with odd numbers of output channels by padding unpacked filters
+    if ((num_output_channels % BufferT::C_ob) != 0)
+    {
+        if (buffers_are_packed)
+        {
+            throw std::invalid_argument(
+                "Conv1DLayer::ctor ERROR: invalid number of output channels.");
+        }
+
+        // set to next integer multiple of blocking factor (for this platform).
+        num_output_channels +=
+            (BufferT::C_ob - (num_output_channels % BufferT::C_ob));
+    }
 
     m_leaky_slope[0] = leaky_slope;
     compute_padding_output_shape(input_shape,
-                                 m_kernel_height, m_kernel_width,
+                                 m_kernel_width,
                                  m_stride,
-                                 padding_type);
+                                 padding_type,
+                                 num_output_channels);
 
-    detail::initialize_dw_conv2d_buffers(
+    detail::initialize_conv1d_buffers(
+        num_output_channels,
+        m_effective_output_channels,
         m_input_shape[CHANNEL],
-        m_kernel_height, m_kernel_width,
+        m_kernel_width,
         filters,
         BufferT(),  // empty bias
         BufferT(), BufferT(), BufferT(), BufferT(), 0.f, // no BN
@@ -384,12 +419,12 @@ DepthwiseConv2DLayer<BufferT>::DepthwiseConv2DLayer(
 
 //****************************************************************************
 template <class BufferT>
-DepthwiseConv2DLayer<BufferT>::DepthwiseConv2DLayer(
+Conv1DLayer<BufferT>::Conv1DLayer(
     shape_type const &input_shape,
-    uint32_t          kernel_height,
     uint32_t          kernel_width,
     uint32_t          stride,
     PaddingEnum       padding_type,
+    uint32_t          num_output_channels,
     BufferT    const &filters,
     BufferT    const &bias,
     bool              buffers_are_packed,
@@ -397,36 +432,60 @@ DepthwiseConv2DLayer<BufferT>::DepthwiseConv2DLayer(
     float             leaky_slope)
     : Layer<BufferT>(),
       m_input_shape(input_shape),
-      m_kernel_height(kernel_height),
       m_kernel_width(kernel_width),
       m_stride(stride),
+      m_effective_output_channels(num_output_channels),
       m_activation_type(activation_type),
-      m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0),
+      m_l_pad(0), m_r_pad(0),
       m_leaky_slope(1),  /// @note Allocating 1-element buffer
       m_packed_filters(),
       m_packed_bias()
 {
 #if defined(DEBUG_LAYERS)
-    std::cerr << "DWConv2D(batches:" << m_input_shape[BATCH]
-              << ",k:" << m_kernel_height << "x" << m_kernel_width
+    std::cerr << "Conv1D(batches:" << m_input_shape[BATCH]
+              << ",k:" << m_kernel_width
               << ",s:" << m_stride
               << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
-              << ",chans:" << m_input_shape[CHANNEL]
+              << ",ichans:" << m_input_shape[CHANNEL]
+              << ",ochans:" << num_output_channels
               << ",img:" << m_input_shape[HEIGHT]
               << "x" << m_input_shape[WIDTH]
-              << "), filters.size=" << filters.size()
+              << "),filters.size=" << filters.size()
               << ",bias.size=" << bias.size() << std::endl;
 #endif
+    if (((input_shape[CHANNEL] % BufferT::C_ib) != 0) &&
+        (input_shape[CHANNEL] != 3))
+    {
+        throw std::invalid_argument(
+            "Conv1DLayer::ctor ERROR: invalid number of input channels.");
+    }
+
+    // Deal with odd numbers of output channels by padding unpacked filters
+    if ((num_output_channels % BufferT::C_ob) != 0)
+    {
+        if (buffers_are_packed)
+        {
+            throw std::invalid_argument(
+                "Conv1DLayer::ctor ERROR: invalid number of output channels.");
+        }
+
+        // set to next integer multiple of blocking factor (for this platform).
+        num_output_channels +=
+            (BufferT::C_ob - (num_output_channels % BufferT::C_ob));
+    }
 
     m_leaky_slope[0] = leaky_slope;
     compute_padding_output_shape(input_shape,
-                                 m_kernel_height, m_kernel_width,
+                                 m_kernel_width,
                                  m_stride,
-                                 padding_type);
+                                 padding_type,
+                                 num_output_channels);
 
-    detail::initialize_dw_conv2d_buffers(
+    detail::initialize_conv1d_buffers(
+        num_output_channels,
+        m_effective_output_channels,
         m_input_shape[CHANNEL],
-        m_kernel_height, m_kernel_width,
+        m_kernel_width,
         filters,
         bias,
         BufferT(), BufferT(), BufferT(), BufferT(), 0.f, // no BN
@@ -468,38 +527,39 @@ DepthwiseConv2DLayer<BufferT>::DepthwiseConv2DLayer(
 
 //****************************************************************************
 template <class BufferT>
-DepthwiseConv2DLayer<BufferT>::DepthwiseConv2DLayer(
+Conv1DLayer<BufferT>::Conv1DLayer(
     shape_type const &input_shape,
-    uint32_t          kernel_height,
     uint32_t          kernel_width,
     uint32_t          stride,
     PaddingEnum       padding_type,
+    uint32_t          num_output_channels,
     BufferT    const &filters,
     BufferT    const &bn_weight,            // gamma
     BufferT    const &bn_bias,              // beta
     BufferT    const &bn_running_mean,      // mu_hat
     BufferT    const &bn_running_variance,  // sigma_hat^2
-    float      const &bn_eps ,              // float?
+    float      const &bn_eps,               // float?
     bool              buffers_are_packed,
     ActivationType    activation_type,
     float             leaky_slope)
     : Layer<BufferT>(),
       m_input_shape(input_shape),
-      m_kernel_height(kernel_height),
       m_kernel_width(kernel_width),
       m_stride(stride),
+      m_effective_output_channels(num_output_channels),
       m_activation_type(activation_type),
-      m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0),
+      m_l_pad(0), m_r_pad(0),
       m_leaky_slope(1),  /// @note Allocating 1-element buffer
       m_packed_filters(),
       m_packed_bias()
 {
 #if defined(DEBUG_LAYERS)
-    std::cerr << "DWConv2D(batches:" << m_input_shape[BATCH]
-              << ",k:" << m_kernel_height << "x" << m_kernel_width
+    std::cerr << "Conv1D(batches:" << m_input_shape[BATCH]
+              << ",k:" << m_kernel_width
               << ",s:" << m_stride
               << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
-              << ",chans:" << m_input_shape[CHANNEL]
+              << ",ichans:" << m_input_shape[CHANNEL]
+              << ",ochans:" << num_output_channels
               << ",img:" << m_input_shape[HEIGHT]
               << "x" << m_input_shape[WIDTH]
               << "), filters.size=" << filters.size()
@@ -510,113 +570,41 @@ DepthwiseConv2DLayer<BufferT>::DepthwiseConv2DLayer(
               << "," << bn_running_mean.size()
               << "),bn_eps:" << bn_eps << std::endl;
 #endif
+    if (((input_shape[CHANNEL] % BufferT::C_ib) != 0) &&
+        (input_shape[CHANNEL] != 3))
+    {
+        throw std::invalid_argument(
+            "Conv1DLayer::ctor ERROR: invalid number of input channels.");
+    }
+
+    // Deal with odd numbers of output channels by padding unpacked filters
+    if ((num_output_channels % BufferT::C_ob) != 0)
+    {
+        if (buffers_are_packed)
+        {
+            throw std::invalid_argument(
+                "Conv1DLayer::ctor ERROR: invalid number of output channels.");
+        }
+
+        // set to next integer multiple of blocking factor (for this platform).
+        num_output_channels +=
+            (BufferT::C_ob - (num_output_channels % BufferT::C_ob));
+    }
 
     m_leaky_slope[0] = leaky_slope;
     compute_padding_output_shape(m_input_shape,
-                                 m_kernel_height, m_kernel_width,
+                                 m_kernel_width,
                                  m_stride,
-                                 padding_type);
+                                 padding_type,
+                                 num_output_channels);
 
-    detail::initialize_dw_conv2d_buffers(
+    detail::initialize_conv1d_buffers(
+        num_output_channels,
+        m_effective_output_channels,
         m_input_shape[CHANNEL],
-        m_kernel_height, m_kernel_width,
+        m_kernel_width,
         filters,
         BufferT(), // no bias
-        bn_weight, bn_bias,
-        bn_running_mean, bn_running_variance, bn_eps,
-        buffers_are_packed,
-        m_packed_filters,
-        m_packed_bias);
-
-
-#if defined(DEBUG_LAYERS)
-    auto &output_shape = this->output_shape();
-    if (activation_type == RELU)
-    {
-        std::cerr << "ReLU(batches:" << output_shape[BATCH]
-                  << ",chans:" << output_shape[CHANNEL]
-                  << ",img:" << output_shape[HEIGHT]
-                  << "x" << output_shape[WIDTH]
-                  << ")" << std::endl;
-    }
-    else if (activation_type == LEAKY)
-    {
-        std::cerr << "LeakyReLU(batches:" << output_shape[BATCH]
-                  << ",chans:" << output_shape[CHANNEL]
-                  << ",slope:" << m_leaky_slope[0]
-                  << ",img:" << output_shape[HEIGHT]
-                  << "x" << output_shape[WIDTH]
-                  << ")" << std::endl;
-    }
-    else if (activation_type == SOFTMAX)
-    {
-        std::cerr << "SoftMax(batches:" << output_shape[BATCH]
-                  << ",chans:" << output_shape[CHANNEL]
-                  << ",img:" << output_shape[HEIGHT]
-                  << "x" << output_shape[WIDTH]
-                  << ")" << std::endl;
-    }
-#endif
-}
-
-//****************************************************************************
-template <class BufferT>
-DepthwiseConv2DLayer<BufferT>::DepthwiseConv2DLayer(
-    shape_type const &input_shape,
-    uint32_t          kernel_height,
-    uint32_t          kernel_width,
-    uint32_t          stride,
-    PaddingEnum       padding_type,
-    BufferT    const &filters,
-    BufferT    const &bias,
-    BufferT    const &bn_weight,            // gamma
-    BufferT    const &bn_bias,              // beta
-    BufferT    const &bn_running_mean,      // mu_hat
-    BufferT    const &bn_running_variance,  // sigma_hat^2
-    float      const &bn_eps ,              // float?
-    bool              buffers_are_packed,
-    ActivationType    activation_type,
-    float             leaky_slope)
-    : Layer<BufferT>(),
-      m_input_shape(input_shape),
-      m_kernel_height(kernel_height),
-      m_kernel_width(kernel_width),
-      m_stride(stride),
-      m_activation_type(activation_type),
-      m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0),
-      m_leaky_slope(1),  /// @note Allocating 1-element buffer
-      m_packed_filters(),
-      m_packed_bias()
-{
-#if defined(DEBUG_LAYERS)
-    std::cerr << "DWConv2D(batches:" << m_input_shape[BATCH]
-              << ",k:" << m_kernel_height << "x" << m_kernel_width
-              << ",s:" << m_stride
-              << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
-              << ",chans:" << m_input_shape[CHANNEL]
-              << ",img:" << m_input_shape[HEIGHT]
-              << "x" << m_input_shape[WIDTH]
-              << "), filters.size=" << filters.size()
-              << ",bias.size=" << bias.size()
-              << ",bn.sizes(weight,bias,run_var,run_avg)=("
-              << bn_weight.size()
-              << "," << bn_bias.size()
-              << "," << bn_running_variance.size()
-              << "," << bn_running_mean.size()
-              << "),bn_eps:" << bn_eps << std::endl;
-#endif
-
-    m_leaky_slope[0] = leaky_slope;
-    compute_padding_output_shape(m_input_shape,
-                                 m_kernel_height, m_kernel_width,
-                                 m_stride,
-                                 padding_type);
-
-    detail::initialize_dw_conv2d_buffers(
-        m_input_shape[CHANNEL],
-        m_kernel_height, m_kernel_width,
-        filters,
-        bias,
         bn_weight, bn_bias,
         bn_running_mean, bn_running_variance, bn_eps,
         buffers_are_packed,
@@ -656,21 +644,21 @@ DepthwiseConv2DLayer<BufferT>::DepthwiseConv2DLayer(
 
 //****************************************************************************
 template <class BufferT>
-void DepthwiseConv2DLayer<BufferT>::compute_output(
+void Conv1DLayer<BufferT>::compute_output(
     std::vector<Tensor<BufferT> const *> input,
     Tensor<BufferT>*                     output) const
 {
     if ((input.size() != 1) || (input[0]->shape() != m_input_shape))
     {
         throw std::invalid_argument(
-            "DepthwiseConv2DLayer::compute_output() ERROR: "
+            "Conv1DLayer::compute_output() ERROR: "
             "incorrect input buffer shape.");
     }
 
     if (output->capacity() < this->output_size())
     {
         throw std::invalid_argument(
-            "DepthwiseConv2DLayer::compute_output() ERROR: "
+            "Conv1DLayer::compute_output() ERROR: "
             "insufficient output buffer space.");
     }
 
@@ -682,39 +670,44 @@ void DepthwiseConv2DLayer<BufferT>::compute_output(
                     output_shape[HEIGHT],
                     output_shape[WIDTH],
                     m_packed_bias, output->buffer());
-        small::PartialDepthwiseConv2D(m_kernel_height, m_kernel_width, m_stride,
-                                      m_t_pad, m_b_pad, m_l_pad, m_r_pad,
-                                      m_input_shape[CHANNEL],
-                                      m_input_shape[HEIGHT],
-                                      m_input_shape[WIDTH],
-                                      input[0]->buffer(),
-                                      m_packed_filters,
-                                      output->buffer());
+        small::PartialConv1D(m_kernel_width, m_stride,
+                             m_l_pad, m_r_pad,
+                             output_shape[CHANNEL],
+                             m_input_shape[CHANNEL],
+                             m_input_shape[HEIGHT],  /// @todo BATCH?
+                             m_input_shape[WIDTH],
+                             input[0]->buffer(),
+                             m_packed_filters,
+                             output->buffer());
     }
     else
     {
-        small::DepthwiseConv2D(m_kernel_height, m_kernel_width, m_stride,
-                               m_t_pad, m_b_pad, m_l_pad, m_r_pad,
-                               m_input_shape[CHANNEL],
-                               m_input_shape[HEIGHT], m_input_shape[WIDTH],
-                               input[0]->buffer(),
-                               m_packed_filters,
-                               output->buffer());
+        small::Conv1D(m_kernel_width, m_stride,
+                      m_l_pad, m_r_pad,
+                      output_shape[CHANNEL],
+                      m_input_shape[CHANNEL],
+                      m_input_shape[HEIGHT],  /// @todo BATCH?
+                      m_input_shape[WIDTH],
+                      input[0]->buffer(),
+                      m_packed_filters,
+                      output->buffer());
     }
 
     output->set_shape(output_shape);
 
     if (m_activation_type == RELU)
     {
-        small::ReLUActivation(output_shape[CHANNEL],
-                              output_shape[HEIGHT], output_shape[WIDTH],
+        small::ReLUActivation(output_shape[CHANNEL], /// @todo 1D?
+                              output_shape[HEIGHT],  /// @todo BATCH?
+                              output_shape[WIDTH],
                               output->buffer(),
                               output->buffer());
     }
     else if (m_activation_type == LEAKY)
     {
-        small::LeakyReLUActivation(output_shape[CHANNEL],
-                                   output_shape[HEIGHT], output_shape[WIDTH],
+        small::LeakyReLUActivation(output_shape[CHANNEL], /// @todo 1D?
+                                   output_shape[HEIGHT],  /// @todo BATCH?
+                                   output_shape[WIDTH],
                                    output->buffer(),
                                    m_leaky_slope,
                                    output->buffer());
@@ -722,7 +715,8 @@ void DepthwiseConv2DLayer<BufferT>::compute_output(
     else if (m_activation_type == SOFTMAX)
     {
         small::SoftMax(output_shape[CHANNEL],
-                       output_shape[HEIGHT], output_shape[WIDTH],
+                       output_shape[HEIGHT],  /// @todo BATCH?
+                       output_shape[WIDTH],
                        output->buffer(),
                        output->buffer());
     }
@@ -730,12 +724,12 @@ void DepthwiseConv2DLayer<BufferT>::compute_output(
 
 //****************************************************************************
 template <class BufferT>
-void DepthwiseConv2DLayer<BufferT>::compute_padding_output_shape(
+void Conv1DLayer<BufferT>::compute_padding_output_shape(
     shape_type const &input_shape,
-    uint32_t          kernel_height,
     uint32_t          kernel_width,
     uint32_t          stride,
-    PaddingEnum       padding_type)
+    PaddingEnum       padding_type,
+    uint32_t          num_output_channels)
 {
     shape_type output_shape;
 
@@ -743,23 +737,19 @@ void DepthwiseConv2DLayer<BufferT>::compute_padding_output_shape(
     ///       will image size get moved to compute_output and all of
     ///       this moves to compute output?
     output_shape[BATCH] = input_shape[BATCH];
-    output_shape[CHANNEL] = input_shape[CHANNEL];
-    small::compute_padding_output_dim(input_shape[HEIGHT], kernel_height,
-                                      stride, padding_type,
-                                      m_t_pad, m_b_pad,
-                                      output_shape[HEIGHT]);
+    output_shape[CHANNEL] = num_output_channels;
+    output_shape[HEIGHT] = input_shape[HEIGHT]; // batch?
     small::compute_padding_output_dim(input_shape[WIDTH], kernel_width,
                                       stride, padding_type,
                                       m_l_pad, m_r_pad,
                                       output_shape[WIDTH]);
 
 #if defined(DEBUG_LAYERS)
-    std::cerr << "DepthwiseConv2D padding: "
-              << (int)m_t_pad << "," << (int)m_b_pad
-              << "," << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
+    std::cerr << "Conv1D padding: "
+              << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
 #endif
 
     this->set_output_shape(output_shape);
 }
 
-} // small
+}
