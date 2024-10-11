@@ -13,59 +13,152 @@
 #pragma once
 
 #include <FloatBuffer.hpp>
-#include<cmath>
+#include <cmath>
 
 // scalar versions of all the float microkernels for platform portability
 // Use the FLOAT_ prefix for all macros in this file.
 
 #define FLOAT_SIMD_EPILOGUE 1
 
-namespace small {
-namespace detail {
+namespace small
+{
+    namespace detail
+    {
 
-/// @todo both pairs of typedefs should not be needed.
-typedef small::FloatBuffer::value_type dtype;
+        /// @todo both pairs of typedefs should not be needed.
+        typedef small::FloatBuffer::value_type dtype;
 
-typedef small::FloatBuffer::value_type c_tile_t;
+        typedef small::FloatBuffer::value_type c_tile_t;
 
+    }
 }
-}
 
-//Architecture specific tiling params
+// The macros in this file are intended to be used in a shared scope.
+//****************************************************************************
+//****************************************************************************
+// Kernel Structure
+//****************************************************************************
+//****************************************************************************
+// Steady State Kernel
+//****************************************************************************
+// Each kernel will
+// 1) define a tile (size known at run-time) of C,
+// 2) initialize it,
+// 3) perform some computation in a loop,
+// 4) and (optionally) store the result.
 
-// __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
+// The macros used in this kernel have the _TILE_C suffix.
+// Pseduocode below
+/*
+    template <W_ob, C_ob, step>
+    kernel(a, b, c)
+    {
+        DEF_TILE_C(W_ob, C_ob)
 
+        if(ZERO)
+        {
+            ZERO_TILE_C(W_ob, C_ob)
+        } else {
+            LOAD_TILE_C(a, step, W_ob, C_ob)
+        }
+
+        computation loop
+        {
+            <COMPUTE>_TILE_C(step, a, b, W_ob, C_ob)
+        }
+
+        STORE_TILE_C(c, W_ob, C_ob)
+    }
+
+*/
+//****************************************************************************
+// Edge-case kernel
+//****************************************************************************
+// Each kernel will
+// 1) define a tile (size known at run-time) of C,
+// 2) initialize it,
+// 3) perform some computation in a loop,
+// 4) and (optionally) store the result.
+
+
+// Macros have the _END_C suffix.
+// Pseduocode below
+/*
+    template <step>
+    kernel_end(a, b, c, W_ob, C_ob)
+    {
+        DEF_END_C(W_ob, C_ob)
+
+        if(ZERO)
+        {
+            ZERO_END_C(W_ob, C_ob)
+        }
+        else
+        {
+            LOAD_END_C(a, step, W_ob, C_ob)
+        }
+
+        computation loop
+        {
+            <COMPUTE>_END_C(step, a, b, W_ob, C_ob)
+        }
+
+        STORE_END_C(c, W_ob, C_ob)
+    }
+
+*/
 
 //****************************************************************************
 // Initializations
 //****************************************************************************
 
-#define FLOAT_DEF_TILE_C(W_ob, C_ob)            \
+/**
+ * @brief Macro to define a tile of C matrix with given dimensions.
+ *
+ * @param W_ob The width of the tile.              // Constant at compile time
+ * @param C_ob The number of channels in the tile. // Constant at compile time
+ */
+#define FLOAT_DEF_TILE_C(W_ob, C_ob) \
     c_tile_t c_tile[W_ob * C_ob];
 
-
-#define FLOAT_DEF_END_C(W_ob, C_ob)             \
+/**
+ * @brief Macro to define a tile of C matrix with given dimensions.
+ *
+ * @param W_ob The width of the tile.             // Variable, determined at runtime
+ * @param C_ob The number of channels in the tile.// Variable, determined at runtime
+ */
+#define FLOAT_DEF_END_C(W_ob, C_ob) \
     c_tile_t c_tile[W_ob * C_ob];
 
-
-#define FLOAT_ZERO_TILE_C(W_ob, C_ob)           \
-    for (uint32_t kk = 0; kk < W_ob; kk++)      \
-    {                                           \
-        for (uint32_t jj = 0; jj < C_ob; jj++)  \
-        {                                       \
-            c_tile[kk * C_ob + jj] = 0.f;       \
-        }                                       \
+/**
+ * @brief Macro to zero-initialize a (previously defined) tile of C matrix with given dimensions.
+ *
+ * @param W_ob The width of the tile.
+ * @param C_ob The number of channels in the tile.
+ */
+#define FLOAT_ZERO_TILE_C(W_ob, C_ob)          \
+    for (uint32_t kk = 0; kk < W_ob; kk++)     \
+    {                                          \
+        for (uint32_t jj = 0; jj < C_ob; jj++) \
+        {                                      \
+            c_tile[kk * C_ob + jj] = 0.f;      \
+        }                                      \
     }
 
-#define FLOAT_ZERO_END_C(_W_ob, C_ob)           \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)     \
-    {                                           \
-        for (uint32_t jj = 0; jj < C_ob; jj++)  \
-        {                                       \
-            c_tile[kk * C_ob + jj] = 0.f;       \
-        }                                       \
+/**x
+ * @brief Macro to zero-initialize the end of a tile of C matrix with given dimensions.
+ *
+ * @param _W_ob The width of the tile.
+ * @param C_ob The number of channels in the tile.
+ */
+#define FLOAT_ZERO_END_C(W_ob, C_ob)           \
+    for (uint32_t kk = 0; kk < W_ob; kk++)     \
+    {                                          \
+        for (uint32_t jj = 0; jj < C_ob; jj++) \
+        {                                      \
+            c_tile[kk * C_ob + jj] = 0.f;      \
+        }                                      \
     }
-
 
 //****************************************************************************
 // Loads
@@ -81,8 +174,8 @@ typedef small::FloatBuffer::value_type c_tile_t;
     }
 
 //  c_tile_t c_tile[W_ob * C_ob];
-#define FLOAT_LOAD_END_C(O, _W_ob, C_ob)                \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)             \
+#define FLOAT_LOAD_END_C(O, W_ob, C_ob)                 \
+    for (uint32_t kk = 0; kk < W_ob; kk++)              \
     {                                                   \
         for (uint32_t jj = 0; jj < C_ob; jj++)          \
         {                                               \
@@ -92,22 +185,22 @@ typedef small::FloatBuffer::value_type c_tile_t;
 
 
 //****************************************************************************
-//Pooling Loads
+// Pooling Loads
 //****************************************************************************
 
 // strided loads
-#define FLOAT_LOAD_TILE_C_strided(O, step, _W_ob, _C_ob)        \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)                     \
-    {                                                           \
-        for (uint32_t jj = 0; jj < _C_ob; jj++)                 \
-        {                                                       \
-            c_tile[kk * _C_ob + jj] = O[kk * step + jj];        \
-        }                                                       \
+#define FLOAT_LOAD_TILE_C_strided(O, step, W_ob, C_ob)         \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                     \
+    {                                                          \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                 \
+        {                                                      \
+            c_tile[kk * C_ob + jj] = O[kk * step + jj];        \
+        }                                                      \
     }
 
 //  c_tile_t c_tile[W_ob * C_ob];
-#define FLOAT_LOAD_END_C_strided(O, step, _W_ob, C_ob)  \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)             \
+#define FLOAT_LOAD_END_C_strided(O, step, W_ob, C_ob)   \
+    for (uint32_t kk = 0; kk < W_ob; kk++)              \
     {                                                   \
         for (uint32_t jj = 0; jj < C_ob; jj++)          \
         {                                               \
@@ -120,8 +213,8 @@ typedef small::FloatBuffer::value_type c_tile_t;
 // Upsampling loads (stride < 1)
 //****************************************************************************
 
-#define FLOAT_LOAD_TILE_C_upsample(I, stride, _C_ib, _W_ob, C_ob)       \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)                             \
+#define FLOAT_LOAD_TILE_C_upsample(I, stride, _C_ib, W_ob, C_ob)        \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                              \
     {                                                                   \
         for (uint32_t jj = 0; jj < C_ob; jj++)                          \
         {                                                               \
@@ -129,8 +222,8 @@ typedef small::FloatBuffer::value_type c_tile_t;
         }                                                               \
     }
 
-#define FLOAT_LOAD_END_C_upsample(I, stride, _C_ib, _W_ob, C_ob)        \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)                             \
+#define FLOAT_LOAD_END_C_upsample(I, stride, _C_ib, W_ob, C_ob)         \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                              \
     {                                                                   \
         for (uint32_t jj = 0; jj < C_ob; jj++)                          \
         {                                                               \
@@ -152,8 +245,8 @@ typedef small::FloatBuffer::value_type c_tile_t;
         }                                               \
     }
 
-#define FLOAT_STORE_END_C(O, _W_ob, C_ob)               \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)             \
+#define FLOAT_STORE_END_C(O, W_ob, C_ob)                \
+    for (uint32_t kk = 0; kk < W_ob; kk++)              \
     {                                                   \
         for (uint32_t jj = 0; jj < C_ob; jj++)          \
         {                                               \
@@ -169,6 +262,8 @@ typedef small::FloatBuffer::value_type c_tile_t;
 #define FLOAT_CONV_TILE_C(step, a, b, W_ob, C_ob)       \
     c_tile_t *c_pixel = c_tile;                         \
     c_tile_t const *a_channel = a;                      \
+    size_t a_offset = 0;                                \
+    /*size_t c_offset = 0;*/                            \
     for (uint32_t kk = 0; kk < W_ob; kk++)              \
     {                                                   \
         c_tile_t a_val = *(a_channel);                  \
@@ -178,15 +273,17 @@ typedef small::FloatBuffer::value_type c_tile_t;
             c_tile_t b_val = *(b + jj);                 \
             *(c_channel) += a_val * b_val;              \
             c_channel++;                                \
+            /*std::cout << "I_idx=" << a_offset << ", F_idx=" << jj << "--> C_idx=" << c_offset++ << std::endl;*/ \
         }                                               \
         a_channel += step;                              \
+        a_offset += step;                               \
         c_pixel += C_ob;                                \
     }
 
-#define FLOAT_CONV_END_C(step, a, b, c_cur, _W_ob, C_ob)        \
+#define FLOAT_CONV_END_C(step, a, b, c_cur, W_ob, C_ob)         \
     c_tile_t *c_pixel = c_cur;                                  \
     c_tile_t const *a_channel = a;                              \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)                     \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                      \
     {                                                           \
         c_tile_t a_val = *(a_channel);                          \
         c_tile_t * c_channel = c_pixel;                         \
@@ -266,11 +363,11 @@ typedef small::FloatBuffer::value_type c_tile_t;
         }                                                       \
     }
 
-#define FLOAT_DW_END_C(step, a, b, c_cur, _W_ob, C_ob)          \
+#define FLOAT_DW_END_C(step, a, b, c_cur, W_ob, C_ob)           \
     {                                                           \
         c_tile_t *c_pixel = c_cur;                              \
         c_tile_t const *a_pixel = a;                            \
-        for (uint32_t kk = 0; kk < _W_ob; kk++)                 \
+        for (uint32_t kk = 0; kk < W_ob; kk++)                  \
         {                                                       \
             c_tile_t *c_channel = c_pixel;                      \
             c_tile_t const *a_channel = a_pixel;                \
@@ -485,8 +582,8 @@ typedef small::FloatBuffer::value_type c_tile_t;
 // Accumulate channel dimension
 //****************************************************************************
 
-#define FLOAT_REDUCE_CHANNEL_END_C(O_w_left, _C_ob)                     \
-    if constexpr (_C_ob == 1 && _C_ob != FLOAT_SIMD_EPILOGUE)           \
+#define FLOAT_REDUCE_CHANNEL_END_C(O_w_left, C_ob)                      \
+    if constexpr (C_ob == 1 && C_ob != FLOAT_SIMD_EPILOGUE)             \
     {                                                                   \
         float c_tile_array[FLOAT_C_ob];                                 \
         for (uint32_t kk = 0; kk < O_w_left; kk++)                      \
