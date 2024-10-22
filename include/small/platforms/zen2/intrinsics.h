@@ -978,25 +978,43 @@ for (uint32_t kk = 0; kk < W_last; kk++)             \
     }
 #elif FLOAT_SIMD_EPILOGUE == 8
 #define FLOAT_REDUCE_CHANNEL_END_C(O_w_left, _C_ob) \
-if constexpr(_C_ob == 1 && _C_ob != FLOAT_SIMD_EPILOGUE)\
-{\
-    float c_tile_array[FLOAT_C_ob];                                         \
-    for (uint32_t kk = 0; kk < O_w_left; kk++)                              \
-    {                                                                       \
-        __m256 *c_channel_v = c_tile + kk * (FLOAT_C_ob / FLOAT_SIMD); \
-        c_channel_v[0] = _mm256_add_ps(c_channel_v[0], c_channel_v[1]);         \
-                                                                            \
-        _mm256_storeu_ps(c_tile_array, c_channel_v[0]);                            \
-        for (uint32_t jj = 1; jj < FLOAT_SIMD; jj++)                        \
-        {                                                                   \
-            c_tile_array[0] += c_tile_array[jj];                            \
-            c_tile_array[jj] = 0;                                           \
-        }                                                                   \
-                                                                            \
-        c_channel_v[0] = _mm256_loadu_ps(c_tile_array);                           \
-        c_channel_v[1] = _mm256_broadcast_ss(0.0);                              \
+    if constexpr(_C_ob == 1 && _C_ob != FLOAT_SIMD_EPILOGUE)            \
+    {                                                                   \
+        float c_tile_array[FLOAT_C_ob];                                 \
+        for (uint32_t kk = 0; kk < O_w_left; kk++)                      \
+        {                                                               \
+            __m256 *c_channel_v = c_tile + kk * (FLOAT_C_ob / FLOAT_SIMD); \
+            c_channel_v[0] = _mm256_add_ps(c_channel_v[0], c_channel_v[1]); \
+                                                                        \
+            _mm256_storeu_ps(c_tile_array, c_channel_v[0]);             \
+            for (uint32_t jj = 1; jj < FLOAT_SIMD; jj++)                \
+            {                                                           \
+                c_tile_array[0] += c_tile_array[jj];                    \
+                c_tile_array[jj] = 0;                                   \
+            }                                                           \
+                                                                        \
+            c_channel_v[0] = _mm256_loadu_ps(c_tile_array);             \
+            c_channel_v[1] = _mm256_broadcast_ss(0.0);                  \
+        }                                                               \
     }
 #endif
+
+
+#define FLOAT_REDUCE_REM_CHANNEL_END_C(O_w_left, _C_ob)       \
+    if  (_C_ob == 1 && _C_ob != FLOAT_SIMD_EPILOGUE)          \
+    {                                                         \
+        /*float c_tile_array[FLOAT_C_ob];*/                   \
+        for (uint32_t kk = 0; kk < O_w_left; kk++)            \
+        {                                                     \
+            float *c_channel_v = c_tile + kk * (FLOAT_C_ob);  \
+            for (uint32_t jj = 1; jj < FLOAT_C_ob; jj++)      \
+            {                                                 \
+                c_channel_v[0] += c_channel_v[jj];            \
+                c_channel_v[jj] = 0;                          \
+            }                                                 \
+        }                                                     \
+    }
+
 //****************************************************************************
 // FMA unused?
 //****************************************************************************
@@ -1218,127 +1236,139 @@ if constexpr(_C_ob == 1 && _C_ob != FLOAT_SIMD_EPILOGUE)\
     c11 = _mm256_load_ps(O + (5 * C_ob) + FLOAT_SIMD);
 
 #define FLOAT_MAX_TILE_IP(pool_col_stride, W_ob, C_ob, pool_stride, pool_H_f, pool_W_f, O_row, O_col, O_pool, H_o, W_o_full)      \
-    float *c_pixel = c_tile;                                                                                                      \
-    for (uint32_t kk = 0; kk < W_ob; kk++)                                                                                        \
-    {                                                                                                                             \
-        if (O_row % pool_stride == 0 && (O_row + pool_H_f - 1) < H_o)                                                             \
-        {                                                                                                                         \
-            float *p_row = O_pool + ((O_row) / pool_stride) * pool_col_stride;                                                    \
-            if (O_col % pool_stride == 0 && (O_col + pool_W_f - 1) < W_o_full)                                                    \
-            {                                                                                                                     \
-                float *p_pixel = p_row + ((O_col) / pool_stride) * C_ob;                                                          \
-                float *p_channel = p_pixel;                                                                                       \
-                float *c_channel = c_pixel;                                                                                       \
-                for (uint32_t jj = 0; jj < C_ob; jj++)                                                                            \
-                {                                                                                                                 \
-                    *(p_channel) = *(c_channel);                                                                                  \
-                    p_channel++;                                                                                                  \
-                    c_channel++;                                                                                                  \
-                }                                                                                                                 \
-            }                                                                                                                     \
-            for (uint32_t m_p = 1; m_p < pool_W_f; m_p++)                                                                         \
-            {                                                                                                                     \
-                if ((O_col - m_p) % pool_stride == 0 && (int)(O_col - m_p) >= 0 && (O_col + pool_W_f - (m_p + 1)) < W_o_full)     \
-                {                                                                                                                 \
-                    float *p_pixel = p_row + ((O_col - m_p) / pool_stride) * C_ob;                                                \
-                    float *p_channel = p_pixel;                                                                                   \
-                    float *c_channel = c_pixel;                                                                                   \
-                    for (uint32_t jj = 0; jj < C_ob; jj++)                                                                        \
-                    {                                                                                                             \
-                        *(p_channel) = (*(c_channel) > *(p_channel)) ? *(c_channel) : *(p_channel);                               \
-                        p_channel++;                                                                                              \
-                        c_channel++;                                                                                              \
-                    }                                                                                                             \
-                }                                                                                                                 \
-            }                                                                                                                     \
-        }                                                                                                                         \
-        for (uint32_t n_p = 1; n_p < pool_H_f; n_p++)                                                                             \
-        {                                                                                                                         \
-            if ((O_row - n_p) % pool_stride == 0 && (int)(O_row - n_p) >= 0 && (O_row + pool_H_f - (n_p + 1)) < H_o)              \
-            {                                                                                                                     \
-                float *p_row = O_pool + ((O_row - n_p) / pool_stride) * pool_col_stride;                                          \
-                for (uint32_t m_p = 0; m_p < pool_W_f; m_p++)                                                                     \
-                {                                                                                                                 \
-                    if ((O_col - m_p) % pool_stride == 0 && (int)(O_col - m_p) >= 0 && (O_col + pool_W_f - (m_p + 1)) < W_o_full) \
-                    {                                                                                                             \
-                        float *p_pixel = p_row + ((O_col - m_p) / pool_stride) * C_ob;                                            \
-                        float *p_channel = p_pixel;                                                                               \
-                        float *c_channel = c_pixel;                                                                               \
-                        for (uint32_t jj = 0; jj < C_ob; jj++)                                                                    \
-                        {                                                                                                         \
-                            *(p_channel) = (*(c_channel) > *(p_channel)) ? *(c_channel) : *(p_channel);                           \
-                            p_channel++;                                                                                          \
-                            c_channel++;                                                                                          \
-                        }                                                                                                         \
-                    }                                                                                                             \
-                }                                                                                                                 \
-            }                                                                                                                     \
-        }                                                                                                                         \
-        c_pixel += C_ob;                                                                                                          \
-        O_col++;                                                                                                                  \
+    float *c_pixel = c_tile;                                            \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                              \
+    {                                                                   \
+        if (O_row % pool_stride == 0 && (O_row + pool_H_f - 1) < H_o)   \
+        {                                                               \
+            float *p_row = O_pool + ((O_row) / pool_stride) * pool_col_stride; \
+            if (O_col % pool_stride == 0 && (O_col + pool_W_f - 1) < W_o_full) \
+            {                                                           \
+                float *p_pixel = p_row + ((O_col) / pool_stride) * C_ob; \
+                float *p_channel = p_pixel;                             \
+                float *c_channel = c_pixel;                             \
+                for (uint32_t jj = 0; jj < C_ob; jj++)                  \
+                {                                                       \
+                    *(p_channel) = *(c_channel);                        \
+                    p_channel++;                                        \
+                    c_channel++;                                        \
+                }                                                       \
+            }                                                           \
+            for (uint32_t m_p = 1; m_p < pool_W_f; m_p++)               \
+            {                                                           \
+                if ((O_col - m_p) % pool_stride == 0 &&                 \
+                    (int)(O_col - m_p) >= 0 &&                          \
+                    (O_col + pool_W_f - (m_p + 1)) < W_o_full)          \
+                {                                                       \
+                    float *p_pixel = p_row + ((O_col - m_p) / pool_stride) * C_ob; \
+                    float *p_channel = p_pixel;                         \
+                    float *c_channel = c_pixel;                         \
+                    for (uint32_t jj = 0; jj < C_ob; jj++)              \
+                    {                                                   \
+                        *(p_channel) = (*(c_channel) > *(p_channel)) ? *(c_channel) : *(p_channel); \
+                        p_channel++;                                    \
+                        c_channel++;                                    \
+                    }                                                   \
+                }                                                       \
+            }                                                           \
+        }                                                               \
+        for (uint32_t n_p = 1; n_p < pool_H_f; n_p++)                   \
+        {                                                               \
+            if ((O_row - n_p) % pool_stride == 0 &&                     \
+                (int)(O_row - n_p) >= 0 &&                              \
+                (O_row + pool_H_f - (n_p + 1)) < H_o)                   \
+            {                                                           \
+                float *p_row = O_pool + ((O_row - n_p) / pool_stride) * pool_col_stride; \
+                for (uint32_t m_p = 0; m_p < pool_W_f; m_p++)           \
+                {                                                       \
+                    if ((O_col - m_p) % pool_stride == 0 &&             \
+                        (int)(O_col - m_p) >= 0 &&                      \
+                        (O_col + pool_W_f - (m_p + 1)) < W_o_full)      \
+                    {                                                   \
+                        float *p_pixel = p_row + ((O_col - m_p) / pool_stride) * C_ob; \
+                        float *p_channel = p_pixel;                     \
+                        float *c_channel = c_pixel;                     \
+                        for (uint32_t jj = 0; jj < C_ob; jj++)          \
+                        {                                               \
+                            *(p_channel) = (*(c_channel) > *(p_channel)) ? *(c_channel) : *(p_channel); \
+                            p_channel++;                                \
+                            c_channel++;                                \
+                        }                                               \
+                    }                                                   \
+                }                                                       \
+            }                                                           \
+        }                                                               \
+        c_pixel += C_ob;                                                \
+        O_col++;                                                        \
     }
 
-#define FLOAT_MAX_END_IP(pool_col_stride, W_last, C_ob, pool_stride, pool_H_f, pool_W_f, O_row, O_col, O_pool, H_o, W_o_full)                 \
-    float *c_pixel = c_tile;                                                                                                                  \
-    uint32_t O_col_cur = O_col;                                                                                                               \
-    for (uint32_t kk = 0; kk < W_last; kk++)                                                                                                  \
-    {                                                                                                                                         \
-        c_pixel = c_tile + kk * C_ob;                                                                                                         \
-        if (O_row % pool_stride == 0 && (O_row + pool_H_f - 1) < H_o)                                                                         \
-        {                                                                                                                                     \
-            float *p_row = O_pool + ((O_row) / pool_stride) * pool_col_stride;                                                                \
-            if (O_col_cur % pool_stride == 0 && (O_col_cur + pool_W_f - 1) < W_o_full)                                                        \
-            {                                                                                                                                 \
-                float *p_pixel = p_row + ((O_col_cur) / pool_stride) * C_ob;                                                                  \
-                float *p_channel = p_pixel;                                                                                                   \
-                float *c_channel = c_pixel;                                                                                                   \
-                for (uint32_t jj = 0; jj < C_ob; jj++)                                                                                        \
-                {                                                                                                                             \
-                    *(p_channel) = *(c_channel);                                                                                              \
-                                                                                                                                              \
-                    p_channel++;                                                                                                              \
-                    c_channel++;                                                                                                              \
-                }                                                                                                                             \
-            }                                                                                                                                 \
-            for (uint32_t m_p = 1; m_p < pool_W_f; m_p++)                                                                                     \
-            {                                                                                                                                 \
-                if ((O_col_cur - m_p) % pool_stride == 0 && (int)(O_col_cur - m_p) >= 0 && (O_col_cur + pool_W_f - (m_p + 1)) < W_o_full)     \
-                {                                                                                                                             \
-                    float *p_pixel = p_row + ((O_col_cur - m_p) / pool_stride) * C_ob;                                                        \
-                    float *p_channel = p_pixel;                                                                                               \
-                    float *c_channel = c_pixel;                                                                                               \
-                    for (uint32_t jj = 0; jj < C_ob; jj++)                                                                                    \
-                    {                                                                                                                         \
-                        *(p_channel) = (*(c_channel) > *(p_channel)) ? *(c_channel) : *(p_channel);                                           \
-                        p_channel++;                                                                                                          \
-                        c_channel++;                                                                                                          \
-                    }                                                                                                                         \
-                }                                                                                                                             \
-            }                                                                                                                                 \
-        }                                                                                                                                     \
-        for (uint32_t n_p = 1; n_p < pool_H_f; n_p++)                                                                                         \
-        {                                                                                                                                     \
-            if ((O_row - n_p) % pool_stride == 0 && (int)(O_row - n_p) >= 0 && (O_row + pool_H_f - (n_p + 1)) < H_o)                          \
-            {                                                                                                                                 \
-                float *p_row = O_pool + ((O_row - n_p) / pool_stride) * pool_col_stride;                                                      \
-                for (uint32_t m_p = 0; m_p < pool_W_f; m_p++)                                                                                 \
-                {                                                                                                                             \
-                    if ((O_col_cur - m_p) % pool_stride == 0 && (int)(O_col_cur - m_p) >= 0 && (O_col_cur + pool_W_f - (m_p + 1)) < W_o_full) \
-                    {                                                                                                                         \
-                        float *p_pixel = p_row + ((O_col_cur - m_p) / pool_stride) * C_ob;                                                    \
-                        float *p_channel = p_pixel;                                                                                           \
-                        float *c_channel = c_pixel;                                                                                           \
-                        for (uint32_t jj = 0; jj < C_ob; jj++)                                                                                \
-                        {                                                                                                                     \
-                            *(p_channel) = (*(c_channel) > *(p_channel)) ? *(c_channel) : *(p_channel);                                       \
-                            p_channel++;                                                                                                      \
-                            c_channel++;                                                                                                      \
-                        }                                                                                                                     \
-                    }                                                                                                                         \
-                }                                                                                                                             \
-            }                                                                                                                                 \
-        }                                                                                                                                     \
-        O_col_cur++;                                                                                                                          \
+#define FLOAT_MAX_END_IP(pool_col_stride, W_last, C_ob, pool_stride, pool_H_f, pool_W_f, O_row, O_col, O_pool, H_o, W_o_full) \
+    float *c_pixel = c_tile;                                            \
+    uint32_t O_col_cur = O_col;                                         \
+    for (uint32_t kk = 0; kk < W_last; kk++)                            \
+    {                                                                   \
+        c_pixel = c_tile + kk * C_ob;                                   \
+        if (O_row % pool_stride == 0 && (O_row + pool_H_f - 1) < H_o)   \
+        {                                                               \
+            float *p_row = O_pool + ((O_row) / pool_stride) * pool_col_stride; \
+            if (O_col_cur % pool_stride == 0 && (O_col_cur + pool_W_f - 1) < W_o_full) \
+            {                                                           \
+                float *p_pixel = p_row + ((O_col_cur) / pool_stride) * C_ob; \
+                float *p_channel = p_pixel;                             \
+                float *c_channel = c_pixel;                             \
+                for (uint32_t jj = 0; jj < C_ob; jj++)                  \
+                {                                                       \
+                    *(p_channel) = *(c_channel);                        \
+                                                                        \
+                    p_channel++;                                        \
+                    c_channel++;                                        \
+                }                                                       \
+            }                                                           \
+            for (uint32_t m_p = 1; m_p < pool_W_f; m_p++)               \
+            {                                                           \
+                if ((O_col_cur - m_p) % pool_stride == 0 &&             \
+                    (int)(O_col_cur - m_p) >= 0 &&                      \
+                    (O_col_cur + pool_W_f - (m_p + 1)) < W_o_full)      \
+                {                                                       \
+                    float *p_pixel = p_row + ((O_col_cur - m_p) / pool_stride) * C_ob; \
+                    float *p_channel = p_pixel;                         \
+                    float *c_channel = c_pixel;                         \
+                    for (uint32_t jj = 0; jj < C_ob; jj++)              \
+                    {                                                   \
+                        *(p_channel) = (*(c_channel) > *(p_channel)) ? *(c_channel) : *(p_channel); \
+                        p_channel++;                                    \
+                        c_channel++;                                    \
+                    }                                                   \
+                }                                                       \
+            }                                                           \
+        }                                                               \
+        for (uint32_t n_p = 1; n_p < pool_H_f; n_p++)                   \
+        {                                                               \
+            if ((O_row - n_p) % pool_stride == 0 &&                     \
+                (int)(O_row - n_p) >= 0 &&                              \
+                (O_row + pool_H_f - (n_p + 1)) < H_o)                   \
+            {                                                           \
+                float *p_row = O_pool + ((O_row - n_p) / pool_stride) * pool_col_stride; \
+                for (uint32_t m_p = 0; m_p < pool_W_f; m_p++)           \
+                {                                                       \
+                    if ((O_col_cur - m_p) % pool_stride == 0 && \
+                        (int)(O_col_cur - m_p) >= 0 && \
+                        (O_col_cur + pool_W_f - (m_p + 1)) < W_o_full)  \
+                    {                                                   \
+                        float *p_pixel = p_row + ((O_col_cur - m_p) / pool_stride) * C_ob; \
+                        float *p_channel = p_pixel;                     \
+                        float *c_channel = c_pixel;                     \
+                        for (uint32_t jj = 0; jj < C_ob; jj++)          \
+                        {                                               \
+                            *(p_channel) = (*(c_channel) > *(p_channel)) ? *(c_channel) : *(p_channel); \
+                            p_channel++;                                \
+                            c_channel++;                                \
+                        }                                               \
+                    }                                                   \
+                }                                                       \
+            }                                                           \
+        }                                                               \
+        O_col_cur++;                                                    \
     }
 
 #define FLOAT_MUL_TILE_C(b, W_ob, C_ob)  \
@@ -1373,146 +1403,158 @@ if constexpr(_C_ob == 1 && _C_ob != FLOAT_SIMD_EPILOGUE)\
     }
 
 #define FLOAT_DW_TILE_IP(pool_col_stride, W_ob, C_ob, pool_stride, pool_H_f, pool_W_f, F, O_row, O_col, O_pool, H_o, W_o_full)    \
-    float *c_pixel = c_tile;                                                                                                      \
-    for (uint32_t kk = 0; kk < W_ob; kk++)                                                                                        \
-    {                                                                                                                             \
-        if (O_row % pool_stride == 0 && (O_row + pool_H_f - 1) < H_o)                                                             \
-        {                                                                                                                         \
-            float *p_row = O_pool + ((O_row) / pool_stride) * pool_col_stride;                                                    \
-            if (O_col % pool_stride == 0 && (O_col + pool_W_f - 1) < W_o_full)                                                    \
-            {                                                                                                                     \
-                float *p_pixel = p_row + ((O_col) / pool_stride) * C_ob;                                                          \
-                float *p_channel = p_pixel;                                                                                       \
-                float *c_channel = c_pixel;                                                                                       \
-                float const *b = F;                                                                                               \
-                float const *b_channel = b;                                                                                       \
-                for (uint32_t jj = 0; jj < C_ob; jj++)                                                                            \
-                {                                                                                                                 \
-                    *(p_channel) = *(c_channel) * *(b_channel);                                                                   \
-                    p_channel++;                                                                                                  \
-                    c_channel++;                                                                                                  \
-                    b_channel++;                                                                                                  \
-                }                                                                                                                 \
-            }                                                                                                                     \
-            for (uint32_t m_p = 1; m_p < pool_W_f; m_p++)                                                                         \
-            {                                                                                                                     \
-                if ((O_col - m_p) % pool_stride == 0 && (int)(O_col - m_p) >= 0 && (O_col + pool_W_f - (m_p + 1)) < W_o_full)     \
-                {                                                                                                                 \
-                    float *p_pixel = p_row + ((O_col - m_p) / pool_stride) * C_ob;                                                \
-                    float *p_channel = p_pixel;                                                                                   \
-                    float *c_channel = c_pixel;                                                                                   \
-                    float const *b = F + m_p * C_ob;                                                                              \
-                    float const *b_channel = b;                                                                                   \
-                    for (uint32_t jj = 0; jj < C_ob; jj++)                                                                        \
-                    {                                                                                                             \
-                        *(p_channel) += *(c_channel) * *(b_channel);                                                              \
-                        p_channel++;                                                                                              \
-                        c_channel++;                                                                                              \
-                        b_channel++;                                                                                              \
-                    }                                                                                                             \
-                }                                                                                                                 \
-            }                                                                                                                     \
-        }                                                                                                                         \
-        for (uint32_t n_p = 1; n_p < pool_H_f; n_p++)                                                                             \
-        {                                                                                                                         \
-            if ((O_row - n_p) % pool_stride == 0 && (int)(O_row - n_p) >= 0 && (O_row + pool_H_f - (n_p + 1)) < H_o)              \
-            {                                                                                                                     \
-                float *p_row = O_pool + ((O_row - n_p) / pool_stride) * pool_col_stride;                                          \
-                for (uint32_t m_p = 0; m_p < pool_W_f; m_p++)                                                                     \
-                {                                                                                                                 \
-                    if ((O_col - m_p) % pool_stride == 0 && (int)(O_col - m_p) >= 0 && (O_col + pool_W_f - (m_p + 1)) < W_o_full) \
-                    {                                                                                                             \
-                        float *p_pixel = p_row + ((O_col - m_p) / pool_stride) * C_ob;                                            \
-                        float *p_channel = p_pixel;                                                                               \
-                        float *c_channel = c_pixel;                                                                               \
-                        float const *b = F + n_p * pool_W_f * C_ob + m_p * C_ob;                                                  \
-                        float const *b_channel = b;                                                                               \
-                        for (uint32_t jj = 0; jj < C_ob; jj++)                                                                    \
-                        {                                                                                                         \
-                            *(p_channel) += *(c_channel) * *(b_channel);                                                          \
-                            p_channel++;                                                                                          \
-                            c_channel++;                                                                                          \
-                            b_channel++;                                                                                          \
-                        }                                                                                                         \
-                    }                                                                                                             \
-                }                                                                                                                 \
-            }                                                                                                                     \
-        }                                                                                                                         \
-        c_pixel += C_ob;                                                                                                          \
-        O_col++;                                                                                                                  \
+    float *c_pixel = c_tile;                                            \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                              \
+    {                                                                   \
+        if (O_row % pool_stride == 0 && (O_row + pool_H_f - 1) < H_o)   \
+        {                                                               \
+            float *p_row = O_pool + ((O_row) / pool_stride) * pool_col_stride; \
+            if (O_col % pool_stride == 0 && (O_col + pool_W_f - 1) < W_o_full) \
+            {                                                           \
+                float *p_pixel = p_row + ((O_col) / pool_stride) * C_ob; \
+                float *p_channel = p_pixel;                             \
+                float *c_channel = c_pixel;                             \
+                float const *b = F;                                     \
+                float const *b_channel = b;                             \
+                for (uint32_t jj = 0; jj < C_ob; jj++)                  \
+                {                                                       \
+                    *(p_channel) = *(c_channel) * *(b_channel);         \
+                    p_channel++;                                        \
+                    c_channel++;                                        \
+                    b_channel++;                                        \
+                }                                                       \
+            }                                                           \
+            for (uint32_t m_p = 1; m_p < pool_W_f; m_p++)               \
+            {                                                           \
+                if ((O_col - m_p) % pool_stride == 0 &&                 \
+                    (int)(O_col - m_p) >= 0 &&                          \
+                    (O_col + pool_W_f - (m_p + 1)) < W_o_full)          \
+                {                                                       \
+                    float *p_pixel = p_row + ((O_col - m_p) / pool_stride) * C_ob; \
+                    float *p_channel = p_pixel;                         \
+                    float *c_channel = c_pixel;                         \
+                    float const *b = F + m_p * C_ob;                    \
+                    float const *b_channel = b;                         \
+                    for (uint32_t jj = 0; jj < C_ob; jj++)              \
+                    {                                                   \
+                        *(p_channel) += *(c_channel) * *(b_channel);    \
+                        p_channel++;                                    \
+                        c_channel++;                                    \
+                        b_channel++;                                    \
+                    }                                                   \
+                }                                                       \
+            }                                                           \
+        }                                                               \
+        for (uint32_t n_p = 1; n_p < pool_H_f; n_p++)                   \
+        {                                                               \
+            if ((O_row - n_p) % pool_stride == 0 &&                     \
+                (int)(O_row - n_p) >= 0 &&                              \
+                (O_row + pool_H_f - (n_p + 1)) < H_o)                   \
+            {                                                           \
+                float *p_row = O_pool + ((O_row - n_p) / pool_stride) * pool_col_stride; \
+                for (uint32_t m_p = 0; m_p < pool_W_f; m_p++)           \
+                {                                                       \
+                    if ((O_col - m_p) % pool_stride == 0 &&             \
+                        (int)(O_col - m_p) >= 0 &&                      \
+                        (O_col + pool_W_f - (m_p + 1)) < W_o_full)      \
+                    {                                                   \
+                        float *p_pixel = p_row + ((O_col - m_p) / pool_stride) * C_ob; \
+                        float *p_channel = p_pixel;                     \
+                        float *c_channel = c_pixel;                     \
+                        float const *b = F + n_p * pool_W_f * C_ob + m_p * C_ob; \
+                        float const *b_channel = b;                     \
+                        for (uint32_t jj = 0; jj < C_ob; jj++)          \
+                        {                                               \
+                            *(p_channel) += *(c_channel) * *(b_channel); \
+                            p_channel++;                                \
+                            c_channel++;                                \
+                            b_channel++;                                \
+                        }                                               \
+                    }                                                   \
+                }                                                       \
+            }                                                           \
+        }                                                               \
+        c_pixel += C_ob;                                                \
+        O_col++;                                                        \
     }
 
-#define FLOAT_DW_END_IP(pool_col_stride, W_last, C_ob, pool_stride, pool_H_f, pool_W_f, F, O_row, O_col, O_pool, H_o, W_o_full)       \
-    float *c_pixel = c_tile;                                                                                                          \
-    uint32_t O_col_cur = O_col;                                                                                                       \
-    for (uint32_t kk = 0; kk < W_last; kk++)                                                                                          \
-    {                                                                                                                                 \
-        {                                                                                                                             \
-            if (O_row % pool_stride == 0 && (O_row + pool_H_f - 1) < H_o)                                                             \
-            {                                                                                                                         \
-                float *p_row = O_pool + ((O_row) / pool_stride) * pool_col_stride;                                                    \
-                if (O_col % pool_stride == 0 && (O_col + pool_W_f - 1) < W_o_full)                                                    \
-                {                                                                                                                     \
-                    float *p_pixel = p_row + ((O_col) / pool_stride) * C_ob;                                                          \
-                    float *p_channel = p_pixel;                                                                                       \
-                    float *c_channel = c_pixel;                                                                                       \
-                    float const *b = F;                                                                                               \
-                    float const *b_channel = b;                                                                                       \
-                    for (uint32_t jj = 0; jj < C_ob; jj++)                                                                            \
-                    {                                                                                                                 \
-                        *(p_channel) = *(c_channel) * *(b_channel);                                                                   \
-                        p_channel++;                                                                                                  \
-                        c_channel++;                                                                                                  \
-                        b_channel++;                                                                                                  \
-                    }                                                                                                                 \
-                }                                                                                                                     \
-                for (uint32_t m_p = 1; m_p < pool_W_f; m_p++)                                                                         \
-                {                                                                                                                     \
-                    if ((O_col - m_p) % pool_stride == 0 && (int)(O_col - m_p) >= 0 && (O_col + pool_W_f - (m_p + 1)) < W_o_full)     \
-                    {                                                                                                                 \
-                        float *p_pixel = p_row + ((O_col - m_p) / pool_stride) * C_ob;                                                \
-                        float *p_channel = p_pixel;                                                                                   \
-                        float *c_channel = c_pixel;                                                                                   \
-                        float const *b = F + m_p * C_ob;                                                                              \
-                        float const *b_channel = b;                                                                                   \
-                        for (uint32_t jj = 0; jj < C_ob; jj++)                                                                        \
-                        {                                                                                                             \
-                            *(p_channel) += *(c_channel) * *(b_channel);                                                              \
-                            p_channel++;                                                                                              \
-                            c_channel++;                                                                                              \
-                            b_channel++;                                                                                              \
-                        }                                                                                                             \
-                    }                                                                                                                 \
-                }                                                                                                                     \
-            }                                                                                                                         \
-            for (uint32_t n_p = 1; n_p < pool_H_f; n_p++)                                                                             \
-            {                                                                                                                         \
-                if ((O_row - n_p) % pool_stride == 0 && (int)(O_row - n_p) >= 0 && (O_row + pool_H_f - (n_p + 1)) < H_o)              \
-                {                                                                                                                     \
-                    float *p_row = O_pool + ((O_row - n_p) / pool_stride) * pool_col_stride;                                          \
-                    for (uint32_t m_p = 0; m_p < pool_W_f; m_p++)                                                                     \
-                    {                                                                                                                 \
-                        if ((O_col - m_p) % pool_stride == 0 && (int)(O_col - m_p) >= 0 && (O_col + pool_W_f - (m_p + 1)) < W_o_full) \
-                        {                                                                                                             \
-                            float *p_pixel = p_row + ((O_col - m_p) / pool_stride) * C_ob;                                            \
-                            float *p_channel = p_pixel;                                                                               \
-                            float *c_channel = c_pixel;                                                                               \
-                            float const *b = F + n_p * pool_W_f * C_ob + m_p * C_ob;                                                  \
-                            float const *b_channel = b;                                                                               \
-                            for (uint32_t jj = 0; jj < C_ob; jj++)                                                                    \
-                            {                                                                                                         \
-                                *(p_channel) += *(c_channel) * *(b_channel);                                                          \
-                                p_channel++;                                                                                          \
-                                c_channel++;                                                                                          \
-                                b_channel++;                                                                                          \
-                            }                                                                                                         \
-                        }                                                                                                             \
-                    }                                                                                                                 \
-                }                                                                                                                     \
-            }                                                                                                                         \
-            c_pixel += C_ob;                                                                                                          \
-            O_col++;                                                                                                                  \
-        }                                                                                                                             \
+#define FLOAT_DW_END_IP(pool_col_stride, W_last, C_ob, pool_stride, pool_H_f, pool_W_f, F, O_row, O_col, O_pool, H_o, W_o_full) \
+    float *c_pixel = c_tile;                                            \
+    uint32_t O_col_cur = O_col;                                         \
+    for (uint32_t kk = 0; kk < W_last; kk++)                            \
+    {                                                                   \
+        {                                                               \
+            if (O_row % pool_stride == 0 && (O_row + pool_H_f - 1) < H_o) \
+            {                                                           \
+                float *p_row = O_pool + ((O_row) / pool_stride) * pool_col_stride; \
+                if (O_col % pool_stride == 0 && (O_col + pool_W_f - 1) < W_o_full) \
+                {                                                       \
+                    float *p_pixel = p_row + ((O_col) / pool_stride) * C_ob; \
+                    float *p_channel = p_pixel;                         \
+                    float *c_channel = c_pixel;                         \
+                    float const *b = F;                                 \
+                    float const *b_channel = b;                         \
+                    for (uint32_t jj = 0; jj < C_ob; jj++)              \
+                    {                                                   \
+                        *(p_channel) = *(c_channel) * *(b_channel);     \
+                        p_channel++;                                    \
+                        c_channel++;                                    \
+                        b_channel++;                                    \
+                    }                                                   \
+                }                                                       \
+                for (uint32_t m_p = 1; m_p < pool_W_f; m_p++)           \
+                {                                                       \
+                    if ((O_col - m_p) % pool_stride == 0 &&             \
+                        (int)(O_col - m_p) >= 0 &&                      \
+                        (O_col + pool_W_f - (m_p + 1)) < W_o_full)      \
+                    {                                                   \
+                        float *p_pixel = p_row + ((O_col - m_p) / pool_stride) * C_ob; \
+                        float *p_channel = p_pixel;                     \
+                        float *c_channel = c_pixel;                     \
+                        float const *b = F + m_p * C_ob;                \
+                        float const *b_channel = b;                     \
+                        for (uint32_t jj = 0; jj < C_ob; jj++)          \
+                        {                                               \
+                            *(p_channel) += *(c_channel) * *(b_channel); \
+                            p_channel++;                                \
+                            c_channel++;                                \
+                            b_channel++;                                \
+                        }                                               \
+                    }                                                   \
+                }                                                       \
+            }                                                           \
+            for (uint32_t n_p = 1; n_p < pool_H_f; n_p++)               \
+            {                                                           \
+                if ((O_row - n_p) % pool_stride == 0 &&                 \
+                    (int)(O_row - n_p) >= 0 &&                          \
+                    (O_row + pool_H_f - (n_p + 1)) < H_o)               \
+                {                                                       \
+                    float *p_row = O_pool + ((O_row - n_p) / pool_stride) * pool_col_stride; \
+                    for (uint32_t m_p = 0; m_p < pool_W_f; m_p++)       \
+                    {                                                   \
+                        if ((O_col - m_p) % pool_stride == 0 &&         \
+                            (int)(O_col - m_p) >= 0 &&                  \
+                            (O_col + pool_W_f - (m_p + 1)) < W_o_full)  \
+                        {                                               \
+                            float *p_pixel = p_row + ((O_col - m_p) / pool_stride) * C_ob; \
+                            float *p_channel = p_pixel;                 \
+                            float *c_channel = c_pixel;                 \
+                            float const *b = F + n_p * pool_W_f * C_ob + m_p * C_ob; \
+                            float const *b_channel = b;                 \
+                            for (uint32_t jj = 0; jj < C_ob; jj++)      \
+                            {                                           \
+                                *(p_channel) += *(c_channel) * *(b_channel); \
+                                p_channel++;                            \
+                                c_channel++;                            \
+                                b_channel++;                            \
+                            }                                           \
+                        }                                               \
+                    }                                                   \
+                }                                                       \
+            }                                                           \
+            c_pixel += C_ob;                                            \
+            O_col++;                                                    \
+        }                                                               \
     }
 
 #define FLOAT_STORE_TILE_INTER(W_ob, C_ob)                 \
