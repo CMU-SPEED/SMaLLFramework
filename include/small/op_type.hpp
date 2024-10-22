@@ -26,7 +26,8 @@ enum OpType
     OP_AVERAGE_POOL = 5,  // 's'
     OP_MUL = 6,
     OP_UPSAMPLE = 7,      // 'u'
-    OP_EXP = 8
+    OP_EXP = 8,
+    OP_NONE = -1
 };
 
 }

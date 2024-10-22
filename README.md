@@ -1,7 +1,27 @@
 
-# SMaLL Framework
+# SMaLL: Software for rapidly instantiating Machine Learning Libraries
 
-A portable framework for writing high performance machine learning libraries .
+SMaLL is a framework for rapidly instantiating DNN based libraries for different architecture. In particular, the objective of SMaLL is to provide a quick and portable approach for developing DNN inference libraries for edge devices. At the core of SMaLL is a common set of loop nests across the different supported layers. Instead of writing every layer manually, each layer is instantiated from a small set of kernels.
+
+A detailed discussion of the framework can be found [here](https://arxiv.org/abs/2303.04769) (preprint), and [here](https://dl.acm.org/doi/10.1145/3607870) (ACM Transaction of Embedded System article).
+
+## Citation
+Please use the following citation when referencing SMaLL
+```
+@article{10.1145/3607870,
+author = {Sridhar, Upasana and Tukanov, Nicholai and Binder, Elliott and Low, Tze Meng and McMillan, Scott and Schatz, Martin D.},
+title = {SMaLL: Software for Rapidly Instantiating Machine Learning Libraries},
+year = {2023},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+issn = {1539-9087},
+url = {https://doi.org/10.1145/3607870},
+doi = {10.1145/3607870},
+note = {Just Accepted},
+journal = {ACM Trans. Embed. Comput. Syst.},
+month = {jul}
+}
+```
 
 ## Build Instructions
 
@@ -29,49 +49,29 @@ set(CMAKE_C_COMPILER gcc) -------> set(CMAKE_C_COMPILER aarch64-linux-gnu-gcc)
 
 ### Build using CMake
 
-Create a build folder from the Top Level directory and run CMake.  
-Currently µarch can be 
+Create a build folder from the Top Level directory and run CMake with the desired CMAKE_UARCH platform. Currently CMAKE_UARCH can be defined as one of the following: 
 
-For single precision floating point inference
+- REF      (the default, float or quantized uint8))
+- ZEN2     (Epyc, but also for x86 architectures)
+- ARM-A72  (Raspberry pi 4 b)
+- ARM-A55  (Snapdragon 888 Silver)
+- ARM-A78  (Snapdragon 888 Gold)
+- ARM-X1   (Snapdragon 888 Prime)
+- Q-ARM7E  (For the Arduino Nano 33 BLE, quantized uint8 only, see below)
 
-- REF (the default)
-- ZEN2 
-- ARM
-- ARM-A72 (Raspberry pi 4 b)
-- ARM-A55 (Snapdragon 888 Silver)
-- ARM-A78 (Snapdragon 888 Gold)
-- ARM-X1  (Snapdragon 888 Prime)
+Except for the Arduino (Q-ARM7E) platform, use the following instructions to build the executables.
 
 ```bash
 $ mkdir build
 $ cd build
 $ cmake ../ -DCMAKE_UARCH=<µarch>
-$ cd demo
-$ make model_*
+$ make
 ```
 
-This *should* generate 4 executables
+The make generates executables from the demo directory and unit tests from the test directory.
 
-- `./model_autoencoder.exe `
-- `./model_dscnn.exe `
-- `./model_resnet.exe `
-- `./model_mobilenet.exe `
 
-Run with 
-`./model_<model_name>.exe`
-
-For quantized uint8 inference 
-- Q-REF
-- Q-ARM7E. (For the Arduino Nano 33 BLE)
-
-Run the same build instructions as above
-```
-$ mkdir build
-$ cd build
-$ cmake .. -DCMAKE_UARCH=Q-REF
-```
-
-## Build for Arduino
+## Build for Arduino (Q-ARM7E)
 
 The Arduino platform (Q-ARM7E) has restrictions on the code layout.  To create an Arduino-friendly layout of a subset of the SMaLL library perform the following starting in the SMaLLFramework root directory.
 ``` bash
@@ -102,19 +102,24 @@ If running on the arduino, uncomment the appropriate model in small.ino
 
 ```
 
-
-
-
 ## Supported Features
 
 DNN Layers
 
-- Convolution Layer (square and rectangular filters) 
+- Convolution Layer (1D and 2D square and rectangular filters) 
+- Group Convolution (1D and 2D)
 - Depthwise Convolution Layer (only square filters)
-- MaxPooling Layer  (square and rectangular filters)
+- MaxPool Layer     (1D and 2D square and rectangular filters)
+- AveragePool       (1D and 2D)
+- Upsample          (1D and 2D)
 
 With valid and same padding
 
 - Dense Layer
 - ReLU Activation
+- LeakyReLU
+- Softmax
+- Dropout(?)
+- Add/Accum
+- Concat
 

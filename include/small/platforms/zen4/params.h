@@ -12,4 +12,4 @@
 
 #pragma once
 
-#include "../arm/intrinsics.h"
+#include "../zen2/params.h"

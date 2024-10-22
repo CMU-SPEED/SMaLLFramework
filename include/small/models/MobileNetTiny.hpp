@@ -21,78 +21,376 @@
 #include <small/ReLULayer.hpp>
 
 //****************************************************************************
+
+/* From https://github.com/mlcommons/tiny/blob/master/benchmark/training/visual_wake_words/vww_model.py
+
+def mobilenet_v1():
+    # Mobilenet parameters
+    input_shape = [96,96,3] # resized to 96x96 per EEMBC requirement
+    num_classes = 2 # person and non-person
+    num_filters = 8 # normally 32, but running with alpha=.25 per EEMBC requirement
+
+    inputs = Input(shape=input_shape)
+    x = inputs # Keras model uses ZeroPadding2D()
+
+    # 1st layer, pure conv
+    # Keras 2.2 model has padding='valid' and disables bias
+    x = Conv2D(num_filters,
+                  kernel_size=3,
+                  strides=2,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x) # Keras uses ReLU6 instead of pure ReLU
+
+    # 2nd layer, depthwise separable conv
+    # Filter size is always doubled before the pointwise conv
+    # Keras uses ZeroPadding2D() and padding='valid'
+    x = DepthwiseConv2D(kernel_size=3,
+                  strides=1,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    num_filters = 2*num_filters
+    x = Conv2D(num_filters,
+                  kernel_size=1,
+                  strides=1,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    # 3rd layer, depthwise separable conv
+    x = DepthwiseConv2D(kernel_size=3,
+                  strides=2,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    num_filters = 2*num_filters
+    x = Conv2D(num_filters,
+                  kernel_size=1,
+                  strides=1,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    # 4th layer, depthwise separable conv
+    x = DepthwiseConv2D(kernel_size=3,
+                  strides=1,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    x = Conv2D(num_filters,
+                  kernel_size=1,
+                  strides=1,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    # 5th layer, depthwise separable conv
+    x = DepthwiseConv2D(kernel_size=3,
+                  strides=2,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    num_filters = 2*num_filters
+    x = Conv2D(num_filters,
+                  kernel_size=1,
+                  strides=1,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    # 6th layer, depthwise separable conv
+    x = DepthwiseConv2D(kernel_size=3,
+                  strides=1,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    x = Conv2D(num_filters,
+                  kernel_size=1,
+                  strides=1,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    # 7th layer, depthwise separable conv
+    x = DepthwiseConv2D(kernel_size=3,
+                  strides=2,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    num_filters = 2*num_filters
+    x = Conv2D(num_filters,
+                  kernel_size=1,
+                  strides=1,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    # 8th-12th layers, identical depthwise separable convs
+    # 8th
+    x = DepthwiseConv2D(kernel_size=3,
+                  strides=1,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    x = Conv2D(num_filters,
+                  kernel_size=1,
+                  strides=1,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    # 9th
+    x = DepthwiseConv2D(kernel_size=3,
+                  strides=1,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    x = Conv2D(num_filters,
+                  kernel_size=1,
+                  strides=1,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    # 10th
+    x = DepthwiseConv2D(kernel_size=3,
+                  strides=1,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    x = Conv2D(num_filters,
+                  kernel_size=1,
+                  strides=1,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    # 11th
+    x = DepthwiseConv2D(kernel_size=3,
+                  strides=1,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    x = Conv2D(num_filters,
+                  kernel_size=1,
+                  strides=1,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    # 12th
+    x = DepthwiseConv2D(kernel_size=3,
+                  strides=1,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    x = Conv2D(num_filters,
+                  kernel_size=1,
+                  strides=1,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    # 13th layer, depthwise separable conv
+    x = DepthwiseConv2D(kernel_size=3,
+                  strides=2,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    num_filters = 2*num_filters
+    x = Conv2D(num_filters,
+                  kernel_size=1,
+                  strides=1,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    # 14th layer, depthwise separable conv
+    x = DepthwiseConv2D(kernel_size=3,
+                  strides=1,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    x = Conv2D(num_filters,
+                  kernel_size=1,
+                  strides=1,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    # Average pooling, max polling may be used also
+    # Keras employs GlobalAveragePooling2D
+    x = AveragePooling2D(pool_size=x.shape[1:3])(x)
+    #x = MaxPooling2D(pool_size=x.shape[1:3])(x)
+
+    # Keras inserts Dropout() and a pointwise Conv2D() here
+    # We are staying with the paper base structure
+
+    # Flatten, FC layer and classify
+    x = Flatten()(x)
+    outputs = Dense(num_classes, activation='softmax')(x)
+
+    # Instantiate model.
+    model = Model(inputs=inputs, outputs=outputs)
+    return model
+
+ */
+
+//****************************************************************************
 /* This is the runtime recording:
 
-   Conv2D(k:3,s:2,pad:[0,1,0,1],ochans:32,ichans:3,img:96x96,I,F,O)
+   Conv2D(k:3,s:2,pad:[0,1,0,1],ochans:32,ichans:3,img:96x96,I,F,O)       # bn, ochan=8?
    ReLUActivation(chans:32,img:48x48,I,O)
-0
-   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:32,img:48x48,I,F,O)     s1
+
+0, 2nd layer
+   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:32,img:48x48,I,F,O)     s1 # bn
    ReLUActivation(chans:32,img:48x48,I,O)
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:64,ichans:32,img:48x48,I,F,O)   2x
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:64,ichans:32,img:48x48,I,F,O)   2x # bn, ochan=16?
    ReLUActivation(chans:64,img:48x48,I,O)
-1
-   DepthwiseConv2D(k:3,s:2,pad:[0,1,0,1],chans:64,img:48x48,I,F,O)     s2
+
+1, 3rd layer
+   DepthwiseConv2D(k:3,s:2,pad:[0,1,0,1],chans:64,img:48x48,I,F,O)     s2 # bn
    ReLUActivation(chans:64,img:24x24,I,O)
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:128,ichans:64,img:24x24,I,F,O)  2x
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:128,ichans:64,img:24x24,I,F,O)  2x # bn, ochan=32?
    ReLUActivation(chans:128,img:24x24,I,O)
-2
-   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:128,img:24x24,I,F,O)    s1
+
+2, 4th layer
+   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:128,img:24x24,I,F,O)    s1 # bn
    ReLUActivation(chans:128,img:24x24,I,O)
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:128,ichans:128,img:24x24,I,F,O) 1x
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:128,ichans:128,img:24x24,I,F,O) 1x # bn
    ReLUActivation(chans:128,img:24x24,I,O)
-3
-   DepthwiseConv2D(k:3,s:2,pad:[0,1,0,1],chans:128,img:24x24,I,F,O)    s2
+
+3, 5th layer
+   DepthwiseConv2D(k:3,s:2,pad:[0,1,0,1],chans:128,img:24x24,I,F,O)    s2 # bn
    ReLUActivation(chans:128,img:12x12,I,O)
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:256,ichans:128,img:12x12,I,F,O) 2x
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:256,ichans:128,img:12x12,I,F,O) 2x # bn, ochan=64?
    ReLUActivation(chans:256,img:12x12,I,O)
-4
-   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:256,img:12x12,I,F,O)    s1
+
+4, 6th layer
+   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:256,img:12x12,I,F,O)    s1 # bn
    ReLUActivation(chans:256,img:12x12,I,O)
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:256,ichans:256,img:12x12,I,F,O) 1x
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:256,ichans:256,img:12x12,I,F,O) 1x # bn
    ReLUActivation(chans:256,img:12x12,I,O)
-5
-   DepthwiseConv2D(k:3,s:2,pad:[0,1,0,1],chans:256,img:12x12,I,F,O)    s2
+
+5, 7th layer
+   DepthwiseConv2D(k:3,s:2,pad:[0,1,0,1],chans:256,img:12x12,I,F,O)    s2 # bn
    ReLUActivation(chans:256,img:6x6,I,O)
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:512,ichans:256,img:6x6,I,F,O)   2x
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:512,ichans:256,img:6x6,I,F,O)   2x # bn, ochan=128?
    ReLUActivation(chans:512,img:6x6,I,O)
-6
-   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:512,img:6x6,I,F,O)      s1
+
+6, 8th layer
+   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:512,img:6x6,I,F,O)      s1 # bn
    ReLUActivation(chans:512,img:6x6,I,O)
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:512,ichans:512,img:6x6,I,F,O)   1x
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:512,ichans:512,img:6x6,I,F,O)   1x # bn
    ReLUActivation(chans:512,img:6x6,I,O)
-7
-   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:512,img:6x6,I,F,O)      s1
+
+7, 9th layer
+   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:512,img:6x6,I,F,O)      s1 # bn
    ReLUActivation(chans:512,img:6x6,I,O)
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:512,ichans:512,img:6x6,I,F,O)   1x
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:512,ichans:512,img:6x6,I,F,O)   1x # bn
    ReLUActivation(chans:512,img:6x6,I,O)
-8
-   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:512,img:6x6,I,F,O)      s1
+
+8, 10th layer
+   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:512,img:6x6,I,F,O)      s1 # bn
    ReLUActivation(chans:512,img:6x6,I,O)
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:512,ichans:512,img:6x6,I,F,O)   1x
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:512,ichans:512,img:6x6,I,F,O)   1x # bn
    ReLUActivation(chans:512,img:6x6,I,O)
-9
-   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:512,img:6x6,I,F,O)      s1
+
+9, 11th layer
+   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:512,img:6x6,I,F,O)      s1 # bn
    ReLUActivation(chans:512,img:6x6,I,O)
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:512,ichans:512,img:6x6,I,F,O)   1x
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:512,ichans:512,img:6x6,I,F,O)   1x # bn
    ReLUActivation(chans:512,img:6x6,I,O)
-10
-   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:512,img:6x6,I,F,O)      s1
+
+10, 12th layer
+   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:512,img:6x6,I,F,O)      s1 # bn
    ReLUActivation(chans:512,img:6x6,I,O)
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:512,ichans:512,img:6x6,I,F,O)   1x
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:512,ichans:512,img:6x6,I,F,O)   1x # bn
    ReLUActivation(chans:512,img:6x6,I,O)
-11
-   DepthwiseConv2D(k:3,s:2,pad:[0,1,0,1],chans:512,img:6x6,I,F,O)      s2
+
+11, 13th layer
+   DepthwiseConv2D(k:3,s:2,pad:[0,1,0,1],chans:512,img:6x6,I,F,O)      s2 # bn
    ReLUActivation(chans:512,img:3x3,I,O)
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:1024,ichans:512,img:3x3,I,F,O)  2x
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:1024,ichans:512,img:3x3,I,F,O)  2x # bn, ochan=256?
    ReLUActivation(chans:1024,img:3x3,I,O)
-12
-   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:1024,img:3x3,I,F,O)     s1
+
+12, 14th layer
+   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:1024,img:3x3,I,F,O)     s1 # bn
    ReLUActivation(chans:1024,img:3x3,I,O)
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:1024,ichans:1024,img:3x3,I,F,O) 1x
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:1024,ichans:1024,img:3x3,I,F,O) 1x # bn
    ReLUActivation(chans:1024,img:3x3,I,O)
+
 FINAL
-   MaxPool2D(k:3,s:1,pad:[0,0,0,0],chans:1024,img:3x3,I,O)
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:16,ichans:1024,img:1x1,I,F,O)
+   MaxPool2D(k:3,s:1,pad:[0,0,0,0],chans:1024,img:3x3,I,O)                # AveragePool2D
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:16,ichans:1024,img:1x1,I,F,O)      # Dense+Softmax
 */
 
 namespace small
