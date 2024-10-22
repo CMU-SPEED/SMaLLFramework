@@ -123,28 +123,28 @@ typedef float32x4_t c_tile_t;
 
 #else
 
-#define FLOAT_LOAD_END_C(O, _W_ob, _C_ob)                                \
-if (_C_ob == 1)\
-{/*When the operation is a global reduction, load  the */\
-    for(uint32_t kk = 0; kk < _W_ob; kk++)\
-    {\
-      float c_channel_v[FLOAT_C_ob]={0};\
-      c_channel_v[0] = O[kk * _C_ob];\
-      c_tile[kk * (FLOAT_C_ob/FLOAT_SIMD)]  = vld1q_f32(c_channel_v);\
-    }\
-}\
-else if()\
-
-else\
-{\
-    for (uint32_t kk = 0; kk < _W_ob; kk++)                             \
-    {                                                                   \
-        for (uint32_t jj = 0; jj < _C_ob / FLOAT_SIMD; jj++)             \
+#define FLOAT_LOAD_END_C(O, _W_ob, _C_ob)                               \
+    if (_C_ob == 1)                                                     \
+    {/*When the operation is a global reduction, load the */            \
+        for(uint32_t kk = 0; kk < _W_ob; kk++)                          \
         {                                                               \
-            c_tile[kk * (_C_ob / FLOAT_SIMD) + jj] = vld1q_f32(O + kk * _C_ob + jj * FLOAT_SIMD); \
+            float c_channel_v[FLOAT_C_ob]={0};                          \
+            c_channel_v[0] = O[kk * _C_ob];                             \
+            c_tile[kk * (FLOAT_C_ob/FLOAT_SIMD)]  = vld1q_f32(c_channel_v); \
         }                                                               \
-    }\
-}
+    }                                                                   \
+    /* There was an "else if ()" here from dev_tmp_odd_channels */      \
+    else                                                                \
+    {                                                                   \
+        for (uint32_t kk = 0; kk < _W_ob; kk++)                         \
+        {                                                               \
+            for (uint32_t jj = 0; jj < _C_ob / FLOAT_SIMD; jj++)        \
+            {                                                           \
+                c_tile[kk * (_C_ob / FLOAT_SIMD) + jj] =                \
+                    vld1q_f32(O + kk * _C_ob + jj * FLOAT_SIMD);        \
+            }                                                           \
+        }                                                               \
+    }
 #endif
 
 
@@ -271,13 +271,12 @@ else\
 #define FLOAT_STORE_END_C(O, _W_ob, C_ob)                         \
     for (uint32_t kk = 0; kk < _W_ob; kk++)                       \
     {                                                             \
-        if constexpr (C_ob == 1)                                  \
+        if /*constexpr*/ (C_ob == 1)  /* can't constexpr */       \
         {                                                         \
-                float c_pixel[FLOAT_SIMD];                                    \
-                vst1q_f32(c_pixel,        \
-                          c_tile[kk * (FLOAT_C_ob / FLOAT_SIMD)]); \
-                O[kk] = c_pixel[0];\
-                                                                 \
+            float c_pixel[FLOAT_SIMD];                            \
+            vst1q_f32(c_pixel,                                    \
+                      c_tile[kk * (FLOAT_C_ob / FLOAT_SIMD)]);    \
+            O[kk] = c_pixel[0];                                   \
         }                                                         \
         else                                                      \
         {                                                         \
@@ -781,7 +780,7 @@ else\
     c_2_0 = vld1q_f32(c_tile_scalar + 2 * C_ob + 0 * FLOAT_SIMD);    c_2_1 = vld1q_f32(c_tile_scalar + 2 * C_ob + 1 * FLOAT_SIMD);     c_2_2 = vld1q_f32(c_tile_scalar + 2 * C_ob + 2 * FLOAT_SIMD);    c_2_3 = vld1q_f32(c_tile_scalar + 2 * C_ob + 3 * FLOAT_SIMD);   \
     c_3_0 = vld1q_f32(c_tile_scalar + 3 * C_ob + 0 * FLOAT_SIMD);    c_3_1 = vld1q_f32(c_tile_scalar + 3 * C_ob + 1 * FLOAT_SIMD);     c_3_2 = vld1q_f32(c_tile_scalar + 3 * C_ob + 2 * FLOAT_SIMD);    c_3_3 = vld1q_f32(c_tile_scalar + 3 * C_ob + 3 * FLOAT_SIMD);   \
     c_4_0 = vld1q_f32(c_tile_scalar + 4 * C_ob + 0 * FLOAT_SIMD);    c_4_1 = vld1q_f32(c_tile_scalar + 4 * C_ob + 1 * FLOAT_SIMD);     c_4_2 = vld1q_f32(c_tile_scalar + 4 * C_ob + 2 * FLOAT_SIMD);    c_4_3 = vld1q_f32(c_tile_scalar + 4 * C_ob + 3 * FLOAT_SIMD);   \
-    c_5_0 = vld1q_f32(c_tile_scalar + 5 * C_ob + 0 * FLOAT_SIMD);    c_5_1 = vld1q_f32(c_tile_scalar + 5 * C_ob + 1 * FLOAT_SIMD);     c_5_2 = vld1q_f32(c_tile_scalar + 5 * C_ob + 2 * FLOAT_SIMD);    c_5_3 = vld1q_f32(c_tile_scalar + 5 * C_ob + 3 * FLOAT_SIMD);   
+    c_5_0 = vld1q_f32(c_tile_scalar + 5 * C_ob + 0 * FLOAT_SIMD);    c_5_1 = vld1q_f32(c_tile_scalar + 5 * C_ob + 1 * FLOAT_SIMD);     c_5_2 = vld1q_f32(c_tile_scalar + 5 * C_ob + 2 * FLOAT_SIMD);    c_5_3 = vld1q_f32(c_tile_scalar + 5 * C_ob + 3 * FLOAT_SIMD);
 
 
 #if FLOAT_SIMD_EPILOGUE == 1
@@ -874,7 +873,7 @@ else\
     c_5_1 = vaddq_f32(c_5_1, a_1); \
     c_5_2 = vaddq_f32(c_5_2, a_2); \
     c_5_3 = vaddq_f32(c_5_3, a_3);
-    
+
 #if FLOAT_SIMD_EPILOGUE == 1
 #define FLOAT_ACCUM_END_C_upsample(I, stride, _C_ib, _W_ob, C_ob)      \
     for (uint32_t kk = 0; kk < _W_ob; kk++)                           \

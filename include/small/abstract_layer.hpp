@@ -1694,7 +1694,6 @@ void inline rem_kernel_left_rem(
     dim_t H_ub = 0)
 {
     const dim_t _C_ob = G_left * K_left;
-    ;
 
     const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
     FLOAT_DEF_END_C(_O_wb, _C_ob);
