@@ -630,8 +630,8 @@ fused_model_inference(uint32_t layer_num_total,
        my_timer.start();
     #endif
     // Run this layer sinmgle threaded to save memory
-    char *num_threads = getenv("OMP_NUM_THREADS");
-    setenv("OMP_NUM_THREADS", "1", 1);
+    // char *num_threads = getenv("OMP_NUM_THREADS");
+    // setenv("OMP_NUM_THREADS", "1", 1);
     fused_vgg_block(intermediate_dims[1], REDUCTION_C(1), // Input dimensions
     REDUCTION_HW(1),
     STRIDE(1),
@@ -650,7 +650,7 @@ fused_model_inference(uint32_t layer_num_total,
     my_timer.stop();
     layer_timers[impl][1] = my_timer.elapsed();
     #endif
-    setenv("OMP_NUM_THREADS", num_threads, 1);
+    // setenv("OMP_NUM_THREADS", num_threads, 1);
     for (int vgg_layer = 1; vgg_layer < 5; vgg_layer++)
     {
     #if TIME_LAYER
