@@ -495,7 +495,6 @@ else\
 // Leaky ReLU activation
 //****************************************************************************
 
-//@todo implement neon intrinsics version
 #define FLOAT_COND_SCALE_SIMD_C(c_x_x, mask, bv, av, a, kk, jj, _W_ob, _C_ob) \
     av = vld1q_f32(a + kk * step + jj * FLOAT_SIMD);                    \
     c_x_x = vmaxq_f32(av, c_x_x);                                       \

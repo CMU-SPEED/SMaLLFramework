@@ -12,13 +12,11 @@
 
 #pragma once
 
-#include <Buffer.hpp>
+#include <Buffer.hpp>  // can't be FloatBuffer.hpp due to demo/check_interface_abstract.cpp
 #include <cmath>
 
 // scalar versions of all the float microkernels for platform portability
 // Use the FLOAT_ prefix for all macros in this file.
-
-
 
 #define FLOAT_SIMD_EPILOGUE 1
 
@@ -26,56 +24,149 @@ namespace small
 {
     namespace detail
     {
-
         /// @todo both pairs of typedefs should not be needed.
         typedef small::FloatBuffer::value_type dtype;
 
         typedef small::FloatBuffer::value_type c_tile_t;
-
     }
 }
 
-// Architecture specific tiling params
+// The macros in this file are intended to be used in a shared scope.
+//****************************************************************************
+//****************************************************************************
+// Kernel Structure
+//****************************************************************************
+//****************************************************************************
+// Steady State Kernel
+//****************************************************************************
+// Each kernel will
+// 1) define a tile (size known at run-time) of C,
+// 2) initialize it,
+// 3) perform some computation in a loop,
+// 4) and (optionally) store the result.
 
-// __m256 a_reg,b0,b1,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13;
+// The macros used in this kernel have the _TILE_C suffix.
+// Pseduocode below
+/*
+    template <W_ob, C_ob, step>
+    kernel(a, b, c)
+    {
+        DEF_TILE_C(W_ob, C_ob)
+
+        if(ZERO)
+        {
+            ZERO_TILE_C(W_ob, C_ob)
+        } else {
+            LOAD_TILE_C(a, step, W_ob, C_ob)
+        }
+
+        computation loop
+        {
+            <COMPUTE>_TILE_C(step, a, b, W_ob, C_ob)
+        }
+
+        STORE_TILE_C(c, W_ob, C_ob)
+    }
+
+*/
+//****************************************************************************
+// Edge-case kernel
+//****************************************************************************
+// Each kernel will
+// 1) define a tile (size known at run-time) of C,
+// 2) initialize it,
+// 3) perform some computation in a loop,
+// 4) and (optionally) store the result.
+//
+// Macros have the _END_C suffix.
+// Pseduocode below
+/*
+    template <step>
+    kernel_end(a, b, c, W_ob, C_ob)
+    {
+        DEF_END_C(W_ob, C_ob)
+
+        if(ZERO)
+        {
+            ZERO_END_C(W_ob, C_ob)
+        }
+        else
+        {
+            LOAD_END_C(a, step, W_ob, C_ob)
+        }
+
+        computation loop
+        {
+            <COMPUTE>_END_C(step, a, b, W_ob, C_ob)
+        }
+
+        STORE_END_C(c, W_ob, C_ob)
+    }
+
+*/
 
 //****************************************************************************
 // Initializations
 //****************************************************************************
 
-#define FLOAT_DEF_TILE_C(_W_ob, _C_ob) \
-    c_tile_t c_tile[_W_ob * _C_ob];
+/**
+ * @brief Macro to define a tile of C matrix with given dimensions.
+ *
+ * @param W_ob The width of the tile.              // Constant at compile time
+ * @param C_ob The number of channels in the tile. // Constant at compile time
+ */
+#define FLOAT_DEF_TILE_C(W_ob, C_ob) \
+    c_tile_t c_tile[W_ob * C_ob];
 
-#define FLOAT_DEF_END_C(_W_ob, _C_ob) \
-    c_tile_t c_tile[_W_ob * _C_ob];
 
-#define OLD_FLOAT_ZERO_TILE_C(_W_ob, _C_ob)      \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)     \
+/**
+ * @brief Macro to define a tile of C matrix with given dimensions.
+ *
+ * @param W_ob The width of the tile.             // Variable, determined at runtime
+ * @param C_ob The number of channels in the tile.// Variable, determined at runtime
+ */
+#define FLOAT_DEF_END_C(W_ob, C_ob) \
+    c_tile_t c_tile[W_ob * C_ob];
+
+/**
+ * @brief Macro to zero-initialize a (previously defined) tile of C matrix with given dimensions.
+ *
+ * @param W_ob The width of the tile.
+ * @param C_ob The number of channels in the tile.
+ */
+#define OLD_FLOAT_ZERO_TILE_C(W_ob, C_ob)      \
+    for (uint32_t kk = 0; kk < W_ob; kk++)     \
     {                                          \
-        for (uint32_t jj = 0; jj < _C_ob; jj++) \
+        for (uint32_t jj = 0; jj < C_ob; jj++) \
         {                                      \
-            c_tile[kk * _C_ob + jj] = 0.f;      \
+            c_tile[kk * C_ob + jj] = 0.f;      \
         }                                      \
     }
 
-#define FLOAT_ZERO_TILE_C(_W_ob, _C_ob)                                        \
-    /* TODO check that c_tile_t is the correct type to be using.             \
-     i think c_tile in this case is actually full of floats, not c_tile_t */ \
+#define FLOAT_ZERO_TILE_C(W_ob, C_ob)                                        \
+    /* TODO check that c_tile_t is the correct type to be using.  I think */ \
+    /*      c_tile in this case is actually full of floats, not c_tile_t  */ \
     c_tile_t *c_channel = c_tile;                                            \
-    const c_tile_t *end_addr = c_channel + (_W_ob * _C_ob);                  \
+    const c_tile_t *end_addr = c_channel + (W_ob * C_ob);                    \
     /*address of the last element in c_tile*/                                \
                                                                              \
     while (c_channel < end_addr)                                             \
     {                                                                        \
-        *c_channel++ = 0.0f;                                                   \
+        *c_channel++ = 0.0f;                                                 \
     }
 
-#define FLOAT_ZERO_END_C(_W_ob, _C_ob)          \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)    \
+/**
+ * @brief Macro to zero-initialize the end of a tile of C matrix with given dimensions.
+ *
+ * @param _W_ob The width of the tile.
+ * @param C_ob The number of channels in the tile.
+ */
+#define FLOAT_ZERO_END_C(W_ob, C_ob)           \
+    for (uint32_t kk = 0; kk < W_ob; kk++)     \
     {                                          \
-        for (uint32_t jj = 0; jj < _C_ob; jj++) \
+        for (uint32_t jj = 0; jj < C_ob; jj++) \
         {                                      \
-            c_tile[kk * _C_ob + jj] = 0.f;      \
+            c_tile[kk * C_ob + jj] = 0.f;      \
         }                                      \
     }
 
@@ -83,24 +174,23 @@ namespace small
 // Loads
 //****************************************************************************
 
-#define FLOAT_LOAD_TILE_C(O, _W_ob, _C_ob)            \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)              \
-    {                                                   \
-        for (uint32_t jj = 0; jj < _C_ob; jj++)          \
-        {                                               \
-            c_tile[kk * _C_ob + jj] = O[kk * _C_ob + jj]; \
-        }                                               \
+#define FLOAT_LOAD_TILE_C(O, W_ob, C_ob)                  \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                \
+    {                                                     \
+        for (uint32_t jj = 0; jj < C_ob; jj++)            \
+        {                                                 \
+            c_tile[kk * C_ob + jj] = O[kk * C_ob + jj];   \
+        }                                                 \
     }
 
-
-//  c_tile_t c_tile[_W_ob * _C_ob];
-#define FLOAT_LOAD_END_C(O, _W_ob, _C_ob)                \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)             \
-    {                                                   \
-        for (uint32_t jj = 0; jj < _C_ob; jj++)          \
-        {                                               \
-            c_tile[kk * _C_ob + jj] = O[kk * _C_ob + jj]; \
-        }                                               \
+/// @todo REVIEW LOAD_TILE and LOAD_END are identical
+#define FLOAT_LOAD_END_C(O, W_ob, C_ob)                   \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                \
+    {                                                     \
+        for (uint32_t jj = 0; jj < C_ob; jj++)            \
+        {                                                 \
+            c_tile[kk * C_ob + jj] = O[kk * C_ob + jj];   \
+        }                                                 \
     }
 
 //****************************************************************************
@@ -108,36 +198,40 @@ namespace small
 //****************************************************************************
 
 // strided loads
-#define FLOAT_LOAD_TILE_C_strided(O, step, _W_ob, _C_ob) \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)                  \
+#define FLOAT_LOAD_TILE_C_strided(O, step, W_ob, C_ob)       \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                   \
     {                                                        \
-        for (uint32_t jj = 0; jj < _C_ob; jj++)              \
+        for (uint32_t jj = 0; jj < C_ob; jj++)               \
         {                                                    \
-            c_tile[kk * _C_ob + jj] = O[kk * step + jj];     \
+            c_tile[kk * C_ob + jj] = O[kk * step + jj];      \
         }                                                    \
     }
 
-// #define FLOAT_LOAD_TILE_C_strided(O, step, _W_ob, _C_ob)      \
-//     /*TODO what kind of data types does O have?  what size?*/ \
-//     c_tile_t *c_channel = c_tile;                             \
-//     c_tile_t const *o_ptr = O;                                      \
-//     const c_tile_t *end_addr = c_channel + (_W_ob * _C_ob);   \
-//     /*address of the last element in c_tile*/                 \
-//                                                               \
-//     while (c_channel < end_addr)                              \
-//     {                                                         \
-//         *c_channel = *o_ptr;                                  \
-//         c_channel++;                                          \
-//         o_ptr += step;                                        \
-//     }
+//=============================================================
+#if 0
+#define FLOAT_LOAD_TILE_C_strided(O, step, W_ob, C_ob)        \
+    /*TODO what kind of data types does O have?  what size?*/ \
+    c_tile_t *c_channel = c_tile;                             \
+    c_tile_t const *o_ptr = O;                                \
+    const c_tile_t *end_addr = c_channel + (W_ob * C_ob);     \
+    /*address of the last element in c_tile*/                 \
+                                                              \
+    while (c_channel < end_addr)                              \
+    {                                                         \
+        *c_channel = *o_ptr;                                  \
+        c_channel++;                                          \
+        o_ptr += step;                                        \
+    }
+#endif
+//=============================================================
 
 //  c_tile_t c_tile[_W_ob * _C_ob];
-#define FLOAT_LOAD_END_C_strided(O, step, _W_ob, _C_ob)  \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)             \
+#define FLOAT_LOAD_END_C_strided(O, step, W_ob, C_ob)   \
+    for (uint32_t kk = 0; kk < W_ob; kk++)              \
     {                                                   \
-        for (uint32_t jj = 0; jj < _C_ob; jj++)          \
+        for (uint32_t jj = 0; jj < C_ob; jj++)          \
         {                                               \
-            c_tile[kk * _C_ob + jj] = O[kk * step + jj]; \
+            c_tile[kk * C_ob + jj] = O[kk * step + jj]; \
         }                                               \
     }
 
@@ -145,43 +239,43 @@ namespace small
 // Upsampling loads (stride < 1)
 //****************************************************************************
 
-#define FLOAT_LOAD_TILE_C_upsample(I, stride, _C_ib, _W_ob, _C_ob)     \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)                           \
-    {                                                                 \
-        for (uint32_t jj = 0; jj < _C_ob; jj++)                        \
-        {                                                             \
-            c_tile[kk * _C_ob + jj] = I[(kk / stride) * (_C_ib) + jj]; \
-        }                                                             \
+#define FLOAT_LOAD_TILE_C_upsample(I, stride, _C_ib, W_ob, C_ob)        \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                              \
+    {                                                                   \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                          \
+        {                                                               \
+            c_tile[kk * C_ob + jj] = I[(kk / stride) * (_C_ib) + jj];   \
+        }                                                               \
     }
 
-#define FLOAT_LOAD_END_C_upsample(I, stride, _C_ib, _W_ob, _C_ob)      \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)                           \
-    {                                                                 \
-        for (uint32_t jj = 0; jj < _C_ob; jj++)                        \
-        {                                                             \
-            c_tile[kk * _C_ob + jj] = I[(kk / stride) * (_C_ib) + jj]; \
-        }                                                             \
+#define FLOAT_LOAD_END_C_upsample(I, stride, _C_ib, W_ob, C_ob)         \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                              \
+    {                                                                   \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                          \
+        {                                                               \
+            c_tile[kk * C_ob + jj] = I[(kk / stride) * (_C_ib) + jj];   \
+        }                                                               \
     }
 
 //****************************************************************************
 // Stores
 //****************************************************************************
 
-#define FLOAT_STORE_TILE_C(O, _W_ob, _C_ob)               \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)              \
+#define FLOAT_STORE_TILE_C(O, W_ob, C_ob)               \
+    for (uint32_t kk = 0; kk < W_ob; kk++)              \
     {                                                   \
-        for (uint32_t jj = 0; jj < _C_ob; jj++)          \
+        for (uint32_t jj = 0; jj < C_ob; jj++)          \
         {                                               \
-            O[kk * _C_ob + jj] = c_tile[kk * _C_ob + jj]; \
+            O[kk * C_ob + jj] = c_tile[kk * C_ob + jj]; \
         }                                               \
     }
 
-#define FLOAT_STORE_END_C(O, _W_ob, _C_ob)               \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)             \
+#define FLOAT_STORE_END_C(O, W_ob, C_ob)                \
+    for (uint32_t kk = 0; kk < W_ob; kk++)              \
     {                                                   \
-        for (uint32_t jj = 0; jj < _C_ob; jj++)          \
+        for (uint32_t jj = 0; jj < C_ob; jj++)          \
         {                                               \
-            O[kk * _C_ob + jj] = c_tile[kk * _C_ob + jj]; \
+            O[kk * C_ob + jj] = c_tile[kk * C_ob + jj]; \
         }                                               \
     }
 
@@ -189,39 +283,39 @@ namespace small
 // Convolution
 //****************************************************************************
 
-#define FLOAT_CONV_TILE_C(step, a, b, _W_ob, _C_ob) \
-    c_tile_t *c_pixel = c_tile;                   \
-    c_tile_t const *a_channel = a;                \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)        \
-    {                                             \
-        c_tile_t a_val = *(a_channel);            \
-        c_tile_t *c_channel = c_pixel;            \
-        for (uint32_t jj = 0; jj < _C_ob; jj++)    \
-        {                                         \
-            c_tile_t b_val = *(b + jj);           \
-            *(c_channel) += a_val * b_val;       \
-            c_channel++;                          \
-        }                                         \
-        a_channel += step;                        \
-        c_pixel += _C_ob;                         \
+#define FLOAT_CONV_TILE_C(step, a, b, W_ob, C_ob)       \
+    c_tile_t *c_pixel = c_tile;                         \
+    c_tile_t const *a_channel = a;                      \
+    for (uint32_t kk = 0; kk < W_ob; ++kk)              \
+    {                                                   \
+        c_tile_t a_val = *(a_channel);                  \
+        c_tile_t *c_channel = c_pixel;                  \
+        for (uint32_t jj = 0; jj < C_ob; ++jj)          \
+        {                                               \
+            c_tile_t b_val = *(b + jj);                 \
+            *(c_channel) += a_val * b_val;              \
+            ++c_channel;                                \
+        }                                               \
+        a_channel += step;                              \
+        c_pixel += C_ob;                                \
     }
 
 //todo: add UNROLL as a parameter to this platform.
-#define FLOAT_CONV_END_C(step, a, b, c_cur, _W_ob, _C_ob) \
-    c_tile_t *c_pixel = c_cur;                           \
-    c_tile_t const *a_channel = a;                       \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)              \
-    {                                                    \
-        c_tile_t a_val = *(a_channel);                   \
-        c_tile_t *c_channel = c_pixel;                   \
-        for (uint32_t jj = 0; jj < _C_ob; jj++)           \
-        {                                                \
-            c_tile_t b_val = *(b + jj);                  \
-            *(c_channel) += a_val * b_val;               \
-            c_channel++;                                 \
-        }                                                \
-        a_channel += step;                               \
-        c_pixel += _C_ob;                                 \
+#define FLOAT_CONV_END_C(step, a, b, c_cur, W_ob, C_ob)         \
+    c_tile_t *c_pixel = c_cur;                                  \
+    c_tile_t const *a_channel = a;                              \
+    for (uint32_t kk = 0; kk < W_ob; ++kk)                      \
+    {                                                           \
+        c_tile_t a_val = *(a_channel);                          \
+        c_tile_t *c_channel = c_pixel;                          \
+        for (uint32_t jj = 0; jj < C_ob; ++jj)                  \
+        {                                                       \
+            c_tile_t b_val = *(b + jj);                         \
+            *(c_channel) += a_val * b_val;                      \
+            ++c_channel;                                        \
+        }                                                       \
+        a_channel += step;                                      \
+        c_pixel += C_ob;                                        \
     }
 
 //****************************************************************************
@@ -229,160 +323,229 @@ namespace small
 //   Max pooling
 //****************************************************************************
 
-#define FLOAT_MAX_TILE_C(step, a, _W_ob, _C_ob)                                         \
+#define FLOAT_MAX_TILE_C(step, a, W_ob, C_ob)                                           \
     c_tile_t *c_pixel = c_tile;                                                         \
     c_tile_t const *a_pixel = a;                                                        \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)                                             \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                                              \
     {                                                                                   \
         c_tile_t *c_channel = c_pixel;                                                  \
         c_tile_t const *a_channel = a_pixel;                                            \
-        for (uint32_t jj = 0; jj < _C_ob; jj++)                                         \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                                          \
         {                                                                               \
             *(c_channel) = (*(a_channel) > *(c_channel)) ? *(a_channel) : *(c_channel); \
             c_channel++;                                                                \
             a_channel++;                                                                \
         }                                                                               \
         a_pixel += step;                                                                \
-        c_pixel += _C_ob;                                                               \
+        c_pixel += C_ob;                                                                \
     }
 
-#define FLOAT_MAX_END_C(step, a, c_cur, W_last, _C_ob)                                   \
+#define FLOAT_MAX_END_C(step, a, c_cur, W_last, C_ob)                                   \
     c_tile_t *c_pixel = c_cur;                                                          \
     c_tile_t const *a_pixel = a;                                                        \
     for (uint32_t kk = 0; kk < W_last; kk++)                                            \
     {                                                                                   \
         c_tile_t *c_channel = c_pixel;                                                  \
         c_tile_t const *a_channel = a_pixel;                                            \
-        for (uint32_t jj = 0; jj < _C_ob; jj++)                                          \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                                          \
         {                                                                               \
             *(c_channel) = (*(a_channel) > *(c_channel)) ? *(a_channel) : *(c_channel); \
             c_channel++;                                                                \
             a_channel++;                                                                \
         }                                                                               \
         a_pixel += step;                                                                \
-        c_pixel += _C_ob;                                                                \
+        c_pixel += C_ob;                                                                \
     }
 
 //****************************************************************************
 // DW Convolution
 //****************************************************************************
 
-#define FLOAT_DW_TILE_C(step, a, b, _W_ob, _C_ob)                \
-    {                                                          \
-        c_tile_t *c_pixel = c_tile;                            \
-        c_tile_t const *a_pixel = a;                           \
-        for (uint32_t kk = 0; kk < _W_ob; kk++)                 \
-        {                                                      \
-            c_tile_t *c_channel = c_pixel;                     \
-            c_tile_t const *a_channel = a_pixel;               \
-            c_tile_t const *b_channel = b;                     \
-            for (uint32_t jj = 0; jj < _C_ob; jj++)             \
-            {                                                  \
-                *(c_channel) += (*(a_channel) * *(b_channel)); \
-                c_channel++;                                   \
-                b_channel++;                                   \
-                a_channel++;                                   \
-            }                                                  \
-            a_pixel += step;                                   \
-            c_pixel += _C_ob;                                   \
-        }                                                      \
+#define FLOAT_DW_TILE_C(step, a, b, W_ob, C_ob)                 \
+    {                                                           \
+        c_tile_t *c_pixel = c_tile;                             \
+        c_tile_t const *a_pixel = a;                            \
+        for (uint32_t kk = 0; kk < W_ob; kk++)                  \
+        {                                                       \
+            c_tile_t *c_channel = c_pixel;                      \
+            c_tile_t const *a_channel = a_pixel;                \
+            c_tile_t const *b_channel = b;                      \
+            for (uint32_t jj = 0; jj < C_ob; jj++)              \
+            {                                                   \
+                *(c_channel) += (*(a_channel) * *(b_channel));  \
+                c_channel++;                                    \
+                b_channel++;                                    \
+                a_channel++;                                    \
+            }                                                   \
+            a_pixel += step;                                    \
+            c_pixel += C_ob;                                    \
+        }                                                       \
     }
 
-#define FLOAT_DW_END_C(step, a, b, c_cur, _W_ob, _C_ob)         \
-    {                                                          \
-        c_tile_t *c_pixel = c_cur;                             \
-        c_tile_t const *a_pixel = a;                           \
-        for (uint32_t kk = 0; kk < _W_ob; kk++)                \
-        {                                                      \
-            c_tile_t *c_channel = c_pixel;                     \
-            c_tile_t const *a_channel = a_pixel;               \
-            c_tile_t const *b_channel = b;                     \
-            for (uint32_t jj = 0; jj < _C_ob; jj++)             \
-            {                                                  \
-                *(c_channel) += (*(a_channel) * *(b_channel)); \
-                c_channel++;                                   \
-                b_channel++;                                   \
-                a_channel++;                                   \
-            }                                                  \
-            a_pixel += step;                                   \
-            c_pixel += _C_ob;                                   \
-        }                                                      \
+#define FLOAT_DW_END_C(step, a, b, c_cur, W_ob, C_ob)           \
+    {                                                           \
+        c_tile_t *c_pixel = c_cur;                              \
+        c_tile_t const *a_pixel = a;                            \
+        for (uint32_t kk = 0; kk < W_ob; kk++)                  \
+        {                                                       \
+            c_tile_t *c_channel = c_pixel;                      \
+            c_tile_t const *a_channel = a_pixel;                \
+            c_tile_t const *b_channel = b;                      \
+            for (uint32_t jj = 0; jj < C_ob; jj++)              \
+            {                                                   \
+                *(c_channel) += (*(a_channel) * *(b_channel));  \
+                c_channel++;                                    \
+                b_channel++;                                    \
+                a_channel++;                                    \
+            }                                                   \
+            a_pixel += step;                                    \
+            c_pixel += C_ob;                                    \
+        }                                                       \
+    }
+
+//****************************************************************************
+// ReLU Activation
+//****************************************************************************
+
+// Same kernel as Pooling, set to zero to start.
+
+// When Fused, compare with a register of zeros
+#define FLOAT_FUSED_RELU_TILE_C(W_ob, C_ob)                           \
+    float *c_pixel = c_tile;                                          \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                            \
+    {                                                                 \
+        float *c_channel = c_pixel;                                   \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                        \
+        {                                                             \
+            *(c_channel) = (0.0 > *(c_channel)) ? 0.0 : *(c_channel); \
+            c_channel++;                                              \
+        }                                                             \
+        c_pixel += C_ob;                                              \
+    }
+
+#define FLOAT_FUSED_RELU_END_C(c_cur, W_last, C_ob)                   \
+    float *c_pixel = c_cur;                                           \
+    for (uint32_t kk = 0; kk < W_last; kk++)                          \
+    {                                                                 \
+        float *c_channel = c_pixel;                                   \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                        \
+        {                                                             \
+            *(c_channel) = (0.0 > *(c_channel)) ? 0.0 : *(c_channel); \
+            c_channel++;                                              \
+        }                                                             \
+        c_pixel += C_ob;                                              \
     }
 
 //****************************************************************************
 // Leaky ReLU activation
 //****************************************************************************
 
-#define FLOAT_COND_SCALE_TILE_C(step, a, b, _W_ob, _C_ob)                                             \
-    c_tile_t *c_pixel = c_tile;                                                                     \
-    c_tile_t const *a_pixel = a;                                                                    \
-    c_tile_t scale = b[0];                                                                          \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)                                                          \
-    {                                                                                               \
-        c_tile_t *c_channel = c_pixel;                                                              \
-        c_tile_t const *a_channel = a_pixel;                                                        \
-        for (uint32_t jj = 0; jj < _C_ob; jj++)                                                      \
-        {                                                                                           \
-            *(c_channel) = (*(a_channel) > *(c_channel)) ? *(a_channel) : (*(a_channel) * (scale)); \
-            c_channel++;                                                                            \
-            a_channel++;                                                                            \
-        }                                                                                           \
-        a_pixel += step;                                                                            \
-        c_pixel += _C_ob;                                                                            \
+#define FLOAT_COND_SCALE_TILE_C(step, a, b, W_ob, C_ob)                 \
+    c_tile_t *c_pixel = c_tile;                                         \
+    c_tile_t const *a_pixel = a;                                        \
+    c_tile_t scale = b[0];                                              \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                              \
+    {                                                                   \
+        c_tile_t *c_channel = c_pixel;                                  \
+        c_tile_t const *a_channel = a_pixel;                            \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                          \
+        {                                                               \
+            *(c_channel) = (*(a_channel) > *(c_channel)) ?              \
+                *(a_channel) : (*(a_channel) * (scale));                \
+            c_channel++;                                                \
+            a_channel++;                                                \
+        }                                                               \
+        a_pixel += step;                                                \
+        c_pixel += C_ob;                                                \
     }
 
-#define FLOAT_COND_SCALE_END_C(step, a, b, c_cur, W_last, _C_ob)                                     \
-    c_tile_t *c_pixel = c_cur;                                                                      \
-    c_tile_t const *a_pixel = a;                                                                    \
-    c_tile_t scale = b[0];                                                                          \
-    for (uint32_t kk = 0; kk < W_last; kk++)                                                        \
-    {                                                                                               \
-        c_tile_t *c_channel = c_pixel;                                                              \
-        c_tile_t const *a_channel = a_pixel;                                                        \
-        for (uint32_t jj = 0; jj < _C_ob; jj++)                                                      \
-        {                                                                                           \
-            *(c_channel) = (*(a_channel) > *(c_channel)) ? *(a_channel) : (*(a_channel) * (scale)); \
-            c_channel++;                                                                            \
-            a_channel++;                                                                            \
-        }                                                                                           \
-        a_pixel += step;                                                                            \
-        c_pixel += _C_ob;                                                                            \
+#define FLOAT_COND_SCALE_END_C(step, a, b, c_cur, W_last, C_ob)         \
+    c_tile_t *c_pixel = c_cur;                                          \
+    c_tile_t const *a_pixel = a;                                        \
+    c_tile_t scale = b[0];                                              \
+    for (uint32_t kk = 0; kk < W_last; kk++)                            \
+    {                                                                   \
+        c_tile_t *c_channel = c_pixel;                                  \
+        c_tile_t const *a_channel = a_pixel;                            \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                          \
+        {                                                               \
+            *(c_channel) = (*(a_channel) > *(c_channel)) ?              \
+                *(a_channel) : (*(a_channel) * (scale));                \
+            c_channel++;                                                \
+            a_channel++;                                                \
+        }                                                               \
+        a_pixel += step;                                                \
+        c_pixel += C_ob;                                                \
+    }
+
+#define FLOAT_FUSED_COND_SCALE_TILE_C(b, W_ob, C_ob)                    \
+    float *c_pixel = c_tile;                                            \
+    float scale = b[0];                                                 \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                              \
+    {                                                                   \
+        float *c_channel = c_pixel;                                     \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                          \
+        {                                                               \
+            *(c_channel) = (0.0 > *(c_channel)) ?                       \
+                (*(c_channel) * (scale)) : *(c_channel);                \
+            c_channel++;                                                \
+        }                                                               \
+        c_pixel += C_ob;                                                \
+    }
+
+#define FLOAT_FUSED_COND_SCALE_END_C(b, c_cur, W_last, C_ob)            \
+    float *c_pixel = c_cur;                                             \
+    float scale = b[0];                                                 \
+    for (uint32_t kk = 0; kk < W_last; kk++)                            \
+    {                                                                   \
+        float *c_channel = c_pixel;                                     \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                          \
+        {                                                               \
+            *(c_channel) = (0.0 > *(c_channel)) ?                       \
+                (*(c_channel) * (scale)) : *(c_channel);                \
+            c_channel++;                                                \
+        }                                                               \
+        c_pixel += C_ob;                                                \
     }
 
 //****************************************************************************
 // Accumulation kernels
 //****************************************************************************
 
-#define FLOAT_ACCUM_TILE_C(step, a, _W_ob, _C_ob) \
-    float *c_pixel = c_tile;                        \
-    float const *a_pixel = a;                       \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)          \
-    {                                               \
-        float *c_channel = c_pixel;                 \
-        float const *a_channel = a_pixel;           \
-        for (uint32_t jj = 0; jj < _C_ob; jj++)      \
-        {                                           \
-            *(c_channel) += *(a_channel);           \
-            c_channel++;                            \
-            a_channel++;                            \
-        }                                           \
-        a_pixel += step;                            \
-        c_pixel += _C_ob;                            \
+#define FLOAT_ACCUM_TILE_C(step, a, W_ob, C_ob) \
+    float *c_pixel = c_tile;                    \
+    float const *a_pixel = a;                   \
+    for (uint32_t kk = 0; kk < W_ob; kk++)      \
+    {                                           \
+        float *c_channel = c_pixel;             \
+        float const *a_channel = a_pixel;       \
+        for (uint32_t jj = 0; jj < C_ob; jj++)  \
+        {                                       \
+            *(c_channel) += *(a_channel);       \
+            c_channel++;                        \
+            a_channel++;                        \
+        }                                       \
+        a_pixel += step;                        \
+        c_pixel += C_ob;                        \
     }
 
-// #define FLOAT_ACCUM_TILE_C(step, a, _W_ob, _C_ob)             \
-//     c_tile_t *c_channel = c_tile;                           \
-//     c_tile_t const *i_channel = I;                      \
-//     const c_tile_t *end_addr = c_channel + (_W_ob * _C_ob); \
-//     /*address of the last element in c_tile*/               \
-//                                                             \
-//     while (c_channel < end_addr)                            \
-//     {                                                       \
-//         *c_channel++ += *i_channel++;                       \
-//     }
+//=============================================================
+#if 0
+#define FLOAT_ACCUM_TILE_C(step, a, _W_ob, _C_ob)           \
+    c_tile_t *c_channel = c_tile;                           \
+    c_tile_t const *i_channel = I;                          \
+    const c_tile_t *end_addr = c_channel + (_W_ob * _C_ob); \
+    /*address of the last element in c_tile*/               \
+                                                            \
+    while (c_channel < end_addr)                            \
+    {                                                       \
+        *c_channel++ += *i_channel++;                       \
+    }
+#endif
+//=============================================================
 
-#define FLOAT_ACCUM_END_C(step, a, c_cur, W_last, _C_ob) \
-    float const *a_in_channel = a;                      \
+#define FLOAT_ACCUM_END_C(step, a, c_cur, W_last, C_ob) \
+    float const * a_in_channel = a;                     \
     for (uint32_t u = 0; u < _UNROLL; u++)              \
     {                                                   \
         float *c_pixel = c_cur;                         \
@@ -391,75 +554,80 @@ namespace small
         {                                               \
             float *c_channel = c_pixel;                 \
             float const *a_channel = a_pixel;           \
-            for (uint32_t jj = 0; jj < _C_ob; jj++)      \
+            for (uint32_t jj = 0; jj < C_ob; jj++)      \
             {                                           \
                 *(c_channel) += *(a_channel);           \
                 c_channel++;                            \
                 a_channel++;                            \
             }                                           \
             a_pixel += step;                            \
-            c_pixel += _C_ob;                            \
+            c_pixel += C_ob;                            \
         }                                               \
         a_in_channel++;                                 \
     }
+
 //****************************************************************************
 // Broadcast multiplication kernels
 //****************************************************************************
 
-#define FLOAT_DIV_TILE_C(norm, _W_ob, _C_ob) \
+#define FLOAT_DIV_TILE_C(norm, W_ob, C_ob)     \
     float *c_pixel = c_tile;                   \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)     \
+    for (uint32_t kk = 0; kk < W_ob; kk++)     \
     {                                          \
         float *c_channel = c_pixel;            \
-        for (uint32_t jj = 0; jj < _C_ob; jj++) \
+        for (uint32_t jj = 0; jj < C_ob; jj++) \
         {                                      \
             *(c_channel) *= norm;              \
             c_channel++;                       \
         }                                      \
-        c_pixel += _C_ob;                       \
+        c_pixel += C_ob;                       \
     }
 
-// #define FLOAT_DIV_TILE_C(norm, _W_ob, _C_ob)             \
-//     float *c_pixel = c_tile;                           \
-//     const float *end_addr = c_pixel + (_W_ob * _C_ob); \
-//     /*address of the last element in c_tile*/          \
-//                                                        \
-//     while (c_pixel < end_addr)                         \
-//     {                                                  \
-//         *c_pixel++ /= norm;                            \
-//     }
+//=============================================================
+#if 0
+#define FLOAT_DIV_TILE_C(norm, W_ob, C_ob)             \
+    float *c_pixel = c_tile;                           \
+    const float *end_addr = c_pixel + (W_ob * C_ob);   \
+    /*address of the last element in c_tile*/          \
+                                                       \
+    while (c_pixel < end_addr)                         \
+    {                                                  \
+        *c_pixel++ /= norm;                            \
+    }
+#endif
+//=============================================================
 
-#define FLOAT_DIV_END_C(c_cur, norm, W_last, _C_ob) \
-    float *c_pixel = c_cur;                        \
-    for (uint32_t kk = 0; kk < W_last; kk++)       \
-    {                                              \
-        float *c_channel = c_pixel;                \
-        for (uint32_t jj = 0; jj < _C_ob; jj++)     \
-        {                                          \
-            *(c_channel) *= norm;                  \
-            c_channel++;                           \
-        }                                          \
-        c_pixel += _C_ob;                           \
+#define FLOAT_DIV_END_C(c_cur, norm, W_last, C_ob)    \
+    float *c_pixel = c_cur;                           \
+    for (uint32_t kk = 0; kk < W_last; kk++)          \
+    {                                                 \
+        float *c_channel = c_pixel;                   \
+        for (uint32_t jj = 0; jj < C_ob; jj++)        \
+        {                                             \
+            *(c_channel) *= norm;                     \
+            c_channel++;                              \
+        }                                             \
+        c_pixel += C_ob;                              \
     }
 
 //****************************************************************************
 // Accumulate upsampling
 //****************************************************************************
-#define FLOAT_ACCUM_TILE_C_upsample(I, stride, _C_ib, _W_ob, _C_ob)     \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)                            \
+#define FLOAT_ACCUM_TILE_C_upsample(I, stride, _C_ib, W_ob, C_ob)      \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                             \
     {                                                                  \
-        for (uint32_t jj = 0; jj < _C_ob; jj++)                         \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                         \
         {                                                              \
-            c_tile[kk * _C_ob + jj] += I[(kk / stride) * (_C_ib) + jj]; \
+            c_tile[kk * C_ob + jj] += I[(kk / stride) * (_C_ib) + jj]; \
         }                                                              \
     }
 
-#define FLOAT_ACCUM_END_C_upsample(I, stride, _C_ib, _W_ob, _C_ob)      \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)                            \
+#define FLOAT_ACCUM_END_C_upsample(I, stride, _C_ib, W_ob, C_ob)       \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                             \
     {                                                                  \
-        for (uint32_t jj = 0; jj < _C_ob; jj++)                         \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                         \
         {                                                              \
-            c_tile[kk * _C_ob + jj] += I[(kk / stride) * (_C_ib) + jj]; \
+            c_tile[kk * C_ob + jj] += I[(kk / stride) * (_C_ib) + jj]; \
         }                                                              \
     }
 
@@ -467,26 +635,27 @@ namespace small
 // Accumulate channel dimension
 //****************************************************************************
 
-#define FLOAT_REDUCE_CHANNEL_END_C(O_w_left, _C_ob)           \
-    if constexpr (_C_ob == 1 && _C_ob != FLOAT_SIMD_EPILOGUE) \
-    {                                                         \
-        float c_tile_array[FLOAT_C_ob];                       \
-        for (uint32_t kk = 0; kk < O_w_left; kk++)            \
-        {                                                     \
-            float *c_channel_v = c_tile + kk * (FLOAT_C_ob);  \
-            for (uint32_t jj = 1; jj < FLOAT_C_ob; jj++)      \
-            {                                                 \
-                c_channel_v[0] += c_channel_v[jj];            \
-                c_channel_v[jj] = 0;                          \
-            }                                                 \
-        }                                                     \
+/// @todo REVIEW use of FLOAT_C_ob instead of C_ob
+#define FLOAT_REDUCE_CHANNEL_END_C(O_w_left, C_ob)                      \
+    if constexpr (C_ob == 1 && C_ob != FLOAT_SIMD_EPILOGUE)             \
+    {                                                                   \
+        float c_tile_array[FLOAT_C_ob];                                 \
+        for (uint32_t kk = 0; kk < O_w_left; kk++)                      \
+        {                                                               \
+            float *c_channel_v = c_tile + kk * (FLOAT_C_ob);            \
+            for (uint32_t jj = 1; jj < FLOAT_C_ob; jj++)                \
+            {                                                           \
+                c_channel_v[0] += c_channel_v[jj];                      \
+                c_channel_v[jj] = 0;                                    \
+            }                                                           \
+        }                                                               \
     }
 
 //****************************************************************************
 // Reduce kernels??
 //****************************************************************************
 
-#define FLOAT_REDUCE_div_C(O, d, W_ob_g, _C_ob)     \
+#define FLOAT_REDUCE_div_C(O, d, W_ob_g, C_ob)     \
     {                                              \
         c_tile_t *c_pixel = c_tile;                \
         c_tile_t *O_channel = O;                   \
@@ -495,23 +664,23 @@ namespace small
         {                                          \
             c_tile_t *O_channel = O;               \
             c_tile_t *c_channel = c_pixel;         \
-            for (uint32_t kk = 0; kk < _C_ob; kk++) \
+            for (uint32_t kk = 0; kk < C_ob; kk++) \
             {                                      \
                 *O_channel += *c_channel;          \
                 O_channel++;                       \
                 c_channel++;                       \
             }                                      \
-            c_pixel += _C_ob;                       \
+            c_pixel += C_ob;                       \
         }                                          \
         O_channel = O;                             \
-        for (uint32_t kk = 0; kk < _C_ob; kk++)     \
+        for (uint32_t kk = 0; kk < C_ob; kk++)     \
         {                                          \
             *O_channel *= d;                       \
             O_channel++;                           \
         }                                          \
     }
 
-#define FLOAT_REDUCE_C(O, W_ob_g, _C_ob)            \
+#define FLOAT_REDUCE_C(O, W_ob_g, C_ob)            \
     {                                              \
         c_tile_t *c_pixel = c_tile;                \
         c_tile_t *O_channel = O;                   \
@@ -520,17 +689,17 @@ namespace small
         {                                          \
             c_tile_t *O_channel = O;               \
             c_tile_t *c_channel = c_pixel;         \
-            for (uint32_t kk = 0; kk < _C_ob; kk++) \
+            for (uint32_t kk = 0; kk < C_ob; kk++) \
             {                                      \
                 *O_channel += *c_channel;          \
                 O_channel++;                       \
                 c_channel++;                       \
             }                                      \
-            c_pixel += _C_ob;                       \
+            c_pixel += C_ob;                       \
         }                                          \
     }
 
-#define FLOAT_REDUCE_C_last(O, W_last, _C_ob)       \
+#define FLOAT_REDUCE_C_last(O, W_last, C_ob)       \
     {                                              \
         c_tile_t *c_pixel = c_tile;                \
         c_tile_t *O_channel = O;                   \
@@ -539,13 +708,13 @@ namespace small
         {                                          \
             c_tile_t *O_channel = O;               \
             c_tile_t *c_channel = c_pixel;         \
-            for (uint32_t kk = 0; kk < _C_ob; kk++) \
+            for (uint32_t kk = 0; kk < C_ob; kk++) \
             {                                      \
                 *O_channel += *c_channel;          \
                 O_channel++;                       \
                 c_channel++;                       \
             }                                      \
-            c_pixel += _C_ob;                       \
+            c_pixel += C_ob;                       \
         }                                          \
     }
 
@@ -553,36 +722,62 @@ namespace small
 // Softmax  (Ewise exponentiation)
 //****************************************************************************
 
-#define FLOAT_EXP_TILE_C(step, a, _W_ob, _C_ob)    \
-    c_tile_t *c_pixel = c_tile;                  \
-    c_tile_t const *a_pixel = a;                 \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)       \
-    {                                            \
-        c_tile_t *c_channel = c_pixel;           \
-        c_tile_t const *a_channel = a_pixel;     \
-        for (uint32_t jj = 0; jj < _C_ob; jj++)   \
-        {                                        \
-            *(c_channel) = std::exp(*a_channel); \
-            c_channel++;                         \
-            a_channel++;                         \
-        }                                        \
-        a_pixel += step;                         \
-        c_pixel += _C_ob;                         \
+#define FLOAT_EXP_TILE_C(step, a, W_ob, C_ob)                           \
+    c_tile_t *c_pixel = c_tile;                                         \
+    c_tile_t const *a_pixel = a;                                        \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                              \
+    {                                                                   \
+        c_tile_t *c_channel = c_pixel;                                  \
+        c_tile_t const *a_channel = a_pixel;                            \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                          \
+        {                                                               \
+            *(c_channel) = std::exp(*a_channel);                        \
+            c_channel++;                                                \
+            a_channel++;                                                \
+        }                                                               \
+        a_pixel += step;                                                \
+        c_pixel += C_ob;                                                \
     }
 
-#define FLOAT_EXP_END_C(step, a, c_cur, W_last, _C_ob) \
+#define FLOAT_EXP_END_C(step, a, c_cur, W_last, C_ob) \
     c_tile_t *c_pixel = c_cur;                        \
     c_tile_t const *a_pixel = a;                      \
     for (uint32_t kk = 0; kk < W_last; kk++)          \
     {                                                 \
         c_tile_t *c_channel = c_pixel;                \
         c_tile_t const *a_channel = a_pixel;          \
-        for (uint32_t jj = 0; jj < _C_ob; jj++)        \
+        for (uint32_t jj = 0; jj < C_ob; jj++)        \
         {                                             \
             *(c_channel) = std::exp(*a_channel);      \
             c_channel++;                              \
             a_channel++;                              \
         }                                             \
         a_pixel += step;                              \
-        c_pixel += _C_ob;                              \
+        c_pixel += C_ob;                              \
+    }
+
+#define FLOAT_FUSED_EXP_TILE_C(W_ob, C_ob)       \
+    c_tile_t *c_pixel = c_tile;                  \
+    for (uint32_t kk = 0; kk < W_ob; kk++)       \
+    {                                            \
+        c_tile_t *c_channel = c_pixel;           \
+        for (uint32_t jj = 0; jj < C_ob; jj++)   \
+        {                                        \
+            *(c_channel) = std::exp(*c_channel); \
+            c_channel++;                         \
+        }                                        \
+        c_pixel += C_ob;                         \
+    }
+
+#define FLOAT_FUSED_EXP_END_C(c_cur, W_last, C_ob) \
+    c_tile_t *c_pixel = c_cur;                     \
+    for (uint32_t kk = 0; kk < W_last; kk++)       \
+    {                                              \
+        c_tile_t *c_channel = c_pixel;             \
+        for (uint32_t jj = 0; jj < C_ob; jj++)     \
+        {                                          \
+            *(c_channel) = std::exp(*c_channel);   \
+            c_channel++;                           \
+        }                                          \
+        c_pixel += C_ob;                           \
     }

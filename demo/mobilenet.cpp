@@ -33,6 +33,8 @@
 #define TRIALS 100
 #endif
 
+#define SUMMARY 1
+
 //****************************************************************************
 /* This is the runtime recording:
 

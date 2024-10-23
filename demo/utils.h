@@ -36,15 +36,15 @@
 #define TIME_ZERO 0
 
 //TODO: Change rdtsc(void) when moving to different architectures
-#if uarch == ZEN2
-static __inline__ unsigned long long rdtsc(void)
-{
-    unsigned hi, lo;
-    __asm__ __volatile__("rdtsc"
-                         : "=a"(lo), "=d"(hi));
-    return ((unsigned long long)lo) | (((unsigned long long)hi) << 32);
-}
-#elif uarch==ARM || uarch==REF
+// #if uarch == ZEN2
+// static __inline__ unsigned long long rdtsc(void)
+// {
+//     unsigned hi, lo;
+//     __asm__ __volatile__("rdtsc"
+//                          : "=a"(lo), "=d"(hi));
+//     return ((unsigned long long)lo) | (((unsigned long long)hi) << 32);
+// }
+// #elif uarch==ARM || uarch==REF
 #include <time.h>
 static __inline__ unsigned long long rdtsc(void)
 {
@@ -52,7 +52,7 @@ static __inline__ unsigned long long rdtsc(void)
     clock_gettime(CLOCK_REALTIME, &gettime_now);
     return  gettime_now.tv_nsec ;
 }
-#endif
+// #endif
 
 //****************************************************************************
 //logging
@@ -90,7 +90,7 @@ void print_stats(std::vector<T> v, const char *benchmark)
 
 #define print_cycles(time)                  \
     {                                       \
-        printf("%.2lf ", 1.0 * (time));    \
+        printf("%.2lf ", 1.0 * (time));     \
     }
 
 //****************************************************************************

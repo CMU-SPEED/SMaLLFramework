@@ -38,13 +38,10 @@ set(KERNEL_W_OPTIONS 6 5 4)
 
 foreach(layer_name ${LAYER_NAMES})
     foreach(kernel_w ${KERNEL_W_OPTIONS})
-    set(demo_name "test_ukernel_${layer_name}_w${kernel_w}.exe")
-    message("Adding executable: ${demo_name}")
-    add_executable(${demo_name} kernel_benchmark_test.cpp)
-    target_compile_definitions(${demo_name} PRIVATE LAYER=${layer_name})
-    target_compile_definitions(${demo_name} PRIVATE KERNEL_W_ob=${kernel_w})
-
+        set(demo_name "test_ukernel_${layer_name}_w${kernel_w}.exe")
+        message("Adding executable: ${demo_name}")
+        add_executable(${demo_name} kernel_benchmark_test.cpp)
+        target_compile_definitions(${demo_name} PRIVATE LAYER=${layer_name})
+        target_compile_definitions(${demo_name} PRIVATE KERNEL_W_ob=${kernel_w})
     endforeach(kernel_w ${KERNEL_W_OPTIONS})
-    
-
 endforeach(layer_name ${LAYER_NAMES})

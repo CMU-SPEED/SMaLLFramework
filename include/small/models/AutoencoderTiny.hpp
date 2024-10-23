@@ -20,6 +20,11 @@
 
 //****************************************************************************
 
+/* From https://dcase.community/challenge2020/task-unsupervised-detection-of-anomalous-sounds
+
+   inputDim = 640
+*/
+
 /* From https://github.com/mlcommons/tiny/blob/master/benchmark/training/anomaly_detection/keras_model.py#L26
 
 from tensorflow.keras.layers import Input, Dense, BatchNormalization, Activation
@@ -27,11 +32,11 @@ def get_model(inputDim):
     """
     define the keras model
     the model based on the simple dense auto encoder
-    (128*128*128*128*8*128*128*128*128)
+    640->(128*128*128*128*8*128*128*128*128)->640
     """
     inputLayer = Input(shape=(inputDim,)) // batches (unspecified) of 'inputDim' sized vectors
 
-    h = Dense(128)(inputLayer)   // input=inDim, output=128, weights=128xinDim
+    h = Dense(128)(inputLayer)   // input=inDim, output=128, weights=128xinputDim
     h = BatchNormalization()(h)  // pointwise norm. using set mean / std values
     h = Activation('relu')(h)
 

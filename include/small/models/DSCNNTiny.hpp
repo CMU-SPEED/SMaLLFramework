@@ -21,33 +21,110 @@
 #include <small/ReLULayer.hpp>
 
 //****************************************************************************
+
+/* From https://github.com/mlcommons/tiny/blob/master/benchmark/training/keyword_spotting/keras_model.py
+  Note there are other models: fc4, td_cnn
+
+  elif model_name == 'ds_cnn':
+    print("DS CNN model invoked")
+    input_shape = [model_settings['spectrogram_length'],
+                   model_settings['dct_coefficient_count'],
+                   1]
+    filters = 64
+    weight_decay = 1e-4
+    regularizer = l2(weight_decay)
+    final_pool_size = (int(input_shape[0]/2), int(input_shape[1]/2))
+
+    # Model layers
+
+    # Input pure conv2d
+    inputs = Input(shape=input_shape)
+    x = Conv2D(filters, (10,4), strides=(2,2), padding='same',
+               kernel_regularizer=regularizer)(inputs)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = Dropout(rate=0.2)(x)  # not used during inference but scale weights by rate
+
+    # First layer of separable depthwise conv2d
+    # Separable consists of depthwise conv2d followed by conv2d with 1x1 kernels
+
+    x = DepthwiseConv2D(depth_multiplier=1, kernel_size=(3,3), padding='same', kernel_regularizer=regularizer)(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    x = Conv2D(filters, (1,1), padding='same', kernel_regularizer=regularizer)(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    # Second layer of separable depthwise conv2d
+    x = DepthwiseConv2D(depth_multiplier=1, kernel_size=(3,3), padding='same', kernel_regularizer=regularizer)(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = Conv2D(filters, (1,1), padding='same', kernel_regularizer=regularizer)(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    # Third layer of separable depthwise conv2d
+    x = DepthwiseConv2D(depth_multiplier=1, kernel_size=(3,3), padding='same', kernel_regularizer=regularizer)(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = Conv2D(filters, (1,1), padding='same', kernel_regularizer=regularizer)(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    # Fourth layer of separable depthwise conv2d
+    x = DepthwiseConv2D(depth_multiplier=1, kernel_size=(3,3), padding='same', kernel_regularizer=regularizer)(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = Conv2D(filters, (1,1), padding='same', kernel_regularizer=regularizer)(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    # Reduce size and apply final softmax
+    x = Dropout(rate=0.4)(x)
+
+    x = AveragePooling2D(pool_size=final_pool_size)(x)
+    x = Flatten()(x)
+    outputs = Dense(model_settings['label_count'], activation='softmax')(x)
+
+    # Instantiate model.
+    model = Model(inputs=inputs, outputs=outputs)
+
+ */
+
+//****************************************************************************
 /* RECORD_CALLS:
 
-   Conv2D_rect(k:3x1,s:2,pad:[1,1,0,0],ochans:64,ichans:3,img:49x10,I,F,O)
+   Conv2D_rect(k:3x1,s:2,pad:[1,1,0,0],ochans:64,ichans:3,img:49x10,I,F,O)  # k:10x4, bn
+   ReLUActivation(chans:64,img:25x5,I,O)                                    # add dropout=0.2
+
+   # First layer of separable depthwise conv2d
+   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:64,img:25x5,I,F,O)           # add bn
+   ReLUActivation(chans:64,img:25x5,I,O)
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:64,ichans:64,img:25x5,I,F,O)         # add bn
    ReLUActivation(chans:64,img:25x5,I,O)
 
-   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:64,img:25x5,I,F,O)
+   # Second layer of separable depthwise conv2d
+   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:64,img:25x5,I,F,O)           # add bn
    ReLUActivation(chans:64,img:25x5,I,O)
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:64,ichans:64,img:25x5,I,F,O)
-   ReLUActivation(chans:64,img:25x5,I,O)
-
-   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:64,img:25x5,I,F,O)
-   ReLUActivation(chans:64,img:25x5,I,O)
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:64,ichans:64,img:25x5,I,F,O)
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:64,ichans:64,img:25x5,I,F,O)         # add bn
    ReLUActivation(chans:64,img:25x5,I,O)
 
-   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:64,img:25x5,I,F,O)
+   # Third layer of separable depthwise conv2d
+   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:64,img:25x5,I,F,O)           # add bn
    ReLUActivation(chans:64,img:25x5,I,O)
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:64,ichans:64,img:25x5,I,F,O)
-   ReLUActivation(chans:64,img:25x5,I,O)
-
-   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:64,img:25x5,I,F,O)
-   ReLUActivation(chans:64,img:25x5,I,O)
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:64,ichans:64,img:25x5,I,F,O)
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:64,ichans:64,img:25x5,I,F,O)         # add bn
    ReLUActivation(chans:64,img:25x5,I,O)
 
-   MaxPool2D_rect(k:25x5,s:1,pad:[0,0,0,0],chans:64,img:25x5,I,O)
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:16,ichans:64,img:1x1,I,F,O)
+   # Fourth layer of separable depthwise conv2d
+   DepthwiseConv2D(k:3,s:1,pad:[1,1,1,1],chans:64,img:25x5,I,F,O)           # add bn
+   ReLUActivation(chans:64,img:25x5,I,O)
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:64,ichans:64,img:25x5,I,F,O)         # add bn
+   ReLUActivation(chans:64,img:25x5,I,O)                                    # add dropout=0.4
+
+
+   MaxPool2D_rect(k:25x5,s:1,pad:[0,0,0,0],chans:64,img:25x5,I,O)           # use AveragePool
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:16,ichans:64,img:1x1,I,F,O)          # add activation softmax
 */
 
 namespace small

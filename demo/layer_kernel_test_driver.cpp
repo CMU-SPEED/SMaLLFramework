@@ -68,7 +68,7 @@
 #endif
 
 
-#ifndef KERNEL_W_ob 
+#ifndef KERNEL_W_ob
 #define KERNEL_W_ob 5
 #endif
 //****************************************************************************
@@ -90,13 +90,13 @@ int main(int argc, char **argv)
     #if PERFORMANCE == 0
     printf("layer %d \n", LAYER);
     #endif
-    int C_i = atoi(argv[1]);
+    uint32_t C_i = atol(argv[1]);
 
-    int input_height = atol(argv[2]);
-    int input_width = atol(argv[3]);
+    uint32_t input_height = atol(argv[2]);
+    uint32_t input_width = atol(argv[3]);
 
-    int kernel_size = atol(argv[4]);
-    int stride = atol(argv[5]);
+    uint32_t kernel_size = atol(argv[4]);
+    uint32_t stride = atol(argv[5]);
     char padding = argv[6][0];
 
     uint8_t t_pad = 0, b_pad = 0;
@@ -126,7 +126,7 @@ int main(int argc, char **argv)
     uint32_t output_rows =  ((input_height + t_pad + b_pad) - kernel_size)/stride + 1;
     uint32_t output_cols =  ((input_width + l_pad + r_pad) - kernel_size) / stride + 1;
     uint32_t out_dimensions = (C_o * output_rows * output_cols);
-    
+
 
     Buffer input_dc(in_dimensions);
     Buffer out_dc_6(out_dimensions);
@@ -143,15 +143,15 @@ int main(int argc, char **argv)
     small::init(input_dc, in_dimensions);
 
 #if LAYER < MAX_POOL
-    #if LAYER == CONV
+  #if LAYER == CONV
     uint32_t filter_dimensions = (C_i * C_o * kernel_size * kernel_size);
-    #elif LAYER == DW_CONV
+  #elif LAYER == DW_CONV
     assert(C_i == C_o);
     uint32_t filter_dimensions = (C_o * kernel_size * kernel_size);
-    #endif
+  #endif
     Buffer filter_dc(filter_dimensions);
     small::init(filter_dc, filter_dimensions);
-    #endif
+#endif
 
     // std::cout << "out check " << out_check_dc.data() << "\n";
     // std::cout << "out 6 " << out_dc_6.data() << "\n";
@@ -245,12 +245,12 @@ int main(int argc, char **argv)
 //         printf("%.2f %.2f %.2f\n", out_check_dc[i], out_dc_6[i], out_dc_k[i]);
 //     }
 //     printf("Computing with reference and platform kernels %d times.\n", RUNS);
-//     #endif 
+//     #endif
 
     #if PERFORMANCE == 1
     small::Timer t;
-    
-    
+
+
     #if PERFORMANCE == 0
     double ref_time = std::numeric_limits<double>::max();
     for (int run = 0; run < RUNS; run++)
@@ -293,7 +293,7 @@ int main(int argc, char **argv)
         // clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
         for (int t = 0; t < TRIALS; t++)
         {
-        
+
 #if LAYER == CONV
             small::Conv2D<small::FloatBuffer>(kernel_size, kernel_size, stride,
                                               t_pad, b_pad, l_pad, r_pad,

@@ -61,38 +61,43 @@ endif()
 # Set up microarchitecture
 set(CMAKE_PLATFORM_DIR ${CMAKE_SOURCE_DIR}/include/small/platforms/)
 
-if(CMAKE_UARCH STREQUAL "ZEN2")
-  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DZEN2 -DUARCH_ZEN2 -mavx2 -mfma -march=native")
+if(CMAKE_UARCH STREQUAL "ZEN4")
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mavx2 -mavx512f -mavx512vnni -mfma -march=native")
+  message("Microarchitecture target: ZEN4 (Ryzen9)")
+  include_directories ( ${CMAKE_PLATFORM_DIR}/zen4 )
+
+elseif(CMAKE_UARCH STREQUAL "ZEN2")
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mavx2 -mfma -march=native")
   message("Microarchitecture target: ZEN2 (Epyc)")
   include_directories ( ${CMAKE_PLATFORM_DIR}/zen2 )
 
 # elseif(CMAKE_UARCH STREQUAL "ARM")
-#   SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -lrt -DUARCH_ARM")
+#   SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -lrt")
 #   message("Microarchitecture target: ARM (vanilla)")
 #   include_directories ( ${CMAKE_PLATFORM_DIR}/arm )
 
 elseif(CMAKE_UARCH STREQUAL "ARM-A72")
-  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native -lrt  -DUARCH_ARM")
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -lrt") #-march=armv8.2-a -lrt")
   message("Microarchitecture target: ARM-A72")
   include_directories ( ${CMAKE_PLATFORM_DIR}/arm_a72 )
 
 elseif(CMAKE_UARCH STREQUAL "ARM-A55")
-  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static -march=armv8.2-a -lrt -DUARCH_ARM")
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static -march=armv8.2-a -lrt")
   message("Microarchitecture target: ARM-A55 (Qualcomm)")
   include_directories ( ${CMAKE_PLATFORM_DIR}/arm_a55 )
 
 elseif(CMAKE_UARCH STREQUAL "ARM-A78")
-  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static -march=armv8.2-a -lrt -DUARCH_ARM")
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static -march=armv8.2-a -lrt")
   message("Microarchitecture target: ARM-A78 (Qualcomm)")
   include_directories ( ${CMAKE_PLATFORM_DIR}/arm_a78 )
 
 elseif(CMAKE_UARCH STREQUAL "ARM-X1")
-  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static -march=armv8.2-a -lrt -DUARCH_ARM")
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static -march=armv8.2-a -lrt")
   message("Microarchitecture target: ARM-X1 (Qualcomm)")
   include_directories ( ${CMAKE_PLATFORM_DIR}/arm_x1 )
 
 elseif(CMAKE_UARCH STREQUAL "Q-ARM7E")
-  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -lrt -DQUANTIZED -DUARCH_ARM")
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -lrt -DQUANTIZED")
   message("Microarchitecture target: quantized ARM7E (ARM-Mx)")
   include_directories(${CMAKE_PLATFORM_DIR}/quantized_arm7E)
 
