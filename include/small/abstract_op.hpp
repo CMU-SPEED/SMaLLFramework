@@ -23,24 +23,6 @@
 namespace small
 {
 
-/// @todo This does not belong here.  Find a better place for fused utils.
-template <typename BufferT>
-struct Mapping
-{
-    dim_t G;       // Output Channel Grouping
-    dim_t K;       // Output Channels per group
-    dim_t F_c;     // Channel Reduction Dimension
-    dim_t F_h;     // Filter height
-    dim_t F_w;     // Filter width
-    dim_t pad_top; // Padding values
-    dim_t pad_left;
-    dim_t pad_right;
-    dim_t pad_bottom;
-    BufferT const *__restrict__ F; // may be a null pointer
-    BufferT const *__restrict__ F_before = NULL;
-    BufferT const *__restrict__ F_after = NULL;
-};
-
 namespace detail
 {
 
