@@ -326,7 +326,7 @@ else\
     }
 
 #else
-
+//todo: make this use the fmla as well
 #define FLOAT_CONV_END_C(step, a, b, c_cur, _W_ob, C_ob)                \
     float32x4_t bv[C_ob / FLOAT_SIMD];                                  \
     float32x4_t av;                                                     \
@@ -800,21 +800,6 @@ else\
         c_pixel += C_ob;                              \
     }
 #else
-/*#define FLOAT_EXP_END_C(step, a, c_cur, W_last, C_ob) \
-  float32x4_t av;                                                \
-  float const * a_pixel = a;\
-  av = vld1q_f32(a_pixel);                                     \
-  float32x4_t *c_pixel = c_cur;                                   \
-  for (uint32_t kk = 0; kk < W_last; kk++)                       \
-  {                                                              \
-    for (uint32_t jj = 0; jj < C_ob / FLOAT_SIMD; jj++)          \
-    {                                                            \
-      c_pixel[(kk) * (C_ob / FLOAT_SIMD) + jj] = exp_ps(av); \
-      av = vld1q_f32(a_pixel + jj * FLOAT_SIMD);\
-    }                                                            \
-       a_pixel += step;\
-}*/
-
 #define FLOAT_EXP_END_C(step, a, c_cur, W_last, C_ob) \
     float c_tile_scalar[FLOAT_W_ob * FLOAT_C_ob];                  \
     float *c_pixel = c_tile_scalar;                                \

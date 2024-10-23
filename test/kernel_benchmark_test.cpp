@@ -32,6 +32,18 @@
 #include <intrinsics.h>
 
 // kernel specific intrinsics are already in small.h
+
+// To test different kernels make this program with different compile time arguments
+// if none are provided, test the hardware-specific parameters from params.h
+
+#ifndef KERNEL_C_ob
+#define KERNEL_C_ob FLOAT_C_ob
+#endif
+
+#ifndef KERNEL_W_ob
+#define KERNEL_W_ob FLOAT_W_ob
+#endif
+
 // The macro below can be used to produce all the kernel benchmarks using
 // this program.
 
@@ -76,7 +88,6 @@ typedef small::FloatBuffer::value_type c_tile_t;
     {                                                                    \
         FLOAT_EXP_TILE_C(step, a_cur, _O_wb, _C_ob)                      \
     }
-
 
 //****************************************************************************
 // kernel benchmark: Work on 1 output tile, input fits in L1
@@ -143,7 +154,7 @@ void kernel_benchmark(
 #elif LAYER == DW_CONV
 #define    OP_TYPE small::OP_CONV
 #define    OP_CLASS 1
-#define G_b FLOAT_C_ob
+#define G_b KERNEL_C_ob
 
 #elif LAYER == GROUP_CONV
 #define    OP_TYPE small::OP_CONV
@@ -158,8 +169,7 @@ void kernel_benchmark(
 #elif LAYER == MAX_POOL
 #define OP_TYPE small::OP_MAX_POOL
 #define OP_CLASS 1
-#define G_b FLOAT_C_ob
-
+#define G_b KERNEL_C_ob
 #endif
 
 
@@ -196,7 +206,7 @@ void check_result(const int m, const int n, const int k, const int stride,
     {
         float const *a_cur = I + (p)*G_b;
         float const *b_cur = W + p * n;
-        int step = FLOAT_C_ob * stride;
+        int step = KERNEL_C_ob * stride;
         for (int32_t i = 0; i < m; i++)
         {
             for (int32_t j = 0; j < n; j++)
@@ -219,11 +229,12 @@ void check_result(const int m, const int n, const int k, const int stride,
     free(out_check);
 }
 
+
 //****************************************************************************
 int main()
 {
-    const int n = FLOAT_C_ob;
-    const int m = FLOAT_W_ob;
+    const int n = KERNEL_C_ob;
+    const int m = KERNEL_W_ob;
     const int stride = 1;
 
     printf("m: %d, n: %d\n Minimum timing over %d trials, each trial averages over %d runs\n", m, n, TRIALS, RUNS);
@@ -247,6 +258,7 @@ int main()
             fprintf(stderr, "ERROR: posix_memalign failed, return code %d, for size=%d", ret, size);
             continue;
         }
+
         I = shared_buffer;
         W = I + m * k;
         O = W + k * n;
@@ -270,7 +282,7 @@ int main()
         }
 
         // warm up run (though the init might have done that)
-        // kernel_benchmark<FLOAT_W_ob, FLOAT_C_ob, G_b, 1, OP_TYPE, OP_CLASS>(m, n, k, I, W, O);
+        // kernel_benchmark<KERNEL_W_ob, KERNEL_C_ob, G_b, 1, OP_TYPE, OP_CLASS>(m, n, k, I, W, O);
 
         // benchmark
         small::Timer timer;
@@ -285,7 +297,7 @@ int main()
             timer.start();
             for (int r = 0; r < RUNS; r++)
             {
-                kernel_benchmark<FLOAT_W_ob, FLOAT_C_ob, G_b, FLOAT_UNROLL, 1, OP_TYPE, OP_CLASS>(m, n, k, I, W, O);
+                kernel_benchmark<KERNEL_W_ob, KERNEL_C_ob, G_b, FLOAT_UNROLL, 1, OP_TYPE, OP_CLASS>(m, n, k, I, W, O);
             }
             timer.stop();
             total_layer_timers[0][size] = timer.elapsed();
@@ -298,15 +310,10 @@ int main()
 
         printf("%f, %f , %f\n", min_layer_timers[0][size], (1.0*ops)/(min_layer_timers[0][size]*FREQ), total_layer_timers[0][size]/1e6);
 
-
         check_result(m, n, k, stride,  I, W, O);
 
         free(shared_buffer);
-
-
     }
-
-
 
     return 0;
 }

@@ -53,8 +53,11 @@ namespace detail
 // Initializations
 //****************************************************************************
 
+/// @todo REVIEW: referencing c12 so suppress warning because some test
+///       code does not use it.  Make sure this does not impede performance.
 #define FLOAT_DEF_TILE_C(_W_ob, _C_ob) \
-    __m256 a_reg, b0, b1, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12;
+    __m256 a_reg, b0, b1, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12; \
+    (void) c12;
 
 /// @todo VERIFY this. Args are _W_ob/_C_ob but does not use them
 #if FLOAT_SIMD_EPILOGUE == 1
@@ -298,6 +301,37 @@ else
 // Convolution Computation
 // (Strided GEMM)
 //****************************************************************************
+#if 1 /// @todo REVIEW from ewise_optimization branch
+#define FLOAT_CONV_TILE_C(step, a, b, W_ob, C_ob)       \
+    float const * a_ptr = a;                            \
+    b0 = _mm256_load_ps(b);                             \
+    b1 = _mm256_load_ps(b + FLOAT_SIMD);                \
+    a_reg = _mm256_broadcast_ss(a_ptr);                 \
+    a_ptr += step;                                      \
+    c0 = _mm256_fmadd_ps(a_reg, b0, c0);                \
+    c1 = _mm256_fmadd_ps(a_reg, b1, c1);                \
+    a_reg = _mm256_broadcast_ss(a_ptr);                 \
+    a_ptr += step;                                      \
+    c2 = _mm256_fmadd_ps(a_reg, b0, c2);                \
+    c3 = _mm256_fmadd_ps(a_reg, b1, c3);                \
+    a_reg = _mm256_broadcast_ss(a_ptr);                 \
+    a_ptr += step;                                      \
+    c4 = _mm256_fmadd_ps(a_reg, b0, c4);                \
+    c5 = _mm256_fmadd_ps(a_reg, b1, c5);                \
+    a_reg = _mm256_broadcast_ss(a_ptr);                 \
+    a_ptr += step;                                      \
+    c6 = _mm256_fmadd_ps(a_reg, b0, c6);                \
+    c7 = _mm256_fmadd_ps(a_reg, b1, c7);                \
+    a_reg = _mm256_broadcast_ss(a_ptr);                 \
+    a_ptr += step;                                      \
+    c8 = _mm256_fmadd_ps(a_reg, b0, c8);                \
+    c9 = _mm256_fmadd_ps(a_reg, b1, c9);                \
+    a_reg = _mm256_broadcast_ss(a_ptr);                 \
+    a_ptr += step;                                      \
+    c10 = _mm256_fmadd_ps(a_reg, b0, c10);              \
+    c11 = _mm256_fmadd_ps(a_reg, b1, c11);
+
+#else
 
 #define FLOAT_CONV_TILE_C(step, a, b, W_ob, C_ob)       \
     float const * a_ptr = a;                            \
@@ -326,6 +360,7 @@ else
                                                         \
     c10 = _mm256_fmadd_ps(c12, b0, c10);                \
     c11 = _mm256_fmadd_ps(c12, b1, c11);
+#endif
 
 /// @todo This implementation is different than REF
 #if FLOAT_SIMD_EPILOGUE == 1

@@ -10,30 +10,43 @@
 // DM23-0126
 //****************************************************************************
 
+
 #include <math.h>
-#include <assert.h>
-// #include <omp.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <stdint.h>
+#include <stdexcept>
+#include <type_traits>
 
-//****************************************************************************
-// Recreate include order of small.h but hijack interface.hpp, intrinsics.h
-// and interface_abstract.hpp (the contents of this file)
-
-// ============ Implementation details ==============
-// Platform specific includes.
-// Use -I compile option to point to correct platform
 #include <params.h>
-#include <Buffer.hpp>
+// #ifdef FLOAT_W_ob 
+// #undef FLOAT_W_ob
+// #endif
+// #define FLOAT_W_ob 1
 
-/// @todo this code currently does not support quantized.
-#if defined(QUANTIZED)
-#include <../quantized_reference/intrinsics.h>
-using Buffer = small::QUInt8Buffer;
-#else
-#include <../reference/intrinsics.h>  // hardcode reference intrinsics ICK
-using Buffer = small::FloatBuffer;
+
+#include <small/op_type.hpp>
+
+// reference only supports UNROLL==1, undef and redef FLOAT_UNROLLL
+#ifdef FLOAT_UNROLL
+#undef FLOAT_UNROLL
+#endif
+
+#define FLOAT_UNROLL 1
+// todo: add support for UNROLL in the macros
+
+#if defined(SMALL_HAS_FLOAT_SUPPORT)
+#include <small/platforms/reference/intrinsics_float.h>
+// #include <small/platforms/reference/FloatBuffer.hpp>
+#include <small/abstract_layer.hpp> /// @todo abstract_layer_float.hpp
+#endif
+
+// #if defined(SMALL_HAS_QUINT8_SUPPORT)
+// #include <small/q_abstract_layer.hpp> /// @todo abstract_layer_quint8.hpp
+// #endif
+
+// #define RECORD_CALLS
+
+#if defined(RECORD_CALLS)
+#include <iostream>
 #endif
 
 // ================== Public API ====================
@@ -41,43 +54,47 @@ using Buffer = small::FloatBuffer;
 #include <small/buffers.hpp>
 #include "check_interface.h"
 
-#include <small/interface_abstract.hpp>
+// #include <small/interface_abstract.hpp>
 
 /// @todo Currently only works with FloatBuffer from reference
 
 //****************************************************************************
-template <>
-void check_Conv2D(int kernel_size, int stride,
+
+extern "C++" {
+
+template <typename BufferT=small::FloatBuffer>
+void check_Conv2D(int kernel_height, int kernel_width, int stride,
                   uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                   int output_channels, int input_channels,
                   int input_height, int input_width,
-                  Buffer const &input_buf,
-                  Buffer const &filter_buf,
-                  Buffer       &output_buf)
-{
-    //Specific case for the first layer
+                  BufferT const &input_buf,
+                  BufferT const &filter_buf,
+                  BufferT       &output_buf)
+{    //Specific case for the first layer
+
+
     if (input_channels == 3)
     {
         if (stride == 1)
         {
-            small::detail::abstract_layer<Buffer, 1, C_ob, 3, W_ob, 1, 1, 'c', 2, 1>(
+            small::detail::abstract_layer<BufferT, 1, FLOAT_C_ob, 3, FLOAT_W_ob, 1, 1, small::OP_CONV, 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
                 input_height, input_width,
-                kernel_size, kernel_size,
+                kernel_height, kernel_width,
                 t_pad, l_pad, r_pad, b_pad,
                 &input_buf, &filter_buf, &output_buf);
         }
         else if (stride == 2)
         {
 
-            small::detail::abstract_layer<Buffer, 1, C_ob, 3, W_ob, 2, 1, 'c', 2, 1>(
+            small::detail::abstract_layer<BufferT, 1, FLOAT_C_ob, 3, FLOAT_W_ob, 2, 1, small::OP_CONV, 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
                 input_height, input_width,
-                kernel_size, kernel_size,
+                kernel_height, kernel_width,
                 t_pad, l_pad, r_pad, b_pad,
                 &input_buf, &filter_buf, &output_buf);
         }
@@ -85,71 +102,74 @@ void check_Conv2D(int kernel_size, int stride,
         {
             printf("This stride is unsupported, please change the interface.cpp file\n");
         }
+   
     }
     else
     {
         if (stride == 1)
         {
-            small::detail::abstract_layer<Buffer, 1, C_ob, C_ob, W_ob, 1, 1, 'c', 2, 1>(
+            small::detail::abstract_layer<BufferT, 1, FLOAT_C_ob, FLOAT_C_ob, FLOAT_W_ob, 1, 1, small::OP_CONV, 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
                 input_height, input_width,
-                kernel_size, kernel_size,
+                kernel_height, kernel_width,
                 t_pad, l_pad, r_pad, b_pad,
                 &input_buf, &filter_buf, &output_buf);
         }
-        else if (stride == 2)
-        {
+        // else if (stride == 2)
+        // {
 
-            small::detail::abstract_layer<Buffer, 1, C_ob, C_ob, W_ob, 2, 1, 'c', 2, 1>(
-                1,               // Output Channel Grouping
-                output_channels, // Output Channels per group
-                input_channels,
-                input_height, input_width,
-                kernel_size, kernel_size,
-                t_pad, l_pad, r_pad, b_pad,
-                &input_buf, &filter_buf, &output_buf);
-        }
+        //     small::detail::abstract_layer<BufferT, 1, FLOAT_C_ob, FLOAT_C_ob, FLOAT_W_ob, 2, 1, small::OP_CONV, 2, 1>(
+        //         1,               // Output Channel Grouping
+        //         output_channels, // Output Channels per group
+        //         input_channels,
+        //         input_height, input_width,
+        //         kernel_height, kernel_width,
+        //         t_pad, l_pad, r_pad, b_pad,
+        //         &input_buf, &filter_buf, &output_buf);
+        // }
+        
         else
         {
             printf("This stride is unsupported, please change the interface.cpp file\n");
         }
     }
+
 }
 
 //****************************************************************************
-template <>
-void check_PartialConv2D(int kernel_size, int stride,
+template <typename BufferT = small::FloatBuffer>
+void check_PartialConv2D(int kernel_height, int kernel_width, int stride,
                          uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                          int output_channels, int input_channels,
                          int input_height, int input_width,
-                         Buffer const &input_buf,
-                         Buffer const &filter_buf,
-                         Buffer       &output_buf)
+                         BufferT const &input_buf,
+                         BufferT const &filter_buf,
+                         BufferT &output_buf)
 {
     // Specific case for the first layer
     if (input_channels == 3)
     {
         if (stride == 1)
         {
-            small::detail::abstract_layer<Buffer, 1, C_ob, 3, W_ob, 1, 1, 'c', 2, 0>(
+            small::detail::abstract_layer<BufferT, 1, FLOAT_C_ob, 3, FLOAT_W_ob, 1, 1, small::OP_CONV, 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
                 input_height, input_width,
-                kernel_size, kernel_size,
+                kernel_height, kernel_width,
                 t_pad, l_pad, r_pad, b_pad,
                 &input_buf, &filter_buf, &output_buf);
         }
         else if (stride == 2)
         {
-            small::detail::abstract_layer<Buffer, 1, C_ob, 3, W_ob, 2, 1, 'c', 2, 0>(
+            small::detail::abstract_layer<BufferT, 1, FLOAT_C_ob, 3, FLOAT_W_ob, 2, 1, small::OP_CONV, 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
                 input_height, input_width,
-                kernel_size, kernel_size,
+                kernel_height, kernel_width,
                 t_pad, l_pad, r_pad, b_pad,
                 &input_buf, &filter_buf, &output_buf);
         }
@@ -162,23 +182,23 @@ void check_PartialConv2D(int kernel_size, int stride,
     {
         if (stride == 1)
         {
-            small::detail::abstract_layer<Buffer, 1, C_ob, C_ob, W_ob, 1, 1, 'c', 2, 0>(
+            small::detail::abstract_layer<BufferT, 1, FLOAT_C_ob, FLOAT_C_ob, FLOAT_W_ob, 1, 1, small::OP_CONV, 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
                 input_height, input_width,
-                kernel_size, kernel_size,
+                kernel_height, kernel_width,
                 t_pad, l_pad, r_pad, b_pad,
                 &input_buf, &filter_buf, &output_buf);
         }
         else if (stride == 2)
         {
-            small::detail::abstract_layer<Buffer, 1, C_ob, C_ob, W_ob, 2, 1, 'c', 2, 0>(
+            small::detail::abstract_layer<BufferT, 1, FLOAT_C_ob, FLOAT_C_ob, FLOAT_W_ob, 2, 1, small::OP_CONV, 2, 0>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
                 input_height, input_width,
-                kernel_size, kernel_size,
+                kernel_height, kernel_width,
                 t_pad, l_pad, r_pad, b_pad,
                 &input_buf, &filter_buf, &output_buf);
         }
@@ -190,35 +210,38 @@ void check_PartialConv2D(int kernel_size, int stride,
 }
 
 //****************************************************************************
-template <>
-void check_MaxPool2D(int kernel_size, int stride,
+template <typename BufferT=small::FloatBuffer>
+void check_MaxPool2D(int kernel_height, int kernel_width, int stride,
                      uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                      int input_channels,
                      int input_height, int input_width,
-                     Buffer const &input_buf,
-                     Buffer       &output_buf)
+                     BufferT const &input_buf,
+                     BufferT       &output_buf)
 {
+    printf("Maxpool stride: %d %d %d\n", stride, FLOAT_W_ob, FLOAT_C_ob);
+    
     if (stride == 1)
     {
-        small::detail::abstract_layer<Buffer, C_ob, 1, 1, W_ob, 1, 1, 'p', 1, 1>(
+        small::detail::abstract_layer<BufferT, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, small::OP_MAX_POOL, 1, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
             input_height, input_width,
-            kernel_size, kernel_size,
+            kernel_height, kernel_width,
             t_pad, l_pad, r_pad, b_pad,
-            &input_buf, (Buffer const *)nullptr, &output_buf);
+            &input_buf, (BufferT const *)nullptr, &output_buf);
     }
     else if (stride == 2)
     {
-        small::detail::abstract_layer<Buffer, C_ob, 1, 1, W_ob, 2, 1, 'p', 1, 1>(
+        printf("stride 2\n");
+        small::detail::abstract_layer<BufferT, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, small::OP_MAX_POOL, 1, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
             input_height, input_width,
-            kernel_size, kernel_size,
+            kernel_height, kernel_width,
             t_pad, l_pad, r_pad, b_pad,
-            &input_buf, (Buffer const *)nullptr, &output_buf);
+            &input_buf, (BufferT const *)nullptr, &output_buf);
     }
     else
     {
@@ -227,34 +250,34 @@ void check_MaxPool2D(int kernel_size, int stride,
 }
 
 //****************************************************************************
-template <>
-void check_DepthwiseConv2D(int kernel_size, int stride,
+template <typename BufferT = small::FloatBuffer>
+void check_DepthwiseConv2D(int kernel_height, int kernel_width, int stride,
                            uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
                            int input_channels,
                            int input_height, int input_width,
-                           Buffer const &input_buf,
-                           Buffer const &filter_buf,
-                           Buffer       &output_buf)
+                           BufferT const &input_buf,
+                           BufferT const &filter_buf,
+                           BufferT &output_buf)
 {
     if (stride == 1)
     {
-        small::detail::abstract_layer<Buffer, C_ob, 1, 1, W_ob, 1, 1, 'c', 1, 1>(
+        small::detail::abstract_layer<BufferT, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, small::OP_CONV, 1, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
             input_height, input_width,
-            kernel_size, kernel_size,
+            kernel_height, kernel_width,
             t_pad, l_pad, r_pad, b_pad,
             &input_buf, &filter_buf, &output_buf);
     }
     else if (stride == 2)
     {
-        small::detail::abstract_layer<Buffer, C_ob, 1, 1, W_ob, 2, 1, 'c', 1, 1>(
+        small::detail::abstract_layer<BufferT, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, small::OP_CONV, 1, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
             input_height, input_width,
-            kernel_size, kernel_size,
+            kernel_height, kernel_width,
             t_pad, l_pad, r_pad, b_pad,
             &input_buf, &filter_buf, &output_buf);
     }
@@ -264,37 +287,47 @@ void check_DepthwiseConv2D(int kernel_size, int stride,
     }
 }
 
-//****************************************************************************
-template <>
+// //****************************************************************************
+template <typename BufferT=small::FloatBuffer>
 void check_ReLUActivation(int input_channels,
                           int input_height, int input_width,
-                          Buffer const &input_buf,
-                          Buffer       &output_buf)
+                          BufferT const &input_buf,
+                          BufferT       &output_buf)
 {
-    // printf("Cob = %d W_ob = %d\n", C_ob, W_ob);
-    small::detail::abstract_layer<Buffer, C_ob, 1, 1, W_ob, 1, 1, 'a', 0, 1>(
+    // printf("Cob = %d FLOAT_W_ob = %d\n", FLOAT_C_ob, FLOAT_W_ob);
+    small::detail::abstract_layer<BufferT, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, small::OP_RELU, 0, 1>(
         input_channels, // Output Channel Grouping
         1,              // Output Channels per group
         1,
         input_height, input_width,
         1, 1,
         0, 0, 0, 0,
-        &input_buf, (Buffer const *)nullptr, &output_buf);
+        &input_buf, (BufferT const *)nullptr, &output_buf);
 }
 
-//****************************************************************************
-template <>
-void check_Dense(int output_elements, int input_elements,
-                 Buffer const &input_buf,
-                 Buffer const &filter_buf,
-                 Buffer       &output_buf)
-{
-    small::detail::abstract_layer<Buffer, C_ob, 1, 1, W_ob, 1, 1, 'c', 1, 1>(
-        output_elements, // Output Channel Grouping
-        1,              // Output Channels per group
-        1,
-        1, input_elements,
-        1, 1,
-        0, 0, 0, 0,
-        &input_buf, &filter_buf, &output_buf);
-}
+// //****************************************************************************
+// template <typename BufferT=small::FloatBuffer>
+// void check_Dense(int output_elements, int input_elements,
+//                  BufferT const &input_buf,
+//                  BufferT const &filter_buf,
+//                  BufferT       &output_buf)
+// {
+//     small::detail::abstract_layer<BufferT, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, small::OP_CONV, 1, 1>(
+//         output_elements, // Output Channel Grouping
+//         1,              // Output Channels per group
+//         1,
+//         1, input_elements,
+//         1, 1,
+//         0, 0, 0, 0,
+//         &input_buf, &filter_buf, &output_buf);
+// }
+auto check_DepthwiseConv2D_float = check_DepthwiseConv2D<small::FloatBuffer>;
+
+auto check_Conv2D_float = check_Conv2D<small::FloatBuffer>;
+// auto check_PartialConv2D_float = check_PartialConv2D<small::FloatBuffer>;
+auto check_MaxPool2D_float = check_MaxPool2D<small::FloatBuffer>;
+auto check_ReLUActivation_float = check_ReLUActivation<small::FloatBuffer>;
+// auto check_Dense_float = check_Dense<small::FloatBuffer>;
+
+} // extern "C++"
+

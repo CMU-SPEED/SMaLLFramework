@@ -12,27 +12,17 @@
 
 #pragma once
 
-#include <QUInt8Buffer.hpp>
+// #include <QUInt8Buffer.hpp>
 
 // Scalar versions of all the quint8 microkernels for platform portability.
 // Use the QUINT8_ prefix for all macros in this file.
 
 #define QUINT8_SIMD_EPILOGUE 1
 
-namespace small
-{
-    namespace quint8_detail
-    {
-
-        /// @todo both pairs of typedefs should not be needed.
-        typedef small::QUInt8Buffer::value_type dtype;
-        typedef small::QUInt8Buffer::accum_type atype;
-
-        typedef small::QUInt8Buffer::value_type c_tile_out_t;
-        typedef small::QUInt8Buffer::accum_type c_tile_t;
-
-    }
-}
+typedef int32_t c_tile_t;
+typedef uint8_t c_tile_out_t;
+typedef int8_t dtype;
+typedef int32_t atype;
 
 // Architecture specific tiling params
 
@@ -48,14 +38,13 @@ namespace small
 #define QUINT8_DEF_END_C(W_ob, C_ob) \
     c_tile_t c_tile[W_ob * C_ob];
 
-#define QUINT8_ZERO_TILE_C(W_ob, C_ob, zero)              \
-    c_tile_t *c_channel = c_tile;                         \
-    c_tile_t const *end_addr = c_channel + (W_ob * C_ob); \
-    /*address of the last element in c_tile*/             \
-                                                          \
-    while (c_channel < end_addr)                          \
-    {                                                     \
-        *c_channel++ = zero;                              \
+#define QUINT8_ZERO_TILE_C(W_ob, C_ob, zero)   \
+    for (uint32_t kk = 0; kk < W_ob; kk++)     \
+    {                                          \
+        for (uint32_t jj = 0; jj < C_ob; jj++) \
+        {                                      \
+            c_tile[kk * C_ob + jj] = zero;     \
+        }                                      \
     }
 
 #define QUINT8_ZERO_END_C(_W_ob, C_ob, zero)   \
@@ -71,24 +60,13 @@ namespace small
 // Loads
 //****************************************************************************
 
-#define OLD_QUINT8_LOAD_TILE_C(O, W_ob, C_ob)                                  \
+#define QUINT8_LOAD_TILE_C(O, W_ob, C_ob)                                      \
     for (uint32_t kk = 0; kk < W_ob; kk++)                                     \
     {                                                                          \
         for (uint32_t jj = 0; jj < C_ob; jj++)                                 \
         {                                                                      \
             c_tile[kk * C_ob + jj] = static_cast<c_tile_t>(O[kk * C_ob + jj]); \
         }                                                                      \
-    }
-
-#define QUINT8_LOAD_TILE_C(O, W_ob, C_ob)                 \
-    c_tile_t *c_channel = c_tile;                         \
-    c_tile_t const *end_addr = c_channel + (W_ob * C_ob); \
-    /*address of the last element in c_tile*/             \
-    c_tile_t *o_ptr = O;                                  \
-                                                          \
-    while (c_channel < end_addr)                          \
-    {                                                     \
-        *c_channel++ = *o_ptr++;                          \
     }
 
 //  c_tile_out_t c_tile[W_ob * C_ob];
@@ -129,54 +107,38 @@ namespace small
 // Upsampling loads (stride < 1)
 //****************************************************************************
 
-/**
- * @brief Assuming that O is an 8-bit value, so we're casting it
- * to  a 32-bit value (c_tile_t) the c_tile array.
- */
-#define QUINT8_LOAD_TILE_C_upsample(O, stride, _C_ib, _W_ob, C_ob)                          \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)                                                 \
-    {                                                                                       \
-        for (uint32_t jj = 0; jj < C_ob; jj++)                                              \
-        {                                                                                   \
-            c_tile[kk * C_ob + jj] = static_cast<c_tile_t> O[(kk / stride) * (_C_ib) + jj]; \
-        }                                                                                   \
-    }
+// MISSING
+/*
+  #define QUINT8_LOAD_TILE_C_upsample(O, stride, _C_ib, _W_ob, C_ob)             \
+  for (uint32_t kk = 0; kk < _W_ob; kk++)                             \
+  {                                                                   \
+  for (uint32_t jj = 0; jj < C_ob; jj++)                          \
+  {                                                               \
+  c_tile[kk * C_ob + jj] = O[(kk / stride) * (_C_ib) + jj];   \
+  }                                                               \
+  }
 
-/**
- * @brief Assuming that O is an 8-bit value, so we're casting it
- * to  a 32-bit value (c_tile_t) the c_tile array.
- */
-#define QUINT8_LOAD_END_C_upsample(O, stride, _C_ib, _W_ob, C_ob)                           \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)                                                 \
-    {                                                                                       \
-        for (uint32_t jj = 0; jj < C_ob; jj++)                                              \
-        {                                                                                   \
-            c_tile[kk * C_ob + jj] = static_cast<c_tile_t> O[(kk / stride) * (_C_ib) + jj]; \
-        }                                                                                   \
-    }
+  #define QUINT8_LOAD_END_C_upsample(O, stride, _C_ib, _W_ob, C_ob)              \
+  for (uint32_t kk = 0; kk < _W_ob; kk++)                             \
+  {                                                                   \
+  for (uint32_t jj = 0; jj < C_ob; jj++)                          \
+  {                                                               \
+  c_tile[kk * C_ob + jj] = O[(kk / stride) * (_C_ib) + jj];   \
+  }                                                               \
+  }
+*/
 
 //****************************************************************************
 // Stores
 //****************************************************************************
 
-#define OLD_QUINT8_STORE_TILE_C(O, W_ob, C_ob)          \
+#define QUINT8_STORE_TILE_C(O, W_ob, C_ob)              \
     for (uint32_t kk = 0; kk < W_ob; kk++)              \
     {                                                   \
         for (uint32_t jj = 0; jj < C_ob; jj++)          \
         {                                               \
             O[kk * C_ob + jj] = c_tile[kk * C_ob + jj]; \
         }                                               \
-    }
-
-#define QUINT8_STORE_TILE_C(O, W_ob, C_ob)               \
-    c_tile_t *c_channel = c_tile;                        \
-    c_tile_t const *end_ptr = c_channel + (W_ob * C_ob); \
-    /*address of the last element in c_tile*/            \
-    c_tile_t *o_ptr = O;                                 \
-                                                         \
-    while (c_channel < end_ptr)                          \
-    {                                                    \
-        *o_ptr++ = *c_channel++;                         \
     }
 
 #define QUINT8_STORE_END_C(O, _W_ob, C_ob)              \
@@ -248,6 +210,7 @@ namespace small
 // Pooling
 //   Max pooling
 //****************************************************************************
+
 #define QUINT8_MAX_TILE_C(step, a, W_ob, C_ob, a_offset)                                                          \
     c_tile_t *c_pixel = c_tile;                                                                                   \
     c_tile_out_t const *a_pixel = a;                                                                              \
@@ -332,51 +295,44 @@ namespace small
 // Leaky ReLU activation
 //****************************************************************************
 
-/**
- * @brief We are assuming that c_tile starts out initialized with the zero point of the quantized array a.
- * That way, when we compare values in a to values in c_tile, we are comparing the value to zero.
- *
- */
-#define QUINT8_COND_SCALE_TILE_C(step, a, b, W_ob, C_ob, a_offset)                                                                   \
-    c_tile_t *c_pixel = c_tile;                                                                                                      \
-    c_tile_t const *a_pixel = a;                                                                                                     \
-    c_tile_t scale = b[0];                                                                                                           \
-    for (uint32_t kk = 0; kk < W_ob; kk++)                                                                                           \
-    {                                                                                                                                \
-        c_tile_t *c_channel = c_pixel;                                                                                               \
-        c_tile_t const *a_channel = a_pixel;                                                                                         \
-        for (uint32_t jj = 0; jj < C_ob; jj++)                                                                                       \
-        {                                                                                                                            \
-            *(c_channel) = (*(a_channel) + a_offset > *(c_channel)) ? *(a_channel) + a_offset : ((*(a_channel) + a_offset) * scale); \
-            c_channel++;                                                                                                             \
-            a_channel++;                                                                                                             \
-        }                                                                                                                            \
-        a_pixel += step;                                                                                                             \
-        c_pixel += C_ob;                                                                                                             \
-    }
+// MISSING
+/*
+  #define QUINT8_COND_SCALE_TILE_C(step, a, b, W_ob, C_ob)                       \
+  c_tile_t *c_pixel = c_tile;                                         \
+  c_tile_t const *a_pixel = a;                                        \
+  c_tile_t scale = b[0];                                              \
+  for (uint32_t kk = 0; kk < W_ob; kk++)                              \
+  {                                                                   \
+  c_tile_t *c_channel = c_pixel;                                  \
+  c_tile_t const *a_channel = a_pixel;                            \
+  for (uint32_t jj = 0; jj < C_ob; jj++)                          \
+  {                                                               \
+  *(c_channel) = (*(a_channel) > *(c_channel)) ? *(a_channel) : (*(a_channel) * (scale)); \
+  c_channel++;                                                \
+  a_channel++;                                                \
+  }                                                               \
+  a_pixel += step;                                                \
+  c_pixel += C_ob;                                                \
+  }
 
-/**
- * @brief We are assuming that c_tile starts out initialized with the zero point of the quantized array a.
- * That way, when we compare values in a to values in c_tile, we are comparing the value to zero.
- *
- */
-#define QUINT8_COND_SCALE_END_C(step, a, b, c_cur, W_last, C_ob, a_offset)                                                           \
-    c_tile_t *c_pixel = c_cur;                                                                                                       \
-    c_tile_t const *a_pixel = a;                                                                                                     \
-    c_tile_t scale = b[0];                                                                                                           \
-    for (uint32_t kk = 0; kk < W_last; kk++)                                                                                         \
-    {                                                                                                                                \
-        c_tile_t *c_channel = c_pixel;                                                                                               \
-        c_tile_t const *a_channel = a_pixel;                                                                                         \
-        for (uint32_t jj = 0; jj < C_ob; jj++)                                                                                       \
-        {                                                                                                                            \
-            *(c_channel) = (*(a_channel) + a_offset > *(c_channel)) ? *(a_channel) + a_offset : ((*(a_channel) + a_offset) * scale); \
-            c_channel++;                                                                                                             \
-            a_channel++;                                                                                                             \
-        }                                                                                                                            \
-        a_pixel += step;                                                                                                             \
-        c_pixel += C_ob;                                                                                                             \
-    }
+  #define QUINT8_COND_SCALE_END_C(step, a, b, c_cur, W_last, C_ob)               \
+  c_tile_t *c_pixel = c_cur;                                          \
+  c_tile_t const *a_pixel = a;                                        \
+  c_tile_t scale = b[0];                                              \
+  for (uint32_t kk = 0; kk < W_last; kk++)                            \
+  {                                                                   \
+  c_tile_t *c_channel = c_pixel;                                  \
+  c_tile_t const *a_channel = a_pixel;                            \
+  for (uint32_t jj = 0; jj < C_ob; jj++)                          \
+  {                                                               \
+  *(c_channel) = (*(a_channel) > *(c_channel)) ? *(a_channel) : (*(a_channel) * (scale)); \
+  c_channel++;                                                \
+  a_channel++;                                                \
+  }                                                               \
+  a_pixel += step;                                                \
+  c_pixel += C_ob;                                                \
+  }
+*/
 
 //****************************************************************************
 // Accumulation kernels
@@ -388,77 +344,50 @@ namespace small
 // AVG Pooling
 //****************************************************************************
 
-/**
- * @brief NOTE: assumes that c_tile has NOT been filled
- * with the offset value.  The offset value is provided as
- * an argument to this macro.
- */
-#define QUINT8_ACCUM_TILE_C(I, W_ob_g, C_ob, offset)        \
+#define OLD_QUINT8_ADD_TILE_C_G(I, W_ob_g, C_ob) \
+    c_tile_out_t const *i_pixel = I;             \
+    c_tile_t *c_pixel = c_tile;                  \
+    for (uint32_t mm = 0; mm < W_ob_g; mm++)     \
+    {                                            \
+        c_tile_t *c_channel = c_pixel;           \
+        c_tile_out_t const *i_channel = i_pixel; \
+        for (uint32_t kk = 0; kk < C_ob; kk++)   \
+        {                                        \
+            *c_channel += *i_channel;            \
+            c_channel++;                         \
+            i_channel++;                         \
+        }                                        \
+        c_pixel += C_ob;                         \
+        i_pixel += C_ob;                         \
+    }
+
+#define QUINT8_ADD_TILE_C_G(I, W_ob_g, C_ob)                \
     c_tile_t *c_channel = c_tile;                           \
     c_tile_out_t const *i_channel = I;                      \
-    c_tile_t const *end_addr = c_channel + (W_ob_g * C_ob); \
+    const c_tile_t *end_addr = c_channel + (W_ob_g * C_ob); \
     /*address of the last element in c_tile*/               \
                                                             \
     while (c_channel < end_addr)                            \
     {                                                       \
-        *c_channel += *i_channel + offset;                  \
-        *c_channel++;                                       \
-        *i_channel++;                                       \
+        *c_channel++ += *i_channel++;                       \
     }
 
-#define QUINT8_ACCUM_TILE_END_C(I, W_last, C_ob, offset) \
-    c_tile_out_t const *i_pixel = I;                     \
-    c_tile_t *c_pixel = c_tile;                          \
-    for (uint32_t mm = 0; mm < W_last; mm++)             \
-    {                                                    \
-        c_tile_t *c_channel = c_pixel;                   \
-        c_tile_out_t const *i_channel = i_pixel;         \
-        for (uint32_t kk = 0; kk < C_ob; kk++)           \
-        {                                                \
-            *c_channel += *i_channel + offset;           \
-            c_channel++;                                 \
-            i_channel++;                                 \
-        }                                                \
-        c_pixel += C_ob;                                 \
-        i_pixel += C_ob;                                 \
+#define QUINT8_ADD_LAST_C_G(I, W_last, C_ob)     \
+    c_tile_out_t const *i_pixel = I;             \
+    c_tile_t *c_pixel = c_tile;                  \
+    for (uint32_t mm = 0; mm < W_last; mm++)     \
+    {                                            \
+        c_tile_t *c_channel = c_pixel;           \
+        c_tile_out_t const *i_channel = i_pixel; \
+        for (uint32_t kk = 0; kk < C_ob; kk++)   \
+        {                                        \
+            *c_channel += *i_channel;            \
+            c_channel++;                         \
+            i_channel++;                         \
+        }                                        \
+        c_pixel += C_ob;                         \
+        i_pixel += C_ob;                         \
     }
-
-#define QUINT8_ACCUM_TILE_C_upsample(I, stride, W_last, C_ob, offset)                                 \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)                                                           \
-    {                                                                                                 \
-        for (uint32_t jj = 0; jj < C_ob; jj++)                                                        \
-        {                                                                                             \
-            c_tile[kk * C_ob + jj] += static_cast<c_tile_t> I[(kk / stride) * (_C_ib) + jj] + offset; \
-        }                                                                                             \
-    }
-
-#define QUINT8_ACCUM_TILE_END_C_upsample(I, stride, W_last, C_ob, offset)                             \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)                                                           \
-    {                                                                                                 \
-        for (uint32_t jj = 0; jj < C_ob; jj++)                                                        \
-        {                                                                                             \
-            c_tile[kk * C_ob + jj] += static_cast<c_tile_t> I[(kk / stride) * (_C_ib) + jj] + offset; \
-        }                                                                                             \
-    }
-
-// TODO: this was copied over from intrinsics_float.h
-// needs to be updated to fit with quint8
-/*
-#define FLOAT_REDUCE_CHANNEL_END_C(O_w_left, _C_ob)           \
-    if constexpr (_C_ob == 1 && _C_ob != FLOAT_SIMD_EPILOGUE) \
-    {                                                         \
-        float c_tile_array[FLOAT_C_ob];                       \
-        for (uint32_t kk = 0; kk < O_w_left; kk++)            \
-        {                                                     \
-            float *c_channel_v = c_tile + kk * (FLOAT_C_ob);  \
-            for (uint32_t jj = 1; jj < FLOAT_C_ob; jj++)      \
-            {                                                 \
-                c_channel_v[0] += c_channel_v[jj];            \
-                c_channel_v[jj] = 0;                          \
-            }                                                 \
-        }                                                     \
-    }
-*/
 
 #define QUINT8_REDUCE_div_C(O, d, W_ob_g, C_ob)    \
     {                                              \
@@ -483,27 +412,6 @@ namespace small
             *O_channel *= d;                       \
             O_channel++;                           \
         }                                          \
-    }
-
-#define QUINT8_DIV_TILE_C(norm, W_ob, C_ob, offset)       \
-    c_tile_t *c_channel = c_tile;                         \
-    c_tile_t const *end_addr = c_channel + (W_ob * C_ob); \
-    /*address of the last element in c_tile*/             \
-                                                          \
-    while (c_channel < end_addr)                          \
-    {                                                     \
-        *c_channel *= norm;                               \
-        c_channel++;                                      \
-    }
-#define QUINT8_DIV_TILE_END_C(norm, W_ob, C_ob, offset)   \
-    c_tile_t *c_channel = c_tile;                         \
-    c_tile_t const *end_addr = c_channel + (W_ob * C_ob); \
-    /*address of the last element in c_tile*/             \
-                                                          \
-    while (c_channel < end_addr)                          \
-    {                                                     \
-        *c_channel *= norm;                               \
-        c_channel++;                                      \
     }
 
 #define QUINT8_REDUCE_C(O, W_ob_g, C_ob)           \

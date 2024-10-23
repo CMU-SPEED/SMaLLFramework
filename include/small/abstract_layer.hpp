@@ -1560,6 +1560,7 @@ void abstract_layer(
 #else
         auto t_id = 0;
 #endif
+
         dim_t height_tid = t_id % T_height;
         dim_t channel_tid = ((t_id) / (T_height)) % T_channel;
         dim_t group_tid = ((t_id / (T_channel * T_height))) % T_group;
@@ -1586,8 +1587,12 @@ void abstract_layer(
         channels_end = channels_start + channels_p_thread +
             (1) * (channel_tid < channels_left);
 
-        // for (index_t g = group_tid; g < G / _G_b; g += T_group)
+        // loops over output channels
+#if PARALLEL_DIST == ELEMENTAL
+        for (index_t g = group_tid; g < G / _G_b; g += T_group)
+#else
         for (index_t g = group_start; g < group_end; g++)
+#endif
         {
             ScalarT const *I_group;
             if constexpr (op_type == OP_UPSAMPLE && _stride == std::numeric_limits<dim_t>::max())
@@ -1612,7 +1617,7 @@ void abstract_layer(
             }
 
             // resuse O_group as a uint32_t array
-#if PARALLEL_DIST ==  ELEMENTAL
+#if PARALLEL_DIST == ELEMENTAL
             for (index_t k = channel_tid; k < K / _K_b; k += T_channel)
 #else
             for (index_t k = channels_start; k < channels_end; k++)
