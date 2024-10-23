@@ -1570,40 +1570,5 @@ void abstract_layer(
     }
 }
 
-
-//****************************************************************************
-//abstract layer where the filter height is set to 1
-template <typename BufferT,
-          dim_t _G_b,
-          dim_t _K_b,
-          dim_t _F_cb,
-          dim_t _O_wb,
-          dim_t _stride,
-          dim_t _UNROLL,
-          OpType op_type,
-          int8_t op_class,     //  2  (conv),  1  (dense,pool), or '0' (activation, upsample)
-          bool rewrite_output> // 0 (partial conv, accum), 1 (otherwise)
-void abstract_layer_1D(
-    dim_t G,   // Output Channel Grouping
-    dim_t K,   // Output Channels per group
-    dim_t F_c, // Channel Reduction Dimension
-    dim_t I_h, // Input Height
-    dim_t I_w, // Input Width
-
-    //dim_t F_h, // Filter height
-    dim_t F_w, // Filter width
-
-    //dim_t pad_top, // Padding values
-    dim_t pad_left,
-    dim_t pad_right,
-    //dim_t pad_bottom,
-
-    BufferT const * /*__restrict__*/ I, // Data
-    BufferT const *__restrict__ F,
-    BufferT * /*__restrict__*/ O)
-{
-    //small::unimplemented_function();
-}
-
 } // ns detail
 } // ns small

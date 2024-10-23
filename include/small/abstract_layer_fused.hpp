@@ -1,6 +1,6 @@
 //****************************************************************************
 // SMaLL, Software for Machine Learning Libraries
-// Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
+// Copyright 2024 by The SMaLL Contributors, All Rights Reserved.
 // SPDX-License-Identifier: BSD-3-Clause
 //
 // For additional details (including references to third party source code and
@@ -41,8 +41,9 @@ namespace detail
 {
 
 //****************************************************************************
-// Original 2D abstract layer
+// Fused Abstract Layer
 //****************************************************************************
+//@todo: find a way to group all the template arguments for one set of kernels together.
 template <typename BufferT,
           dim_t _G_b,
           dim_t _K_b,
@@ -51,27 +52,35 @@ template <typename BufferT,
           dim_t _stride,
           dim_t _UNROLL,
           OpType op_type,
-          int8_t op_class,     //  2  (conv),  1  (dense,pool), or '0' (activation, upsample)
-          bool rewrite_output> // 0 (partial conv, accum), 1 (otherwise)
-void abstract_layer( /// @todo add B (batch size) param?
-    dim_t G,   // Output Channel Grouping
-    dim_t K,   // Output Channels per group
-    dim_t F_c, // Channel Reduction Dimension
-    dim_t I_h, // Input Height
-    dim_t I_w, // Input Width
+          int8_t op_class, //  2  (conv),  1  (dense,pool), or '0' (activation, upsample)
+          bool rewrite_output,
+          OpType op_fused_single_element_before = OP_NONE,
+          OpType op_fused_single_element_after = OP_NONE,
+          dim_t _stride_before = 1,
+          dim_t _stride_after = 1>
+void fused_abstract_layer(
+    Mapping<BufferT> *values_0, // Main Operation
+    dim_t I_h,                  // Input Height
+    dim_t I_w,                  // Input Width
 
-    dim_t F_h, // Filter height
-    dim_t F_w, // Filter width
-
-    dim_t pad_top, // Padding values
-    dim_t pad_left,
-    dim_t pad_right,
-    dim_t pad_bottom,
-
-    BufferT const */*__restrict__*/ I, // Data
-    BufferT const *__restrict__ F,
-    BufferT */*__restrict__*/ O)
+    BufferT const * /*__restrict__*/ I, // Data
+    BufferT * /*__restrict__*/ O)
 {
+    dim_t G = values_0->G;     // Output Channel Grouping
+    dim_t K = values_0->K;     // Output Channels per group
+    dim_t F_c = values_0->F_c; // Channel Reduction Dimension
+    dim_t F_h = values_0->F_h; // Filter height
+    dim_t F_w = values_0->F_w; // Filter width
+
+    dim_t pad_top = values_0->pad_top; // Padding values
+    dim_t pad_left = values_0->pad_left;
+    dim_t pad_right = values_0->pad_right;
+    dim_t pad_bottom = values_0->pad_bottom;
+
+    BufferT const *__restrict__ F = values_0->F;               // Weight buffers
+    BufferT const *__restrict__ F_before = values_0->F_before; //(for fused elementwise operations)
+    BufferT const *__restrict__ F_after = values_0->F_after;
+
     using ScalarT = typename BufferT::value_type;
     using AccumT = typename BufferT::accum_type;
 
@@ -85,6 +94,22 @@ void abstract_layer( /// @todo add B (batch size) param?
     }
 
     ScalarT *O_buf = O->data(); //__restrict__ ?
+
+    ScalarT const *F_before_buf = nullptr;
+    if constexpr (op_fused_single_element_before == OP_UPSAMPLE ||
+                  op_fused_single_element_before == OP_MUL ||
+                  op_fused_single_element_before == OP_LEAKY_RELU)
+    {
+        F_before_buf = F_before->data();
+        // printf("bias_buf: %f %f %f %f\n", F_before_buf[0], F_before_buf[1], F_before_buf[2], F_before_buf[3]);
+    }
+    ScalarT const *F_after_buf = nullptr;
+    if constexpr (op_fused_single_element_after == OP_UPSAMPLE ||
+                  op_fused_single_element_after == OP_MUL ||
+                  op_fused_single_element_after == OP_LEAKY_RELU)
+    {
+        F_after_buf = F_after->data();
+    }
 
 #if DEBUG == 1
     if (op_type == OP_CONV)
@@ -125,6 +150,7 @@ void abstract_layer( /// @todo add B (batch size) param?
     //  To calculate offsets to next output row, next output block
     // @todo fix this in small::output_dim
     dim_t H_o_w_pad, W_o_w_pad;
+    //@todo when fused, this computation goes into the kernel
     if constexpr (op_type == OP_UPSAMPLE)
     {
         if constexpr(_stride == std::numeric_limits<dim_t>::max())
@@ -312,9 +338,14 @@ void abstract_layer( /// @todo add B (batch size) param?
                 ScalarT       *O_channel_block_output =
                     O_group + k * (O_hxO_w * _G_b * _K_b);
 
+                //@todo fix the filter height and width as necessary (they should be one because it is a single element reduction)
+
+                ScalarT const *F_before_buf_group = F_before_buf + (g * K + k) * (1 * 1 * _G_b * _K_b);
+                ScalarT const *F_after_buf_group = F_after_buf + (g * K + k) * (1 * 1 * _G_b * _K_b);
+
                 //************************************************************
                 // Loop over input channel reduction
-                for (index_t i = 0; i < (F_c / _F_cb); i++)
+                for (index_t i = 0; i < (F_c / _F_cb) - 1; i++)
                 {
                     bool first = rewrite_output && (i == 0);
 
@@ -503,6 +534,224 @@ void abstract_layer( /// @todo add B (batch size) param?
                                       I_row_bot,
                                       F_row_bot,
                                       O_row_bot);
+                }
+
+                for (index_t i = (F_c / _F_cb) - 1; i < (F_c / _F_cb); i++)
+                {
+                    bool first = rewrite_output && (i == 0);
+
+                    ScalarT const *I_channel_block_input =
+                        I_channel_block_output + i * (I_h * I_w * _F_cb * _G_b);
+                    ScalarT const *F_channel_block_input =
+                        F_channel_block_output + i * (F_h * F_w * _F_cb * _G_b * _K_b);
+                    ScalarT *O_channel_block_input =
+                        O_channel_block_output + 0;
+
+
+
+                    // Loops over spatial dimensions of output
+
+                    // Prologue with top padding
+                    ScalarT const *I_row_top = I_channel_block_input;
+                    ScalarT const *F_row_top = F_channel_block_input + 0;
+                    AccumT *O_row_top = O_channel_block_input; // ScalarT --> AccumT
+
+                    kernel_top<ScalarT, AccumT,
+                               _G_b, _K_b, _F_cb, _O_wb, _stride,
+                               _UNROLL, op_type, op_class,
+                               op_fused_single_element_before,
+                               op_fused_single_element_after,
+                               _stride_before, _stride_after>(
+                                   first,
+                                   F_h,
+                                   F_w,
+                                   I_w * _C_ib,
+                                   t_pad_el,
+                                   pad_top,
+                                   W_full_index,
+                                   l_pad_el,
+                                   pad_left,
+                                   O_w_w_pad,
+                                   O_w_full,
+                                   O_w_left,
+                                   r_pad_el,
+                                   pad_right,
+                                   I_row_top,
+                                   F_row_top,
+                                   O_row_top,
+                                   F_before_buf_group,
+                                   F_after_buf_group);
+
+                    ScalarT const *I_row_full =
+                        I_row_top + H_full_index * I_w * (_F_cb * _G_b);
+                    AccumT *O_row_full =
+                        O_row_top + t_pad_el * O_w_w_pad * (_G_b * _K_b); // ScalarT --> AccumT
+
+                    // Steady State over rows
+                    for (index_t j = height_tid; j < O_h; j += T_height)
+                    {
+                        ScalarT const *I_row;
+                        /// @todo cast index calculation as int and make stride a float value.
+                        // I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
+                        if constexpr (op_type == OP_UPSAMPLE)
+                        {
+                            I_row = I_row_full + (j / _stride) * (I_w * _F_cb * _G_b);
+                        }
+                        else
+                        {
+                            I_row = I_row_full + (j * _stride) * (I_w * _F_cb * _G_b);
+                        }
+                        ScalarT const *F_row = F_channel_block_input + 0;
+                        AccumT        *O_row =
+                            O_row_full + j * (O_w_w_pad * _G_b * _K_b); // ScalarT --> AccumT
+                        // Prologue with left padding
+                        kernel_left<ScalarT, AccumT,
+                                    _G_b, _K_b, _F_cb, _O_wb, _stride,
+                                    _UNROLL, op_type, op_class,
+                                    op_fused_single_element_before,
+                                    op_fused_single_element_after,
+                                    _stride_before, _stride_after>(
+                                        first,
+                                        F_h,
+                                        F_w,
+                                        I_w * _C_ib,
+                                        l_pad_el,
+                                        pad_left,
+                                        I_row,
+                                        F_row,
+                                        O_row,
+                                        0,
+                                        0,
+                                        F_before_buf_group,
+                                        F_after_buf_group);
+
+                        ScalarT const *I_col_full =
+                            I_row + W_full_index * (_F_cb * _G_b);
+                        AccumT *O_col_full = O_row + l_pad_el * (_G_b * _K_b); // ScalarT --> AccumT
+                        // Steady State with microkernel
+                        for (index_t l = 0; l < O_w_full; l += _O_wb)
+                        {
+                            ScalarT const *I_col;
+                            // @todo cast index calculation as int and make stride a float value.
+                            // I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
+                            if constexpr (op_type == OP_UPSAMPLE)
+                            {
+                                I_col = I_col_full + (l / _stride) * (_F_cb * _G_b);
+                            }
+                            else
+                            {
+                                I_col = I_col_full + (l * _stride) * (_F_cb * _G_b);
+                            }
+                            ScalarT const *F_col = F_row + 0;
+                            AccumT *O_col = O_col_full + l * (_G_b * _K_b); // ScalarT --> AccumT
+
+                            kernel<ScalarT, AccumT,
+                                   _G_b, _K_b, _F_cb, _O_wb, _stride,
+                                   _UNROLL, op_type, op_class,
+                                   op_fused_single_element_before,
+                                   op_fused_single_element_after,
+                                   _stride_before, _stride_after>(
+                                       first,
+                                       F_h,
+                                       F_w,
+                                       I_w * _C_ib,
+                                       I_col,
+                                       F_col,
+                                       O_col,
+                                       0,
+                                       0,
+                                       0,
+                                       0,
+                                       F_before_buf_group,
+                                       F_after_buf_group);
+                        }
+
+#if DEBUG
+                        printf(" end  kernel\n");
+#endif
+
+                        // Epilogue for microkernel + right padding elements
+                        ScalarT const *I_col_left;
+                        if constexpr (op_type == OP_UPSAMPLE)
+                        {
+                            I_col_left =
+                                I_col_full + (O_w_full / _stride) * (_F_cb * _G_b);
+                        }
+                        else
+                        {
+                            I_col_left =
+                                I_col_full + (O_w_full * _stride) * (_F_cb * _G_b);
+                        }
+
+                        ScalarT const *F_col_left = F_row + 0;
+                        AccumT        *O_col_left = O_col_full + O_w_full * (_G_b * _K_b); // ScalarT --> AccumT
+
+#if DEBUG
+                        printf(" calling right\n");
+#endif
+                        kernel_right<ScalarT, AccumT,
+                                     _G_b, _K_b, _F_cb, _O_wb, _stride,
+                                     _UNROLL, op_type, op_class,
+                                     op_fused_single_element_before,
+                                     op_fused_single_element_after,
+                                     _stride_before, _stride_after>(
+                                         first,
+                                         F_h,
+                                         F_w,
+                                         I_w * _C_ib,
+                                         O_w_left,
+                                         r_pad_el,
+                                         pad_right,
+                                         I_col_left,
+                                         F_col_left,
+                                         O_col_left,
+                                         0,
+                                         0,
+                                         F_before_buf_group,
+                                         F_after_buf_group);
+                    }
+                    // Epilogue with bottom padding
+                    ScalarT const *I_row_bot;
+                    // @todo cast index calculation as int and make stride a float value.
+                    // I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
+                    if constexpr (op_type == OP_UPSAMPLE)
+                    {
+                        I_row_bot =
+                            I_row_full + (O_h * _stride) * (I_w * _F_cb * _G_b);
+                    }
+                    else
+                    {
+                        I_row_bot =
+                            I_row_full + (O_h * _stride) * (I_w * _F_cb * _G_b);
+                    }
+                    ScalarT const *F_row_bot = F_channel_block_input + 0;
+                    AccumT        *O_row_bot = O_row_full + O_h * (O_w_w_pad * _G_b * _K_b); // ScalarT --> AccumT
+
+                    kernel_bottom<ScalarT, AccumT,
+                                  _G_b, _K_b, _F_cb, _O_wb, _stride,
+                                  _UNROLL, op_type, op_class,
+                                  op_fused_single_element_before,
+                                  op_fused_single_element_after,
+                                  _stride_before, _stride_after>(
+                                      first,
+                                      F_h,
+                                      F_w,
+                                      I_w * _C_ib,
+                                      b_pad_el,
+                                      pad_bottom,
+                                      W_full_index,
+                                      l_pad_el,
+                                      pad_left,
+                                      O_w_w_pad,
+                                      O_w_full,
+                                      O_w_left,
+                                      r_pad_el,
+                                      pad_right,
+                                      I_row_bot,
+                                      F_row_bot,
+                                      O_row_bot,
+                                      F_before_buf_group,
+                                      F_after_buf_group);
                 }
             }
         }
