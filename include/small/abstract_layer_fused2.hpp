@@ -1500,5 +1500,5 @@ void fused_abstract_layer(
 }
 
 
-}
-}
+} // ns detail
+} // ns small

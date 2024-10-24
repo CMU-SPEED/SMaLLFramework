@@ -13,10 +13,6 @@
 #pragma once
 
 #include <stdint.h>
-#include <stdio.h>
-#if PARALLEL == 1
-#include <omp.h>
-#endif
 
 #include <small/op_type.hpp>
 #include <small/utils.hpp>
@@ -25,7 +21,6 @@
 
 namespace small
 {
-
 namespace detail
 {
 
@@ -95,11 +90,6 @@ void inline kernel_1D(
         FLOAT_ACCUM_TILE_C_upsample(F_b, _stride_before, _C_ib, _O_wb, _C_ob);
     }
 
-    // for (uint32_t n = H_lb; n < H_UPPER; n++)
-    // {
-    //int filter_offset_h = 0 * F_w * _F_cb * _G_b * _K_b;
-    //int input_stencil_h = (0 - H_lb) * input_col_stride; /*+ input_col_offset + input_row_offset*/
-
     for (uint32_t m = 0; m < F_w; m++)
     {
         int filter_offset_w = m * _F_cb * _G_b * _K_b; // + filter_offset_h;
@@ -113,10 +103,9 @@ void inline kernel_1D(
             /// @note using platform C_ob
             ScalarT const *b_cur = b + ii * _UNROLL * FLOAT_C_ob;
             ScalarT const *a_cur = a + ii * _UNROLL;
-            FLOAT_ABSTRACT_OP(op_type, op_class, a_cur, b_cur, _O_wb, _C_ob); /// @todo pass _C_ob
+            FLOAT_ABSTRACT_OP(step, op_type, op_class, a_cur, b_cur, _O_wb, _C_ob); /// @todo pass _C_ob
         }
     }
-    // }
 
     if (op_type == OP_AVERAGE_POOL)
     {
@@ -131,5 +120,5 @@ void inline kernel_1D(
     //@todo support reduction-tree like store for global reductions
 }
 
-}
-}
+} // ns detail
+} // ns small

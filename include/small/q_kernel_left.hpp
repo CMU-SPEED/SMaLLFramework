@@ -15,12 +15,11 @@
 #include <stdint.h>
 
 #include <small/op_type.hpp>
-#include <small/abstract_op.hpp>
-#include <small/compute_with_padding.hpp>
+#include <small/q_compute_with_padding.hpp>
 
 namespace small
 {
-namespace detail
+namespace quint8_detail
 {
 
 //****************************************************************************
@@ -34,10 +33,9 @@ template <typename ScalarT,
           dim_t _UNROLL,
           OpType op_type,
           int8_t op_class,
-          OpType fused_single_element_before = OP_NONE,
-          OpType fused_single_element_after = OP_NONE,
-          dim_t _stride_before = 1,
-          dim_t _stride_after = 1>
+          bool   quantize = false,
+          ScalarT max_val = 255, // std::numeric_limits<ScalarT>::max()
+          ScalarT min_val = 0>   // std::numeric_limits<ScalarT>::lowest()
 void inline kernel_left(
     bool first,
     dim_t F_h,
@@ -47,37 +45,38 @@ void inline kernel_left(
     dim_t l_pad,
     ScalarT const *I,
     ScalarT const *F,
-    AccumT *O, // ScalarT -> AccumT
+    AccumT        *O,  // ScalarT -> AccumT
     dim_t H_lb = 0,
     dim_t H_ub = 0,
-    ScalarT const * F_b = NULL,
-    ScalarT const * F_a = NULL)
+    int k_zero = 0,
+    AccumT I_offset = 0,
+    AccumT F_offset = 0,
+    ScalarT *O_out = NULL,
+    AccumT lshift = 0,
+    AccumT rshift = 0,
+    AccumT q_mul = 1,
+    AccumT zero = 0)
 {
     constexpr dim_t _C_ob = _G_b * _K_b;
-    constexpr dim_t _C_ib = _G_b * _F_cb;
-    //constexpr dim_t step = _stride * _C_ib;
+    // constexpr dim_t _C_ib = _G_b * _F_cb;
+    // constexpr dim_t step = _stride * _C_ib;
 
     const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
-    FLOAT_DEF_END_C(_O_wb, _C_ob);
+    QUINT8_DEF_END_C(_O_wb, _C_ob);
 
     // left padding elements
-    AccumT *O_ptr = O; // ScalarT -> AccumT
+    AccumT        *O_ptr = O;  // ScalarT -> AccumT
     ScalarT const *I_ptr = I;
 
     int W_i_valid = l_pad;
 
     if (first)
     {
-        FLOAT_ZERO_END_C(l_pad_el, _C_ob);
+        QUINT8_ZERO_END_C(l_pad_el, _C_ob, k_zero);
     }
     else
     {
-        FLOAT_LOAD_END_C(O_ptr, l_pad_el, _C_ob);
-    }
-
-    if constexpr(fused_single_element_before == OP_UPSAMPLE)
-    {
-        FLOAT_ACCUM_END_C_upsample(F_b, _stride_before, _C_ib, l_pad_el, _C_ob);
+        QUINT8_LOAD_END_C(O_ptr, l_pad_el, _C_ob);
     }
 
     c_tile_t *c_cur = c_tile;
@@ -94,28 +93,29 @@ void inline kernel_left(
                                  input_col_stride,
                                  F,
                                  I_ptr,
-                                 c_cur);
+                                 c_cur,
+                                 I_offset,
+                                 F_offset);
 
-        c_cur += (_K_b * _G_b) / (FLOAT_SIMD_EPILOGUE);
+        c_cur += (_K_b * _G_b) / (QUINT8_SIMD_EPILOGUE);
         // c_cur += 1;
         W_i_valid -= _stride;
         // I_ptr += ()*(_stride * _F_cb * _G_b);
     }
-    // Fusion Slot # 1
-    //  Include division for Average Pooling e.g. fused single element multiplication
-    if (op_type == OP_AVERAGE_POOL)
+
+    if constexpr (quantize)
     {
-        float norm = 1.0 / (1.0 * F_h * F_w);
-        FLOAT_DIV_END_C(c_tile, norm, l_pad_el, _C_ob);
+        ScalarT *O_out_ptr = O_out;
+        QUINT8_QUANTIZE_END_C(l_pad_el, _C_ob, lshift, rshift, q_mul, zero, max_val, min_val);
+        QUINT8_STORE_Q_END_C(O_out_ptr, l_pad_el, _C_ob);
+    }
+    else
+    {
+        QUINT8_STORE_END_C(O_ptr, l_pad_el, _C_ob);
     }
 
-    dim_t step_after = _stride_after*_C_ib;
-    FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_END(step_after, fused_single_element_after,
-                                         0, F_a, c_tile, l_pad_el, _C_ob);
-
-    FLOAT_STORE_END_C(O_ptr, l_pad_el, _C_ob);
     O_ptr += _G_b * _K_b;
 }
 
-} // ns detail
+} // ns quint8_detail
 } // ns small

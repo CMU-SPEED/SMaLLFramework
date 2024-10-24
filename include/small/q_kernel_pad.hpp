@@ -15,11 +15,11 @@
 #include <stdint.h>
 
 #include <small/op_type.hpp>
-#include <small/abstract_op.hpp>
+#include <small/q_abstract_op.hpp>
 
 namespace small
 {
-namespace detail
+namespace quint8_detail
 {
 
 //****************************************************************************
@@ -34,10 +34,9 @@ template <typename ScalarT,
           dim_t _UNROLL,
           OpType op_type,
           int8_t op_class,
-          OpType fused_single_element_before = OP_NONE,
-          OpType fused_single_element_after = OP_NONE,
-          dim_t _stride_before = 1,
-          dim_t stride_after = 1>
+          bool   quantize = false,
+          ScalarT max_val = 255, // std::numeric_limits<ScalarT>::max()
+          ScalarT min_val = 0>   // std::numeric_limits<ScalarT>::lowest()
 void inline kernel_pad(
     bool first,
     dim_t F_h,
@@ -45,13 +44,19 @@ void inline kernel_pad(
     dim_t input_col_stride,
     ScalarT const *I,
     ScalarT const *F,
-    AccumT *O, // ScalarT -> AccumT
+    AccumT        *O,  // ScalarT -> AccumT
     dim_t H_lb = 0,
     dim_t H_ub = 0,
     dim_t W_lb = 0,
     dim_t W_ub = 0,
-    ScalarT const *F_b = NULL,
-    ScalarT const *F_a = NULL)
+    int k_zero = 0,  /// @todo why both zero and k_zero?  Should this be AccumT?
+    AccumT I_offset = 0,
+    AccumT F_offset = 0,
+    ScalarT *O_out = NULL,
+    AccumT lshift = 0,
+    AccumT rshift = 0,
+    AccumT q_mul = 1,
+    AccumT zero = 0)
 {
     constexpr dim_t _C_ob = _G_b * _K_b;
     constexpr dim_t _C_ib = _G_b * _F_cb;
@@ -60,32 +65,24 @@ void inline kernel_pad(
     const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
     // const dim_t W_UPPER = ((!W_ub) * (F_w)) + (W_ub);
 
-    FLOAT_DEF_TILE_C(_O_wb, _C_ob);
+    QUINT8_DEF_TILE_C(_O_wb, _C_ob);
     if (first)
     {
-        FLOAT_ZERO_TILE_C(_O_wb, _C_ob);
-
-        //@note padding should always be 'v' for pointwise operations,
-        //      so this code path should not be used
-        if (op_type == OP_MUL)
-        {
-            FLOAT_LOAD_TILE_C_strided(I, step, _O_wb, _C_ob);
-        }
+        QUINT8_ZERO_TILE_C(_O_wb, _C_ob, k_zero);
     }
     else
     {
-        FLOAT_LOAD_TILE_C(O, _O_wb, _C_ob);
+        QUINT8_LOAD_TILE_C(O, _O_wb, _C_ob);
     }
 
-    if constexpr (fused_single_element_before == OP_UPSAMPLE)
-    {
-        FLOAT_ACCUM_TILE_C_upsample(F_b, _stride_before, _C_ib, _O_wb, _C_ob);
-    }
-
+    // int updates = 0;
+    // uint32_t step = _C_ob;//stride*_C_ob;
+    // int count = 0;
     for (uint32_t n = H_lb; n < H_UPPER; n++)
     {
         int filter_offset_h = n * F_w * _F_cb * _G_b * _K_b;
-        int input_stencil_h = (n - H_lb) * input_col_stride; /*+ input_col_offset + input_row_offset*/
+        int input_stencil_h = /*input_col_offset + input_row_offset +*/
+            (n - H_lb) * input_col_stride;
 
         for (uint32_t m = 0; m < F_w; m++)
         {
@@ -95,27 +92,30 @@ void inline kernel_pad(
 
             ScalarT const *b = F + filter_offset_w;
             ScalarT const *a = I + input_stencil_w;
+
             for (uint32_t ii = 0; ii < _F_cb / _UNROLL; ii++)
             {
                 /// @note using platform C_ob
-                ScalarT const *b_cur = b + ii * _UNROLL * FLOAT_C_ob;
+                ScalarT const *b_cur = b + ii * _UNROLL * QUINT8_C_ob;
                 ScalarT const *a_cur = a + ii * _UNROLL;
-                FLOAT_ABSTRACT_OP(step, op_type, op_class, a_cur, b_cur, _O_wb, _C_ob);
+
+                QUINT8_ABSTRACT_OP(op_type, op_class, a_cur, b_cur,
+                                   I_offset, F_offset);
             }
         }
     }
 
-    if (op_type == OP_AVERAGE_POOL)
+    if constexpr (quantize)
     {
-        float norm = 1.0 / (1.0 * F_h * F_w);
-        FLOAT_DIV_TILE_C(norm, _O_wb, _C_ob);
+        ScalarT *O_out_ptr = O_out;
+        QUINT8_QUANTIZE_TILE_C(_O_wb, _C_ob, lshift, rshift, q_mul, zero, max_val, min_val);
+        QUINT8_STORE_Q_TILE_C(O_out_ptr, _O_wb, _C_ob);
     }
-
-    FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_TILE(step, fused_single_element_after,
-                                          0, F_a, _O_wb, _C_ob);
-
-    FLOAT_STORE_TILE_C(O, _O_wb, _C_ob);
+    else
+    {
+        QUINT8_STORE_TILE_C(O, _O_wb, _C_ob);
+    }
 }
 
-} // ns detail
+} // ns quint8_detail
 } // ns small

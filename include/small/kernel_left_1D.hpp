@@ -13,20 +13,13 @@
 #pragma once
 
 #include <stdint.h>
-#include <stdio.h>
-#if PARALLEL == 1
-#include <omp.h>
-#endif
 
 #include <small/op_type.hpp>
-#include <small/utils.hpp>
-
 #include <small/abstract_op.hpp>
 #include <small/compute_with_padding_1D.hpp>
 
 namespace small
 {
-
 namespace detail
 {
 
@@ -124,5 +117,5 @@ void inline kernel_left_1D(
     O_ptr += _G_b * _K_b;
 }
 
-}
-}
+} // ns detail
+} // ns small

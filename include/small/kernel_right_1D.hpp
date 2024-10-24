@@ -13,20 +13,13 @@
 #pragma once
 
 #include <stdint.h>
-#include <stdio.h>
-#if PARALLEL == 1
-#include <omp.h>
-#endif
 
 #include <small/op_type.hpp>
-#include <small/utils.hpp>
-
 #include <small/abstract_op.hpp>
 #include <small/compute_with_padding_1D.hpp>
 
 namespace small
 {
-
 namespace detail
 {
 
@@ -196,5 +189,5 @@ void inline kernel_right_1D(
     FLOAT_STORE_END_C(O_ptr, r_pad_el, _C_ob);
 }
 
-}
-}
+} // ns detail
+} // ns small

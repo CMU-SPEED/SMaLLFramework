@@ -13,19 +13,12 @@
 #pragma once
 
 #include <stdint.h>
-#include <stdio.h>
-#if PARALLEL == 1
-#include <omp.h>
-#endif
 
 #include <small/op_type.hpp>
-#include <small/utils.hpp>
-
 #include <small/abstract_op.hpp>
 
 namespace small
 {
-
 namespace detail
 {
 
@@ -69,10 +62,10 @@ void inline compute_with_padding_1D(dim_t W_lb, dim_t W_ub,
             /// @note using platform C_ob
             ScalarT const *b_cur = b + ii * _UNROLL * FLOAT_C_ob;
             ScalarT const *a_cur = a + ii * _UNROLL;
-            FLOAT_ABSTRACT_OP_END(op_type, op_class, a_cur, b_cur, c_cur, W_elements, _C_ob);
+            FLOAT_ABSTRACT_OP_END(step, op_type, op_class, a_cur, b_cur, c_cur, W_elements, _C_ob);
         }
     }
 }
 
-}
-}
+} // ns detail
+} // ns small

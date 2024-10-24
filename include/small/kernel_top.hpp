@@ -13,21 +13,14 @@
 #pragma once
 
 #include <stdint.h>
-#include <stdio.h>
-#if PARALLEL == 1
-#include <omp.h>
-#endif
 
 #include <small/op_type.hpp>
-#include <small/utils.hpp>
-
 #include <small/kernel_left.hpp>
 #include <small/kernel_pad.hpp>
 #include <small/kernel_right.hpp>
 
 namespace small
 {
-
 namespace detail
 {
 
@@ -155,5 +148,5 @@ void inline kernel_top(
     }
 }
 
-}
-}
+} // ns detail
+} // ns small

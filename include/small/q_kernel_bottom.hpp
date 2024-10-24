@@ -15,13 +15,13 @@
 #include <stdint.h>
 
 #include <small/op_type.hpp>
-#include <small/kernel_left.hpp>
-#include <small/kernel_pad.hpp>
-#include <small/kernel_right.hpp>
+#include <small/q_kernel_left.hpp>
+#include <small/q_kernel_pad.hpp>
+#include <small/q_kernel_right.hpp>
 
 namespace small
 {
-namespace detail
+namespace quint8_detail
 {
 
 //****************************************************************************
@@ -35,10 +35,9 @@ template <typename ScalarT,
           dim_t _UNROLL,
           OpType op_type,
           int8_t op_class,
-          OpType fused_single_element_before = OP_NONE,
-          OpType fused_single_element_after = OP_NONE,
-          dim_t _stride_before = 1,
-          dim_t _stride_after = 1>
+          bool   quantize = false,
+          ScalarT max_val = 255, // std::numeric_limits<ScalarT>::max()
+          ScalarT min_val = 0>   // std::numeric_limits<ScalarT>::lowest()
 void inline kernel_bottom(
     bool first,
     dim_t F_h,
@@ -56,12 +55,19 @@ void inline kernel_bottom(
     dim_t r_pad,
     ScalarT const *I,
     ScalarT const *F,
-    AccumT *O,
-    ScalarT const * F_b = NULL,
-    ScalarT const * F_a = NULL) // ScalarT -> AccumT
+    AccumT        *O,  // ScalarT -> AccumT
+    int k_zero = 0,
+    AccumT I_offset = 0,
+    AccumT F_offset = 0,
+    ScalarT *O_out = NULL,
+    AccumT lshift = 0,
+    AccumT rshift = 0,
+    AccumT q_mul = 1,
+    AccumT zero = 0)
 {
     ScalarT const *I_ptr = I;
-    AccumT *O_ptr = O; // ScalarT -> AccumT
+    AccumT        *O_ptr = O;  // ScalarT -> AccumT
+    ScalarT       *O_ptr_out = O_out;
 
     int H_i_valid = F_h - 1;
 
@@ -70,8 +76,7 @@ void inline kernel_bottom(
         // Prologue with left padding
         kernel_left<ScalarT, AccumT,
                     _G_b, _K_b, _F_cb, _O_wb, _stride,
-                    _UNROLL, op_type, op_class, fused_single_element_before,
-                    fused_single_element_after, _stride_before, _stride_after>(
+                    _UNROLL, op_type, op_class, quantize, max_val, min_val>(
                         first,
                         F_h,
                         F_w,
@@ -83,22 +88,29 @@ void inline kernel_bottom(
                         O_ptr,
                         0,
                         H_i_valid,
-                        F_b,
-                        F_a);
+                        k_zero,
+                        I_offset,
+                        F_offset,
+                        O_ptr_out,
+                        lshift,
+                        rshift,
+                        q_mul,
+                        zero);
 
         ScalarT const *I_row_full = I + W_full_index * (_F_cb * _G_b);
-        AccumT *O_row_full = O + l_pad_el * (_G_b * _K_b); // ScalarT -> AccumT
+        AccumT        *O_row_full = O + l_pad_el * (_G_b * _K_b);  // ScalarT -> AccumT
+        ScalarT       *O_row_full_out = O_out + l_pad_el * (_G_b * _K_b);
         // Steady State with microkernel
         for (index_t l = 0; l < O_w_full; l += _O_wb)
         {
             ScalarT const *I_col = I_row_full + (l * _stride) * (_F_cb * _G_b);
             ScalarT const *F_col = F + 0;
-            AccumT *O_col = O_row_full + l * (_G_b * _K_b); // ScalarT -> AccumT
+            AccumT        *O_col = O_row_full + l * (_G_b * _K_b);  // ScalarT -> AccumT
+            ScalarT       *O_col_out = O_row_full_out + l * (_G_b * _K_b);
 
             kernel_pad<ScalarT, AccumT,
                        _G_b, _K_b, _F_cb, _O_wb, _stride,
-                       _UNROLL, op_type, op_class, fused_single_element_before,
-                       fused_single_element_after, _stride_before, _stride_after>(
+                       _UNROLL, op_type, op_class, quantize, max_val, min_val>(
                            first,
                            F_h,
                            F_w,
@@ -108,22 +120,28 @@ void inline kernel_bottom(
                            O_col,
                            0,
                            H_i_valid,
-                           0,  /// @todo This was added, W_lb. Is it right?
                            0,
-                           F_b,
-                           F_a); /// @todo This was added, W_ub. Is it right?);
+                           F_w,
+                           k_zero,
+                           I_offset,
+                           F_offset,
+                           O_col_out,
+                           lshift,
+                           rshift,
+                           q_mul,
+                           zero);
         }
 
         // Epilogue for microkernel + right padding elements
         ScalarT const *I_col_left =
             I_row_full + (O_w_full * _stride) * (_F_cb * _G_b);
         ScalarT const *F_col_left = F + 0;
-        AccumT *O_col_left = O_row_full + O_w_full * (_G_b * _K_b); // ScalarT -> AccumT
+        AccumT        *O_col_left = O_row_full + O_w_full * (_G_b * _K_b);  // ScalarT -> AccumT
+        ScalarT       *O_col_left_out = O_row_full_out + O_w_full * (_G_b * _K_b);
 
         kernel_right<ScalarT, AccumT,
                      _G_b, _K_b, _F_cb, _O_wb, _stride,
-                     _UNROLL, op_type, op_class, fused_single_element_before,
-                     fused_single_element_after, _stride_before, _stride_after>(
+                     _UNROLL, op_type, op_class, quantize, max_val, min_val>(
                          first,
                          F_h,
                          F_w,
@@ -134,17 +152,24 @@ void inline kernel_bottom(
                          I_col_left,
                          F_col_left,
                          O_col_left,
-                         0,          /// @todo confirm this, H_lb
+                         0,
                          H_i_valid,
-                         F_b,
-                         F_a); /// @todo confirm this, H_ub
+                         k_zero,
+                         I_offset,
+                         F_offset,
+                         O_col_left_out,
+                         lshift,
+                         rshift,
+                         q_mul,
+                         zero);
 
         O_ptr += O_w_w_pad * _K_b * _G_b;
+        O_ptr_out += O_w_w_pad * _K_b * _G_b;
 
         H_i_valid -= _stride;
         I_ptr += _stride * _F_cb * _G_b;
     }
 }
 
-} // ns detail
+} // ns quint8_detail
 } // ns small

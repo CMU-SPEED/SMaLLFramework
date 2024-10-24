@@ -13,10 +13,6 @@
 #pragma once
 
 #include <stdint.h>
-#include <stdio.h>
-#if PARALLEL == 1
-#include <omp.h>
-#endif
 
 #include <small/op_type.hpp>
 #include <small/utils.hpp>
@@ -25,7 +21,6 @@
 
 namespace small
 {
-
 namespace detail
 {
 
@@ -113,7 +108,7 @@ void inline kernel(
                 /// @note using platform C_ob
                 ScalarT const *b_cur = b + ii * _UNROLL * FLOAT_C_ob;
                 ScalarT const *a_cur = a + ii * _UNROLL;
-                FLOAT_ABSTRACT_OP(op_type, op_class, a_cur, b_cur, _O_wb, _C_ob);
+                FLOAT_ABSTRACT_OP(step, op_type, op_class, a_cur, b_cur, _O_wb, _C_ob);
             }
         }
     }
@@ -131,5 +126,5 @@ void inline kernel(
     //@todo support reduction-tree like store for global reductions
 }
 
-}
-}
+} // ns detail
+} // ns small
