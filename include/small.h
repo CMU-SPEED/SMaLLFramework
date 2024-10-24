@@ -38,5 +38,5 @@
 #include <small/interface_abstract_1D.hpp>
 
 // #include <small/fused_interface.hpp>
-#include <small/fused_interface_abstract.hpp>
-#include <small/fused_interface_abstract_1D.hpp>
+#include <small/interface_abstract_fused.hpp>
+#include <small/interface_abstract_1D_fused.hpp>
