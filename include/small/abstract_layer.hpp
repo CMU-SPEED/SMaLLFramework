@@ -1097,8 +1097,7 @@ void inline kernel_right_1D(
         FLOAT_DIV_END_C(c_tile, norm, r_pad_el, _C_ob);
     }
 
-    dim_t step_after = _stride_after * _C_ib;
-    FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_END(step_after, fused_single_element_after, 0, F_a, c_tile, r_pad_el, _C_ob);
+
 
     dim_t step_after = _stride_after * _C_ib;
     FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_END(step_after, fused_single_element_after,
