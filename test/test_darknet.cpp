@@ -69,7 +69,20 @@ void test_yolo_parser(void)
             std::cerr << "ERROR: input shape mismatch" << std::endl;
             TEST_CHECK(false);
         }
+
+        size_t const NUM_TRIALS = 20;
         small::Timer timer;
+        timer.start();
+        for (size_t ix = 0; ix < NUM_TRIALS; ++ix)
+        {
+            model.inference({&input_tensor_dc});
+        }
+        timer.stop();
+        std::cout << "Average time per inference ("
+                  << NUM_TRIALS << " trials): "
+                  << (timer.elapsed()/1000000000.)/(double)NUM_TRIALS
+                  << " seconds.\n";
+
         timer.start();
         std::vector<small::Tensor<BufferT>*> outs = model.inference({&input_tensor_dc});
         timer.stop();

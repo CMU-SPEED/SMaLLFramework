@@ -26,22 +26,19 @@
 
 namespace small
 {
-    namespace detail
-    {
+namespace detail
+{
+    /// @todo both pairs of typedefs should not be needed.
+    typedef small::FloatBuffer::value_type dtype;
 
-        /// @todo both pairs of typedefs should not be needed.
-        typedef small::FloatBuffer::value_type dtype;
-
-        // typedef small::FloatBuffer::value_type c_tile_t;
-        #if FLOAT_SIMD_EPILOGUE == 1
-//typedef float c_tile_t;
-typedef small::FloatBuffer::value_type  c_tile_t;
+    // typedef small::FloatBuffer::value_type c_tile_t;
+#if FLOAT_SIMD_EPILOGUE == 1
+    // typedef float c_tile_t;
+    typedef small::FloatBuffer::value_type  c_tile_t;
 #else
-typedef __m256 c_tile_t;
+    typedef __m256 c_tile_t;
 #endif
-
-
-    }
+}
 }
 
 
@@ -61,14 +58,15 @@ typedef __m256 c_tile_t;
 
 /// @todo VERIFY this. Args are _W_ob/_C_ob but does not use them
 #if FLOAT_SIMD_EPILOGUE == 1
-#define FLOAT_DEF_END_C(_W_ob, _C_ob) \
+#define FLOAT_DEF_END_C(_W_ob, _C_ob)           \
     c_tile_t c_tile[FLOAT_W_ob * FLOAT_C_ob];
 #elif FLOAT_SIMD_EPILOGUE == 8
-    __m256 a_0, a_1, a_2, a_3, b_0, b_1;\
+#define FLOAT_DEF_END_C(_W_ob, _C_ob)                   \
+    __m256 a_0, a_1, a_2, a_3, b_0, b_1;                \
     __m256 c_tile[FLOAT_W_ob * FLOAT_C_ob/FLOAT_SIMD];
 #endif
 
-#define FLOAT_ZERO_TILE_C(W_ob, C_ob) \
+#define FLOAT_ZERO_TILE_C(W_ob, C_ob)     \
         c0 = _mm256_setzero_ps();         \
         c1 = _mm256_setzero_ps();         \
         c2 = _mm256_setzero_ps();         \
@@ -83,7 +81,7 @@ typedef __m256 c_tile_t;
         c11 = _mm256_setzero_ps();
 
 #if FLOAT_SIMD_EPILOGUE == 1
-#define FLOAT_ZERO_END_C(_W_ob, _C_ob)          \
+#define FLOAT_ZERO_END_C(_W_ob, _C_ob)              \
         for (uint32_t kk = 0; kk < _W_ob; kk++)     \
         {                                           \
             for (uint32_t jj = 0; jj < _C_ob; jj++) \
@@ -301,32 +299,32 @@ else
 // (Strided GEMM)
 //****************************************************************************
 
-#define FLOAT_CONV_TILE_C(step, a, b, W_ob, C_ob) \
-    float const * a_ptr = a;\
-    a_reg = _mm256_broadcast_ss(a_ptr + 0 * step);    \
-    b0 = _mm256_load_ps(b);                       \
-    b1 = _mm256_load_ps(b + FLOAT_SIMD);          \
-    c12 = _mm256_broadcast_ss(a_ptr + 1 * step);      \
-    c0 = _mm256_fmadd_ps(a_reg, b0, c0);          \
-    c1 = _mm256_fmadd_ps(a_reg, b1, c1);          \
-    a_reg = _mm256_broadcast_ss(a_ptr + 2 * step);               \
-    a_ptr += 3*step;                                               \
-    c2 = _mm256_fmadd_ps(c12, b0, c2);          \
-    c3 = _mm256_fmadd_ps(c12, b1, c3);          \
-    c12 = _mm256_broadcast_ss(a_ptr + 0 * step);      \
-                                                  \
-    c4 = _mm256_fmadd_ps(a_reg, b0, c4);          \
-    c5 = _mm256_fmadd_ps(a_reg, b1, c5);          \
-    a_reg = _mm256_broadcast_ss(a_ptr + 1 * step);               \
-                                                  \
-    c6 = _mm256_fmadd_ps(c12, b0, c6);          \
-    c7 = _mm256_fmadd_ps(c12, b1, c7);          \
-    c12 = _mm256_broadcast_ss(a_ptr + 2 * step);               \
-                                                  \
-    c8 = _mm256_fmadd_ps(a_reg, b0, c8);          \
-    c9 = _mm256_fmadd_ps(a_reg, b1, c9);          \
-                                                  \
-    c10 = _mm256_fmadd_ps(c12, b0, c10);        \
+#define FLOAT_CONV_TILE_C(step, a, b, W_ob, C_ob)       \
+    float const * a_ptr = a;                            \
+    a_reg = _mm256_broadcast_ss(a_ptr + 0 * step);      \
+    b0 = _mm256_load_ps(b);                             \
+    b1 = _mm256_load_ps(b + FLOAT_SIMD);                \
+    c12 = _mm256_broadcast_ss(a_ptr + 1 * step);        \
+    c0 = _mm256_fmadd_ps(a_reg, b0, c0);                \
+    c1 = _mm256_fmadd_ps(a_reg, b1, c1);                \
+    a_reg = _mm256_broadcast_ss(a_ptr + 2 * step);      \
+    a_ptr += 3*step;                                    \
+    c2 = _mm256_fmadd_ps(c12, b0, c2);                  \
+    c3 = _mm256_fmadd_ps(c12, b1, c3);                  \
+    c12 = _mm256_broadcast_ss(a_ptr + 0 * step);        \
+                                                        \
+    c4 = _mm256_fmadd_ps(a_reg, b0, c4);                \
+    c5 = _mm256_fmadd_ps(a_reg, b1, c5);                \
+    a_reg = _mm256_broadcast_ss(a_ptr + 1 * step);      \
+                                                        \
+    c6 = _mm256_fmadd_ps(c12, b0, c6);                  \
+    c7 = _mm256_fmadd_ps(c12, b1, c7);                  \
+    c12 = _mm256_broadcast_ss(a_ptr + 2 * step);        \
+                                                        \
+    c8 = _mm256_fmadd_ps(a_reg, b0, c8);                \
+    c9 = _mm256_fmadd_ps(a_reg, b1, c9);                \
+                                                        \
+    c10 = _mm256_fmadd_ps(c12, b0, c10);                \
     c11 = _mm256_fmadd_ps(c12, b1, c11);
 
 /// @todo This implementation is different than REF
@@ -346,30 +344,30 @@ else
         a_channel += step;                               \
     }
 #elif FLOAT_SIMD_EPILOGUE == 8
-#define FLOAT_CONV_END_C(step, a, b, c_cur, _W_ob, C_ob)                                                                   \
-    b_0 = _mm256_load_ps(b);                                                                                                \
-    b_1 = _mm256_load_ps(b + FLOAT_SIMD);                                                                                   \
-    __m256 c_pixel = c_cur;                                                                                                \
-    switch (_W_ob)                                                                                                         \
-    {                                                                                                                      \
-    case 5:                                                                                                                \
-        a_0 = _mm256_broadcast_ss(a + 4 * step);                                                                           \
+#define FLOAT_CONV_END_C(step, a, b, c_cur, _W_ob, C_ob)                \
+    b_0 = _mm256_load_ps(b);                                            \
+    b_1 = _mm256_load_ps(b + FLOAT_SIMD);                               \
+    __m256 c_pixel = c_cur;                                             \
+    switch (_W_ob)                                                      \
+    {                                                                   \
+    case 5:                                                             \
+        a_0 = _mm256_broadcast_ss(a + 4 * step);                        \
         c_pixel[4 * (FLOAT_C_ob / FLOAT_SIMD) + 0] = _mm256_fmadd_ps(a_0, b_0, c_pixel[4 * (FLOAT_C_ob / FLOAT_SIMD) + 0]); \
         c_pixel[4 * (FLOAT_C_ob / FLOAT_SIMD) + 1] = _mm256_fmadd_ps(a_0, b_1, c_pixel[4 * (FLOAT_C_ob / FLOAT_SIMD) + 0]); \
-    case 4:                                                                                                                \
-        a_3 = _mm256_broadcast_ss(a + 3 * step);                                                                           \
+    case 4:                                                             \
+        a_3 = _mm256_broadcast_ss(a + 3 * step);                        \
         c_pixel[3 * (FLOAT_C_ob / FLOAT_SIMD) + 0] = _mm256_fmadd_ps(a_0, b_0, c_pixel[3 * (FLOAT_C_ob / FLOAT_SIMD) + 0]); \
         c_pixel[3 * (FLOAT_C_ob / FLOAT_SIMD) + 1] = _mm256_fmadd_ps(a_0, b_1, c_pixel[3 * (FLOAT_C_ob / FLOAT_SIMD) + 0]); \
-    case 3:                                                                                                                \
-        a_2 = _mm256_broadcast_ss(a + 2 * step);                                                                           \
+    case 3:                                                             \
+        a_2 = _mm256_broadcast_ss(a + 2 * step);                        \
         c_pixel[2 * (FLOAT_C_ob / FLOAT_SIMD) + 0] = _mm256_fmadd_ps(a_0, b_0, c_pixel[2 * (FLOAT_C_ob / FLOAT_SIMD) + 0]); \
         c_pixel[2 * (FLOAT_C_ob / FLOAT_SIMD) + 1] = _mm256_fmadd_ps(a_0, b_1, c_pixel[2 * (FLOAT_C_ob / FLOAT_SIMD) + 0]); \
-    case 2:                                                                                                                \
-        a_1 = _mm256_broadcast_ss(a + 1 * step);                                                                           \
+    case 2:                                                             \
+        a_1 = _mm256_broadcast_ss(a + 1 * step);                        \
         c_pixel[1 * (FLOAT_C_ob / FLOAT_SIMD) + 0] = _mm256_fmadd_ps(a_0, b_0, c_pixel[1 * (FLOAT_C_ob / FLOAT_SIMD) + 0]); \
         c_pixel[1 * (FLOAT_C_ob / FLOAT_SIMD) + 1] = _mm256_fmadd_ps(a_0, b_1, c_pixel[1 * (FLOAT_C_ob / FLOAT_SIMD) + 0]); \
-    case 1:                                                                                                                \
-        a_0 = _mm256_broadcast_ss(a + 0 * step);                                                                           \
+    case 1:                                                             \
+        a_0 = _mm256_broadcast_ss(a + 0 * step);                        \
         c_pixel[0 * (FLOAT_C_ob / FLOAT_SIMD) + 0] = _mm256_fmadd_ps(a_0, b_0, c_pixel[0 * (FLOAT_C_ob / FLOAT_SIMD) + 0]); \
         c_pixel[0 * (FLOAT_C_ob / FLOAT_SIMD) + 1] = _mm256_fmadd_ps(a_0, b_1, c_pixel[0 * (FLOAT_C_ob / FLOAT_SIMD) + 0]); \
     }
@@ -563,7 +561,7 @@ for (uint32_t kk = 0; kk < W_last; kk++)             \
     {                                                 \
         c_cur[kk * C_ob/FLOAT_SIMD + 0] = _mm256_max_ps(c_cur[kk * C_ob/FLOAT_SIMD + 0], a_0); \
         c_cur[kk * C_ob/FLOAT_SIMD + 1] = _mm256_max_ps(c_cur[kk * C_ob/FLOAT_SIMD + 1], a_0); \
-    }   
+    }
 #endif
 //****************************************************************************
 // Leaky ReLU activation

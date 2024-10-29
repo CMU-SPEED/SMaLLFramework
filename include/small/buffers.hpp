@@ -47,16 +47,22 @@ inline size_t packed_weight_index(
     size_t   height_idx,       // kernel height index
     size_t   width_idx)        // kernel width index
 {
-
-    if(num_channels < channel_blocking) {
-        if(num_channels == 3) {
-            channel_blocking = 3;
+    // This is fragile code and needs to stay in sync with exceptions added
+    // to interface_abstract
+    if (num_channels < channel_blocking)
+    {
+        if ((num_channels == 3) || (num_channels == 2) || (num_channels == 1))
+        {
+            channel_blocking = num_channels;
         }
-        else {
-            throw std::runtime_error("num_channels < channel_blocking && num_channels != 3");
+        else
+        {
+            throw std::runtime_error(
+                "num_channels < channel_blocking && num_channels not in {1, 2, 3}");
         }
     }
-    else if(num_channels % channel_blocking != 0) {
+    else if (num_channels % channel_blocking != 0)
+    {
         throw std::runtime_error("num_channels %% channel_blocking != 0");
     }
 
@@ -88,15 +94,21 @@ inline size_t packed_buffer_index(
     size_t   height_idx,       // kernel height index
     size_t   width_idx)        // kernel width index
 {
-    if(num_channels < channel_blocking) {
-        if(num_channels == 3) {
-            channel_blocking = 3;
+    // This is fragile code and needs to stay in sync with exceptions added
+    // to interface_abstract
+    if (num_channels < channel_blocking)
+    {
+        if ((num_channels == 3) || (num_channels == 2) || (num_channels == 1))
+        {
+            channel_blocking = num_channels;
         }
-        else {
+        else
+        {
             throw std::runtime_error("num_channels < channel_blocking && num_channels != 3");
         }
     }
-    else if(num_channels % channel_blocking != 0) {
+    else if(num_channels % channel_blocking != 0)
+    {
         throw std::runtime_error("num_channels %% channel_blocking != 0");
     }
 
@@ -156,14 +168,13 @@ uint32_t convert_tensor2dc(ScalarT               const *flat_t,
 
     if (type == FILTER_CONV || type == INPUT)
     {
-        /// @todo this is fragile code.  There is one hardcoded exception
-        ///       3-channel input images.  In all other cases C_i must be an
-        ///       integer multiple of _C_ib.
+        /// @todo this is fragile code.  There are hardcoded exceptions for
+        ///       3-channel input images or 2-channel input I/Q data.  In all other
+        //        cases C_i must be an integer multiple of _C_ib.
         if (C_i < _C_ib) //(dim1 < _C_ob)
         {
-            assert(C_i == 3);
-            //std::cerr << "HERE: dim1, C_ob: " << H << ", " << _C_ob << std::endl;;
-            _C_ib = 3;    /// @todo why is this a 3?
+            assert(C_i == 3 || C_i == 2 || C_i == 1);
+            _C_ib = C_i;
         }
     }
 
@@ -303,14 +314,13 @@ uint32_t convert_dc2tensor(ScalarT               const *dc_array,
 
     if ((type == FILTER_CONV) || (type == INPUT))
     {
-        /// @todo this is fragile code.  There is one hardcoded exception
-        ///       3-channel input images.  In all other cases C_i must be an
-        ///       integer multiple of _C_ib.
+        /// @todo this is fragile code.  There are hardcoded exceptions for
+        ///       3-channel input images or 2-channel input I/Q data.  In all other
+        //        cases C_i must be an integer multiple of _C_ib.
         if (C_i < _C_ib) //(H < _C_ob)
         {
-            assert(C_i == 3);
-
-            _C_ib = 3;    /// @todo why is this a 3?
+            assert(C_i == 3 || C_i == 2 || C_i == 1);
+            _C_ib = C_i;
         }
     }
 

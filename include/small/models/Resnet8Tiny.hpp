@@ -197,36 +197,37 @@ def resnet_v1_eembc():
 //****************************************************************************
 /* RECORD_CALLS:
 
-   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:16,ichans:3,img:32x32,I,F,O)
+   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:16,ichans:3,img:32x32,I,F,O)          # bn
    ReLUActivation(chans:16,img:32x32,I,O)
-
-   ** First Stack **
-   Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:16,ichans:16,img:32x32,I,F,O)
-   ReLUActivation(chans:16,img:32x32,I,O)
-   PartialConv2D(k:3,s:1,pad:[1,1,1,1],ochans:16,ichans:16,img:32x32,I,F,O)
+   |
+   | ** First Stack **
+   | Conv2D(k:3,s:1,pad:[1,1,1,1],ochans:16,ichans:16,img:32x32,I,F,O)       # bn
+   | ReLUActivation(chans:16,img:32x32,I,O)
+   | |
+   PartialConv2D(k:3,s:1,pad:[1,1,1,1],ochans:16,ichans:16,img:32x32,I,F,O)  # bn
    ReLUActivation(chans:16,img:32x32,I,O)
 
    ** Second Stack **
-   Conv2D(k:3,s:2,pad:[0,1,0,1],ochans:32,ichans:16,img:32x32,I,F,O)
-   ReLUActivation(chans:32,img:16x16,I,O)
-
-?  Conv2D(k:1,s:2,pad:[0,0,0,0],ochans:32,ichans:16,img:32x32,I,F,O)
-
-   PartialConv2D(k:3,s:1,pad:[1,1,1,1],ochans:32,ichans:32,img:16x16,I,F,O)
+     Conv2D(k:3,s:2,pad:[0,1,0,1],ochans:32,ichans:16,img:32x32,I,F,O)       # bn
+     ReLUActivation(chans:32,img:16x16,I,O)
+     |
+?  Conv2D(k:1,s:2,pad:[0,0,0,0],ochans:32,ichans:16,img:32x32,I,F,O)         # bn
+   | |
+   PartialConv2D(k:3,s:1,pad:[1,1,1,1],ochans:32,ichans:32,img:16x16,I,F,O)  # bn
    ReLUActivation(chans:32,img:16x16,I,O)
 
    ** Third Stack **
-   Conv2D(k:3,s:2,pad:[0,1,0,1],ochans:64,ichans:32,img:16x16,I,F,O)
-   ReLUActivation(chans:64,img:8x8,I,O)
-
-?  Conv2D(k:1,s:2,pad:[0,0,0,0],ochans:64,ichans:32,img:16x16,I,F,O)
-
-   PartialConv2D(k:3,s:1,pad:[1,1,1,1],ochans:64,ichans:64,img:8x8,I,F,O)
+     Conv2D(k:3,s:2,pad:[0,1,0,1],ochans:64,ichans:32,img:16x16,I,F,O)       # bn
+     ReLUActivation(chans:64,img:8x8,I,O)
+     |
+?  Conv2D(k:1,s:2,pad:[0,0,0,0],ochans:64,ichans:32,img:16x16,I,F,O)         # bn
+   | |
+   PartialConv2D(k:3,s:1,pad:[1,1,1,1],ochans:64,ichans:64,img:8x8,I,F,O)    # bn
    ReLUActivation(chans:64,img:8x8,I,O)
 
    ** Final Classification Layer ** (Keras Model: AveragePooling2D + Dense)
-   MaxPool2D(k:8,s:1,pad:[0,0,0,0],chans:64,img:8x8,I,O)
-   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:16,ichans:64,img:1x1,I,F,O)
+   MaxPool2D(k:8,s:1,pad:[0,0,0,0],chans:64,img:8x8,I,O)                     # AveragePool
+   Conv2D(k:1,s:1,pad:[0,0,0,0],ochans:16,ichans:64,img:1x1,I,F,O)           # Dense+Softmax
 
 */
 

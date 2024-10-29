@@ -19,6 +19,8 @@
 /// @todo remove the following (add init() to set threading)
 #define PARALLEL 1
 
+#include <stdint.h>
+
 // ============ Implementation details ==============
 // Platform specific includes.
 // Use -I compile option to point to correct platform
@@ -33,6 +35,8 @@
 
 
 #include <small/interface_abstract.hpp>
+#include <small/interface_abstract_1D.hpp>
 
 // #include <small/fused_interface.hpp>
 #include <small/fused_interface_abstract.hpp>
+#include <small/fused_interface_abstract_1D.hpp>

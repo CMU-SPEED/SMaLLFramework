@@ -184,6 +184,4 @@ inline void free_buffer(FloatBuffer *buffer)
     delete buffer;
 }
 
-} 
-
-// small
+} // small
