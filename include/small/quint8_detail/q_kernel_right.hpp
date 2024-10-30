@@ -15,7 +15,7 @@
 #include <stdint.h>
 
 #include <small/op_type.hpp>
-#include <small/q_compute_with_padding.hpp>
+#include <small/quint8_detail/q_compute_with_padding.hpp>
 
 namespace small
 {

@@ -17,7 +17,7 @@
 #include <small/op_type.hpp>
 #include <small/utils.hpp>
 
-#include <small/q_abstract_op.hpp>
+#include <small/quint8_detail/q_abstract_op.hpp>
 
 namespace small
 {

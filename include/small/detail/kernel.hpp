@@ -15,7 +15,9 @@
 #include <stdint.h>
 
 #include <small/op_type.hpp>
-#include <small/abstract_op.hpp>
+#include <small/utils.hpp>
+
+#include <small/detail/abstract_op.hpp>
 
 namespace small
 {
@@ -23,7 +25,6 @@ namespace detail
 {
 
 //****************************************************************************
-// TODO: Explain the difference between kernel and kernel_pad
 template <typename ScalarT,
           typename AccumT,
           dim_t _G_b,
@@ -38,7 +39,7 @@ template <typename ScalarT,
           OpType fused_single_element_after = OP_NONE,
           dim_t _stride_before = 1,
           dim_t stride_after = 1>
-void inline kernel_pad(
+void inline kernel(
     bool first,
     dim_t F_h,
     dim_t F_w,
@@ -64,17 +65,24 @@ void inline kernel_pad(
     if (first)
     {
         FLOAT_ZERO_TILE_C(_O_wb, _C_ob);
-
-        //@note padding should always be 'v' for pointwise operations,
-        //      so this code path should not be used
-        if (op_type == OP_MUL)
+        if (op_type == OP_MAX_POOL || op_type == OP_MUL)
         {
-            FLOAT_LOAD_TILE_C_strided(I, step, _O_wb, _C_ob);
+            /// @note using platform C_ob
+            FLOAT_LOAD_TILE_C_strided(I, step, _O_wb, FLOAT_C_ob);
+        }
+        else if (op_type == OP_UPSAMPLE)
+        {
+            FLOAT_LOAD_TILE_C_upsample(I, _stride, _C_ib, _O_wb, _C_ob);
         }
     }
     else
     {
         FLOAT_LOAD_TILE_C(O, _O_wb, _C_ob);
+        if constexpr (op_type == OP_UPSAMPLE)
+        {
+            FLOAT_ACCUM_TILE_C_upsample(I, _stride, _C_ib, _O_wb, _C_ob);
+        }
+        //@todo support reduction tree-like kernel (for global reductions)
     }
 
     if constexpr (fused_single_element_before == OP_UPSAMPLE)
@@ -115,6 +123,7 @@ void inline kernel_pad(
                                           0, F_a, _O_wb, _C_ob);
 
     FLOAT_STORE_TILE_C(O, _O_wb, _C_ob);
+    //@todo support reduction-tree like store for global reductions
 }
 
 } // ns detail

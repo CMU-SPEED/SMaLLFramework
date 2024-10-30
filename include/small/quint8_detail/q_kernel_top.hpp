@@ -15,9 +15,9 @@
 #include <stdint.h>
 
 #include <small/op_type.hpp>
-#include <small/q_kernel_left.hpp>
-#include <small/q_kernel_pad.hpp>
-#include <small/q_kernel_right.hpp>
+#include <small/quint8_detail/q_kernel_left.hpp>
+#include <small/quint8_detail/q_kernel_pad.hpp>
+#include <small/quint8_detail/q_kernel_right.hpp>
 
 namespace small
 {
@@ -38,13 +38,13 @@ template <typename ScalarT,
           bool   quantize = false,
           ScalarT max_val = 255, // std::numeric_limits<ScalarT>::max()
           ScalarT min_val = 0>   // std::numeric_limits<ScalarT>::lowest()
-void inline kernel_bottom(
+void inline kernel_top(
     bool first,
     dim_t F_h,
     dim_t F_w,
     dim_t input_col_stride,
-    dim_t b_pad_el,
-    dim_t b_pad,
+    dim_t t_pad_el,
+    dim_t t_pad,
     dim_t W_full_index,
     dim_t l_pad_el,
     dim_t l_pad,
@@ -55,7 +55,7 @@ void inline kernel_bottom(
     dim_t r_pad,
     ScalarT const *I,
     ScalarT const *F,
-    AccumT        *O,  // ScalarT -> AccumT
+    AccumT        *O,  // ScalarT --> AccumT
     int k_zero = 0,
     AccumT I_offset = 0,
     AccumT F_offset = 0,
@@ -66,12 +66,11 @@ void inline kernel_bottom(
     AccumT zero = 0)
 {
     ScalarT const *I_ptr = I;
-    AccumT        *O_ptr = O;  // ScalarT -> AccumT
+    AccumT        *O_ptr = O;  // ScalarT --> AccumT
     ScalarT       *O_ptr_out = O_out;
+    int H_i_valid = t_pad;
 
-    int H_i_valid = F_h - 1;
-
-    for (uint32_t j_p = 0; j_p < b_pad_el; j_p++)
+    for (uint32_t j_p = 0; j_p < t_pad_el; j_p++)
     {
         // Prologue with left padding
         kernel_left<ScalarT, AccumT,
@@ -86,8 +85,8 @@ void inline kernel_bottom(
                         I_ptr,
                         F,
                         O_ptr,
-                        0,
                         H_i_valid,
+                        F_h,
                         k_zero,
                         I_offset,
                         F_offset,
@@ -98,14 +97,16 @@ void inline kernel_bottom(
                         zero);
 
         ScalarT const *I_row_full = I + W_full_index * (_F_cb * _G_b);
-        AccumT        *O_row_full = O + l_pad_el * (_G_b * _K_b);  // ScalarT -> AccumT
+        AccumT        *O_row_full = O + l_pad_el * (_G_b * _K_b);  // ScalarT --> AccumT
         ScalarT       *O_row_full_out = O_out + l_pad_el * (_G_b * _K_b);
+
         // Steady State with microkernel
         for (index_t l = 0; l < O_w_full; l += _O_wb)
         {
-            ScalarT const *I_col = I_row_full + (l * _stride) * (_F_cb * _G_b);
+            ScalarT const *I_col =
+                I_row_full + (l * _stride) * (_F_cb * _G_b);
             ScalarT const *F_col = F + 0;
-            AccumT        *O_col = O_row_full + l * (_G_b * _K_b);  // ScalarT -> AccumT
+            AccumT        *O_col = O_row_full + l * (_G_b * _K_b);  // ScalarT --> AccumT
             ScalarT       *O_col_out = O_row_full_out + l * (_G_b * _K_b);
 
             kernel_pad<ScalarT, AccumT,
@@ -118,10 +119,10 @@ void inline kernel_bottom(
                            I_col,
                            F_col,
                            O_col,
-                           0,
-                           H_i_valid,
-                           0,
-                           F_w,
+                           H_i_valid,  // H_lb
+                           F_h,        // H_ub
+                           0,          // W_lb
+                           F_w,        // W_ub
                            k_zero,
                            I_offset,
                            F_offset,
@@ -136,8 +137,10 @@ void inline kernel_bottom(
         ScalarT const *I_col_left =
             I_row_full + (O_w_full * _stride) * (_F_cb * _G_b);
         ScalarT const *F_col_left = F + 0;
-        AccumT        *O_col_left = O_row_full + O_w_full * (_G_b * _K_b);  // ScalarT -> AccumT
-        ScalarT       *O_col_left_out = O_row_full_out + O_w_full * (_G_b * _K_b);
+        AccumT        *O_col_left =
+            O_row_full + O_w_full * (_G_b * _K_b);  // ScalarT --> AccumT
+        ScalarT       *O_col_left_out =
+            O_row_full_out + O_w_full * (_G_b * _K_b);
 
         kernel_right<ScalarT, AccumT,
                      _G_b, _K_b, _F_cb, _O_wb, _stride,
@@ -152,8 +155,8 @@ void inline kernel_bottom(
                          I_col_left,
                          F_col_left,
                          O_col_left,
-                         0,
                          H_i_valid,
+                         F_h,
                          k_zero,
                          I_offset,
                          F_offset,
@@ -165,9 +168,8 @@ void inline kernel_bottom(
 
         O_ptr += O_w_w_pad * _K_b * _G_b;
         O_ptr_out += O_w_w_pad * _K_b * _G_b;
-
-        H_i_valid -= _stride;
-        I_ptr += _stride * _F_cb * _G_b;
+        H_i_valid += _stride;
+        // I_ptr += _stride * _F_cb * _G_b;
     }
 }
 

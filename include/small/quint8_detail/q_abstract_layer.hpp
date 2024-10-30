@@ -21,11 +21,11 @@
 #include <small/op_type.hpp> /// @todo Add support: ADD, AVG_POOL, etc
 #include <small/utils.hpp>
 
-#include <small/q_kernel_top.hpp>
-#include <small/q_kernel_left.hpp>
-#include <small/q_kernel.hpp>
-#include <small/q_kernel_right.hpp>
-#include <small/q_kernel_bottom.hpp>
+#include <small/quint8_detail/q_kernel_top.hpp>
+#include <small/quint8_detail/q_kernel_left.hpp>
+#include <small/quint8_detail/q_kernel.hpp>
+#include <small/quint8_detail/q_kernel_right.hpp>
+#include <small/quint8_detail/q_kernel_bottom.hpp>
 
 #define DEBUG 0
 

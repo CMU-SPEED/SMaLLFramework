@@ -15,11 +15,11 @@
 #include <stdint.h>
 
 #include <small/op_type.hpp>
-#include <small/q_abstract_op.hpp>
+#include <small/detail/abstract_op.hpp>
 
 namespace small
 {
-namespace quint8_detail
+namespace detail
 {
 
 //****************************************************************************
@@ -42,9 +42,7 @@ void inline compute_with_padding(dim_t H_lb, dim_t H_ub,
                                  dim_t input_col_stride,
                                  ScalarT const *F,
                                  ScalarT const *I,
-                                 c_tile_t *c_cur, /// @todo need to deal with type
-                                 AccumT I_offset = 0,
-                                 AccumT F_offset = 0)
+                                 c_tile_t *c_cur) /// @todo need to deal with type
 {
     constexpr dim_t _C_ob = _G_b * _K_b;
     constexpr dim_t _C_ib = _G_b * _F_cb;
@@ -67,14 +65,13 @@ void inline compute_with_padding(dim_t H_lb, dim_t H_ub,
             for (uint32_t ii = 0; ii < _F_cb / _UNROLL; ii++)
             {
                 /// @note using platform C_ob
-                ScalarT const *b_cur = b + ii * _UNROLL * QUINT8_C_ob;
+                ScalarT const *b_cur = b + ii * _UNROLL * FLOAT_C_ob;
                 ScalarT const *a_cur = a + ii * _UNROLL;
-                QUINT8_ABSTRACT_OP_END(op_type, op_class, a_cur, b_cur, c_cur,
-                                       I_offset, F_offset);
+                FLOAT_ABSTRACT_OP_END(step, op_type, op_class, a_cur, b_cur, c_cur, W_elements, _C_ob);
             }
         }
     }
 }
 
-} // ns quint8_detail
+} // ns detail
 } // ns small

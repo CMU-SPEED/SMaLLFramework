@@ -21,9 +21,11 @@
 #include <small/op_type.hpp>
 #include <small/utils.hpp>
 
-#include <small/kernel_left_1D.hpp>
-#include <small/kernel_1D.hpp>
-#include <small/kernel_right_1D.hpp>
+#include <small/detail/kernel_top.hpp>
+#include <small/detail/kernel_left.hpp>
+#include <small/detail/kernel.hpp>
+#include <small/detail/kernel_right.hpp>
+#include <small/detail/kernel_bottom.hpp>
 
 #define DEBUG 0
 
@@ -39,9 +41,9 @@ namespace detail
 {
 
 //****************************************************************************
-// 1D fused abstract layers
+// Fused Abstract Layer
+//****************************************************************************
 //@todo: find a way to group all the template arguments for one set of kernels together.
-// @todo Remove access to F_h, pad_top, pad_bottom
 template <typename BufferT,
           dim_t _G_b,
           dim_t _K_b,
@@ -56,9 +58,9 @@ template <typename BufferT,
           OpType op_fused_single_element_after = OP_NONE,
           dim_t _stride_before = 1,
           dim_t _stride_after = 1>
-void fused_abstract_layer_1D(
+void fused_abstract_layer(
     Mapping<BufferT> *values_0, // Main Operation
-    dim_t I_h,                  // Input Height      /// @todo This should be 1 or B (batch)
+    dim_t I_h,                  // Input Height
     dim_t I_w,                  // Input Width
 
     BufferT const * /*__restrict__*/ I, // Data
@@ -74,8 +76,9 @@ void fused_abstract_layer_1D(
     dim_t pad_left = values_0->pad_left;
     dim_t pad_right = values_0->pad_right;
     dim_t pad_bottom = values_0->pad_bottom;
-    BufferT const *__restrict__ F = values_0->F;
-    BufferT const *__restrict__ F_before = values_0->F_before;
+
+    BufferT const *__restrict__ F = values_0->F;               // Weight buffers
+    BufferT const *__restrict__ F_before = values_0->F_before; //(for fused elementwise operations)
     BufferT const *__restrict__ F_after = values_0->F_after;
 
     using ScalarT = typename BufferT::value_type;
@@ -136,7 +139,7 @@ void fused_abstract_layer_1D(
      *                   weights across groups in a block
      *                      channels in a block
      *
-     * I: [G/G_b,        F_c/F_cb, I_h, I_w, F_cb, G_b     ]  TODO: UPDATE FOR I_h = 1, B support
+     * I: [G/G_b,        F_c/F_cb, I_h, I_w, F_cb, G_b     ]
      * F: [G/G_b, K/K_b, F_c/F_cb, F_h, F_w, F_cb, G_b, K_b]
      * O: [G/G_b, K/K_b,           O_h, O_w,       G_b, K_b]
      */
@@ -150,7 +153,7 @@ void fused_abstract_layer_1D(
     //@todo when fused, this computation goes into the kernel
     if constexpr (op_type == OP_UPSAMPLE)
     {
-        if constexpr (_stride == std::numeric_limits<dim_t>::max())
+        if constexpr(_stride == std::numeric_limits<dim_t>::max())
         {
             H_o_w_pad = I_h;
             W_o_w_pad = I_w;
@@ -163,9 +166,9 @@ void fused_abstract_layer_1D(
     }
     else
     {
-        H_o_w_pad = small::output_dim((I_h + pad_top + pad_bottom),
+        H_o_w_pad = small::output_dim((I_h + pad_top + pad_bottom),  /// @todo output_dim_new?
                                       _stride, F_h);
-        W_o_w_pad = small::output_dim((I_w + pad_left + pad_right),
+        W_o_w_pad = small::output_dim((I_w + pad_left + pad_right),  /// @todo output_dim_new?
                                       _stride, F_w);
     }
     const dim_t O_h_w_pad = H_o_w_pad;
@@ -186,8 +189,8 @@ void fused_abstract_layer_1D(
     }
     else
     {
-        H_o = small::output_dim((I_h - H_full_index), _stride, F_h);
-        W_o_full = small::output_dim((I_w - W_full_index), _stride, F_w);
+        H_o      = small::output_dim((I_h - H_full_index), _stride, F_h);  /// @todo output_dim_new?
+        W_o_full = small::output_dim((I_w - W_full_index), _stride, F_w);  /// @todo output_dim_new?
     }
 
     // back padding elements
@@ -201,9 +204,9 @@ void fused_abstract_layer_1D(
     }
     else
     {
-        b_pad_el = small::output_dim((I_h + pad_bottom - H_back_index),
+        b_pad_el = small::output_dim((I_h + pad_bottom - H_back_index),  /// @todo output_dim_new?
                                      _stride, F_h);
-        r_pad_el = small::output_dim((I_w + pad_right - W_back_index),
+        r_pad_el = small::output_dim((I_w + pad_right - W_back_index),  /// @todo output_dim_new?
                                      _stride, F_w);
     }
 
@@ -321,7 +324,7 @@ void fused_abstract_layer_1D(
                 F_group = F_buf + g * (K * F_c * F_h * F_w * _G_b);
             }
 
-// resuse O_group as a uint32_t array
+            // resuse O_group as a uint32_t array
 #if PARALLEL_DIST == ELEMENTAL
             for (index_t k = channel_tid; k < K / _K_b; k += T_channel)
 #else
@@ -350,36 +353,36 @@ void fused_abstract_layer_1D(
                         I_channel_block_output + i * (I_h * I_w * _F_cb * _G_b);
                     ScalarT const *F_channel_block_input =
                         F_channel_block_output + i * (F_h * F_w * _F_cb * _G_b * _K_b);
-                    ScalarT *O_channel_block_input =
+                    ScalarT       *O_channel_block_input =
                         O_channel_block_output + 0;
 
                     // Loops over spatial dimensions of output
 
                     // Prologue with top padding
                     ScalarT const *I_row_top = I_channel_block_input;
-                    //ScalarT const *F_row_top = F_channel_block_input + 0;
+                    ScalarT const *F_row_top = F_channel_block_input + 0;
                     AccumT        *O_row_top = O_channel_block_input;  // ScalarT --> AccumT
 
-                    // kernel_top<ScalarT, AccumT,
-                    //            _G_b, _K_b, _F_cb, _O_wb, _stride,
-                    //            _UNROLL, op_type, op_class>(
-                    //     first,
-                    //     F_h,
-                    //     F_w,
-                    //     I_w * _C_ib,
-                    //     t_pad_el,
-                    //     pad_top,
-                    //     W_full_index,
-                    //     l_pad_el,
-                    //     pad_left,
-                    //     O_w_w_pad,
-                    //     O_w_full,
-                    //     O_w_left,
-                    //     r_pad_el,
-                    //     pad_right,
-                    //     I_row_top,
-                    //     F_row_top,
-                    //     O_row_top);
+                    kernel_top<ScalarT, AccumT,
+                               _G_b, _K_b, _F_cb, _O_wb, _stride,
+                               _UNROLL, op_type, op_class>(
+                                   first,
+                                   F_h,
+                                   F_w,
+                                   I_w * _C_ib,
+                                   t_pad_el,
+                                   pad_top,
+                                   W_full_index,
+                                   l_pad_el,
+                                   pad_left,
+                                   O_w_w_pad,
+                                   O_w_full,
+                                   O_w_left,
+                                   r_pad_el,
+                                   pad_right,
+                                   I_row_top,
+                                   F_row_top,
+                                   O_row_top);
 
                     ScalarT const *I_row_full =
                         I_row_top + H_full_index * I_w * (_F_cb * _G_b);
@@ -404,18 +407,20 @@ void fused_abstract_layer_1D(
                         AccumT        *O_row =
                             O_row_full + j * (O_w_w_pad * _G_b * _K_b); // ScalarT --> AccumT
                         // Prologue with left padding
-                        kernel_left_1D<ScalarT, AccumT,
-                                       _G_b, _K_b, _F_cb, _O_wb, _stride,
-                                       _UNROLL, op_type, op_class>(
-                                           first,
-                                           //F_h,
-                                           F_w,
-                                           I_w * _C_ib,
-                                           l_pad_el,
-                                           pad_left,
-                                           I_row,
-                                           F_row,
-                                           O_row);
+                        kernel_left<ScalarT, AccumT,
+                                    _G_b, _K_b, _F_cb, _O_wb, _stride,
+                                    _UNROLL, op_type, op_class>(
+                                        first,
+                                        F_h,
+                                        F_w,
+                                        I_w * _C_ib,
+                                        l_pad_el,
+                                        pad_left,
+                                        I_row,
+                                        F_row,
+                                        O_row,
+                                        0,
+                                        0);
 
                         ScalarT const *I_col_full =
                             I_row + W_full_index * (_F_cb * _G_b);
@@ -437,18 +442,20 @@ void fused_abstract_layer_1D(
                             ScalarT const *F_col = F_row + 0;
                             AccumT        *O_col = O_col_full + l * (_G_b * _K_b); // ScalarT --> AccumT
 
-                            kernel_1D<ScalarT, AccumT,
-                                      _G_b, _K_b, _F_cb, _O_wb, _stride,
-                                      _UNROLL, op_type, op_class>(
-                                          first,
-                                          //F_h,
-                                          F_w,
-                                          I_w * _C_ib,
-                                          I_col,
-                                          F_col,
-                                          O_col,
-                                          0,
-                                          0);
+                            kernel<ScalarT, AccumT,
+                                   _G_b, _K_b, _F_cb, _O_wb, _stride,
+                                   _UNROLL, op_type, op_class>(
+                                       first,
+                                       F_h,
+                                       F_w,
+                                       I_w * _C_ib,
+                                       I_col,
+                                       F_col,
+                                       O_col,
+                                       0,
+                                       0,
+                                       0,
+                                       0);
                         }
 
 #if DEBUG
@@ -474,20 +481,59 @@ void fused_abstract_layer_1D(
 #if DEBUG
                         printf(" calling right\n");
 #endif
-                        kernel_right_1D<ScalarT, AccumT,
-                                        _G_b, _K_b, _F_cb, _O_wb, _stride,
-                                        _UNROLL, op_type, op_class>(
-                                            first,
-                                            //F_h,
-                                            F_w,
-                                            I_w * _C_ib,
-                                            O_w_left,
-                                            r_pad_el,
-                                            pad_right,
-                                            I_col_left,
-                                            F_col_left,
-                                            O_col_left);
+                        kernel_right<ScalarT, AccumT,
+                                     _G_b, _K_b, _F_cb, _O_wb, _stride,
+                                     _UNROLL, op_type, op_class>(
+                                         first,
+                                         F_h,
+                                         F_w,
+                                         I_w * _C_ib,
+                                         O_w_left,
+                                         r_pad_el,
+                                         pad_right,
+                                         I_col_left,
+                                         F_col_left,
+                                         O_col_left,
+                                         0,
+                                         0);
                     }
+                    // Epilogue with bottom padding
+                    ScalarT const *I_row_bot;
+                    // @todo cast index calculation as int and make stride a float value.
+                    // I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
+                    if constexpr (op_type == OP_UPSAMPLE)
+                    {
+                        I_row_bot =
+                            I_row_full + (O_h * _stride) * (I_w * _F_cb * _G_b);
+                    }
+                    else
+                    {
+                        I_row_bot =
+                            I_row_full + (O_h * _stride) * (I_w * _F_cb * _G_b);
+                    }
+                    ScalarT const *F_row_bot = F_channel_block_input + 0;
+                    AccumT *O_row_bot = O_row_full + O_h * (O_w_w_pad * _G_b * _K_b); // ScalarT --> AccumT
+
+                    kernel_bottom<ScalarT, AccumT,
+                                  _G_b, _K_b, _F_cb, _O_wb, _stride,
+                                  _UNROLL, op_type, op_class>(
+                                      first,
+                                      F_h,
+                                      F_w,
+                                      I_w * _C_ib,
+                                      b_pad_el,
+                                      pad_bottom,
+                                      W_full_index,
+                                      l_pad_el,
+                                      pad_left,
+                                      O_w_w_pad,
+                                      O_w_full,
+                                      O_w_left,
+                                      r_pad_el,
+                                      pad_right,
+                                      I_row_bot,
+                                      F_row_bot,
+                                      O_row_bot);
                 }
 
                 for (index_t i = (F_c / _F_cb) - 1; i < (F_c / _F_cb); i++)
@@ -501,46 +547,51 @@ void fused_abstract_layer_1D(
                     ScalarT *O_channel_block_input =
                         O_channel_block_output + 0;
 
+
+
                     // Loops over spatial dimensions of output
 
                     // Prologue with top padding
                     ScalarT const *I_row_top = I_channel_block_input;
-                    //ScalarT const *F_row_top = F_channel_block_input + 0;
+                    ScalarT const *F_row_top = F_channel_block_input + 0;
                     AccumT *O_row_top = O_channel_block_input; // ScalarT --> AccumT
 
-                    // kernel_top<ScalarT, AccumT,
-                    //            _G_b, _K_b, _F_cb, _O_wb, _stride,
-                    //            _UNROLL, op_type, op_class, op_fused_single_element_before, op_fused_single_element_after, _stride_before, _stride_after>(
-                    //     first,
-                    //     F_h,
-                    //     F_w,
-                    //     I_w * _C_ib,
-                    //     t_pad_el,
-                    //     pad_top,
-                    //     W_full_index,
-                    //     l_pad_el,
-                    //     pad_left,
-                    //     O_w_w_pad,
-                    //     O_w_full,
-                    //     O_w_left,
-                    //     r_pad_el,
-                    //     pad_right,
-                    //     I_row_top,
-                    //     F_row_top,
-                    //     O_row_top,
-                    //     F_before_buf_group,
-                    //     F_after_buf_group);
+                    kernel_top<ScalarT, AccumT,
+                               _G_b, _K_b, _F_cb, _O_wb, _stride,
+                               _UNROLL, op_type, op_class,
+                               op_fused_single_element_before,
+                               op_fused_single_element_after,
+                               _stride_before, _stride_after>(
+                                   first,
+                                   F_h,
+                                   F_w,
+                                   I_w * _C_ib,
+                                   t_pad_el,
+                                   pad_top,
+                                   W_full_index,
+                                   l_pad_el,
+                                   pad_left,
+                                   O_w_w_pad,
+                                   O_w_full,
+                                   O_w_left,
+                                   r_pad_el,
+                                   pad_right,
+                                   I_row_top,
+                                   F_row_top,
+                                   O_row_top,
+                                   F_before_buf_group,
+                                   F_after_buf_group);
 
                     ScalarT const *I_row_full =
                         I_row_top + H_full_index * I_w * (_F_cb * _G_b);
-                    AccumT        *O_row_full =
+                    AccumT *O_row_full =
                         O_row_top + t_pad_el * O_w_w_pad * (_G_b * _K_b); // ScalarT --> AccumT
 
                     // Steady State over rows
                     for (index_t j = height_tid; j < O_h; j += T_height)
                     {
                         ScalarT const *I_row;
-                        // @todo cast index calculation as int and make stride a float value.
+                        /// @todo cast index calculation as int and make stride a float value.
                         // I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
                         if constexpr (op_type == OP_UPSAMPLE)
                         {
@@ -551,32 +602,32 @@ void fused_abstract_layer_1D(
                             I_row = I_row_full + (j * _stride) * (I_w * _F_cb * _G_b);
                         }
                         ScalarT const *F_row = F_channel_block_input + 0;
-                        AccumT *O_row =
+                        AccumT        *O_row =
                             O_row_full + j * (O_w_w_pad * _G_b * _K_b); // ScalarT --> AccumT
                         // Prologue with left padding
-                        kernel_left_1D<ScalarT, AccumT,
-                                       _G_b, _K_b, _F_cb, _O_wb, _stride,
-                                       _UNROLL, op_type, op_class,
-                                       op_fused_single_element_before,
-                                       op_fused_single_element_after,
-                                       _stride_before, _stride_after>(
-                                           first,
-                                           //F_h,
-                                           F_w,
-                                           I_w * _C_ib,
-                                           l_pad_el,
-                                           pad_left,
-                                           I_row,
-                                           F_row,
-                                           O_row,
-                                           //0,
-                                           //0,
-                                           F_before_buf_group,
-                                           F_after_buf_group);
+                        kernel_left<ScalarT, AccumT,
+                                    _G_b, _K_b, _F_cb, _O_wb, _stride,
+                                    _UNROLL, op_type, op_class,
+                                    op_fused_single_element_before,
+                                    op_fused_single_element_after,
+                                    _stride_before, _stride_after>(
+                                        first,
+                                        F_h,
+                                        F_w,
+                                        I_w * _C_ib,
+                                        l_pad_el,
+                                        pad_left,
+                                        I_row,
+                                        F_row,
+                                        O_row,
+                                        0,
+                                        0,
+                                        F_before_buf_group,
+                                        F_after_buf_group);
 
                         ScalarT const *I_col_full =
                             I_row + W_full_index * (_F_cb * _G_b);
-                        AccumT        *O_col_full = O_row + l_pad_el * (_G_b * _K_b); // ScalarT --> AccumT
+                        AccumT *O_col_full = O_row + l_pad_el * (_G_b * _K_b); // ScalarT --> AccumT
                         // Steady State with microkernel
                         for (index_t l = 0; l < O_w_full; l += _O_wb)
                         {
@@ -592,27 +643,27 @@ void fused_abstract_layer_1D(
                                 I_col = I_col_full + (l * _stride) * (_F_cb * _G_b);
                             }
                             ScalarT const *F_col = F_row + 0;
-                            AccumT        *O_col = O_col_full + l * (_G_b * _K_b); // ScalarT --> AccumT
+                            AccumT *O_col = O_col_full + l * (_G_b * _K_b); // ScalarT --> AccumT
 
-                            kernel_1D<ScalarT, AccumT,
-                                      _G_b, _K_b, _F_cb, _O_wb, _stride,
-                                      _UNROLL, op_type, op_class,
-                                      op_fused_single_element_before,
-                                      op_fused_single_element_after,
-                                      _stride_before, _stride_after>(
-                                          first,
-                                          //F_h,
-                                          F_w,
-                                          I_w * _C_ib,
-                                          I_col,
-                                          F_col,
-                                          O_col,
-                                          //0,
-                                          //0,
-                                          0,
-                                          0,
-                                          F_before_buf_group,
-                                          F_after_buf_group);
+                            kernel<ScalarT, AccumT,
+                                   _G_b, _K_b, _F_cb, _O_wb, _stride,
+                                   _UNROLL, op_type, op_class,
+                                   op_fused_single_element_before,
+                                   op_fused_single_element_after,
+                                   _stride_before, _stride_after>(
+                                       first,
+                                       F_h,
+                                       F_w,
+                                       I_w * _C_ib,
+                                       I_col,
+                                       F_col,
+                                       O_col,
+                                       0,
+                                       0,
+                                       0,
+                                       0,
+                                       F_before_buf_group,
+                                       F_after_buf_group);
                         }
 
 #if DEBUG
@@ -638,27 +689,69 @@ void fused_abstract_layer_1D(
 #if DEBUG
                         printf(" calling right\n");
 #endif
-                        kernel_right_1D<ScalarT, AccumT,
-                                        _G_b, _K_b, _F_cb, _O_wb, _stride,
-                                        _UNROLL, op_type, op_class,
-                                        op_fused_single_element_before,
-                                        op_fused_single_element_after,
-                                        _stride_before, _stride_after>(
-                                            first,
-                                            //F_h,
-                                            F_w,
-                                            I_w * _C_ib,
-                                            O_w_left,
-                                            r_pad_el,
-                                            pad_right,
-                                            I_col_left,
-                                            F_col_left,
-                                            O_col_left,
-                                            //0,
-                                            //0,
-                                            F_before_buf_group,
-                                            F_after_buf_group);
+                        kernel_right<ScalarT, AccumT,
+                                     _G_b, _K_b, _F_cb, _O_wb, _stride,
+                                     _UNROLL, op_type, op_class,
+                                     op_fused_single_element_before,
+                                     op_fused_single_element_after,
+                                     _stride_before, _stride_after>(
+                                         first,
+                                         F_h,
+                                         F_w,
+                                         I_w * _C_ib,
+                                         O_w_left,
+                                         r_pad_el,
+                                         pad_right,
+                                         I_col_left,
+                                         F_col_left,
+                                         O_col_left,
+                                         0,
+                                         0,
+                                         F_before_buf_group,
+                                         F_after_buf_group);
                     }
+                    // Epilogue with bottom padding
+                    ScalarT const *I_row_bot;
+                    // @todo cast index calculation as int and make stride a float value.
+                    // I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
+                    if constexpr (op_type == OP_UPSAMPLE)
+                    {
+                        I_row_bot =
+                            I_row_full + (O_h * _stride) * (I_w * _F_cb * _G_b);
+                    }
+                    else
+                    {
+                        I_row_bot =
+                            I_row_full + (O_h * _stride) * (I_w * _F_cb * _G_b);
+                    }
+                    ScalarT const *F_row_bot = F_channel_block_input + 0;
+                    AccumT        *O_row_bot = O_row_full + O_h * (O_w_w_pad * _G_b * _K_b); // ScalarT --> AccumT
+
+                    kernel_bottom<ScalarT, AccumT,
+                                  _G_b, _K_b, _F_cb, _O_wb, _stride,
+                                  _UNROLL, op_type, op_class,
+                                  op_fused_single_element_before,
+                                  op_fused_single_element_after,
+                                  _stride_before, _stride_after>(
+                                      first,
+                                      F_h,
+                                      F_w,
+                                      I_w * _C_ib,
+                                      b_pad_el,
+                                      pad_bottom,
+                                      W_full_index,
+                                      l_pad_el,
+                                      pad_left,
+                                      O_w_w_pad,
+                                      O_w_full,
+                                      O_w_left,
+                                      r_pad_el,
+                                      pad_right,
+                                      I_row_bot,
+                                      F_row_bot,
+                                      O_row_bot,
+                                      F_before_buf_group,
+                                      F_after_buf_group);
                 }
             }
         }

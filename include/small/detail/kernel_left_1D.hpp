@@ -15,8 +15,8 @@
 #include <stdint.h>
 
 #include <small/op_type.hpp>
-#include <small/abstract_op.hpp>
-#include <small/compute_with_padding_1D.hpp>
+#include <small/detail/abstract_op.hpp>
+#include <small/detail/compute_with_padding_1D.hpp>
 
 namespace small
 {

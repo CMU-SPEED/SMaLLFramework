@@ -21,9 +21,9 @@
 #include <small/op_type.hpp>
 #include <small/utils.hpp>
 
-#include <small/kernel_left_1D.hpp>
-#include <small/kernel_1D.hpp>
-#include <small/kernel_right_1D.hpp>
+#include <small/detail/kernel_left_1D.hpp>
+#include <small/detail/kernel_1D.hpp>
+#include <small/detail/kernel_right_1D.hpp>
 
 #define DEBUG 0
 

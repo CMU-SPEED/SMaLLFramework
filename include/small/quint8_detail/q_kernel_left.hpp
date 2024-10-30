@@ -15,7 +15,7 @@
 #include <stdint.h>
 
 #include <small/op_type.hpp>
-#include <small/q_abstract_op.hpp>
+#include <small/quint8_detail/q_compute_with_padding.hpp>
 
 namespace small
 {
@@ -23,7 +23,6 @@ namespace quint8_detail
 {
 
 //****************************************************************************
-// TODO: Explain the difference between kernel and kernel_pad
 template <typename ScalarT,
           typename AccumT,
           dim_t _G_b,
@@ -37,19 +36,19 @@ template <typename ScalarT,
           bool   quantize = false,
           ScalarT max_val = 255, // std::numeric_limits<ScalarT>::max()
           ScalarT min_val = 0>   // std::numeric_limits<ScalarT>::lowest()
-void inline kernel_pad(
+void inline kernel_left(
     bool first,
     dim_t F_h,
     dim_t F_w,
     dim_t input_col_stride,
+    dim_t l_pad_el,
+    dim_t l_pad,
     ScalarT const *I,
     ScalarT const *F,
     AccumT        *O,  // ScalarT -> AccumT
     dim_t H_lb = 0,
     dim_t H_ub = 0,
-    dim_t W_lb = 0,
-    dim_t W_ub = 0,
-    int k_zero = 0,  /// @todo why both zero and k_zero?  Should this be AccumT?
+    int k_zero = 0,
     AccumT I_offset = 0,
     AccumT F_offset = 0,
     ScalarT *O_out = NULL,
@@ -59,62 +58,63 @@ void inline kernel_pad(
     AccumT zero = 0)
 {
     constexpr dim_t _C_ob = _G_b * _K_b;
-    constexpr dim_t _C_ib = _G_b * _F_cb;
-    constexpr dim_t step = _stride * _C_ib;
+    // constexpr dim_t _C_ib = _G_b * _F_cb;
+    // constexpr dim_t step = _stride * _C_ib;
 
     const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
-    // const dim_t W_UPPER = ((!W_ub) * (F_w)) + (W_ub);
+    QUINT8_DEF_END_C(_O_wb, _C_ob);
 
-    QUINT8_DEF_TILE_C(_O_wb, _C_ob);
+    // left padding elements
+    AccumT        *O_ptr = O;  // ScalarT -> AccumT
+    ScalarT const *I_ptr = I;
+
+    int W_i_valid = l_pad;
+
     if (first)
     {
-        QUINT8_ZERO_TILE_C(_O_wb, _C_ob, k_zero);
+        QUINT8_ZERO_END_C(l_pad_el, _C_ob, k_zero);
     }
     else
     {
-        QUINT8_LOAD_TILE_C(O, _O_wb, _C_ob);
+        QUINT8_LOAD_END_C(O_ptr, l_pad_el, _C_ob);
     }
 
-    // int updates = 0;
-    // uint32_t step = _C_ob;//stride*_C_ob;
-    // int count = 0;
-    for (uint32_t n = H_lb; n < H_UPPER; n++)
+    c_tile_t *c_cur = c_tile;
+    // dim_t c_cur = 0;
+    for (uint32_t k_p = 0; k_p < l_pad_el; k_p++)
     {
-        int filter_offset_h = n * F_w * _F_cb * _G_b * _K_b;
-        int input_stencil_h = /*input_col_offset + input_row_offset +*/
-            (n - H_lb) * input_col_stride;
+        compute_with_padding<ScalarT, AccumT,
+                             _G_b, _K_b, _F_cb, _O_wb, _stride,
+                             _UNROLL, op_type, op_class>(
+                                 H_lb, H_UPPER,
+                                 W_i_valid, F_w,
+                                 F_w,
+                                 1,
+                                 input_col_stride,
+                                 F,
+                                 I_ptr,
+                                 c_cur,
+                                 I_offset,
+                                 F_offset);
 
-        for (uint32_t m = 0; m < F_w; m++)
-        {
-            int filter_offset_w = m * _F_cb * _G_b * _K_b + filter_offset_h;
-            // This is C_ob because the microkernel stretches across groups
-            int input_stencil_w = (m - W_lb) * _C_ib + input_stencil_h;
-
-            ScalarT const *b = F + filter_offset_w;
-            ScalarT const *a = I + input_stencil_w;
-
-            for (uint32_t ii = 0; ii < _F_cb / _UNROLL; ii++)
-            {
-                /// @note using platform C_ob
-                ScalarT const *b_cur = b + ii * _UNROLL * QUINT8_C_ob;
-                ScalarT const *a_cur = a + ii * _UNROLL;
-
-                QUINT8_ABSTRACT_OP(op_type, op_class, a_cur, b_cur,
-                                   I_offset, F_offset);
-            }
-        }
+        c_cur += (_K_b * _G_b) / (QUINT8_SIMD_EPILOGUE);
+        // c_cur += 1;
+        W_i_valid -= _stride;
+        // I_ptr += ()*(_stride * _F_cb * _G_b);
     }
 
     if constexpr (quantize)
     {
         ScalarT *O_out_ptr = O_out;
-        QUINT8_QUANTIZE_TILE_C(_O_wb, _C_ob, lshift, rshift, q_mul, zero, max_val, min_val);
-        QUINT8_STORE_Q_TILE_C(O_out_ptr, _O_wb, _C_ob);
+        QUINT8_QUANTIZE_END_C(l_pad_el, _C_ob, lshift, rshift, q_mul, zero, max_val, min_val);
+        QUINT8_STORE_Q_END_C(O_out_ptr, l_pad_el, _C_ob);
     }
     else
     {
-        QUINT8_STORE_TILE_C(O, _O_wb, _C_ob);
+        QUINT8_STORE_END_C(O_ptr, l_pad_el, _C_ob);
     }
+
+    O_ptr += _G_b * _K_b;
 }
 
 } // ns quint8_detail

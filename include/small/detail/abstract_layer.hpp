@@ -21,11 +21,11 @@
 #include <small/op_type.hpp>
 #include <small/utils.hpp>
 
-#include <small/kernel_top.hpp>
-#include <small/kernel_left.hpp>
-#include <small/kernel.hpp>
-#include <small/kernel_right.hpp>
-#include <small/kernel_bottom.hpp>
+#include <small/detail/kernel_top.hpp>
+#include <small/detail/kernel_left.hpp>
+#include <small/detail/kernel.hpp>
+#include <small/detail/kernel_right.hpp>
+#include <small/detail/kernel_bottom.hpp>
 
 #define DEBUG 0
 

@@ -17,7 +17,7 @@
 #include <small/op_type.hpp>
 #include <small/utils.hpp>
 
-#include <small/abstract_op.hpp>
+#include <small/detail/abstract_op.hpp>
 
 namespace small
 {
