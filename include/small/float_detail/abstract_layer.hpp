@@ -21,11 +21,11 @@
 #include <small/op_type.hpp>
 #include <small/utils.hpp>
 
-#include <small/detail/kernel_top.hpp>
-#include <small/detail/kernel_left.hpp>
-#include <small/detail/kernel.hpp>
-#include <small/detail/kernel_right.hpp>
-#include <small/detail/kernel_bottom.hpp>
+#include <small/float_detail/kernel_top.hpp>
+#include <small/float_detail/kernel_left.hpp>
+#include <small/float_detail/kernel.hpp>
+#include <small/float_detail/kernel_right.hpp>
+#include <small/float_detail/kernel_bottom.hpp>
 
 #define DEBUG 0
 
@@ -36,8 +36,7 @@
 
 namespace small
 {
-
-namespace detail
+namespace float_detail
 {
 
 //****************************************************************************
@@ -510,5 +509,5 @@ void abstract_layer( /// @todo add B (batch size) param?
 }
 
 
-} // ns detail
+} // ns float_detail
 } // ns small

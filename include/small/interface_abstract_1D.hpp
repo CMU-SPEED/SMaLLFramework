@@ -18,11 +18,11 @@
 #include <type_traits>
 
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
-#include <small/detail/abstract_layer_1D.hpp> /// @todo abstract_layer_float.hpp
+#include <small/float_detail/abstract_layer_1D.hpp>
 #endif
 
 #if defined(SMALL_HAS_QUINT8_SUPPORT)
-#include <small/quint8_detail/q_abstract_layer_1D.hpp> /// @todo abstract_layer_quint8.hpp
+#include <small/quint8_detail/q_abstract_layer_1D.hpp>
 #endif
 
 // #define RECORD_CALLS
@@ -71,7 +71,7 @@ void Conv1D(
     {
         if (stride == 1)
         {
-            detail::abstract_layer_1D<
+            float_detail::abstract_layer_1D<
                 FloatBuffer, 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob, 1, FLOAT_UNROLL, OP_CONV, 2, 1>(
                 1,               // Output Channel Grouping
@@ -84,7 +84,7 @@ void Conv1D(
         }
         else if (stride == 2)
         {
-            detail::abstract_layer_1D<
+            float_detail::abstract_layer_1D<
                 FloatBuffer, 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob, 2, FLOAT_UNROLL, OP_CONV, 2, 1>(
                 1,               // Output Channel Grouping
@@ -107,7 +107,7 @@ void Conv1D(
     {
         if (stride == 1)
         {
-            detail::abstract_layer_1D<
+            float_detail::abstract_layer_1D<
                 FloatBuffer, 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob, 1, 1, OP_CONV, 2, 1>(
                 1,               // Output Channel Grouping
@@ -120,7 +120,7 @@ void Conv1D(
         }
         else if (stride == 2)
         {
-            detail::abstract_layer_1D<
+            float_detail::abstract_layer_1D<
                 FloatBuffer, 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob, 2, 1, OP_CONV, 2, 1>( // unroll?
                 1,                                     // Output Channel Grouping
@@ -143,7 +143,7 @@ void Conv1D(
     {
         if (stride == 1)
         {
-            detail::abstract_layer_1D<
+            float_detail::abstract_layer_1D<
                 FloatBuffer, 1, FLOAT_C_ob, 2,
                 FLOAT_W_ob, 1, 1, OP_CONV, 2, 1>(
                 1,               // Output Channel Grouping
@@ -156,7 +156,7 @@ void Conv1D(
         }
         else if (stride == 2)
         {
-            detail::abstract_layer_1D<
+            float_detail::abstract_layer_1D<
                 FloatBuffer, 1, FLOAT_C_ob, 2,
                 FLOAT_W_ob, 2, 1, OP_CONV, 2, 1>( // unroll?
                 1,                                     // Output Channel Grouping
@@ -179,7 +179,7 @@ void Conv1D(
     {
         if (stride == 1)
         {
-            detail::abstract_layer_1D<
+            float_detail::abstract_layer_1D<
                 FloatBuffer, 1, FLOAT_C_ob, 1,
                 FLOAT_W_ob, 1, 1, OP_CONV, 2, 1>(
                 1,               // Output Channel Grouping
@@ -192,7 +192,7 @@ void Conv1D(
         }
         else if (stride == 2)
         {
-            detail::abstract_layer_1D<
+            float_detail::abstract_layer_1D<
                 FloatBuffer, 1, FLOAT_C_ob, 1,
                 FLOAT_W_ob, 2, 1, OP_CONV, 2, 1>( // unroll?
                 1,                                     // Output Channel Grouping
@@ -435,7 +435,7 @@ void PartialConv1D(
     {
         if (stride == 1)
         {
-            detail::abstract_layer_1D<
+            float_detail::abstract_layer_1D<
                 FloatBuffer, 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob, 1, FLOAT_UNROLL, OP_CONV, 2, 0>(
                 1,               // Output Channel Grouping
@@ -449,7 +449,7 @@ void PartialConv1D(
         else if (stride == 2)
         {
 
-            detail::abstract_layer_1D<
+            float_detail::abstract_layer_1D<
                 FloatBuffer, 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob, 2, FLOAT_UNROLL, OP_CONV, 2, 0>(
                 1,               // Output Channel Grouping
@@ -472,7 +472,7 @@ void PartialConv1D(
     {
         if (stride == 1)
         {
-            detail::abstract_layer_1D<
+            float_detail::abstract_layer_1D<
                 FloatBuffer, 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob, 1, 1, OP_CONV, 2, 0>(
                 1,               // Output Channel Grouping
@@ -485,7 +485,7 @@ void PartialConv1D(
         }
         else if (stride == 2)
         {
-            detail::abstract_layer_1D<
+            float_detail::abstract_layer_1D<
                 FloatBuffer, 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob, 2, 1, OP_CONV, 2, 0>(
                 1,               // Output Channel Grouping
@@ -508,7 +508,7 @@ void PartialConv1D(
     {
         if (stride == 1)
         {
-            detail::abstract_layer_1D<
+            float_detail::abstract_layer_1D<
                 FloatBuffer, 1, FLOAT_C_ob, 2,
                 FLOAT_W_ob, 1, 1, OP_CONV, 2, 0>(
                 1,               // Output Channel Grouping
@@ -521,7 +521,7 @@ void PartialConv1D(
         }
         else if (stride == 2)
         {
-            detail::abstract_layer_1D<
+            float_detail::abstract_layer_1D<
                 FloatBuffer, 1, FLOAT_C_ob, 2,
                 FLOAT_W_ob, 2, 1, OP_CONV, 2, 0>(
                 1,               // Output Channel Grouping
@@ -544,7 +544,7 @@ void PartialConv1D(
     {
         if (stride == 1)
         {
-            detail::abstract_layer_1D<
+            float_detail::abstract_layer_1D<
                 FloatBuffer, 1, FLOAT_C_ob, 1,
                 FLOAT_W_ob, 1, 1, OP_CONV, 2, 0>(
                 1,               // Output Channel Grouping
@@ -557,7 +557,7 @@ void PartialConv1D(
         }
         else if (stride == 2)
         {
-            detail::abstract_layer_1D<
+            float_detail::abstract_layer_1D<
                 FloatBuffer, 1, FLOAT_C_ob, 1,
                 FLOAT_W_ob, 2, 1, OP_CONV, 2, 0>(
                 1,               // Output Channel Grouping
@@ -795,7 +795,7 @@ void MaxPool1D(
     {
         if (stride == 1)
         {
-            detail::abstract_layer_1D<
+            float_detail::abstract_layer_1D<
                 FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_MAX_POOL, 1, 1>(
                 input_channels, // Output Channel Grouping
                 1,              // Output Channels per group
@@ -807,7 +807,7 @@ void MaxPool1D(
         }
         else if (stride == 2)
         {
-            detail::abstract_layer_1D<
+            float_detail::abstract_layer_1D<
                 FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, OP_MAX_POOL, 1, 1>(
                 input_channels, // Output Channel Grouping
                 1,              // Output Channels per group
@@ -925,7 +925,7 @@ void AveragePool1D(
     {
         if (stride == 1)
         {
-            detail::abstract_layer_1D<
+            float_detail::abstract_layer_1D<
                 FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_AVERAGE_POOL, 1, 1>(
                 input_channels, // Output Channel Grouping
                 1,              // Output Channels per group
@@ -937,7 +937,7 @@ void AveragePool1D(
         }
         else if (stride == 2)
         {
-            detail::abstract_layer_1D<
+            float_detail::abstract_layer_1D<
                 FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, OP_AVERAGE_POOL, 1, 1>(
                 input_channels, // Output Channel Grouping
                 1,              // Output Channels per group
@@ -949,7 +949,7 @@ void AveragePool1D(
         }
         else if (stride == 3)
         {
-            detail::abstract_layer_1D<
+            float_detail::abstract_layer_1D<
                 FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 3, 1, OP_AVERAGE_POOL, 1, 1>(
                 input_channels, // Output Channel Grouping
                 1,              // Output Channels per group
@@ -1006,7 +1006,7 @@ void AveragePool1D(
 //     {
 //         if (stride == 1)
 //         {
-//             detail::abstract_layer_1D<
+//             float_detail::abstract_layer_1D<
 //                 FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_CONV, 1, 1>(
 //                 input_channels, // Output Channel Grouping
 //                 1,              // Output Channels per group
@@ -1019,7 +1019,7 @@ void AveragePool1D(
 //         else if (stride == 2)
 //         {
 
-//             detail::abstract_layer_1D<
+//             float_detail::abstract_layer_1D<
 //                 FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, OP_CONV, 1, 1>(
 //                 input_channels, // Output Channel Grouping
 //                 1,              // Output Channels per group
@@ -1137,7 +1137,7 @@ void AveragePool1D(
 //     {
 //         if (stride == 1)
 //         {
-//             detail::abstract_layer_1D<
+//             float_detail::abstract_layer_1D<
 //                 FloatBuffer, FLOAT_C_ob, 1, 1,
 //                 FLOAT_W_ob, 1, 1, OP_CONV, 1, 0>(
 //                     input_channels, // Output Channel Grouping
@@ -1150,7 +1150,7 @@ void AveragePool1D(
 //         }
 //         else if (stride == 2)
 //         {
-//             detail::abstract_layer_1D<
+//             float_detail::abstract_layer_1D<
 //                 FloatBuffer, FLOAT_C_ob, 1, 1,
 //                 FLOAT_W_ob, 2, 1, OP_CONV, 1, 0>(
 //                     input_channels, // Output Channel Grouping
@@ -1275,7 +1275,7 @@ void GroupConv1D(
     {
         if (stride == 1)
         {
-            detail::abstract_layer_1D<
+            float_detail::abstract_layer_1D<
                 FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_CONV, 2, 1>(
                     output_groups,  // Output Channel Grouping
                     input_channels, // Output Channels per group
@@ -1288,7 +1288,7 @@ void GroupConv1D(
         else if (stride == 2)
         {
 
-            detail::abstract_layer_1D<
+            float_detail::abstract_layer_1D<
                 FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, OP_CONV, 2, 1>(
                     output_groups,  // Output Channel Grouping
                     input_channels, // Output Channels per group
@@ -1408,7 +1408,7 @@ void PartialGroupConv1D(
     {
         if (stride == 1)
         {
-            detail::abstract_layer_1D<
+            float_detail::abstract_layer_1D<
                 FloatBuffer, FLOAT_C_ob, 1, 1,
                 FLOAT_W_ob, 1, 1, OP_CONV, 2, 0>(
                     output_groups,  // Output Channel Grouping
@@ -1422,7 +1422,7 @@ void PartialGroupConv1D(
         else if (stride == 2)
         {
 
-            detail::abstract_layer_1D<
+            float_detail::abstract_layer_1D<
                 FloatBuffer, FLOAT_C_ob, 1, 1,
                 FLOAT_W_ob, 2, 1, OP_CONV, 2, 0>(
                     output_groups,  // Output Channel Grouping
@@ -1536,7 +1536,7 @@ void ReLUActivation1D(int input_channels,
 
     if (input_channels % FLOAT_C_ib == 0)
     {
-        detail::abstract_layer_1D<
+        float_detail::abstract_layer_1D<
             FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_RELU, 0, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
@@ -1632,7 +1632,7 @@ void UpSample1D(int scale_factor,
     {
         if (input_channels % FLOAT_C_ib == 0)
         {
-            detail::abstract_layer_1D<
+            float_detail::abstract_layer_1D<
                 FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, OP_UPSAMPLE, 0, 1>(
                 input_channels, // Output Channel Grouping
                 1,              // Output Channels per group

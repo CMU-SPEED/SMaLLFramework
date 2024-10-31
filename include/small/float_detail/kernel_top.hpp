@@ -15,13 +15,13 @@
 #include <stdint.h>
 
 #include <small/op_type.hpp>
-#include <small/detail/kernel_left.hpp>
-#include <small/detail/kernel_pad.hpp>
-#include <small/detail/kernel_right.hpp>
+#include <small/float_detail/kernel_left.hpp>
+#include <small/float_detail/kernel_pad.hpp>
+#include <small/float_detail/kernel_right.hpp>
 
 namespace small
 {
-namespace detail
+namespace float_detail
 {
 
 //****************************************************************************
@@ -39,13 +39,13 @@ template <typename ScalarT,
           OpType fused_single_element_after = OP_NONE,
           dim_t _stride_before = 1,
           dim_t _stride_after = 1>
-void inline kernel_bottom(
+void inline kernel_top(
     bool first,
     dim_t F_h,
     dim_t F_w,
     dim_t input_col_stride,
-    dim_t b_pad_el,
-    dim_t b_pad,
+    dim_t t_pad_el,
+    dim_t t_pad,
     dim_t W_full_index,
     dim_t l_pad_el,
     dim_t l_pad,
@@ -57,15 +57,15 @@ void inline kernel_bottom(
     ScalarT const *I,
     ScalarT const *F,
     AccumT *O,
-    ScalarT const * F_b = NULL,
-    ScalarT const * F_a = NULL) // ScalarT -> AccumT
+    ScalarT const *F_b = NULL,
+    ScalarT const *F_a = NULL) // ScalarT --> AccumT
 {
     ScalarT const *I_ptr = I;
-    AccumT *O_ptr = O; // ScalarT -> AccumT
+    AccumT *O_ptr = O; // ScalarT --> AccumT
 
-    int H_i_valid = F_h - 1;
+    int H_i_valid = t_pad;
 
-    for (uint32_t j_p = 0; j_p < b_pad_el; j_p++)
+    for (uint32_t j_p = 0; j_p < t_pad_el; j_p++)
     {
         // Prologue with left padding
         kernel_left<ScalarT, AccumT,
@@ -81,19 +81,21 @@ void inline kernel_bottom(
                         I_ptr,
                         F,
                         O_ptr,
-                        0,
                         H_i_valid,
+                        F_h,
                         F_b,
                         F_a);
 
         ScalarT const *I_row_full = I + W_full_index * (_F_cb * _G_b);
-        AccumT *O_row_full = O + l_pad_el * (_G_b * _K_b); // ScalarT -> AccumT
+        AccumT *O_row_full = O + l_pad_el * (_G_b * _K_b); // ScalarT --> AccumT
+
         // Steady State with microkernel
         for (index_t l = 0; l < O_w_full; l += _O_wb)
         {
-            ScalarT const *I_col = I_row_full + (l * _stride) * (_F_cb * _G_b);
+            ScalarT const *I_col =
+                I_row_full + (l * _stride) * (_F_cb * _G_b);
             ScalarT const *F_col = F + 0;
-            AccumT *O_col = O_row_full + l * (_G_b * _K_b); // ScalarT -> AccumT
+            AccumT *O_col = O_row_full + l * (_G_b * _K_b); // ScalarT --> AccumT
 
             kernel_pad<ScalarT, AccumT,
                        _G_b, _K_b, _F_cb, _O_wb, _stride,
@@ -106,19 +108,20 @@ void inline kernel_bottom(
                            I_col,
                            F_col,
                            O_col,
-                           0,
-                           H_i_valid,
-                           0,  /// @todo This was added, W_lb. Is it right?
+                           H_i_valid, // H_lb
+                           F_h,       // H_ub
+                           0,         // W_lb
                            0,
                            F_b,
-                           F_a); /// @todo This was added, W_ub. Is it right?);
+                           F_a);        /// @todo Confirm this, W_ub. Is it right? q_abstract_layer has F_w
         }
 
         // Epilogue for microkernel + right padding elements
         ScalarT const *I_col_left =
             I_row_full + (O_w_full * _stride) * (_F_cb * _G_b);
         ScalarT const *F_col_left = F + 0;
-        AccumT *O_col_left = O_row_full + O_w_full * (_G_b * _K_b); // ScalarT -> AccumT
+        AccumT *O_col_left =
+            O_row_full + O_w_full * (_G_b * _K_b); // ScalarT --> AccumT
 
         kernel_right<ScalarT, AccumT,
                      _G_b, _K_b, _F_cb, _O_wb, _stride,
@@ -134,17 +137,16 @@ void inline kernel_bottom(
                          I_col_left,
                          F_col_left,
                          O_col_left,
-                         0,          /// @todo confirm this, H_lb
                          H_i_valid,
+                         F_h,
                          F_b,
-                         F_a); /// @todo confirm this, H_ub
+                         F_a);
 
         O_ptr += O_w_w_pad * _K_b * _G_b;
-
-        H_i_valid -= _stride;
-        I_ptr += _stride * _F_cb * _G_b;
+        H_i_valid += _stride;
+        // I_ptr += _stride * _F_cb * _G_b;
     }
 }
 
-} // ns detail
+} // ns float_detail
 } // ns small

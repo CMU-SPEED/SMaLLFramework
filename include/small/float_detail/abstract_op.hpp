@@ -16,7 +16,7 @@
 
 namespace small
 {
-namespace detail
+namespace float_detail
 {
 
 //****************************************************************************
@@ -153,5 +153,5 @@ namespace detail
     }
 
 
-} // ns detail
+} // ns float_detail
 } // ns small

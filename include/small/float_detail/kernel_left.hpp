@@ -15,12 +15,12 @@
 #include <stdint.h>
 
 #include <small/op_type.hpp>
-#include <small/detail/abstract_op.hpp>
-#include <small/detail/compute_with_padding_1D.hpp>
+#include <small/float_detail/abstract_op.hpp>
+#include <small/float_detail/compute_with_padding.hpp>
 
 namespace small
 {
-namespace detail
+namespace float_detail
 {
 
 //****************************************************************************
@@ -38,9 +38,9 @@ template <typename ScalarT,
           OpType fused_single_element_after = OP_NONE,
           dim_t _stride_before = 1,
           dim_t _stride_after = 1>
-void inline kernel_left_1D(
+void inline kernel_left(
     bool first,
-    //dim_t F_h,
+    dim_t F_h,
     dim_t F_w,
     dim_t input_col_stride,
     dim_t l_pad_el,
@@ -48,16 +48,16 @@ void inline kernel_left_1D(
     ScalarT const *I,
     ScalarT const *F,
     AccumT *O, // ScalarT -> AccumT
-    //dim_t H_lb = 0,
-    //dim_t H_ub = 0,
-    ScalarT const *F_b = NULL,
-    ScalarT const *F_a = NULL)
+    dim_t H_lb = 0,
+    dim_t H_ub = 0,
+    ScalarT const * F_b = NULL,
+    ScalarT const * F_a = NULL)
 {
     constexpr dim_t _C_ob = _G_b * _K_b;
     constexpr dim_t _C_ib = _G_b * _F_cb;
-    // constexpr dim_t step = _stride * _C_ib;
+    //constexpr dim_t step = _stride * _C_ib;
 
-    //const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
+    const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
     FLOAT_DEF_END_C(_O_wb, _C_ob);
 
     // left padding elements
@@ -75,7 +75,7 @@ void inline kernel_left_1D(
         FLOAT_LOAD_END_C(O_ptr, l_pad_el, _C_ob);
     }
 
-    if constexpr (fused_single_element_before == OP_UPSAMPLE)
+    if constexpr(fused_single_element_before == OP_UPSAMPLE)
     {
         FLOAT_ACCUM_END_C_upsample(F_b, _stride_before, _C_ib, l_pad_el, _C_ob);
     }
@@ -84,17 +84,17 @@ void inline kernel_left_1D(
     // dim_t c_cur = 0;
     for (uint32_t k_p = 0; k_p < l_pad_el; k_p++)
     {
-        compute_with_padding_1D<ScalarT, AccumT,
-                                _G_b, _K_b, _F_cb, _O_wb, _stride,
-                                _UNROLL, op_type, op_class>(
-                                    //H_lb, H_UPPER,
-                                    W_i_valid, F_w,
-                                    F_w,
-                                    1,
-                                    input_col_stride,
-                                    F,
-                                    I_ptr,
-                                    c_cur);
+        compute_with_padding<ScalarT, AccumT,
+                             _G_b, _K_b, _F_cb, _O_wb, _stride,
+                             _UNROLL, op_type, op_class>(
+                                 H_lb, H_UPPER,
+                                 W_i_valid, F_w,
+                                 F_w,
+                                 1,
+                                 input_col_stride,
+                                 F,
+                                 I_ptr,
+                                 c_cur);
 
         c_cur += (_K_b * _G_b) / (FLOAT_SIMD_EPILOGUE);
         // c_cur += 1;
@@ -105,11 +105,11 @@ void inline kernel_left_1D(
     //  Include division for Average Pooling e.g. fused single element multiplication
     if (op_type == OP_AVERAGE_POOL)
     {
-        float norm = 1.0 / (1.0 * F_w);
+        float norm = 1.0 / (1.0 * F_h * F_w);
         FLOAT_DIV_END_C(c_tile, norm, l_pad_el, _C_ob);
     }
 
-    dim_t step_after = _stride_after * _C_ib;
+    dim_t step_after = _stride_after*_C_ib;
     FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_END(step_after, fused_single_element_after,
                                          0, F_a, c_tile, l_pad_el, _C_ob);
 
@@ -117,5 +117,5 @@ void inline kernel_left_1D(
     O_ptr += _G_b * _K_b;
 }
 
-} // ns detail
+} // ns float_detail
 } // ns small

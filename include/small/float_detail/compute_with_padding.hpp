@@ -15,11 +15,11 @@
 #include <stdint.h>
 
 #include <small/op_type.hpp>
-#include <small/detail/abstract_op.hpp>
+#include <small/float_detail/abstract_op.hpp>
 
 namespace small
 {
-namespace detail
+namespace float_detail
 {
 
 //****************************************************************************
@@ -73,5 +73,5 @@ void inline compute_with_padding(dim_t H_lb, dim_t H_ub,
     }
 }
 
-} // ns detail
+} // ns float_detail
 } // ns small

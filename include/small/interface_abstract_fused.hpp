@@ -20,12 +20,12 @@
 #define SMALL_HAS_FLOAT_SUPPORT 1
 
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
-#include <small/detail/abstract_layer_fused.hpp>
-#include <small/detail/abstract_layer_fused2.hpp>
+#include <small/float_detail/abstract_layer_fused.hpp>
+#include <small/float_detail/abstract_layer_fused2.hpp>
 #endif
 
 #if defined(SMALL_HAS_QUINT8_SUPPORT)
-#include <small/quint8_detail/q_abstract_layer.hpp>     /// @todo abstract_layer_quint8.hpp
+#include <small/quint8_detail/q_abstract_layer.hpp>
 #endif
 
 // #define RECORD_CALLS
@@ -104,7 +104,7 @@ void Conv2D_ReLU(
         if (conv_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -117,7 +117,7 @@ void Conv2D_ReLU(
                     input_height, input_width,
                     &input_buf, &output_buf);
 
-            // detail::fused_abstract_layer<
+            // float_detail::fused_abstract_layer<
             //     FloatBuffer,
             //     1, FLOAT_C_ob, FLOAT_C_ib,
             //     FLOAT_W_ob,
@@ -143,7 +143,7 @@ void Conv2D_ReLU(
         else if (conv_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -168,7 +168,7 @@ void Conv2D_ReLU(
         if (conv_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -184,7 +184,7 @@ void Conv2D_ReLU(
         else if (conv_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -259,7 +259,7 @@ void Conv2D_Bias_ReLU(
         if (conv_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -276,7 +276,7 @@ void Conv2D_Bias_ReLU(
         else if (conv_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -301,7 +301,7 @@ void Conv2D_Bias_ReLU(
         if (conv_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -318,7 +318,7 @@ void Conv2D_Bias_ReLU(
         else if (conv_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -427,7 +427,7 @@ void Conv2D_Bias_ReLU_Maxpool2D(
         if (conv_stride == 1 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -453,7 +453,7 @@ void Conv2D_Bias_ReLU_Maxpool2D(
         else if (conv_stride == 1 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -479,7 +479,7 @@ void Conv2D_Bias_ReLU_Maxpool2D(
         else if (conv_stride == 2 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -505,7 +505,7 @@ void Conv2D_Bias_ReLU_Maxpool2D(
         else if (conv_stride == 2 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -540,7 +540,7 @@ void Conv2D_Bias_ReLU_Maxpool2D(
         if (conv_stride == 1 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -568,7 +568,7 @@ void Conv2D_Bias_ReLU_Maxpool2D(
         else if (conv_stride == 1 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -596,7 +596,7 @@ void Conv2D_Bias_ReLU_Maxpool2D(
         else if (conv_stride == 2 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -624,7 +624,7 @@ void Conv2D_Bias_ReLU_Maxpool2D(
         else if (conv_stride == 2 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -744,7 +744,7 @@ void Conv2D_Maxpool2D(
         if (conv_stride == 1 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -770,7 +770,7 @@ void Conv2D_Maxpool2D(
         else if (conv_stride == 1 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -796,7 +796,7 @@ void Conv2D_Maxpool2D(
         else if (conv_stride == 2 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -822,7 +822,7 @@ void Conv2D_Maxpool2D(
         else if (conv_stride == 2 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -858,7 +858,7 @@ void Conv2D_Maxpool2D(
         if (conv_stride == 1 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -886,7 +886,7 @@ void Conv2D_Maxpool2D(
         else if (conv_stride == 1 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -914,7 +914,7 @@ void Conv2D_Maxpool2D(
         else if (conv_stride == 2 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -942,7 +942,7 @@ void Conv2D_Maxpool2D(
         else if (conv_stride == 2 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -1069,7 +1069,7 @@ void Conv2D_ReLU_Maxpool2D(
         if (conv_stride == 1 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -1095,7 +1095,7 @@ void Conv2D_ReLU_Maxpool2D(
         else if (conv_stride == 1 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -1121,7 +1121,7 @@ void Conv2D_ReLU_Maxpool2D(
         else if (conv_stride == 2 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -1147,7 +1147,7 @@ void Conv2D_ReLU_Maxpool2D(
         else if (conv_stride == 2 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -1183,7 +1183,7 @@ void Conv2D_ReLU_Maxpool2D(
         if (conv_stride == 1 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -1211,7 +1211,7 @@ void Conv2D_ReLU_Maxpool2D(
         else if (conv_stride == 1 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -1239,7 +1239,7 @@ void Conv2D_ReLU_Maxpool2D(
         else if (conv_stride == 2 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -1267,7 +1267,7 @@ void Conv2D_ReLU_Maxpool2D(
         else if (conv_stride == 2 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -1370,7 +1370,7 @@ void DepthwiseConv2D_ReLU(
         if (conv_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 FLOAT_C_ob, 1, 1,
                 FLOAT_W_ob,
@@ -1386,7 +1386,7 @@ void DepthwiseConv2D_ReLU(
         else if (conv_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 FLOAT_C_ob, 1, 1,
                 FLOAT_W_ob,
@@ -1462,7 +1462,7 @@ void DepthwiseConv2D_Bias_ReLU(
         if (conv_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 FLOAT_C_ob, 1, 1,
                 FLOAT_W_ob,
@@ -1479,7 +1479,7 @@ void DepthwiseConv2D_Bias_ReLU(
         else if (conv_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 FLOAT_C_ob, 1, 1,
                 FLOAT_W_ob,
@@ -1583,7 +1583,7 @@ void Conv2D_DepthwiseConv2D(
         if (conv_stride == 1 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -1611,7 +1611,7 @@ void Conv2D_DepthwiseConv2D(
         else if (conv_stride == 1 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -1639,7 +1639,7 @@ void Conv2D_DepthwiseConv2D(
         else if (conv_stride == 2 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -1667,7 +1667,7 @@ void Conv2D_DepthwiseConv2D(
         else if (conv_stride == 2 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -1704,7 +1704,7 @@ void Conv2D_DepthwiseConv2D(
         if (conv_stride == 1 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -1732,7 +1732,7 @@ void Conv2D_DepthwiseConv2D(
         else if (conv_stride == 1 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -1760,7 +1760,7 @@ void Conv2D_DepthwiseConv2D(
         else if (conv_stride == 2 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -1788,7 +1788,7 @@ void Conv2D_DepthwiseConv2D(
         else if (conv_stride == 2 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -1912,7 +1912,7 @@ void Conv2D_ReLU_DepthwiseConv2D_ReLU(
         if (conv_stride == 1 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -1940,7 +1940,7 @@ void Conv2D_ReLU_DepthwiseConv2D_ReLU(
         else if (conv_stride == 1 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -1968,7 +1968,7 @@ void Conv2D_ReLU_DepthwiseConv2D_ReLU(
         else if (conv_stride == 2 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -1996,7 +1996,7 @@ void Conv2D_ReLU_DepthwiseConv2D_ReLU(
         else if (conv_stride == 2 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -2033,7 +2033,7 @@ void Conv2D_ReLU_DepthwiseConv2D_ReLU(
         if (conv_stride == 1 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -2061,7 +2061,7 @@ void Conv2D_ReLU_DepthwiseConv2D_ReLU(
         else if (conv_stride == 1 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -2089,7 +2089,7 @@ void Conv2D_ReLU_DepthwiseConv2D_ReLU(
         else if (conv_stride == 2 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -2117,7 +2117,7 @@ void Conv2D_ReLU_DepthwiseConv2D_ReLU(
         else if (conv_stride == 2 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -2244,7 +2244,7 @@ void Conv2D_Bias_ReLU_DepthwiseConv2D_Bias_ReLU(
         if (conv_stride == 1 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -2273,7 +2273,7 @@ void Conv2D_Bias_ReLU_DepthwiseConv2D_Bias_ReLU(
         else if (conv_stride == 1 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -2302,7 +2302,7 @@ void Conv2D_Bias_ReLU_DepthwiseConv2D_Bias_ReLU(
         else if (conv_stride == 2 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -2330,7 +2330,7 @@ void Conv2D_Bias_ReLU_DepthwiseConv2D_Bias_ReLU(
         else if (conv_stride == 2 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -2368,7 +2368,7 @@ void Conv2D_Bias_ReLU_DepthwiseConv2D_Bias_ReLU(
         if (conv_stride == 1 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -2396,7 +2396,7 @@ void Conv2D_Bias_ReLU_DepthwiseConv2D_Bias_ReLU(
         else if (conv_stride == 1 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -2424,7 +2424,7 @@ void Conv2D_Bias_ReLU_DepthwiseConv2D_Bias_ReLU(
         else if (conv_stride == 2 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -2452,7 +2452,7 @@ void Conv2D_Bias_ReLU_DepthwiseConv2D_Bias_ReLU(
         else if (conv_stride == 2 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -2544,7 +2544,7 @@ void GroupConv2D_ReLU(
         if (conv_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -2560,7 +2560,7 @@ void GroupConv2D_ReLU(
         else if (conv_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -2635,7 +2635,7 @@ void GroupConv2D_Bias_ReLU(
         if (conv_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -2652,7 +2652,7 @@ void GroupConv2D_Bias_ReLU(
         else if (conv_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -2758,7 +2758,7 @@ void Conv2D_GroupConv(
         if (conv_stride == 1 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -2786,7 +2786,7 @@ void Conv2D_GroupConv(
         else if (conv_stride == 1 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -2814,7 +2814,7 @@ void Conv2D_GroupConv(
         else if (conv_stride == 2 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -2842,7 +2842,7 @@ void Conv2D_GroupConv(
         else if (conv_stride == 2 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -2879,7 +2879,7 @@ void Conv2D_GroupConv(
         if (conv_stride == 1 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -2907,7 +2907,7 @@ void Conv2D_GroupConv(
         else if (conv_stride == 1 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -2935,7 +2935,7 @@ void Conv2D_GroupConv(
         else if (conv_stride == 2 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -2963,7 +2963,7 @@ void Conv2D_GroupConv(
         else if (conv_stride == 2 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -3086,7 +3086,7 @@ void Conv2D_ReLU_GroupConv2D_ReLU(
         if (conv_stride == 1 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -3114,7 +3114,7 @@ void Conv2D_ReLU_GroupConv2D_ReLU(
         else if (conv_stride == 1 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -3142,7 +3142,7 @@ void Conv2D_ReLU_GroupConv2D_ReLU(
         else if (conv_stride == 2 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -3170,7 +3170,7 @@ void Conv2D_ReLU_GroupConv2D_ReLU(
         else if (conv_stride == 2 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -3207,7 +3207,7 @@ void Conv2D_ReLU_GroupConv2D_ReLU(
         if (conv_stride == 1 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -3235,7 +3235,7 @@ void Conv2D_ReLU_GroupConv2D_ReLU(
         else if (conv_stride == 1 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -3263,7 +3263,7 @@ void Conv2D_ReLU_GroupConv2D_ReLU(
         else if (conv_stride == 2 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -3291,7 +3291,7 @@ void Conv2D_ReLU_GroupConv2D_ReLU(
         else if (conv_stride == 2 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -3419,7 +3419,7 @@ void Conv2D_Bias_ReLU_GroupConv2D_Bias_ReLU(
         if (conv_stride == 1 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -3447,7 +3447,7 @@ void Conv2D_Bias_ReLU_GroupConv2D_Bias_ReLU(
         else if (conv_stride == 1 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -3475,7 +3475,7 @@ void Conv2D_Bias_ReLU_GroupConv2D_Bias_ReLU(
         else if (conv_stride == 2 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -3503,7 +3503,7 @@ void Conv2D_Bias_ReLU_GroupConv2D_Bias_ReLU(
         else if (conv_stride == 2 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob,
@@ -3541,7 +3541,7 @@ void Conv2D_Bias_ReLU_GroupConv2D_Bias_ReLU(
         if (conv_stride == 1 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -3569,7 +3569,7 @@ void Conv2D_Bias_ReLU_GroupConv2D_Bias_ReLU(
         else if (conv_stride == 1 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -3597,7 +3597,7 @@ void Conv2D_Bias_ReLU_GroupConv2D_Bias_ReLU(
         else if (conv_stride == 2 && pool_stride == 1)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
@@ -3625,7 +3625,7 @@ void Conv2D_Bias_ReLU_GroupConv2D_Bias_ReLU(
         else if (conv_stride == 2 && pool_stride == 2)
         {
 
-            detail::fused_abstract_layer<
+            float_detail::fused_abstract_layer<
                 FloatBuffer,
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
