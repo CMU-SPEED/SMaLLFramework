@@ -26,7 +26,7 @@
 
 namespace small
 {
-namespace detail
+namespace float_detail
 {
     /// @todo both pairs of typedefs should not be needed.
     typedef small::FloatBuffer::value_type dtype;
