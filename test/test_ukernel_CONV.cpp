@@ -16,7 +16,7 @@
 #include <small/utils/Timer.hpp>
 
 //****************************************************************************
-// detail::abstract_layer<FloatBuffer,
+// float_detail::abstract_layer<FloatBuffer,
 // _G_b = 1,
 // _K_b = FLOAT_C_ob,
 // _F_cb = FLOAT_C_ib,
@@ -75,14 +75,14 @@
 //
 //    FLOAT_CONV_TILE_C(step, a_cur, b_cur,
 
-// NOTE We need to put the unit tests in the small::detail namespace so that
+// NOTE We need to put the unit tests in the small::float_detail namespace so that
 // typedefs use in macros are in the same namespace without qualification.
 namespace small {
-namespace detail {
+namespace float_detail {
 //--------------------------
 
 //***********************************
-void test_correctness_CONV_TILE(void)
+void test_correctness_FLOAT_CONV_TILE(void)
 {
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
     using BufferT = FloatBuffer;
@@ -144,14 +144,10 @@ void test_correctness_CONV_TILE(void)
         }
     }
 #endif
-
-#if defined(SMALL_HAS_QUINT8_SUPPORT)
-    // PUT THE EQUIVALIENT TEST FOR QUINT8 HERE
-#endif
 }
 
 //****************************************************************************
-void test_performance_CONV_TILE(void)
+void test_performance_FLOAT_CONV_TILE(void)
 {
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
     using BufferT = FloatBuffer;
@@ -249,11 +245,30 @@ void test_performance_CONV_TILE(void)
             TEST_CHECK(output_buf[ix] == input_val*filter_val*num_trials*_UNROLL);
         }
     }
-
 #endif
+}
 
+} // float_detail
+
+//****************************************************************************
+//****************************************************************************
+
+namespace quint8_detail {
+//--------------------------
+
+//***********************************
+void test_correctness_QUINT8_CONV_TILE(void)
+{
 #if defined(SMALL_HAS_QUINT8_SUPPORT)
-    // PUT THE EQUIVALIENT TEST FOR QUINT8 HERE
+    // PUT THE EQUIVALENT TEST FOR QUINT8 HERE
+#endif
+}
+
+//***********************************
+void test_performance_QUINT8_CONV_TILE(void)
+{
+#if defined(SMALL_HAS_QUINT8_SUPPORT)
+    // PUT THE EQUIVALENT TEST FOR QUINT8 HERE
 #endif
 }
 
@@ -264,7 +279,13 @@ void test_performance_CONV_TILE(void)
 //****************************************************************************
 //****************************************************************************
 TEST_LIST = {
-    {"correctness CONV_TILE", small::detail::test_correctness_CONV_TILE},
-    {"performance CONV_TILE", small::detail::test_performance_CONV_TILE},
+    {"correctness FLOAT_CONV_TILE",
+     small::float_detail::test_correctness_FLOAT_CONV_TILE},
+    {"performance FLOAT_CONV_TILE",
+     small::float_detail::test_performance_FLOAT_CONV_TILE},
+    {"correctness QUINT8_CONV_TILE",
+     small::quint8_detail::test_correctness_QUINT8_CONV_TILE},
+    {"performance QUINT8_CONV_TILE",
+     small::quint8_detail::test_performance_QUINT8_CONV_TILE},
     {NULL, NULL}
 };

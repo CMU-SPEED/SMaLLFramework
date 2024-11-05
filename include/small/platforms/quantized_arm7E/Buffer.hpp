@@ -19,7 +19,7 @@
 
 namespace small
 {
-namespace detail
+namespace quint8_detail
 {
 // Adapted from small_MCU/small/quantized/include/utils.h
 
@@ -83,7 +83,7 @@ namespace detail
         return freed_space;
     }
 
-}  // detail
+}  // quint8_detail
 
 
 //****************************************************************************
@@ -128,7 +128,7 @@ public:
         //b(8),
         m_num_elts(num_elts),
         m_buffer(reinterpret_cast<value_type*>(
-                     detail::alloc(num_elts*sizeof(value_type), 4)))
+                     quint8_detail::alloc(num_elts*sizeof(value_type), 4)))
     {
         /// @todo Merge with member initialization
         quantized_init();
@@ -146,7 +146,7 @@ public:
           b(other.b),
           m_num_elts(other.m_num_elts),
           m_buffer(reinterpret_cast<value_type*>(
-                       detail::alloc(other.m_num_elts*sizeof(value_type), 4)))
+                       quint8_detail::alloc(other.m_num_elts*sizeof(value_type), 4)))
     {
         std::copy(other.m_buffer, other.m_buffer + m_num_elts,
                   m_buffer);
@@ -338,7 +338,7 @@ inline BufferT *alloc_buffer(size_t num_elts)
 template<>
 inline QUInt8Buffer *alloc_buffer<QUInt8Buffer>(size_t num_elts)
 {
-    void *location = detail::alloc(sizeof(QUInt8Buffer), 8);
+    void *location = quint8_detail::alloc(sizeof(QUInt8Buffer), 8);
     QUInt8Buffer *buffer = new (location) QUInt8Buffer(num_elts);
     fprintf(stderr, "Allocated QUInt8Buffer(%ld) at address %p\n",
             num_elts, buffer);

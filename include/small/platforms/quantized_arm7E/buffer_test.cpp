@@ -48,8 +48,8 @@ int main(int, char**)
         {
             std::cerr << "\nTEST: Allocating a 50001 element buffer:\n";
             small::QUInt8Buffer *buf = small::alloc_buffer(50001);
-            std::cerr << "small::detail::buf_offset = "
-                      << small::detail::buf_offset << std::endl;
+            std::cerr << "small::quint8_detail::buf_offset = "
+                      << small::quint8_detail::buf_offset << std::endl;
 
             buffer_ptrs.push_back(buf);
         }
@@ -59,6 +59,6 @@ int main(int, char**)
         std::cerr << "Caught std::bad_alloc." << std::endl;
     }
 
-    small::detail::free_all();
+    small::quint8_detail::free_all();
     return 0;
 }
