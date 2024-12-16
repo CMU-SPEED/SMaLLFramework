@@ -105,6 +105,7 @@ namespace detail
 //****************************************************************************
 
 #define FLOAT_LOAD_TILE_C(O, _W_ob, C_ob)                  \
+    if constexpr(_W_ob == 6 && C_ob == 16)                               \
     {                                                      \
         c0 = _mm256_load_ps(O + (0 * C_ob));               \
         c1 = _mm256_load_ps(O + (0 * C_ob) + FLOAT_SIMD);  \
@@ -118,8 +119,22 @@ namespace detail
         c9 = _mm256_load_ps(O + (4 * C_ob) + FLOAT_SIMD);  \
         c10 = _mm256_load_ps(O + (5 * C_ob));              \
         c11 = _mm256_load_ps(O + (5 * C_ob) + FLOAT_SIMD); \
+    }\
+    else if constexpr(_W_ob == 12 && C_ob==8)\
+    {\
+        c0 = _mm256_load_ps(O + (0 * C_ob));               \
+        c1 = _mm256_load_ps(O + (1 * C_ob));               \
+        c2 = _mm256_load_ps(O + (2 * C_ob));               \
+        c3 = _mm256_load_ps(O + (3 * C_ob));               \
+        c4 = _mm256_load_ps(O + (4 * C_ob));               \
+        c5 = _mm256_load_ps(O + (5 * C_ob));              \
+        c6 = _mm256_load_ps(O + (6 * C_ob));               \
+        c7 = _mm256_load_ps(O + (7 * C_ob));               \
+        c8 = _mm256_load_ps(O + (8 * C_ob));               \
+        c9 = _mm256_load_ps(O + (9 * C_ob));               \
+        c10 = _mm256_load_ps(O + (10 * C_ob));              \
+        c11 = _mm256_load_ps(O + (11 * C_ob)); \
     }
-
 #if FLOAT_SIMD_EPILOGUE == 1
 #define FLOAT_LOAD_END_C(O, _W_ob, _C_ob)                 \
     for (uint32_t kk = 0; kk < _W_ob; kk++)               \
@@ -230,6 +245,7 @@ else
 #endif
 
 #define FLOAT_STORE_TILE_C(O, W_ob, C_ob)                  \
+    if constexpr(W_ob == 6 && C_ob == 16)                               \
     {                                                      \
         _mm256_store_ps(O + (0 * C_ob), c0);               \
         _mm256_store_ps(O + (0 * C_ob) + FLOAT_SIMD, c1);  \
@@ -243,6 +259,21 @@ else
         _mm256_store_ps(O + (4 * C_ob + FLOAT_SIMD), c9);  \
         _mm256_store_ps(O + (5 * C_ob), c10);              \
         _mm256_store_ps(O + (5 * C_ob + FLOAT_SIMD), c11); \
+    }\
+    else if constexpr( W_ob == 12 && C_ob == 8)\
+    {\
+        _mm256_store_ps(O + (0 * C_ob), c0);               \
+        _mm256_store_ps(O + (1 * C_ob), c1);               \
+        _mm256_store_ps(O + (2 * C_ob), c2);               \
+        _mm256_store_ps(O + (3 * C_ob), c3);               \
+        _mm256_store_ps(O + (4 * C_ob), c4);               \
+        _mm256_store_ps(O + (5 * C_ob), c5);              \
+        _mm256_store_ps(O + (6 * C_ob), c6);               \
+        _mm256_store_ps(O + (7 * C_ob), c7);               \
+        _mm256_store_ps(O + (8 * C_ob), c8);               \
+        _mm256_store_ps(O + (9 * C_ob), c9);               \
+        _mm256_store_ps(O + (10 * C_ob), c10);              \
+        _mm256_store_ps(O + (11 * C_ob), c11); \
     }
 
 #if FLOAT_SIMD_EPILOGUE == 1
@@ -303,6 +334,8 @@ else
 //****************************************************************************
 #if 1 /// @todo REVIEW from ewise_optimization branch
 #define FLOAT_CONV_TILE_C(step, a, b, W_ob, C_ob)       \
+if constexpr(W_ob == 6 && C_ob == 16)                    \
+{                                                        \
     float const * a_ptr = a;                            \
     b0 = _mm256_load_ps(b);                             \
     b1 = _mm256_load_ps(b + FLOAT_SIMD);                \
@@ -329,8 +362,49 @@ else
     a_reg = _mm256_broadcast_ss(a_ptr);                 \
     a_ptr += step;                                      \
     c10 = _mm256_fmadd_ps(a_reg, b0, c10);              \
-    c11 = _mm256_fmadd_ps(a_reg, b1, c11);
-
+    c11 = _mm256_fmadd_ps(a_reg, b1, c11);\
+}\
+else if constexpr(W_ob == 12 && C_ob == 8)\
+{\
+    float const * a_ptr = a;                            \
+    b0 = _mm256_load_ps(b);                             \
+    a_reg = _mm256_broadcast_ss(a_ptr);                 \
+    a_ptr += step;                                      \
+    b1 = _mm256_broadcast_ss(a_ptr);                \
+    a_ptr += step;                                      \
+    c0 = _mm256_fmadd_ps(a_reg, b0, c0);                \
+    c1 = _mm256_fmadd_ps(b1, b0, c1);                \
+    a_reg = _mm256_broadcast_ss(a_ptr);                 \
+    a_ptr += step;                                      \
+    b1 = _mm256_broadcast_ss(a_ptr);                \
+    a_ptr += step;                                      \
+    c2 = _mm256_fmadd_ps(a_reg, b0, c2);                \
+    c3 = _mm256_fmadd_ps(b1, b0, c3);                \
+    a_reg = _mm256_broadcast_ss(a_ptr);                 \
+    a_ptr += step;                                      \
+    b1 = _mm256_broadcast_ss(a_ptr);                \
+    a_ptr += step;                                      \
+    c4 = _mm256_fmadd_ps(a_reg, b0, c4);                \
+    c5 = _mm256_fmadd_ps(b1, b0, c5);                \
+    a_reg = _mm256_broadcast_ss(a_ptr);                 \
+    a_ptr += step;                                      \
+    b1 = _mm256_broadcast_ss(a_ptr);                \
+    a_ptr += step;                                      \
+    c6 = _mm256_fmadd_ps(a_reg, b0, c6);                \
+    c7 = _mm256_fmadd_ps(b1, b0, c7);                \
+    a_reg = _mm256_broadcast_ss(a_ptr);                 \
+    a_ptr += step;                                      \
+    b1 = _mm256_broadcast_ss(a_ptr);                \
+    a_ptr += step;                                      \
+    c8 = _mm256_fmadd_ps(a_reg, b0, c8);                \
+    c9 = _mm256_fmadd_ps(b1, b0, c9);                \
+    a_reg = _mm256_broadcast_ss(a_ptr);                 \
+    a_ptr += step;                                      \
+    b1 = _mm256_broadcast_ss(a_ptr);                \
+    a_ptr += step;                                      \
+    c10 = _mm256_fmadd_ps(a_reg, b0, c10);              \
+    c11 = _mm256_fmadd_ps(b1, b0, c11);\
+}
 #else
 
 #define FLOAT_CONV_TILE_C(step, a, b, W_ob, C_ob)       \

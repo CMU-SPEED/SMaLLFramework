@@ -175,7 +175,7 @@ void kernel_benchmark(
 
 // num of implementations x number of sizes
 // In gigahertz
-#define FREQ 1.5
+#define FREQ  5.183
 
 #define TRIALS 100
 #define RUNS 1000

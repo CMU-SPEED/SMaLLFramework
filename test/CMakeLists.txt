@@ -45,3 +45,22 @@ foreach(layer_name ${LAYER_NAMES})
         target_compile_definitions(${demo_name} PRIVATE KERNEL_W_ob=${kernel_w})
     endforeach(kernel_w ${KERNEL_W_OPTIONS})
 endforeach(layer_name ${LAYER_NAMES})
+
+
+set(LAYER_NAMES CONV)
+set(KERNEL_C_OPTIONS 16 8)
+
+foreach(layer_name ${LAYER_NAMES})
+    foreach(kernel_c ${KERNEL_C_OPTIONS})
+        set(demo_name "test_ukernel_${layer_name}_c${kernel_c}.exe")
+        message("Adding executable: ${demo_name}")
+        add_executable(${demo_name} kernel_benchmark_test.cpp)
+        target_compile_definitions(${demo_name} PRIVATE LAYER=${layer_name})
+        target_compile_definitions(${demo_name} PRIVATE KERNEL_C_ob=${kernel_c})
+        target_compile_definitions(${demo_name} PRIVATE KERNEL_W_ob=12)
+    endforeach(kernel_w ${KERNEL_C_OPTIONS})
+endforeach(layer_name ${LAYER_NAMES})
+
+
+
+
