@@ -58,7 +58,7 @@ foreach(layer_name ${LAYER_NAMES})
         target_compile_definitions(${demo_name} PRIVATE LAYER=${layer_name})
         target_compile_definitions(${demo_name} PRIVATE KERNEL_C_ob=${kernel_c})
         target_compile_definitions(${demo_name} PRIVATE KERNEL_W_ob=12)
-    endforeach(kernel_w ${KERNEL_C_OPTIONS})
+    endforeach(kernel_c ${KERNEL_C_OPTIONS})
 endforeach(layer_name ${LAYER_NAMES})
 
 
