@@ -46,14 +46,22 @@ namespace float_detail
     {                                                                    \
         FLOAT_ACCUM_TILE_C(step, a_cur, O_wb, C_ob);                     \
     }                                                                    \
+    else if constexpr (op_type == OP_POINTWISE_ADD_SCALAR)               \
+    {                                                                   \
+        float scalar = b_cur[0];                                        \
+        FLOAT_ADD_SCALAR_TILE_C(scalar, O_wb, C_ob);                    \
+    }                                                                  \
     else if constexpr (op_type == OP_MUL)                                \
     {                                                                    \
         float drop_out_rate = b_cur[0];                                  \
-        FLOAT_DIV_TILE_C(drop_out_rate, O_wb, C_ob)                      \
+        FLOAT_DIV_TILE_C(drop_out_rate, O_wb, C_ob);                      \
     }                                                                    \
     else if constexpr (op_type == OP_EXP)                                \
     {                                                                    \
-        FLOAT_EXP_TILE_C(step, a_cur, O_wb, C_ob)                        \
+        FLOAT_EXP_TILE_C(step, a_cur, O_wb, C_ob);                        \
+    }                                                                    \
+    else if constexpr (op_type == OP_LOG) {                              \
+        FLOAT_LOG_TILE_C(step, a_cur, O_wb, C_ob);                      \
     }
 
 //****************************************************************************
@@ -80,7 +88,12 @@ namespace float_detail
     else if constexpr (op_type == OP_ADD || op_type == OP_AVERAGE_POOL)       \
     {                                                                         \
         FLOAT_ACCUM_END_C(step, a_cur, c_cur, W_elements, C_ob);              \
-    }                                                                         \
+    }                                                                           \
+    else if constexpr (op_type == OP_POINTWISE_ADD_SCALAR)                      \
+    {                                                                           \
+        float scalar = b_cur[0];                                                \
+        FLOAT_ADD_SCALAR_END_C(c_cur, scalar, W_elements, C_ob);               \
+    }                                                                           \
     else if constexpr (op_type == OP_MUL)                                     \
     {                                                                         \
         float drop_out_rate = b_cur[0];                                       \
@@ -89,6 +102,10 @@ namespace float_detail
     else if constexpr (op_type == OP_EXP)                                     \
     {                                                                         \
         FLOAT_EXP_END_C(step, a_cur, c_cur,  W_elements, C_ob);               \
+    }                                                                         \
+    else if constexpr (op_type == OP_LOG)                                     \
+    {                                                                         \
+        FLOAT_LOG_END_C(step, a_cur, c_cur,  W_elements, C_ob);               \
     }
 
 //****************************************************************************
@@ -105,6 +122,11 @@ namespace float_detail
     {                                                                   \
         FLOAT_ACCUM_TILE_C(step, b_cur, O_wb, C_ob);                    \
     }                                                                   \
+    else if constexpr (op_type == OP_POINTWISE_ADD_SCALAR)              \
+    {                                                                   \
+        float scalar = b_cur[0];                                        \
+        FLOAT_ADD_SCALAR_TILE_C(scalar, O_wb, C_ob);                    \
+    }                                                                  \
     else if constexpr (op_type == OP_MUL)                               \
     {                                                                   \
         float drop_out_rate = b_cur[0];                                 \
@@ -113,6 +135,10 @@ namespace float_detail
     else if constexpr (op_type == OP_EXP)                               \
     {                                                                   \
         FLOAT_FUSED_EXP_TILE_C(O_wb, C_ob) ;                            \
+    }                                                                   \
+    else if constexpr (op_type == OP_LOG)                               \
+    {                                                                   \
+        FLOAT_FUSED_LOG_TILE_C(O_wb, C_ob) ;                            \
     }
 
 //****************************************************************************
@@ -129,6 +155,11 @@ namespace float_detail
     {                                                                   \
         FLOAT_ACCUM_END_C(step, b_cur, c_cur, W_elements, C_ob);        \
     }                                                                   \
+    else if constexpr (op_type == OP_POINTWISE_ADD_SCALAR)              \
+    {                                                                   \
+        float scalar = b_cur[0];                                        \
+        FLOAT_ADD_SCALAR_END_C(c_cur, scalar, W_elements, C_ob);       \
+    }                                                                  \
     else if constexpr (op_type == OP_MUL)                               \
     {                                                                   \
         float drop_out_rate = b_cur[0];                                 \
@@ -137,6 +168,10 @@ namespace float_detail
     else if constexpr (op_type == OP_EXP)                               \
     {                                                                   \
         FLOAT_FUSED_EXP_END_C(c_cur, W_elements, C_ob) ;                \
+    }                                                                   \
+    else if constexpr (op_type == OP_LOG)                               \
+    {                                                                   \
+        FLOAT_FUSED_LOG_END_C(c_cur, W_elements, C_ob) ;                \
     }
 
 //****************************************************************************

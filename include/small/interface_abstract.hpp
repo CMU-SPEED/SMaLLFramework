@@ -1833,6 +1833,71 @@ void SoftMax(int input_channels,
 }
 #endif
 
+//============================================================================
+#if defined(SMALL_HAS_FLOAT_SUPPORT)
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<FloatBuffer, BufferT>::value, bool> = true>
+void LogSoftMax(int input_channels,
+                          int input_height, int input_width,
+                          BufferT const &input_buf,
+                          BufferT       &output_buf)
+{
+#if defined(RECORD_CALLS)
+    std::cout << "LogSoftMax<float>(chans:" << input_channels
+                << ",img:" << input_height << "x" << input_width
+                << ",I,O)\n";
+#endif
+
+    if (input_channels % FLOAT_C_ib == 0)
+    {
+        // LogSoftMax is a point-wise ADD of input to a global ADD of point-wise exp
+
+        // point-wise exponent
+        float_detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_EXP, 0, 1>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            1, 1,
+            0, 0, 0, 0,
+            &input_buf, (FloatBuffer *)nullptr, &output_buf);
+
+        // global sum
+        FloatBuffer softmax_norm_buf(1);
+        float_detail::abstract_layer<
+            FloatBuffer, 1, 1, FLOAT_C_ob, FLOAT_W_ob, 1, FLOAT_C_ob, OP_ADD, 3, 1>(
+            1, // Output Channel Grouping
+            1, // Output Channels per group
+            input_channels,
+            input_height, input_width,
+            input_height, input_width,
+            0, 0, 0, 0,
+            &output_buf, (FloatBuffer *)nullptr, &softmax_norm_buf);
+
+        softmax_norm_buf.data()[0] = -std::log(softmax_norm_buf.data()[0]);
+
+        // element-wise subtract
+        float_detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_POINTWISE_ADD_SCALAR, 0, 1>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            1, 1,
+            0, 0, 0, 0,
+            &input_buf, &softmax_norm_buf, &output_buf);
+            
+    }
+    else
+    {
+        throw std::invalid_argument(
+            "SoftMax<float> ERROR: in_channels unsupported.");
+    }
+}
+#endif
+
 //****************************************************************************
 //****************************************************************************
 // nearest neighbor upsampling

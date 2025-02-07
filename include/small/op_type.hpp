@@ -27,6 +27,8 @@ enum OpType
     OP_MUL = 6,
     OP_UPSAMPLE = 7,      // 'u'
     OP_EXP = 8,
+    OP_LOG = 9,
+    OP_POINTWISE_ADD_SCALAR = 10,
     OP_NONE = -1
 };
 

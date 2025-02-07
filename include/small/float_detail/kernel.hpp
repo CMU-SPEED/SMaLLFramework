@@ -65,7 +65,7 @@ void inline kernel(
     if (first)
     {
         FLOAT_ZERO_TILE_C(_O_wb, _C_ob);
-        if (op_type == OP_MAX_POOL || op_type == OP_MUL)
+        if (op_type == OP_MAX_POOL || op_type == OP_MUL || op_type == OP_POINTWISE_ADD_SCALAR)
         {
             /// @note using platform C_ob
             FLOAT_LOAD_TILE_C_strided(I, step, _O_wb, FLOAT_C_ob);
