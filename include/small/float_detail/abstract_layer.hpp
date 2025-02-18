@@ -78,7 +78,7 @@ void abstract_layer( /// @todo add B (batch size) param?
     ScalarT const *I_buf = I->data(); //__restrict__ ?
 
     ScalarT const *F_buf = nullptr;
-    if constexpr (op_type == OP_CONV || op_type == OP_LEAKY_RELU || op_type == OP_MUL || op_type == OP_POINTWISE_ADD_SCALAR) // if (F != nullptr)
+    if constexpr (op_type == OP_CONV || op_type == OP_LEAKY_RELU || op_type == OP_MUL || op_type == OP_EWISE_ADD_SCALAR) // if (F != nullptr)
     {
         F_buf = F->data();
     }
@@ -288,7 +288,7 @@ void abstract_layer( /// @todo add B (batch size) param?
             // if leaky relu, the weight pointer does not change with the group id
 
             ScalarT const *F_group;
-            if constexpr ((op_type == OP_LEAKY_RELU) || (op_type == OP_MUL) || (op_type == OP_POINTWISE_ADD_SCALAR))
+            if constexpr ((op_type == OP_LEAKY_RELU) || (op_type == OP_MUL) || (op_type == OP_EWISE_ADD_SCALAR))
             {
                 F_group = F_buf;
             }

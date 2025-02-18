@@ -909,8 +909,8 @@ for (uint32_t kk = 0; kk < W_last; kk++)             \
 // Broadcast Addition kernels
 //****************************************************************************
 
-#define FLOAT_ADD_SCALAR_TILE_C(norm, W_ob, C_ob) \
-    b0 = _mm256_broadcast_ss(&norm);       \
+#define FLOAT_EWISE_ADD_SCALAR_TILE_C(scalar, W_ob, C_ob) \
+    b0 = _mm256_broadcast_ss(&scalar);       \
     c0 = _mm256_add_ps(b0, c0);            \
     c1 = _mm256_add_ps(b0, c1);            \
     c2 = _mm256_add_ps(b0, c2);            \
@@ -925,21 +925,21 @@ for (uint32_t kk = 0; kk < W_last; kk++)             \
     c11 = _mm256_add_ps(b0, c11);           
 
 #if FLOAT_SIMD_EPILOGUE == 1
-#define FLOAT_ADD_SCALAR_END_C(c_cur, norm, W_last, C_ob) \
+#define FLOAT_EWISE_ADD_SCALAR_END_C(c_cur, scalar, W_last, C_ob) \
     float *c_pixel = c_cur;                        \
     for (uint32_t kk = 0; kk < W_last; kk++)       \
     {                                              \
         float *c_channel = c_pixel;                \
         for (uint32_t jj = 0; jj < C_ob; jj++)     \
         {                                          \
-            *(c_channel) += norm;                  \
+            *(c_channel) += scalar;                  \
             c_channel++;                           \
         }                                          \
         c_pixel += C_ob;                           \
     }
 #elif FLOAT_SIMD_EPILOGUE == 8
-#define FLOAT_ADD_SCALAR_END_C(c_cur, norm, W_last, C_ob) \
-    b_0 = _mm256_broadcast_ss(&norm);              \
+#define FLOAT_EWISE_ADD_SCALAR_END_C(c_cur, scalar, W_last, C_ob) \
+    b_0 = _mm256_broadcast_ss(&scalar);              \
     __m256 *c_pixel = c_cur;                       \
     for (uint32_t kk = 0; kk < W_last; kk++)       \
     {                                              \
@@ -1217,109 +1217,6 @@ if constexpr(_C_ob == 1 && _C_ob != FLOAT_SIMD_EPILOGUE)\
         for (uint32_t jj = 0; jj < C_ob; jj++)     \
         {                                          \
             *(c_channel) = std::exp(*c_channel);   \
-            c_channel++;                           \
-        }                                          \
-        c_pixel += C_ob;                           \
-    }
-
-//****************************************************************************
-// LogSoftmax  (Ewise logarithm)
-//      (implementation copied from softmax, exponential above)
-//****************************************************************************
-
-#define FLOAT_LOG_TILE_C(step, a, W_ob, C_ob)                  \
-    c_tile_t c_tile[FLOAT_W_ob * FLOAT_C_ob];                  \
-    c_tile_t *c_pixel = c_tile;                                \
-    c_tile_t const *a_pixel = a;                               \
-    for (uint32_t kk = 0; kk < W_ob; kk++)                     \
-    {                                                          \
-        c_tile_t *c_channel = c_pixel;                         \
-        c_tile_t const *a_channel = a_pixel;                   \
-        for (uint32_t jj = 0; jj < C_ob; jj++)                 \
-        {                                                      \
-            *(c_channel) = std::log(*a_channel);               \
-            c_channel++;                                       \
-            a_channel++;                                       \
-        }                                                      \
-        a_pixel += step;                                       \
-        c_pixel += C_ob;                                       \
-    }                                                          \
-    c0 = _mm256_loadu_ps(c_tile + 0 * C_ob + 0 * FLOAT_SIMD);  \
-    c1 = _mm256_loadu_ps(c_tile + 0 * C_ob + 1 * FLOAT_SIMD);  \
-    c2 = _mm256_loadu_ps(c_tile + 1 * C_ob + 0 * FLOAT_SIMD);  \
-    c3 = _mm256_loadu_ps(c_tile + 1 * C_ob + 1 * FLOAT_SIMD);  \
-    c4 = _mm256_loadu_ps(c_tile + 2 * C_ob + 0 * FLOAT_SIMD);  \
-    c5 = _mm256_loadu_ps(c_tile + 2 * C_ob + 1 * FLOAT_SIMD);  \
-    c6 = _mm256_loadu_ps(c_tile + 3 * C_ob + 0 * FLOAT_SIMD);  \
-    c7 = _mm256_loadu_ps(c_tile + 3 * C_ob + 1 * FLOAT_SIMD);  \
-    c8 = _mm256_loadu_ps(c_tile + 4 * C_ob + 0 * FLOAT_SIMD);  \
-    c9 = _mm256_loadu_ps(c_tile + 4 * C_ob + 1 * FLOAT_SIMD);  \
-    c10 = _mm256_loadu_ps(c_tile + 5 * C_ob + 0 * FLOAT_SIMD); \
-    c11 = _mm256_loadu_ps(c_tile + 5 * C_ob + 1 * FLOAT_SIMD);
-
-#define FLOAT_LOG_END_C(step, a, c_cur, W_last, C_ob) \
-    c_tile_t *c_pixel = c_cur;                        \
-    c_tile_t const *a_pixel = a;                      \
-    for (uint32_t kk = 0; kk < W_last; kk++)          \
-    {                                                 \
-        c_tile_t *c_channel = c_pixel;                \
-        c_tile_t const *a_channel = a_pixel;          \
-        for (uint32_t jj = 0; jj < C_ob; jj++)        \
-        {                                             \
-            *(c_channel) = std::log(*a_channel);      \
-            c_channel++;                              \
-            a_channel++;                              \
-        }                                             \
-        a_pixel += step;                              \
-        c_pixel += C_ob;                              \
-    }
-
-#define FLOAT_FUSED_LOG_TILE_C(W_ob, C_ob)                     \
-    c_tile_t c_tile[FLOAT_W_ob * FLOAT_C_ob];                  \
-    _mm256_storeu_ps(c_tile + 0 * C_ob + 0 * FLOAT_SIMD, c0);  \
-    _mm256_storeu_ps(c_tile + 0 * C_ob + 1 * FLOAT_SIMD, c1);  \
-    _mm256_storeu_ps(c_tile + 1 * C_ob + 0 * FLOAT_SIMD, c2);  \
-    _mm256_storeu_ps(c_tile + 1 * C_ob + 1 * FLOAT_SIMD, c3);  \
-    _mm256_storeu_ps(c_tile + 2 * C_ob + 0 * FLOAT_SIMD, c4);  \
-    _mm256_storeu_ps(c_tile + 2 * C_ob + 1 * FLOAT_SIMD, c5);  \
-    _mm256_storeu_ps(c_tile + 3 * C_ob + 0 * FLOAT_SIMD, c6);  \
-    _mm256_storeu_ps(c_tile + 3 * C_ob + 1 * FLOAT_SIMD, c7);  \
-    _mm256_storeu_ps(c_tile + 4 * C_ob + 0 * FLOAT_SIMD, c8);  \
-    _mm256_storeu_ps(c_tile + 4 * C_ob + 1 * FLOAT_SIMD, c9);  \
-    _mm256_storeu_ps(c_tile + 5 * C_ob + 0 * FLOAT_SIMD, c10); \
-    _mm256_storeu_ps(c_tile + 5 * C_ob + 1 * FLOAT_SIMD, c11); \
-    c_tile_t *c_pixel = c_tile;                                \
-    for (uint32_t kk = 0; kk < W_ob; kk++)                     \
-    {                                                          \
-        c_tile_t *c_channel = c_pixel;                         \
-        for (uint32_t jj = 0; jj < C_ob; jj++)                 \
-        {                                                      \
-            *(c_channel) = std::log(*c_channel);               \
-            c_channel++;                                       \
-        }                                                      \
-        c_pixel += C_ob;                                       \
-    }                                                          \
-    c0 = _mm256_loadu_ps(c_tile + 0 * C_ob + 0 * FLOAT_SIMD);  \
-    c1 = _mm256_loadu_ps(c_tile + 0 * C_ob + 1 * FLOAT_SIMD);  \
-    c2 = _mm256_loadu_ps(c_tile + 1 * C_ob + 0 * FLOAT_SIMD);  \
-    c3 = _mm256_loadu_ps(c_tile + 1 * C_ob + 1 * FLOAT_SIMD);  \
-    c4 = _mm256_loadu_ps(c_tile + 2 * C_ob + 0 * FLOAT_SIMD);  \
-    c5 = _mm256_loadu_ps(c_tile + 2 * C_ob + 1 * FLOAT_SIMD);  \
-    c6 = _mm256_loadu_ps(c_tile + 3 * C_ob + 0 * FLOAT_SIMD);  \
-    c7 = _mm256_loadu_ps(c_tile + 3 * C_ob + 1 * FLOAT_SIMD);  \
-    c8 = _mm256_loadu_ps(c_tile + 4 * C_ob + 0 * FLOAT_SIMD);  \
-    c9 = _mm256_loadu_ps(c_tile + 4 * C_ob + 1 * FLOAT_SIMD);  \
-    c10 = _mm256_loadu_ps(c_tile + 5 * C_ob + 0 * FLOAT_SIMD); \
-    c11 = _mm256_loadu_ps(c_tile + 5 * C_ob + 1 * FLOAT_SIMD);
-
-#define FLOAT_FUSED_LOG_END_C(c_cur, W_last, C_ob) \
-    c_tile_t *c_pixel = c_cur;                     \
-    for (uint32_t kk = 0; kk < W_last; kk++)       \
-    {                                              \
-        c_tile_t *c_channel = c_pixel;             \
-        for (uint32_t jj = 0; jj < C_ob; jj++)     \
-        {                                          \
-            *(c_channel) = std::log(*c_channel);   \
             c_channel++;                           \
         }                                          \
         c_pixel += C_ob;                           \

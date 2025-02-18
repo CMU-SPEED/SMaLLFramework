@@ -1880,7 +1880,7 @@ void LogSoftMax(int input_channels,
 
         // element-wise subtract
         float_detail::abstract_layer<
-            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_POINTWISE_ADD_SCALAR, 0, 1>(
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_EWISE_ADD_SCALAR, 0, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
