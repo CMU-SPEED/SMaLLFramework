@@ -70,7 +70,7 @@ void inline kernel(
             /// @note using platform C_ob
             FLOAT_LOAD_TILE_C_strided(I, step, _O_wb, FLOAT_C_ob);
         }
-        else if (op_type == OP_UPSAMPLE)
+        else if constexpr(op_type == OP_UPSAMPLE)
         {
             FLOAT_LOAD_TILE_C_upsample(I, _stride, _C_ib, _O_wb, _C_ob);
         }
