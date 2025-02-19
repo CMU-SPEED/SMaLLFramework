@@ -169,6 +169,7 @@ void abstract_layer( /// @todo add B (batch size) param?
     // back padding elements
     dim_t H_back_index = H_full_index + _stride * (H_o);
     dim_t W_back_index = W_full_index + _stride * (W_o_full);
+    dim_t r_valid = I_w - W_back_index;
     dim_t b_pad_el, r_pad_el;
     if constexpr (op_type == OP_UPSAMPLE)
     {
@@ -458,7 +459,7 @@ void abstract_layer( /// @todo add B (batch size) param?
                                          I_w * _C_ib,
                                          O_w_left,
                                          r_pad_el,
-                                         pad_right,
+                                         r_valid,
                                          I_col_left,
                                          F_col_left,
                                          O_col_left,
