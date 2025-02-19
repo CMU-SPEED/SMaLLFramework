@@ -1792,7 +1792,7 @@ void SoftMax(int input_channels,
 
         // point-wise exponent
         float_detail::abstract_layer<
-            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_EXP, 0, 1>(
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_EXP, 0, 0>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
@@ -1804,7 +1804,7 @@ void SoftMax(int input_channels,
         // global sum
         FloatBuffer softmax_norm_buf(1);
         float_detail::abstract_layer<
-            FloatBuffer, 1, 1, FLOAT_C_ob, FLOAT_W_ob, 1, FLOAT_C_ob, OP_ADD, 3, 1>(
+            FloatBuffer, 1, 1, FLOAT_C_ob, FLOAT_W_ob, 1, FLOAT_C_ob, OP_ADD, 3, 0>(
             1, // Output Channel Grouping
             1, // Output Channels per group
             input_channels,
@@ -1855,7 +1855,7 @@ void LogSoftMax(int input_channels,
 
         // point-wise exponent
         float_detail::abstract_layer<
-            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_EXP, 0, 1>(
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_EXP, 0, 0>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
@@ -1867,7 +1867,7 @@ void LogSoftMax(int input_channels,
         // global sum
         FloatBuffer softmax_norm_buf(1);
         float_detail::abstract_layer<
-            FloatBuffer, 1, 1, FLOAT_C_ob, FLOAT_W_ob, 1, FLOAT_C_ob, OP_ADD, 3, 1>(
+            FloatBuffer, 1, 1, FLOAT_C_ob, FLOAT_W_ob, 1, FLOAT_C_ob, OP_ADD, 3, 0>(
             1, // Output Channel Grouping
             1, // Output Channels per group
             input_channels,
@@ -1878,9 +1878,9 @@ void LogSoftMax(int input_channels,
 
         softmax_norm_buf.data()[0] = -std::log(softmax_norm_buf.data()[0]);
 
-        // element-wise subtract
+        // element-wise shift
         float_detail::abstract_layer<
-            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_EWISE_ADD_SCALAR, 0, 1>(
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_EWISE_ADD_SCALAR, 0, 0>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,

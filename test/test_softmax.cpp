@@ -591,9 +591,10 @@ bool compute_logsoftmax_output(LayerParams const &params)
         num_outputs++;
 
     }
+    sum = std::log(sum);
     for (size_t c = 0; c < params.C_i * params.H * params.W; ++c)
     {
-        output_dc_answers[c] = input_dc[c] - std::log(sum);
+        output_dc_answers[c] = input_dc[c] - sum;
     }
 
     std::cerr << "num_outputs = " << num_outputs << std::endl;
