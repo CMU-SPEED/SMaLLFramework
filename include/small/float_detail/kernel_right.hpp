@@ -64,6 +64,7 @@ void inline kernel_right(
 #endif
     if (O_w_left)
     {
+
         if (first)
         {
             FLOAT_ZERO_END_C(O_w_left, _C_ob);

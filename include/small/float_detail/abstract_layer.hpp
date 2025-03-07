@@ -170,7 +170,9 @@ void abstract_layer( /// @todo add B (batch size) param?
     dim_t H_back_index = H_full_index + _stride * (H_o);
     dim_t W_back_index = W_full_index + _stride * (W_o_full);
     dim_t r_valid = I_w - W_back_index;
+    dim_t b_valid = I_h - H_back_index;
     dim_t b_pad_el, r_pad_el;
+
     if constexpr (op_type == OP_UPSAMPLE)
     {
         b_pad_el = 0;
@@ -331,7 +333,6 @@ void abstract_layer( /// @todo add B (batch size) param?
                     ScalarT const *I_row_top = I_channel_block_input;
                     ScalarT const *F_row_top = F_channel_block_input + 0;
                     AccumT        *O_row_top = O_channel_block_input;  // ScalarT --> AccumT
-
                     kernel_top<ScalarT, AccumT,
                                _G_b, _K_b, _F_cb, _O_wb, _stride,
                                _UNROLL, op_type, op_class>(
@@ -348,7 +349,7 @@ void abstract_layer( /// @todo add B (batch size) param?
                                    O_w_full,
                                    O_w_left,
                                    r_pad_el,
-                                   pad_right,
+                                   r_valid,
                                    I_row_top,
                                    F_row_top,
                                    O_row_top);
@@ -491,7 +492,7 @@ void abstract_layer( /// @todo add B (batch size) param?
                                       F_w,
                                       I_w * _C_ib,
                                       b_pad_el,
-                                      pad_bottom,
+                                      b_valid,
                                       W_full_index,
                                       l_pad_el,
                                       pad_left,
@@ -499,7 +500,7 @@ void abstract_layer( /// @todo add B (batch size) param?
                                       O_w_full,
                                       O_w_left,
                                       r_pad_el,
-                                      pad_right,
+                                      r_valid,
                                       I_row_bot,
                                       F_row_bot,
                                       O_row_bot);
