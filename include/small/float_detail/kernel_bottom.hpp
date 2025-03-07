@@ -86,7 +86,7 @@ void inline kernel_bottom(
                         F_b,
                         F_a);
 
-        ScalarT const *I_row_full = I + W_full_index * (_F_cb * _G_b);
+        ScalarT const *I_row_full = I_ptr + W_full_index * (_F_cb * _G_b);
         AccumT *O_row_full = O_ptr + l_pad_el * (_G_b * _K_b); // ScalarT -> AccumT
         // Steady State with microkernel
         for (index_t l = 0; l < O_w_full; l += _O_wb)
@@ -142,7 +142,7 @@ void inline kernel_bottom(
         O_ptr += O_w_w_pad * _K_b * _G_b;
 
         H_i_valid -= _stride;
-        I_ptr += _stride * _F_cb * _G_b;
+        I_ptr += _stride * input_col_stride;
     }
 }
 
