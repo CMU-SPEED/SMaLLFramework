@@ -70,4 +70,55 @@ public:
     }
 };
 
+//****************************************************************************
+template <typename BufferT>
+class LogSoftMaxLayer : public Layer<BufferT>
+{
+public:
+    typedef typename BufferT::value_type value_type;
+
+    LogSoftMaxLayer(shape_type const &input_shape)
+        : Layer<BufferT>(input_shape)       // input_shape == output_shape
+    {
+#if defined(DEBUG_LAYERS)
+        auto const &output_shape(this->output_shape());
+        std::cerr << "LogSoftMax(batches:" << output_shape[BATCH]
+                  << ",chans:" << output_shape[CHANNEL]
+                  << ",img:" << output_shape[HEIGHT]
+                  << "x" << output_shape[WIDTH]
+                  << ")" << std::endl;
+#endif
+    }
+
+    virtual ~LogSoftMaxLayer() {}
+
+    virtual void compute_output(
+        std::vector<Tensor<BufferT> const *> input,
+        Tensor<BufferT>*                     output) const
+    {
+        if ((input.size() != 1) || (input[0]->shape() != this->output_shape()))
+        {
+            throw std::invalid_argument(
+                "LogSoftMaxLayer::compute_output() ERROR: "
+                "incorrect input buffer shape.");
+        }
+
+        if (output->capacity() < this->output_size())
+        {
+            throw std::invalid_argument(
+                "LogSoftMaxLayer::compute_output() ERROR: "
+                "insufficient output buffer space.");
+        }
+
+        auto const &output_shape(this->output_shape());
+
+        small::LogSoftMax(output_shape[CHANNEL],
+                       output_shape[HEIGHT], output_shape[WIDTH],
+                       input[0]->buffer(),
+                       output->buffer());
+
+        output->set_shape(output_shape);
+    }
+};
+
 }
