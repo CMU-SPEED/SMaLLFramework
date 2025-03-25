@@ -45,7 +45,7 @@ void inline kernel_right_1D(
     dim_t input_col_stride,
     dim_t O_w_left,
     dim_t r_pad_el,
-    dim_t r_pad,
+    dim_t r_valid,
     ScalarT const *I,
     ScalarT const *F,
     AccumT *O, // ScalarT -> AccumT
@@ -130,7 +130,7 @@ void inline kernel_right_1D(
     // right padding elements
     AccumT *O_ptr = O + O_w_left * _C_ob; // ScalarT --> AccumT
     ScalarT const *I_ptr = I + O_w_left * step;
-    int W_i_valid = F_w - 1;
+    int W_i_valid = r_valid;
 
     if (first)
     {
