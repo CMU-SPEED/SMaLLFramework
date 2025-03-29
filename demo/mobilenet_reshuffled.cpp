@@ -662,7 +662,6 @@ fused_model_inference(uint32_t layer_num_total,
                 BufferT &inter_1_dc,
                 BufferT &inter_0_buffer_dc)
 {
-    
 
     auto layer_num = 0;
     #if TIME_LAYER
@@ -676,8 +675,8 @@ fused_model_inference(uint32_t layer_num_total,
     //                                         input_dc,
     //                                         *filter_buf_ptrs[layer_num],
     //                                         inter_0_dc);
-    char *num_threads = getenv("OMP_NUM_THREADS");
-    setenv("OMP_NUM_THREADS", "1", 1);
+    // char *num_threads = getenv("OMP_NUM_THREADS");
+    // setenv("OMP_NUM_THREADS", "1", 1);
     small::Conv2D_ReLU_DepthwiseConv2D_ReLU(REDUCTION_HW(layer_num), REDUCTION_HW(layer_num), STRIDE(layer_num),
                                             PADDING(layer_num),
                                             REDUCTION_HW(layer_num + 1), REDUCTION_HW(layer_num + 1), STRIDE(layer_num + 1),
@@ -721,13 +720,12 @@ fused_model_inference(uint32_t layer_num_total,
         my_timer.stop();
         layer_timers[2][0] = my_timer.elapsed();
         #endif
-        setenv("OMP_NUM_THREADS", num_threads, 1);
+        // setenv("OMP_NUM_THREADS", num_threads, 1);
     /**/
 
 
 
     auto ds_blocks = 12;
-    // printf("1:%d 0:%d\n", inter_1_dc.data(), inter_0_dc.data());
 
     for (int ds_layer = 0; ds_layer < ds_blocks; ds_layer++)
     {
@@ -760,7 +758,6 @@ fused_model_inference(uint32_t layer_num_total,
         
         inter_1_dc = inter_0_dc;
 
-        // printf("1:%d 0:%d\n", inter_1_dc.data(), inter_0_dc.data());
     }
 
     /**/
@@ -998,6 +995,11 @@ void inference()
     my_timer.stop();
     printf("\nElapsed time: %lf ns.\n", my_timer.elapsed());
 
+    //print outputs
+    for (int i = 0; i < num_classes; i++)
+    {
+        std::cout << "Output " << i << ": " << (float)output_dc[i] << std::endl;
+    }
     //======================================================
 
     auto layers(create_model<BufferT>(filter_buf_ptrs));
