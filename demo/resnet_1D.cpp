@@ -277,7 +277,7 @@ inline void resnet_block(
     small::Conv1D(kernel_size_width, stride,
                   l_pad_0, r_pad_0,
                   output_channels, input_channels,
-                  in_dims[0], in_dims[1],
+                  in_dims[1], in_dims[0],
                   I, F_conv0, O_intermediate);
 #if TIME_LAYER
     my_timer.stop();
@@ -285,7 +285,7 @@ inline void resnet_block(
     layer_timer_count++;
 #endif
 
-    uint32_t o_h = in_dims[0];
+    uint32_t o_h = in_dims[1];
     uint32_t o_w = small::output_dim(in_dims[1] + l_pad_0 + r_pad_0,
                                      stride, kernel_size_width);
 
@@ -357,7 +357,7 @@ inline void resnet_block(
 //****************************************************************************
 template <class BufferT>
 inline void ewise_fused_resnet_block(
-    uint32_t in_dims[2], uint32_t input_channels, // Input dimensions
+    uint32_t in_dims[2], uint32_t input_channels, // Input dimensions ([W, H], C)
     uint32_t kernel_size_width,
     uint32_t stride,
     uint32_t output_channels,
@@ -382,7 +382,7 @@ inline void ewise_fused_resnet_block(
     small::Conv1D_ReLU(kernel_size_width, stride,
                        l_pad_0, r_pad_0,
                        output_channels, input_channels,
-                       in_dims[0], in_dims[1],
+                       in_dims[1], in_dims[0],
                        I, F_conv0, O_intermediate);
 
 #if TIME_LAYER
@@ -394,7 +394,7 @@ inline void ewise_fused_resnet_block(
 
     //uint32_t o_h = small::output_dim(in_dims[0] + t_pad_0 + b_pad_0,
     //                                 stride, kernel_size_height);
-    uint32_t o_h = in_dims[0];
+    uint32_t o_h = in_dims[1];
     uint32_t o_w = small::output_dim(in_dims[1] + l_pad_0 + r_pad_0,
                                      stride, kernel_size_width);
 
@@ -448,7 +448,7 @@ inline void ewise_fused_resnet_block(
 // block when stride = 1
 template <class BufferT>
 inline void resnet_block(
-    uint32_t in_dims[2], uint32_t input_channels, // Input dimensions
+    uint32_t in_dims[2], uint32_t input_channels,  // Input dimensions ([W, H], C)
     uint32_t kernel_size_width,
     uint32_t stride,
     uint32_t output_channels,
@@ -470,7 +470,7 @@ inline void resnet_block(
     small::Conv1D(kernel_size_width, stride,
                   l_pad_0, r_pad_0,
                   output_channels, input_channels,
-                  in_dims[0], in_dims[1],
+                  in_dims[1], in_dims[0],
                   I, F_conv0, O_intermediate);
 
 #if TIME_LAYER
@@ -481,7 +481,7 @@ inline void resnet_block(
 
     //uint32_t o_h = small::output_dim(in_dims[0] + t_pad_0 + b_pad_0,
     //                                 stride, kernel_size_height);
-    uint32_t o_h = in_dims[0];
+    uint32_t o_h = in_dims[1];
     uint32_t o_w = small::output_dim(in_dims[1] + l_pad_0 + r_pad_0,
                                      stride, kernel_size_width);
 #if TIME_LAYER
@@ -1165,8 +1165,17 @@ void inference(uint32_t const n_blocks = 2,
     //               << std::endl;
     // }
 
+// iterate over filters and free
+
 #if defined(NANO33BLE)
     small::detail::free_all();
+#else
+for (size_t l = 0; l < num_filters; l++)
+{
+    free(filter_buf_ptrs[l]);
+}
+
+
 #endif
 }
 
