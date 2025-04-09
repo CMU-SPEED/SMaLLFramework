@@ -482,7 +482,7 @@ inline void resnet_block(
     //uint32_t o_h = small::output_dim(in_dims[0] + t_pad_0 + b_pad_0,
     //                                 stride, kernel_size_height);
     uint32_t o_h = in_dims[1];
-    uint32_t o_w = small::output_dim(in_dims[1] + l_pad_0 + r_pad_0,
+    uint32_t o_w = small::output_dim(in_dims[0] + l_pad_0 + r_pad_0,
                                      stride, kernel_size_width);
 #if TIME_LAYER
     my_timer.start();
@@ -1172,7 +1172,7 @@ void inference(uint32_t const n_blocks = 2,
 #else
 for (size_t l = 0; l < num_filters; l++)
 {
-    free(filter_buf_ptrs[l]);
+    small::free_buffer(filter_buf_ptrs[l]);
 }
 
 
