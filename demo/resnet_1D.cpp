@@ -286,7 +286,7 @@ inline void resnet_block(
 #endif
 
     uint32_t o_h = in_dims[1];
-    uint32_t o_w = small::output_dim(in_dims[1] + l_pad_0 + r_pad_0,
+    uint32_t o_w = small::output_dim(in_dims[0] + l_pad_0 + r_pad_0,
                                      stride, kernel_size_width);
 
 #if TIME_LAYER
@@ -395,7 +395,7 @@ inline void ewise_fused_resnet_block(
     //uint32_t o_h = small::output_dim(in_dims[0] + t_pad_0 + b_pad_0,
     //                                 stride, kernel_size_height);
     uint32_t o_h = in_dims[1];
-    uint32_t o_w = small::output_dim(in_dims[1] + l_pad_0 + r_pad_0,
+    uint32_t o_w = small::output_dim(in_dims[0] + l_pad_0 + r_pad_0,
                                      stride, kernel_size_width);
 
     // small::ReLUActivation(output_channels,
