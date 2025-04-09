@@ -1172,7 +1172,7 @@ void inference(uint32_t const n_blocks = 2,
 #else
 for (size_t l = 0; l < num_filters; l++)
 {
-    small::free_buffer(filter_buf_ptrs[l]);
+    free(filter_buf_ptrs[l]);
 }
 
 
