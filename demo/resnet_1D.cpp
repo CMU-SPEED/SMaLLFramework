@@ -316,7 +316,7 @@ inline void resnet_block(
     small::AveragePool1D(1, stride,
                          0, 0,
                          input_channels,
-                         in_dims[0], in_dims[1],
+                         in_dims[1], in_dims[0],
                          I,
                          O);
 
@@ -410,7 +410,7 @@ inline void ewise_fused_resnet_block(
     // small::Conv2D(1, stride,
     //               0, 0,
     //               output_channels, input_channels,
-    //               in_dims[0], in_dims[1],
+    //               in_dims[1], in_dims[0],
     //               I, F_conv_1x1, O);
     // #if TIME_LAYER
     // my_timer.stop();
@@ -1170,12 +1170,10 @@ void inference(uint32_t const n_blocks = 2,
 #if defined(NANO33BLE)
     small::detail::free_all();
 #else
-for (size_t l = 0; l < num_filters; l++)
-{
-    free(filter_buf_ptrs[l]);
-}
-
-
+    for (size_t l = 0; l < num_filters; l++)
+    {
+        small::free_buffer(filter_buf_ptrs[l]);
+    }
 #endif
 }
 
