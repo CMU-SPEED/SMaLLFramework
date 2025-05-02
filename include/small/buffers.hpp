@@ -507,7 +507,7 @@ void init_arange(BufferT &ptr, uint32_t H, uint32_t W, uint32_t C)
                 for (size_t ii = 0; ii < _C_ob; ii++)
                 {
                     /// @todo Should this be: ii*i + k*C + j*(W*C) ??
-                    *(cur_ptr++) =  (ScalarT)(ii + i + k*(C) + j*(W*C));
+                    *(cur_ptr++) =  (ScalarT)( j*W + k);
                 }
             }
         }
@@ -604,6 +604,77 @@ bool equals(uint32_t numel,
         buf2_ptr++;
     }
     return check;
+}
+
+//****************************************************************************
+// create a 1D padded buffer
+template <class BufferT, size_t _C_ob>
+void pad_1D(BufferT & input_dc, size_t C_i, size_t B, size_t W,
+            uint8_t left_pad, uint8_t right_pad,
+            BufferT & padded_input_dc)
+{
+    size_t padded_W = W + left_pad + right_pad;
+    size_t padded_size = C_i * B * padded_W * _C_ob;
+
+
+    // Copy the input data into the padded buffer
+    
+    for(size_t i = 0; i < C_i/_C_ob; i++)
+    {
+        for(size_t b = 0; b < B; b++)
+        {
+            for(size_t j = 0; j < W; j++)
+            {
+                for(size_t ii = 0; ii < _C_ob; ii++)
+                {
+                    padded_input_dc[i*(B*(padded_W)*_C_ob) + 
+                                    b*(padded_W)*_C_ob + 
+                                        (j + left_pad) *_C_ob +
+                                                        ii ] = input_dc[i*(B*W*_C_ob)
+                                                                        + b*(W)*_C_ob + 
+                                                                            j*_C_ob + 
+                                                                                ii];
+
+                }
+            }
+            
+        }
+    }
+    
+}
+
+//****************************************************************************
+// create a 2D padded buffer
+template <class BufferT, size_t _C_ob>
+void pad_2D(BufferT & input_dc, size_t C_i, size_t H, size_t W,
+            uint8_t left_pad, uint8_t right_pad,
+            uint8_t top_pad, uint8_t bottom_pad,
+            BufferT & padded_input_dc)
+{
+    size_t padded_H = H + top_pad + bottom_pad;
+    size_t padded_W = W + left_pad + right_pad;
+
+    // Copy the input data into the padded buffer
+    for(size_t i = 0; i < C_i/_C_ob; i++)
+    {
+        for(size_t j = 0; j < H; j++)
+        {
+            for(size_t k = 0; k < W; k++)
+            {
+                for(size_t ii = 0; ii < _C_ob; ii++)
+                {
+                    padded_input_dc[i*(padded_H*padded_W*_C_ob) +
+                                      (j + top_pad)*(padded_W)*_C_ob +
+                                                    (k + left_pad)*_C_ob +
+                                                                    ii ] = input_dc[i*(H*W*_C_ob)+
+                                                                                       j*(W)*_C_ob +
+                                                                                          k*_C_ob +
+                                                                                            ii];
+
+                }
+            }
+        }
+    }
 }
 
 
