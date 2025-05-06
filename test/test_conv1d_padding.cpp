@@ -180,6 +180,10 @@ void test_conv1d_layer_regression_data(void)
         {32, 2, 31, 13, 2, small::PADDING_F, 16},
         {32, 2, 32, 13, 2, small::PADDING_F, 16},
 
+        {32, 2, 32, 30, 1, small::PADDING_F, 16},
+        {32, 2, 31, 30, 2, small::PADDING_F, 16},
+        {32, 2, 32, 30, 2, small::PADDING_F, 16},
+
 
     };
 

@@ -124,7 +124,7 @@ bool run_conv2d_layer_config(LayerParams const &params)
     bool passing = true;
     for(size_t i = 0; i < output_size; i++)
     {
-        if (std::abs(output_dc[i] - output_dc_answers[i]) > 1e-5)
+        if (std::abs((output_dc[i] - output_dc_answers[i])/(output_dc_answers[i])) > 1e-12)
         {
             passing = false;
             std::cerr << "Mismatch at index " << i
@@ -148,7 +148,7 @@ bool run_conv2d_layer_config(LayerParams const &params)
 }
 
 //****************************************************************************
-void test_conv1d_layer_regression_data(void)
+void test_conv2d_layer_padding(void)
 {
     std::vector<LayerParams> params =
     {
@@ -231,6 +231,6 @@ void test_conv1d_layer_regression_data(void)
 
 //****************************************************************************
 TEST_LIST = {
-    {"conv1d_layer_regression_data", test_conv1d_layer_regression_data},
+    {"conv1d_layer_padding", test_conv2d_layer_padding},
     {NULL, NULL}
 };

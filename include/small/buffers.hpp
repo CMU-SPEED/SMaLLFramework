@@ -608,6 +608,7 @@ bool equals(uint32_t numel,
 
 //****************************************************************************
 // create a 1D padded buffer
+// source and destination buffers are assumed to be packed into SMaLL layout
 template <class BufferT, size_t _C_ob>
 void pad_1D(BufferT & input_dc, size_t C_i, size_t B, size_t W,
             uint8_t left_pad, uint8_t right_pad,
@@ -645,6 +646,7 @@ void pad_1D(BufferT & input_dc, size_t C_i, size_t B, size_t W,
 
 //****************************************************************************
 // create a 2D padded buffer
+// source and destination buffers are assumed to be packed into SMaLL layout
 template <class BufferT, size_t _C_ob>
 void pad_2D(BufferT & input_dc, size_t C_i, size_t H, size_t W,
             uint8_t left_pad, uint8_t right_pad,
