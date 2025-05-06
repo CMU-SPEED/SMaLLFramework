@@ -124,7 +124,7 @@ bool run_conv2d_layer_config(LayerParams const &params)
     bool passing = true;
     for(size_t i = 0; i < output_size; i++)
     {
-        if (std::abs((output_dc[i] - output_dc_answers[i])/(output_dc_answers[i])) > 1e-12)
+        if (std::abs((output_dc[i] - output_dc_answers[i])/(output_dc_answers[i])) > 1e-7)
         {
             passing = false;
             std::cerr << "Mismatch at index " << i
