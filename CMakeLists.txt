@@ -52,10 +52,10 @@ set(CMAKE_C_COMPILER gcc) #<--- Specify C compiler
 
 # Set up build types
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopenmp -g -O1 -fsanitize=address -fpermissive")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DSRC_DIR=${CMAKE_SOURCE_DIR} -fopenmp -g -O1 -fsanitize=address -fpermissive")
 # Release is setup to be default
 else()
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopenmp -O3 -fpermissive")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DSRC_DIR=${CMAKE_SOURCE_DIR} -fopenmp -O3 -fpermissive")
 endif()
 
 # Set up microarchitecture

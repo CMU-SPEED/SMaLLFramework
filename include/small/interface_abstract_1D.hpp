@@ -431,7 +431,7 @@ void PartialConv1D(
               << ",img:" << batch_size << "x" << input_width
               << ",I,F,O)\n";
 #endif
-    if (input_channels % FLOAT_C_ib == 0)
+    if (input_channels % FLOAT_C_ib == 0 && input_width > 1)
     {
         if (stride == 1)
         {
@@ -573,6 +573,21 @@ void PartialConv1D(
             throw std::invalid_argument(
                 "PartialConv1D<float> ERROR: stride unsupported.");
         }
+    }
+
+    else if (input_width == 1) 
+    {
+        float_detail::abstract_layer_1D<
+            FloatBuffer, 1, /*FLOAT_C_ob*/1, /*FLOAT_C_ib*/1,
+            1, 1, FLOAT_UNROLL, OP_CONV, 2, 0>(
+            1,               // Output Channel Grouping
+            output_channels, // Output Channels per group
+            input_channels,
+            batch_size, input_width,
+            kernel_width,
+            l_pad, r_pad,
+            &input_buf, &filter_buf, &output_buf);
+
     }
 
     /// @todo Do we need other specific cases for input_channels > 3?

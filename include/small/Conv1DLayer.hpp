@@ -128,7 +128,12 @@ namespace detail
             num_effective_output_channels*num_input_channels*kernel_width)
         {
             throw std::invalid_argument(
-                "*Conv1DLayer::ctor ERROR: filters buffer is incorrect size.");
+                ((std::string)"*Conv1DLayer::ctor ERROR: filters buffer is incorrect size. Expecting " +
+                (std::string)"num_effective_output_channels(" + std::to_string(num_effective_output_channels) + (std::string)")*" +
+                (std::string)"num_input_channels(" + std::to_string(num_input_channels) + (std::string)")*" +
+                (std::string)"kernel_width(" + std::to_string(kernel_width) + (std::string)") = " +
+                std::to_string(num_effective_output_channels*num_input_channels*kernel_width) +
+                (std::string)", but the filters buffer size is " + std::to_string(filters.size())));
         }
 
         // Allocate packed filters if necessary
@@ -160,7 +165,7 @@ namespace detail
                                 num_output_channels, num_input_channels,
                                 1, kernel_width,
                                 BufferT::C_ob, BufferT::C_ib,
-                                co, ci, 1, w);
+                                co, ci, 0, w);
                             //std::cerr << "unpacked-->packed: " << unpacked_idx
                             //          << "-->" << packed_idx << std::endl;
                             packed_filters[packed_idx] = filters[unpacked_idx++];
@@ -348,7 +353,9 @@ Conv1DLayer<BufferT>::Conv1DLayer(
               << "), filters.size=" << filters.size() << std::endl;
 #endif
     if (((input_shape[CHANNEL] % BufferT::C_ib) != 0) &&
-        (input_shape[CHANNEL] != 3))
+        (input_shape[CHANNEL] != 3) &&
+        (input_shape[CHANNEL] != 2) &&
+        (input_shape[CHANNEL] != 1))
     {
         throw std::invalid_argument(
             "Conv1DLayer::ctor ERROR: invalid number of input channels.");
@@ -454,7 +461,9 @@ Conv1DLayer<BufferT>::Conv1DLayer(
               << ",bias.size=" << bias.size() << std::endl;
 #endif
     if (((input_shape[CHANNEL] % BufferT::C_ib) != 0) &&
-        (input_shape[CHANNEL] != 3))
+        (input_shape[CHANNEL] != 3) &&
+        (input_shape[CHANNEL] != 2) &&
+        (input_shape[CHANNEL] != 1))
     {
         throw std::invalid_argument(
             "Conv1DLayer::ctor ERROR: invalid number of input channels.");
@@ -571,7 +580,9 @@ Conv1DLayer<BufferT>::Conv1DLayer(
               << "),bn_eps:" << bn_eps << std::endl;
 #endif
     if (((input_shape[CHANNEL] % BufferT::C_ib) != 0) &&
-        (input_shape[CHANNEL] != 3))
+        (input_shape[CHANNEL] != 3) &&
+        (input_shape[CHANNEL] != 2) &&
+        (input_shape[CHANNEL] != 1))
     {
         throw std::invalid_argument(
             "Conv1DLayer::ctor ERROR: invalid number of input channels.");
