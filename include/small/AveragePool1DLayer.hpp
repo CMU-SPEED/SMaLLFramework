@@ -1,6 +1,6 @@
 //****************************************************************************
 // SMaLL, Software for Machine Learning Libraries
-// Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
+// Copyright 2025 by The SMaLL Contributors, All Rights Reserved.
 // SPDX-License-Identifier: BSD-3-Clause
 //
 // For additional details (including references to third party source code and
@@ -15,7 +15,6 @@
 #include <small.h>
 #include <small/buffers.hpp>
 #include <small/Layer.hpp>
-
 
 namespace small
 {
@@ -103,7 +102,7 @@ public:
 private:
     shape_type const m_input_shape;
 
-    uint32_t         m_kernel_width;
+    uint32_t   const m_kernel_width;
     uint32_t   const m_stride;
 
     /// @todo: how to make const?

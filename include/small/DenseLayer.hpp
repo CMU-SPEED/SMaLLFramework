@@ -197,8 +197,8 @@ namespace detail
 ///
 template <class BufferT>
 DenseLayer<BufferT>::DenseLayer(
-    shape_type const &input_shape,
-    uint32_t          num_output_channels,
+    shape_type const &input_shape,         // todo: assert NCHW = (1, C_i, 1, 1)
+    uint32_t          num_output_channels, // assumes NCHW = (1, C_o, 1, 1)
     BufferT    const &filters,
     bool              buffers_are_packed,
     ActivationType    activation_type,
@@ -289,8 +289,8 @@ DenseLayer<BufferT>::DenseLayer(
 //****************************************************************************
 template <class BufferT>
 DenseLayer<BufferT>::DenseLayer(
-    shape_type const &input_shape,
-    uint32_t          num_output_channels,
+    shape_type const &input_shape,         // todo: assert NCHW = (1, C_i, 1, 1)
+    uint32_t          num_output_channels, // assumes NCHW = (1, C_o, 1, 1)
     BufferT    const &filters,
     BufferT    const &bias,
     bool              buffers_are_packed,

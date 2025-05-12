@@ -1888,7 +1888,7 @@ void LogSoftMax(int input_channels,
             1, 1,
             0, 0, 0, 0,
             &input_buf, &softmax_norm_buf, &output_buf);
-            
+
     }
 #ifdef ANNIKAS_TEST
     else if(input_channels == 2)
@@ -2113,7 +2113,7 @@ void Bias(int num_channels,
     }
 #elif defined(ANNIKAS_TEST2)
     // stashed code
-    else if (output_width == 1) 
+    else if (output_width == 1)
     {
         float_detail::abstract_layer<
             FloatBuffer, /*FLOAT_C_ob*/1, 1, 1,
@@ -2234,13 +2234,14 @@ void Dense(int output_elements, int input_elements,
               << "x" << input_elements << "I,F,O)\n";
 #endif
     float_detail::abstract_layer<
-        FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_CONV, 1, 1>(
-        output_elements, // Output Channel Grouping
-        1,               // Output Channels per group
-        1,
-        1, input_elements,
-        1, 1,
-        0, 0, 0, 0,
+        FloatBuffer, FLOAT_C_ob, 1, 1,
+        FLOAT_W_ob, 1, 1, OP_CONV, 1, 1>(  // todo: compare to Conv2D call
+        output_elements,   // Output Channel Grouping
+        1,                 // Output Channels per group
+        1,                 // input channels
+        1, input_elements, // input height, width
+        1, 1,              // kernel W, H
+        0, 0, 0, 0,        // padding
         &input_buf, &filter_buf, &output_buf);
 }
 #endif
