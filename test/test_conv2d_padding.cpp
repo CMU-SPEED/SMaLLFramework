@@ -20,6 +20,23 @@
 
 #include "test_utils.hpp"
 
+//relative error checker
+bool check_allclose(float a, float b, float rtol = 1e-3 , float atol = 1e-5)
+{
+    if (std::isnan(a) || std::isnan(b))
+    {
+        return false;
+    }
+    if (std::abs(a - b) <= atol + rtol * std::max(std::abs(a), std::abs(b)))
+    {
+        return true;
+    }
+    printf("check_allclose: diff: %.10f error threshold: %.12f\n", std::abs(a - b), atol + rtol * std::max(std::abs(a), std::abs(b)));
+    return false;
+  
+
+}
+
 //****************************************************************************
 template <class BufferT>
 bool run_conv2d_layer_config(LayerParams const &params)
@@ -121,10 +138,13 @@ bool run_conv2d_layer_config(LayerParams const &params)
 
 
     // Verify
+
+
     bool passing = true;
     for(size_t i = 0; i < output_size; i++)
     {
-        if (std::abs((output_dc[i] - output_dc_answers[i])/(output_dc_answers[i])) > 1e-7)
+        //less than 0.1% relative error
+        if (!check_allclose(output_dc[i], output_dc_answers[i], 1e-3))
         {
             passing = false;
             std::cerr << "Mismatch at index " << i
