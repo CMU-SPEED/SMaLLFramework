@@ -360,6 +360,6 @@ TEST_LIST = {
     {"dense_using_conv2d_layer",        test_conv2d_dense_layer},
     {"dense_using_dense_layer",         test_dense_dense_layer},
     {"dense_using_dense_layer_no_bias", test_dense_dense_layer_no_bias},
-    //{"dense_function_no_bias",          test_dense_no_bias},
+    {"dense_function_no_bias",          test_dense_no_bias},
     {NULL, NULL}
 };

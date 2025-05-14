@@ -2218,7 +2218,9 @@ void Concat(uint32_t input0_channels,
 
 //****************************************************************************
 //****************************************************************************
-
+// Dense layer
+// Assumes that input height and width are 1, all input elements are in C_i 
+// This may require a flatten/reshape of the input tensor before calling
 //============================================================================
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
 template <class BufferT,
@@ -2233,16 +2235,29 @@ void Dense(int output_elements, int input_elements,
     std::cout << "Dense<float>(out x in:" << output_elements
               << "x" << input_elements << "I,F,O)\n";
 #endif
+    // float_detail::abstract_layer<
+    //     FloatBuffer, 1, FLOAT_C_ob, FLOAT_C_ib,
+    //     FLOAT_W_ob, 1, 1, OP_CONV, 1, 1>(  // todo: compare to Conv2D call
+    //     output_elements,   // Output Channel Grouping
+    //     1,                 // Output Channels per group
+    //     1,                 // input channels
+    //     1, input_elements, // input height, width
+    //     1, 1,              // kernel W, H
+    //     0, 0, 0, 0,        // padding
+    //     &input_buf, &filter_buf, &output_buf);
+
+
     float_detail::abstract_layer<
-        FloatBuffer, FLOAT_C_ob, 1, 1,
-        FLOAT_W_ob, 1, 1, OP_CONV, 1, 1>(  // todo: compare to Conv2D call
-        output_elements,   // Output Channel Grouping
-        1,                 // Output Channels per group
-        1,                 // input channels
-        1, input_elements, // input height, width
-        1, 1,              // kernel W, H
-        0, 0, 0, 0,        // padding
-        &input_buf, &filter_buf, &output_buf);
+    FloatBuffer, 1, FLOAT_C_ob, FLOAT_C_ib,
+    FLOAT_W_ob, 1, FLOAT_UNROLL, OP_CONV, 2, 1>(
+    1,               // Output Channel Grouping
+    output_elements, // Output Channels per group
+    input_elements,
+    1, 1,
+    1, 1,
+    0,0,0,0,
+    &input_buf, &filter_buf, &output_buf);
+
 }
 #endif
 
