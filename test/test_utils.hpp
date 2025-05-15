@@ -54,6 +54,25 @@ inline bool almost_equal(T v1, T v2, float rtol = 5e-03, float atol = 1e-05)
 }
 
 //****************************************************************************
+//relative error checker
+bool check_allclose(float a, float b, float rtol = 1e-3 , float atol = 1e-5)
+{
+    if (std::isnan(a) || std::isnan(b))
+    {
+        return false;
+    }
+    if (std::abs(a - b) <= atol + rtol * std::max(std::abs(a), std::abs(b)))
+    {
+        return true;
+    }
+    printf("check_allclose: diff: %.10f error threshold: %.12f\n",
+           std::abs(a - b), atol + rtol * std::max(std::abs(a), std::abs(b)));
+    return false;
+
+
+}
+
+//****************************************************************************
 template <class BufferT>
 inline void compute_mean_var(small::shape_type const &output_shape,
                              BufferT const &output_dc_answers,

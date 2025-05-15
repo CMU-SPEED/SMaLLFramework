@@ -20,23 +20,6 @@
 
 #include "test_utils.hpp"
 
-//relative error checker
-bool check_allclose(float a, float b, float rtol = 1e-3 , float atol = 1e-5)
-{
-    if (std::isnan(a) || std::isnan(b))
-    {
-        return false;
-    }
-    if (std::abs(a - b) <= atol + rtol * std::max(std::abs(a), std::abs(b)))
-    {
-        return true;
-    }
-    printf("check_allclose: diff: %.10f error threshold: %.12f\n", std::abs(a - b), atol + rtol * std::max(std::abs(a), std::abs(b)));
-    return false;
-  
-
-}
-
 //****************************************************************************
 template <class BufferT>
 bool run_conv2d_layer_config(LayerParams const &params)
@@ -120,7 +103,7 @@ bool run_conv2d_layer_config(LayerParams const &params)
     //     std::cerr << std::endl;
     // }
     // std::cerr << std::endl;
-    
+
 
     // Compute
     small::Conv2D(K, K, S,
@@ -132,7 +115,7 @@ bool run_conv2d_layer_config(LayerParams const &params)
     //check against padded input
     small::Conv2D(K, K,  S,
                   0, 0,
-                  0, 0, 
+                  0, 0,
                   C_o, C_i, padded_H, padded_W,
                   padded_input_dc, filter_dc, output_dc_answers);
 
