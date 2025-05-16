@@ -155,7 +155,7 @@ namespace small
     for (uint32_t kk = 0; kk < W_ob; kk++)     \
     {                                          \
         for (uint32_t jj = 0; jj < C_ob; jj++) \
-        {\
+        {                                      \
             c_tile[kk * C_ob + jj] = 0.f;      \
         }                                      \
     }
