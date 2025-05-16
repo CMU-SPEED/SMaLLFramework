@@ -115,7 +115,7 @@ void test_conv1d_weights_1_channel(void) {
         }
     }
 
-    if (passing) std::cerr <<" Test PASSED\n";
+    if (passing) std::cerr << "Test PASSED\n";
     TEST_ASSERT(passing);
 }
 
@@ -177,7 +177,7 @@ void test_conv1d_weights_2_channel(void) {
         }
     }
 
-    if (passing) std::cerr <<" Test PASSED\n";
+    if (passing) std::cerr << "Test PASSED\n";
     TEST_ASSERT(passing);
 }
 
@@ -1857,7 +1857,7 @@ void test_conv1d_with_weights_and_batchnorm_params_simple(void) {
         }
     }
 
-    if (passing) std::cerr <<" Test PASSED\n";
+    if (passing) std::cerr << "Test PASSED\n";
     TEST_ASSERT(passing);
 }
 

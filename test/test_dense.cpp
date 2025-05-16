@@ -107,7 +107,7 @@ void test_conv2d_dense_layer(void) {
         }
     }
 
-    if (passing) std::cerr <<" Test PASSED\n";
+    if (passing) std::cerr << "Test PASSED\n";
     TEST_ASSERT(passing);
 }
 
@@ -189,7 +189,7 @@ void test_dense_dense_layer(void) {
         }
     }
 
-    if (passing) std::cerr <<" Test PASSED\n";
+    if (passing) std::cerr << "Test PASSED\n";
     TEST_ASSERT(passing);
 }
 
@@ -267,7 +267,7 @@ void test_dense_dense_layer_no_bias(void) {
         }
     }
 
-    if (passing) std::cerr <<" Test PASSED\n";
+    if (passing) std::cerr << "Test PASSED\n";
     TEST_ASSERT(passing);
 }
 
@@ -350,7 +350,7 @@ void test_dense_no_bias(void)
         }
     }
 
-    if (passing) std::cerr <<" Test PASSED\n";
+    if (passing) std::cerr << "Test PASSED\n";
     TEST_ASSERT(passing);
 }
 
