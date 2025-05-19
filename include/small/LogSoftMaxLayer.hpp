@@ -1,6 +1,6 @@
 //****************************************************************************
 // SMaLL, Software for Machine Learning Libraries
-// Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
+// Copyright 2025 by The SMaLL Contributors, All Rights Reserved.
 // SPDX-License-Identifier: BSD-3-Clause
 //
 // For additional details (including references to third party source code and
@@ -18,20 +18,19 @@
 
 namespace small
 {
-
 //****************************************************************************
 template <typename BufferT>
-class SoftMaxLayer : public Layer<BufferT>
+class LogSoftMaxLayer : public Layer<BufferT>
 {
 public:
     typedef typename BufferT::value_type value_type;
 
-    SoftMaxLayer(shape_type const &input_shape)
+    LogSoftMaxLayer(shape_type const &input_shape)
         : Layer<BufferT>(input_shape)       // input_shape == output_shape
     {
 #if defined(DEBUG_LAYERS)
         auto const &output_shape(this->output_shape());
-        std::cerr << "SoftMax(batches:" << output_shape[BATCH]
+        std::cerr << "LogSoftMax(batches:" << output_shape[BATCH]
                   << ",chans:" << output_shape[CHANNEL]
                   << ",img:" << output_shape[HEIGHT]
                   << "x" << output_shape[WIDTH]
@@ -39,7 +38,7 @@ public:
 #endif
     }
 
-    virtual ~SoftMaxLayer() {}
+    virtual ~LogSoftMaxLayer() {}
 
     virtual void compute_output(
         std::vector<Tensor<BufferT> const *> input,
@@ -48,20 +47,20 @@ public:
         if ((input.size() != 1) || (input[0]->shape() != this->output_shape()))
         {
             throw std::invalid_argument(
-                "SoftMaxLayer::compute_output() ERROR: "
+                "LogSoftMaxLayer::compute_output() ERROR: "
                 "incorrect input buffer shape.");
         }
 
         if (output->capacity() < this->output_size())
         {
             throw std::invalid_argument(
-                "SoftMaxLayer::compute_output() ERROR: "
+                "LogSoftMaxLayer::compute_output() ERROR: "
                 "insufficient output buffer space.");
         }
 
         auto const &output_shape(this->output_shape());
 
-        small::SoftMax(output_shape[CHANNEL],
+        small::LogSoftMax(output_shape[CHANNEL],
                        output_shape[HEIGHT], output_shape[WIDTH],
                        input[0]->buffer(),
                        output->buffer());
