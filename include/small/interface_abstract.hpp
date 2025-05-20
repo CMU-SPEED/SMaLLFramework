@@ -1776,9 +1776,9 @@ template <class BufferT,
           std::enable_if_t<
               std::is_same<FloatBuffer, BufferT>::value, bool> = true>
 void SoftMax(int input_channels,
-                          int input_height, int input_width,
-                          BufferT const &input_buf,
-                          BufferT       &output_buf)
+             int input_height, int input_width,
+             BufferT const &input_buf,
+             BufferT       &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "SoftMax<float>(chans:" << input_channels
@@ -1839,9 +1839,9 @@ template <class BufferT,
           std::enable_if_t<
               std::is_same<FloatBuffer, BufferT>::value, bool> = true>
 void LogSoftMax(int input_channels,
-                          int input_height, int input_width,
-                          BufferT const &input_buf,
-                          BufferT       &output_buf)
+                int input_height, int input_width,
+                BufferT const &input_buf,
+                BufferT       &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "LogSoftMax<float>(chans:" << input_channels
@@ -1876,9 +1876,17 @@ void LogSoftMax(int input_channels,
             0, 0, 0, 0,
             &output_buf, (FloatBuffer *)nullptr, &softmax_norm_buf);
 
-        softmax_norm_buf.data()[0] = -std::log(softmax_norm_buf.data()[0]);
+        // take the log of 1.0/sum
+        if (softmax_norm_buf.data()[0] != 0.f)
+        {
+            softmax_norm_buf.data()[0] = -std::log(softmax_norm_buf.data()[0]);
+        }
+        else
+        {
+            /// HACK: silently failing
+        }
 
-        // element-wise shift
+        // element-wise shift (addition)
         float_detail::abstract_layer<
             FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_EWISE_ADD_SCALAR, 0, 0>(
             input_channels, // Output Channel Grouping
@@ -1890,7 +1898,7 @@ void LogSoftMax(int input_channels,
             &input_buf, &softmax_norm_buf, &output_buf);
 
     }
-#ifdef ANNIKAS_TEST
+#ifdef ANNIKAS_LOGSOFTMAX_HACK
     else if(input_channels == 2)
     {
         float softmax_norm_buf = -std::log(std::exp(input_buf.data()[0]) + std::exp(input_buf.data()[1]));
@@ -2219,7 +2227,7 @@ void Concat(uint32_t input0_channels,
 //****************************************************************************
 //****************************************************************************
 // Dense layer
-// Assumes that input height and width are 1, all input elements are in C_i 
+// Assumes that input height and width are 1, all input elements are in C_i
 // This may require a flatten/reshape of the input tensor before calling
 //============================================================================
 #if defined(SMALL_HAS_FLOAT_SUPPORT)

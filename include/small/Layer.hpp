@@ -49,6 +49,11 @@ public:
         return m_output_size;
     }
 
+    virtual uint32_t get_effective_output_channels() const
+    {
+        return m_output_shape[CHANNEL];
+    }
+
     inline shape_type const &output_shape() const
     {
         return m_output_shape;

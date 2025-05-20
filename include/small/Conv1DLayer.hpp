@@ -69,7 +69,7 @@ public:
 
     virtual ~Conv1DLayer() {}
 
-    inline uint32_t get_effective_output_channels() const
+    virtual uint32_t get_effective_output_channels() const
     {
         return m_effective_output_channels;
     }
