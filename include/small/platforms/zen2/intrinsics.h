@@ -59,11 +59,11 @@ namespace float_detail
 /// @todo VERIFY this. Args are _W_ob/_C_ob but does not use them
 #if FLOAT_SIMD_EPILOGUE == 1
 #define FLOAT_DEF_END_C(_W_ob, _C_ob)           \
-    c_tile_t c_tile[FLOAT_W_ob * FLOAT_C_ob];
+    c_tile_t c_tile[_W_ob * FLOAT_C_ob];
 #elif FLOAT_SIMD_EPILOGUE == 8
 #define FLOAT_DEF_END_C(_W_ob, _C_ob)                   \
     __m256 a_0, a_1, a_2, a_3, b_0, b_1;                \
-    __m256 c_tile[FLOAT_W_ob * FLOAT_C_ob/FLOAT_SIMD];
+    __m256 c_tile[_W_ob * FLOAT_C_ob/FLOAT_SIMD];
 #endif
 
 #define FLOAT_ZERO_TILE_C(W_ob, C_ob)     \

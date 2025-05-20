@@ -58,7 +58,9 @@ void inline kernel_left(
     //constexpr dim_t step = _stride * _C_ib;
 
     const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
-    FLOAT_DEF_END_C(_O_wb, _C_ob);
+
+    size_t _O_wb_required = (_O_wb > l_pad_el)? (_O_wb): (l_pad_el);
+    FLOAT_DEF_END_C(_O_wb_required, _C_ob);
 
     // left padding elements
     AccumT *O_ptr = O; // ScalarT -> AccumT
