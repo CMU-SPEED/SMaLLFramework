@@ -169,7 +169,7 @@ void abstract_layer_1D(
     dim_t W_back_index = W_full_index + _stride * (W_o_full);
     dim_t r_valid = I_w - W_back_index;
     //dim_t b_valid = I_h - H_back_index;
-    dim_t b_pad_el, r_pad_el;
+    dim_t r_pad_el; // b_pad_el,
 
     if constexpr (op_type == OP_UPSAMPLE)
     {

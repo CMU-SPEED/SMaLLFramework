@@ -48,7 +48,7 @@ bool run_conv1d_layer_config(LayerParams const &params)
     size_t padded_W = left_pad + W + right_pad;
     size_t padded_input_size = C_i * padded_W * B;
 
-    printf(" output dims: %d %d %d %d\n", C_o, Wo, B, output_size);
+    printf(" output dims: %ld %ld %ld %ld\n", C_o, Wo, B, output_size);
     // Allocate
     BufferT input_dc(input_size);
     BufferT filter_dc(filter_size);

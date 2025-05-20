@@ -507,7 +507,7 @@ void init_arange(BufferT &ptr, uint32_t H, uint32_t W, uint32_t C)
                 for (size_t ii = 0; ii < _C_ob; ii++)
                 {
                     /// @todo Should this be: ii*i + k*C + j*(W*C) ??
-                    *(cur_ptr++) =  (ScalarT)( j*W + k);
+                    *(cur_ptr++) =  (ScalarT)(ii + i + k*(C) + j*(W*C));
                 }
             }
         }
@@ -615,8 +615,7 @@ void pad_1D(BufferT const &input_dc, size_t C_i, size_t B, size_t W,
             BufferT &padded_input_dc)
 {
     size_t padded_W = W + left_pad + right_pad;
-    size_t padded_size = C_i * B * padded_W * _C_ob;
-
+    //size_t padded_size = C_i * B * padded_W * _C_ob;
 
     // Copy the input data into the padded buffer
 

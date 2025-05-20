@@ -67,7 +67,7 @@ bool run_conv2d_layer_config(LayerParams const &params)
     // Initialize filters: all ones
     small::init(filter_dc, filter_size);
 
-        printf(" output dims: %d %d %d %d\n", C_o, Wo, Ho, output_size);
+    printf(" output dims: %ld %ld %ld %ld\n", C_o, Wo, Ho, output_size);
 
     //print unpadded input
     // std::cerr << "Unpadded input: " << std::endl;
