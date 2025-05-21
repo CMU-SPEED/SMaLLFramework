@@ -557,6 +557,32 @@ namespace small
         c_pixel += C_ob;                              \
     }
 
+#define FLOAT_EWISE_ADD_SCALAR_TILE_C(scalar, W_ob, C_ob)     \
+    float *c_pixel = c_tile;                   \
+    for (uint32_t kk = 0; kk < W_ob; kk++)     \
+    {                                          \
+        float *c_channel = c_pixel;            \
+        for (uint32_t jj = 0; jj < C_ob; jj++) \
+        {                                      \
+            *(c_channel) += scalar;              \
+            c_channel++;                       \
+        }                                      \
+        c_pixel += C_ob;                       \
+    }
+
+#define FLOAT_EWISE_ADD_SCALAR_END_C(c_cur, scalar, W_last, C_ob)    \
+    float *c_pixel = c_cur;                           \
+    for (uint32_t kk = 0; kk < W_last; kk++)          \
+    {                                                 \
+        float *c_channel = c_pixel;                   \
+        for (uint32_t jj = 0; jj < C_ob; jj++)        \
+        {                                             \
+            *(c_channel) += scalar;                     \
+            c_channel++;                              \
+        }                                             \
+        c_pixel += C_ob;                              \
+    }
+
 //****************************************************************************
 // Accumulate upsampling
 //****************************************************************************

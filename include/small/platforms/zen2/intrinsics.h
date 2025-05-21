@@ -904,6 +904,50 @@ for (uint32_t kk = 0; kk < W_last; kk++)             \
         c_pixel += (C_ob/FLOAT_SIMD);               \
     }
 #endif
+
+//****************************************************************************
+// Broadcast Addition kernels
+//****************************************************************************
+
+#define FLOAT_EWISE_ADD_SCALAR_TILE_C(scalar, W_ob, C_ob) \
+    b0 = _mm256_broadcast_ss(&scalar);       \
+    c0 = _mm256_add_ps(b0, c0);            \
+    c1 = _mm256_add_ps(b0, c1);            \
+    c2 = _mm256_add_ps(b0, c2);            \
+    c3 = _mm256_add_ps(b0, c3);            \
+    c4 = _mm256_add_ps(b0, c4);            \
+    c5 = _mm256_add_ps(b0, c5);            \
+    c6 = _mm256_add_ps(b0, c6);            \
+    c7 = _mm256_add_ps(b0, c7);            \
+    c8 = _mm256_add_ps(b0, c8);            \
+    c9 = _mm256_add_ps(b0, c9);            \
+    c10 = _mm256_add_ps(b0, c10);          \
+    c11 = _mm256_add_ps(b0, c11);           
+
+#if FLOAT_SIMD_EPILOGUE == 1
+#define FLOAT_EWISE_ADD_SCALAR_END_C(c_cur, scalar, W_last, C_ob) \
+    float *c_pixel = c_cur;                        \
+    for (uint32_t kk = 0; kk < W_last; kk++)       \
+    {                                              \
+        float *c_channel = c_pixel;                \
+        for (uint32_t jj = 0; jj < C_ob; jj++)     \
+        {                                          \
+            *(c_channel) += scalar;                  \
+            c_channel++;                           \
+        }                                          \
+        c_pixel += C_ob;                           \
+    }
+#elif FLOAT_SIMD_EPILOGUE == 8
+#define FLOAT_EWISE_ADD_SCALAR_END_C(c_cur, scalar, W_last, C_ob) \
+    b_0 = _mm256_broadcast_ss(&scalar);              \
+    __m256 *c_pixel = c_cur;                       \
+    for (uint32_t kk = 0; kk < W_last; kk++)       \
+    {                                              \
+        c_pixel[0] = _mm256_add_ps(b_0, c_pixel[0]);\
+        c_pixel[1] = _mm256_add_ps(b_0, c_pixel[1]);\
+        c_pixel += (C_ob/FLOAT_SIMD);               \
+    }
+#endif
 //****************************************************************************
 // Accumulate upsampling
 //****************************************************************************

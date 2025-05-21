@@ -715,6 +715,66 @@ else\
 #endif
 
 //****************************************************************************
+// Broadcast addition kernels
+//****************************************************************************
+
+#define FLOAT_EWISE_ADD_SCALAR_TILE_C(scalar, W_ob, C_ob)        \
+     float32x4_t av;                                     \
+     av = vld1q_dup_f32(&scalar);\
+    c_0_0 = vaddq_f32(c_0_0, av);                       \
+    c_0_1 = vaddq_f32(c_0_1, av);                       \
+    c_0_2 = vaddq_f32(c_0_2, av);                       \
+    c_0_3 = vaddq_f32(c_0_3, av);                       \
+    c_1_0 = vaddq_f32(c_1_0, av);                       \
+    c_1_1 = vaddq_f32(c_1_1, av);                       \
+    c_1_2 = vaddq_f32(c_1_2, av);                       \
+    c_1_3 = vaddq_f32(c_1_3, av);                       \
+    c_2_0 = vaddq_f32(c_2_0, av);                       \
+    c_2_1 = vaddq_f32(c_2_1, av);                       \
+    c_2_2 = vaddq_f32(c_2_2, av);                       \
+    c_2_3 = vaddq_f32(c_2_3, av);                       \
+    c_3_0 = vaddq_f32(c_3_0, av);                       \
+    c_3_1 = vaddq_f32(c_3_1, av);                       \
+    c_3_2 = vaddq_f32(c_3_2, av);                       \
+    c_3_3 = vaddq_f32(c_3_3, av);                       \
+    c_4_0 = vaddq_f32(c_4_0, av);                       \
+    c_4_1 = vaddq_f32(c_4_1, av);                       \
+    c_4_2 = vaddq_f32(c_4_2, av);                       \
+    c_4_3 = vaddq_f32(c_4_3, av);                       \
+    c_5_0 = vaddq_f32(c_5_0, av);                       \
+    c_5_1 = vaddq_f32(c_5_1, av);                       \
+    c_5_2 = vaddq_f32(c_5_2, av);                       \
+    c_5_3 = vaddq_f32(c_5_3, av);
+
+#if FLOAT_SIMD_EPILOGUE == 1
+#define FLOAT_EWISE_ADD_SCALAR_END_C(c_cur, scalar, W_last, C_ob) \
+  float *c_pixel = c_cur;                  \
+  for (uint32_t kk = 0; kk < W_last; kk++)  \
+  {                                         \
+    float *c_channel = c_pixel;             \
+    for (uint32_t jj = 0; jj < C_ob; jj++)  \
+    {                                       \
+      *(c_channel) += scalar;                 \
+      c_channel++;                          \
+    }                                       \
+    c_pixel += C_ob;                        \
+    }
+#else
+#define FLOAT_EWISE_ADD_SCALAR_END_C(c_cur, scalar, W_last, C_ob)                      \
+  float32x4_t av;                                                \
+  av = vld1q_dup_f32(&scalar);                                     \
+  float32x4_t *c_pixel = c_cur;                                   \
+  for (uint32_t kk = 0; kk < W_last; kk++)                       \
+  {                                                              \
+    for (uint32_t jj = 0; jj < C_ob / FLOAT_SIMD; jj++)          \
+    {                                                            \
+      c_pixel[(kk) * (C_ob / FLOAT_SIMD) + jj] =                   \
+          vaddq_f32(c_pixel[(kk) * (C_ob / FLOAT_SIMD) + jj], av); \
+    }                                                            \
+    }
+#endif
+
+//****************************************************************************
 // Softmax  (Ewise exponentiation)
 //****************************************************************************
 
