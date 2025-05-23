@@ -1230,68 +1230,109 @@ if constexpr(_C_ob == 1 && _C_ob != FLOAT_SIMD_EPILOGUE)\
 // Softsign Activation
 //****************************************************************************
 
+#if 0
 #define FLOAT_SOFTSIGN_TILE_C(step, a, W_ob, C_ob) \
-    c12 = _mm256_castsi256_ps(_mm256_set1_epi32(0x7fffffff));                \    
-    b0 = _mm256_load_ps(a + (0 * step));          \
-    c0 = _mm256_set1_ps(1.0f);                    \
-    a_reg = _mm256_and_ps(c12, b0);            \
-    c0 = _mm256_add_ps(c0, a_reg);                \           
-    c0 = _mm256_div_ps(b0, c0);                   \
-    b1 = _mm256_load_ps(a + (0 * step) + FLOAT_SIMD); \
-    c1 = _mm256_set1_ps(1.0f);                    \
-    a_reg = _mm256_and_ps(c12, b1);            \
-    c1 = _mm256_add_ps(c1, a_reg);                \
-    c1 = _mm256_div_ps(b1, c1);                   \
-    b0 = _mm256_load_ps(a + (1 * step));          \
-    c2 = _mm256_set1_ps(1.0f);                    \
-    a_reg = _mm256_and_ps(c12, b0);            \
-    c2 = _mm256_add_ps(c2, a_reg);                \
-    c2 = _mm256_div_ps(b0, c2);                   \
-    b1 = _mm256_load_ps(a + (1 * step) + FLOAT_SIMD); \
-    c3 = _mm256_set1_ps(1.0f);                    \
-    a_reg = _mm256_and_ps(c12, b1);            \
-    c3 = _mm256_add_ps(c3, a_reg);                \
-    c3 = _mm256_div_ps(b1, c3);                   \
-    b0 = _mm256_load_ps(a + (2 * step));          \
-    c4 = _mm256_set1_ps(1.0f);                    \
-    a_reg = _mm256_and_ps(c12, b0);            \
-    c4 = _mm256_add_ps(c4, a_reg);                \
-    c4 = _mm256_div_ps(b0, c4);                   \
-    b1 = _mm256_load_ps(a + (2 * step) + FLOAT_SIMD); \
-    c5 = _mm256_set1_ps(1.0f);                    \
-    a_reg = _mm256_and_ps(c12, b1);            \
-    c5 = _mm256_add_ps(c5, a_reg);                \
-    c5 = _mm256_div_ps(b1, c5);                   \
-    b0 = _mm256_load_ps(a + (3 * step));          \
-    c6 = _mm256_set1_ps(1.0f);                    \
-    a_reg = _mm256_and_ps(c12, b0);            \
-    c6 = _mm256_add_ps(c6, a_reg);                \
-    c6 = _mm256_div_ps(b0, c6);                   \
-    b1 = _mm256_load_ps(a + (3 * step) + FLOAT_SIMD); \
-    c7 = _mm256_set1_ps(1.0f);                    \
-    a_reg = _mm256_and_ps(c12, b1);            \
-    c7 = _mm256_add_ps(c7, a_reg);                \
-    c7 = _mm256_div_ps(b1, c7);                   \
-    b0 = _mm256_load_ps(a + (4 * step));          \
-    c8 = _mm256_set1_ps(1.0f);                    \
-    a_reg = _mm256_and_ps(c12, b0);            \
-    c8 = _mm256_add_ps(c8, a_reg);                \
-    c8 = _mm256_div_ps(b0, c8);                   \
-    b1 = _mm256_load_ps(a + (4 * step) + FLOAT_SIMD); \
-    c9 = _mm256_set1_ps(1.0f);                    \
-    a_reg = _mm256_and_ps(c12, b1);            \
-    c9 = _mm256_add_ps(c9, a_reg);                \
-    c9 = _mm256_div_ps(b1, c9);                   \
-    b0 = _mm256_load_ps(a + (5 * step));          \
-    c10 = _mm256_set1_ps(1.0f);                   \
-    a_reg = _mm256_and_ps(c12, b0);            \
-    c10 = _mm256_add_ps(c10, a_reg);              \
-    c10 = _mm256_div_ps(b0, c10);                 \
-    b1 = _mm256_load_ps(a + (5 * step) + FLOAT_SIMD); \
-    c11 = _mm256_set1_ps(1.0f);                   \
-    a_reg = _mm256_and_ps(c12, b1);            \
-    c11 = _mm256_add_ps(c11, a_reg);              \
-    c11 = _mm256_div_ps(b1, c11);                 
+    c12 = _mm256_set1_ps(1.0f);                                             \
+    b0 = _mm256_load_ps(a + (0 * step));                                    \
+    a_reg = _mm256_castsi256_ps(_mm256_srli_epi32(_mm256_slli_epi32(_mm256_castps_si256(b0), 1),1)); \
+    c0 = _mm256_add_ps(c12, a_reg);                                         \
+    c0 = _mm256_mul_ps(_mm256_rcp_ps(c0), b0);                                             \
+    b1 = _mm256_load_ps(a + (0 * step) + FLOAT_SIMD);                      \
+    a_reg = _mm256_castsi256_ps(_mm256_srli_epi32(_mm256_slli_epi32(_mm256_castps_si256(b1), 1),1)); \
+    c1 = _mm256_add_ps(c12, a_reg);                                         \
+    c1 = _mm256_mul_ps(_mm256_rcp_ps(c1), b1);                                             \
+    b0 = _mm256_load_ps(a + (1 * step));                                    \
+    a_reg = _mm256_castsi256_ps(_mm256_srli_epi32(_mm256_slli_epi32(_mm256_castps_si256(b0), 1),1)); \
+    c2 = _mm256_add_ps(c12, a_reg);                                         \
+    c2 = _mm256_mul_ps(_mm256_rcp_ps(c2), b0);                                  \
+    b1 = _mm256_load_ps(a + (1 * step) + FLOAT_SIMD);                      \
+    a_reg = _mm256_castsi256_ps(_mm256_srli_epi32(_mm256_slli_epi32(_mm256_castps_si256(b1), 1),1)); \
+    c3 = _mm256_add_ps(c12, a_reg);                                         \
+    c3 = _mm256_mul_ps(_mm256_rcp_ps(c3), b1);                                       \
+    b0 = _mm256_load_ps(a + (2 * step));                                    \
+    a_reg = _mm256_castsi256_ps(_mm256_srli_epi32(_mm256_slli_epi32(_mm256_castps_si256(b0), 1),1)); \
+    c4 = _mm256_add_ps(c12, a_reg);                                         \
+    c4 = _mm256_mul_ps(_mm256_rcp_ps(c4), b0);                                       \
+    b1 = _mm256_load_ps(a + (2 * step) + FLOAT_SIMD);                      \
+    a_reg = _mm256_castsi256_ps(_mm256_srli_epi32(_mm256_slli_epi32(_mm256_castps_si256(b1), 1),1)); \
+    c5 = _mm256_add_ps(c12, a_reg);                                         \
+    c5 = _mm256_mul_ps(_mm256_rcp_ps(c5), b1);                                    \
+    b0 = _mm256_load_ps(a + (3 * step));                                    \
+    a_reg = _mm256_castsi256_ps(_mm256_srli_epi32(_mm256_slli_epi32(_mm256_castps_si256(b0), 1),1)); \
+    c6 = _mm256_add_ps(c12, a_reg);                                         \
+    c6 = _mm256_mul_ps(_mm256_rcp_ps(c6), b0);                                     \
+    b1 = _mm256_load_ps(a + (3 * step) + FLOAT_SIMD);                      \
+    a_reg = _mm256_castsi256_ps(_mm256_srli_epi32(_mm256_slli_epi32(_mm256_castps_si256(b1), 1),1)); \
+    c7 = _mm256_add_ps(c12, a_reg);                                         \
+    c7 = _mm256_mul_ps(_mm256_rcp_ps(c7), b1);                                       \
+    b0 = _mm256_load_ps(a + (4 * step));                                    \
+    a_reg = _mm256_castsi256_ps(_mm256_srli_epi32(_mm256_slli_epi32(_mm256_castps_si256(b0), 1),1)); \
+    c8 = _mm256_add_ps(c12, a_reg);                                         \
+    c8 = _mm256_mul_ps(_mm256_rcp_ps(c8), b0);                                      \
+    b1 = _mm256_load_ps(a + (4 * step) + FLOAT_SIMD);                      \
+    a_reg = _mm256_castsi256_ps(_mm256_srli_epi32(_mm256_slli_epi32(_mm256_castps_si256(b1), 1),1)); \
+    c9 = _mm256_add_ps(c12, a_reg);                                         \
+    c9 = _mm256_mul_ps(_mm256_rcp_ps(c9), b1);                                    \
+    b0 = _mm256_load_ps(a + (5 * step));                                    \
+    a_reg = _mm256_castsi256_ps(_mm256_srli_epi32(_mm256_slli_epi32(_mm256_castps_si256(b0), 1),1)); \
+    c10 = _mm256_add_ps(c12, a_reg);                                        \
+    c10 = _mm256_mul_ps(_mm256_rcp_ps(c10), b0);                                       \
+    b1 = _mm256_load_ps(a + (5 * step) + FLOAT_SIMD);                      \
+    a_reg = _mm256_castsi256_ps(_mm256_srli_epi32(_mm256_slli_epi32(_mm256_castps_si256(b1), 1),1)); \
+    c11 = _mm256_add_ps(c12, a_reg);                                        \
+    c11 = _mm256_mul_ps(_mm256_rcp_ps(c11), b1);  
+#endif
+
+#define FLOAT_SOFTSIGN_TILE_C(step, a, W_ob, C_ob) \
+    c12 = _mm256_set1_ps(1.0f);                                             \
+    b0 = _mm256_load_ps(a + (0 * step));                                    \
+    a_reg = _mm256_castsi256_ps(_mm256_srli_epi32(_mm256_slli_epi32(_mm256_castps_si256(b0), 1),1)); \
+    c0 = _mm256_add_ps(c12, a_reg);                                         \
+    c0 = _mm256_div_ps(b0, c0);                                             \
+    b1 = _mm256_load_ps(a + (0 * step) + FLOAT_SIMD);                      \
+    a_reg = _mm256_castsi256_ps(_mm256_srli_epi32(_mm256_slli_epi32(_mm256_castps_si256(b1), 1),1)); \
+    c1 = _mm256_add_ps(c12, a_reg);                                         \
+    c1 = _mm256_div_ps(b1, c1);                                             \
+    b0 = _mm256_load_ps(a + (1 * step));                                    \
+    a_reg = _mm256_castsi256_ps(_mm256_srli_epi32(_mm256_slli_epi32(_mm256_castps_si256(b0), 1),1)); \
+    c2 = _mm256_add_ps(c12, a_reg);                                         \
+    c2 = _mm256_div_ps(b0, c2);                                             \
+    b1 = _mm256_load_ps(a + (1 * step) + FLOAT_SIMD);                      \
+    a_reg = _mm256_castsi256_ps(_mm256_srli_epi32(_mm256_slli_epi32(_mm256_castps_si256(b1), 1),1)); \
+    c3 = _mm256_add_ps(c12, a_reg);                                         \
+    c3 = _mm256_div_ps(b1, c3);                                             \
+    b0 = _mm256_load_ps(a + (2 * step));                                    \
+    a_reg = _mm256_castsi256_ps(_mm256_srli_epi32(_mm256_slli_epi32(_mm256_castps_si256(b0), 1),1)); \
+    c4 = _mm256_add_ps(c12, a_reg);                                         \
+    c4 = _mm256_div_ps(b0, c4);                                             \
+    b1 = _mm256_load_ps(a + (2 * step) + FLOAT_SIMD);                      \
+    a_reg = _mm256_castsi256_ps(_mm256_srli_epi32(_mm256_slli_epi32(_mm256_castps_si256(b1), 1),1)); \
+    c5 = _mm256_add_ps(c12, a_reg);                                         \
+    c5 = _mm256_div_ps(b1, c5);                                             \
+    b0 = _mm256_load_ps(a + (3 * step));                                    \
+    a_reg = _mm256_castsi256_ps(_mm256_srli_epi32(_mm256_slli_epi32(_mm256_castps_si256(b0), 1),1)); \
+    c6 = _mm256_add_ps(c12, a_reg);                                         \
+    c6 = _mm256_div_ps(b0, c6);                                             \
+    b1 = _mm256_load_ps(a + (3 * step) + FLOAT_SIMD);                      \
+    a_reg = _mm256_castsi256_ps(_mm256_srli_epi32(_mm256_slli_epi32(_mm256_castps_si256(b1), 1),1)); \
+    c7 = _mm256_add_ps(c12, a_reg);                                         \
+    c7 = _mm256_div_ps(b1, c7);                                             \
+    b0 = _mm256_load_ps(a + (4 * step));                                    \
+    a_reg = _mm256_castsi256_ps(_mm256_srli_epi32(_mm256_slli_epi32(_mm256_castps_si256(b0), 1),1)); \
+    c8 = _mm256_add_ps(c12, a_reg);                                         \
+    c8 = _mm256_div_ps(b0, c8);                                             \
+    b1 = _mm256_load_ps(a + (4 * step) + FLOAT_SIMD);                      \
+    a_reg = _mm256_castsi256_ps(_mm256_srli_epi32(_mm256_slli_epi32(_mm256_castps_si256(b1), 1),1)); \
+    c9 = _mm256_add_ps(c12, a_reg);                                         \
+    c9 = _mm256_div_ps(b1, c9);                                             \
+    b0 = _mm256_load_ps(a + (5 * step));                                    \
+    a_reg = _mm256_castsi256_ps(_mm256_srli_epi32(_mm256_slli_epi32(_mm256_castps_si256(b0), 1),1)); \
+    c10 = _mm256_add_ps(c12, a_reg);                                        \
+    c10 = _mm256_div_ps(b0, c10);                                           \
+    b1 = _mm256_load_ps(a + (5 * step) + FLOAT_SIMD);                      \
+    a_reg = _mm256_castsi256_ps(_mm256_srli_epi32(_mm256_slli_epi32(_mm256_castps_si256(b1), 1),1)); \
+    c11 = _mm256_add_ps(c12, a_reg);                                        \
+    c11 = _mm256_div_ps(b1, c11);
 
 #define FLOAT_SOFTSIGN_END_C(step, a, c_cur, W_last, C_ob) \
     c_tile_t *c_pixel = c_cur;                                  \
@@ -1302,7 +1343,7 @@ if constexpr(_C_ob == 1 && _C_ob != FLOAT_SIMD_EPILOGUE)\
         c_tile_t const *a_channel = a_pixel;                    \
         for (uint32_t jj = 0; jj < C_ob; jj++)                  \
         {                                                       \
-            *(c_channel) = *(a_channel) / (1.0 + std::abs(*a_channel)); \
+            *(c_channel) = *(a_channel) / (1.0f + std::abs(*a_channel)); \
             c_channel++;                                        \
             a_channel++;                                        \
         }                                                       \
@@ -1358,7 +1399,7 @@ if constexpr(_C_ob == 1 && _C_ob != FLOAT_SIMD_EPILOGUE)\
         c_tile_t *c_channel = c_pixel;             \
         for (uint32_t jj = 0; jj < C_ob; jj++)     \
         {                                          \
-            *(c_channel) = *(c_channel) / (1.0 + std::abs(*(c_channel))); \
+            *(c_channel) = *(c_channel) / (1.0f + std::abs(*(c_channel))); \
             c_channel++;                           \
         }                                          \
         c_pixel += C_ob;                           \
