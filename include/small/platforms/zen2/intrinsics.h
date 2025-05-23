@@ -714,10 +714,10 @@ for (uint32_t kk = 0; kk < W_last; kk++)             \
     b1 = _mm256_and_ps(b1, c3);                      \
     a_reg = _mm256_mul_ps(a_reg, c12);               \
     b1 = _mm256_mul_ps(b1, c12);                     \
-    c0 = _mm256_max_ps(b0, c2);                      \
-    c1 = _mm256_max_ps(b0, c3);                      \
-    c0 = _mm256_add_ps(a_reg, c2);                   \
-    c1 = _mm256_add_ps(b1, c3);                      \
+    c2 = _mm256_max_ps(b0, c2);                      \
+    c3 = _mm256_max_ps(b0, c3);                      \
+    c2 = _mm256_add_ps(a_reg, c2);                   \
+    c3 = _mm256_add_ps(b1, c3);                      \
     /**/                                             \
     a_reg = _mm256_cmp_ps(c4, b0, _CMP_LT_OS);       \
     b1 = _mm256_cmp_ps(c5, b0, _CMP_LT_OS);          \
