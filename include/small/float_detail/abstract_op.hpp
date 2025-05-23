@@ -59,7 +59,11 @@ namespace float_detail
     else if constexpr (op_type == OP_EXP)                                \
     {                                                                    \
         FLOAT_EXP_TILE_C(step, a_cur, O_wb, C_ob);                        \
-    }
+    }                                                                   \
+    else if constexpr (op_type == OP_SOFTSIGN)                           \
+    {                                                                    \
+        FLOAT_SOFTSIGN_TILE_C(step, a_cur, O_wb, C_ob);                   \
+    }                                                                    
 
 //****************************************************************************
 #define FLOAT_ABSTRACT_OP_END(step, op_type, op_class, a_cur, b_cur, c_cur, W_elements, C_ob) \
@@ -99,7 +103,11 @@ namespace float_detail
     else if constexpr (op_type == OP_EXP)                                     \
     {                                                                         \
         FLOAT_EXP_END_C(step, a_cur, c_cur,  W_elements, C_ob);               \
-    }
+    }                                                                           \
+    else if constexpr (op_type == OP_SOFTSIGN)                                \
+    {                                                                         \
+        FLOAT_SOFTSIGN_END_C(step, a_cur, c_cur, W_elements, C_ob);           \
+    }   
 
 //****************************************************************************
 #define FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_TILE(step, op_type, op_class, b_cur, O_wb, C_ob) \
@@ -128,7 +136,7 @@ namespace float_detail
     else if constexpr (op_type == OP_EXP)                               \
     {                                                                   \
         FLOAT_FUSED_EXP_TILE_C(O_wb, C_ob) ;                            \
-    }
+    }                                                      
 
 //****************************************************************************
 #define FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_END(step, op_type, op_class, b_cur, c_cur, W_elements, C_ob) \
@@ -157,7 +165,7 @@ namespace float_detail
     else if constexpr (op_type == OP_EXP)                               \
     {                                                                   \
         FLOAT_FUSED_EXP_END_C(c_cur, W_elements, C_ob) ;                \
-    }
+    }                                                                   
 
 //****************************************************************************
 #define FLOAT_ABSTRACT_SINGLE_ELEMENT_UPSAMPLE_OP_END(out_step, op_type, op_class) \

@@ -2222,4 +2222,42 @@ void Dense(int output_elements, int input_elements,
 }
 #endif
 
-} // small
+//===========================================================================
+#if defined(SMALL_HAS_FLOAT_SUPPORT)
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<FloatBuffer, BufferT>::value, bool> = true>
+void SoftSign(int input_channels,
+              int input_height, int input_width,
+              BufferT const &input_buf,
+              BufferT       &output_buf)
+{
+#if defined(RECORD_CALLS)
+    std::cout << "SoftSign<float>(chans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I,O)\n";
+#endif
+
+    if (input_channels % FLOAT_C_ib == 0)
+    {
+        float_detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_SOFTSIGN, 0, 1>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            1, 1,
+            0, 0, 0, 0,
+            &input_buf, (FloatBuffer *)nullptr, &output_buf);
+    }
+    else
+    {
+        throw std::invalid_argument(
+            "SoftSign<float> ERROR: in_channels unsupported.");
+    }
+
+}
+#endif
+
+} // namespace: small
+
