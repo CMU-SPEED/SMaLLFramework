@@ -31,7 +31,7 @@
 // ================== Public API ====================
 #include <small/utils.hpp>
 #include <small/buffers.hpp>
-#include <small/interface.hpp>
+// #include <small/interface.hpp>
 
 
 #include <small/interface_abstract.hpp>
