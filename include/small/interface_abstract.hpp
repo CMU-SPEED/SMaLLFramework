@@ -1866,6 +1866,8 @@ void LogSoftMax(int input_channels,
 
         // global sum
         FloatBuffer softmax_norm_buf(1);
+        //float_detail::abstract_layer<
+        //    FloatBuffer, 1, 1, num_effective_input_channels, FLOAT_W_ob, 1, FLOAT_C_ob, OP_ADD, 3, 1>(
         float_detail::abstract_layer<
             FloatBuffer, 1, 1, FLOAT_C_ob, FLOAT_W_ob, 1, FLOAT_C_ob, OP_ADD, 3, 1>(
             1, // Output Channel Grouping
