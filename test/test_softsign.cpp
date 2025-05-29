@@ -32,7 +32,7 @@ void test_correctness_FLOAT_SOFTSIGN_TILE(void)
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
     using BufferT = FloatBuffer;
     using ScalarT = typename BufferT::value_type;
-
+    srand(time(0));
     size_t const INPUT_SIZE = FLOAT_W_ob * FLOAT_C_ib;
     BufferT input_buf(INPUT_SIZE);
     for (size_t ix = 0; ix < INPUT_SIZE; ++ix) input_buf[ix] = 2.0 * ((float)rand() / RAND_MAX) - 1;
@@ -70,11 +70,61 @@ void test_correctness_FLOAT_SOFTSIGN_TILE(void)
 #endif 
 }
 
+void test_correctness_individual_FLOAT_SOFTSIGN_TILE(void)
+{
+#if defined(SMALL_HAS_FLOAT_SUPPORT)
+    using BufferT = FloatBuffer;
+    using ScalarT = typename BufferT::value_type;
+    srand(time(0));
+    size_t const INPUT_SIZE = FLOAT_W_ob * FLOAT_C_ib;
+    BufferT input_buf(INPUT_SIZE);
+    for (size_t ix = 0; ix < INPUT_SIZE; ++ix) input_buf[ix] = 2.0 * ((float)rand() / RAND_MAX) - 1;
+
+    size_t const OUTPUT_SIZE = FLOAT_W_ob * FLOAT_C_ob;
+    BufferT output_buf(OUTPUT_SIZE);
+    for (size_t ix = 0; ix < OUTPUT_SIZE; ++ix) output_buf[ix] = 0.0f;
+
+    std::cout << std::endl;
+
+    ScalarT *a_cur = input_buf.data();
+    constexpr dim_t _stride = 1U;
+    constexpr dim_t step = FLOAT_C_ob * _stride;
+    const float scalar = 1.0f;
+
+    //==================================================
+    FLOAT_DEF_TILE_C(FLOAT_W_ob, FLOAT_C_ob);
+
+    FLOAT_ZERO_TILE_C(FLOAT_W_ob, FLOAT_C_ob);
+    // FLOAT_LOAD_TILE_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
+    {
+    FLOAT_ABS_TILE_C(step, a_cur, FLOAT_W_ob, FLOAT_C_ob);
+    }
+    {
+    FLOAT_EWISE_ADD_SCALAR_TILE_C(scalar, FLOAT_W_ob, FLOAT_C_ob);
+    }
+    {
+    FLOAT_FUSED_DIV_TILE_C(step, a_cur, FLOAT_W_ob, FLOAT_C_ob);
+    }
+    FLOAT_STORE_TILE_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
+    //==================================================
+
+    for (dim_t ii = 0; ii < FLOAT_W_ob; ++ii)
+    {
+        for (dim_t jj = 0; jj < FLOAT_C_ob; ++jj)
+        {
+            size_t ix = ii*FLOAT_C_ob + jj;
+            // std::cout << output_buf[ix] << " " << (float)(input_buf[ix]/(1.0f + std::abs(input_buf[ix]))) << " " << input_buf[ix] << " " << ix << std::endl;
+            TEST_CHECK(output_buf[ix] == input_buf[ix]/(1.0f + std::abs(input_buf[ix])));
+        }
+    }
+#endif 
+}
+
 void test_correctness_FLOAT_FUSED_SOFTSIGN_TILE(void)
 {
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
     using BufferT = FloatBuffer;
-
+    srand(time(0));
     size_t const INPUT_SIZE = FLOAT_W_ob * FLOAT_C_ib;
     BufferT input_buf(INPUT_SIZE);
     for (size_t ix = 0; ix < INPUT_SIZE; ++ix) input_buf[ix] = 2.0 * ((float)rand() / RAND_MAX) - 1;
@@ -108,13 +158,49 @@ void test_correctness_FLOAT_FUSED_SOFTSIGN_TILE(void)
 #endif 
 }
 
+
+#define REPEAT_10(macro) \
+    macro; macro; macro; macro; macro; \
+    macro; macro; macro; macro; macro;
+
+#define REPEAT_100(macro) \
+    REPEAT_10(macro) REPEAT_10(macro) REPEAT_10(macro) REPEAT_10(macro) REPEAT_10(macro) \
+    REPEAT_10(macro) REPEAT_10(macro) REPEAT_10(macro) REPEAT_10(macro) REPEAT_10(macro)
+
+#define REPEAT_1000(macro) \
+    REPEAT_100(macro) REPEAT_100(macro) REPEAT_100(macro) REPEAT_100(macro) REPEAT_100(macro) \
+    REPEAT_100(macro) REPEAT_100(macro) REPEAT_100(macro) REPEAT_100(macro) REPEAT_100(macro)
+
+#define SOFTSIGN_CALL \
+    FLOAT_SOFTSIGN_TILE_C(step, a_cur, FLOAT_W_ob, FLOAT_C_ob); \
+    result_accumulator = _mm256_add_ps(result_accumulator,  \
+            _mm256_add_ps(_mm256_add_ps(c0, c1), _mm256_add_ps(c2, c3))); \
+    result_accumulator = _mm256_add_ps(result_accumulator,  \
+            _mm256_add_ps(_mm256_add_ps(c4, c5), _mm256_add_ps(c6, c7))); \
+    result_accumulator = _mm256_add_ps(result_accumulator,  \
+            _mm256_add_ps(_mm256_add_ps(c8, c9), _mm256_add_ps(c10, c11))); \
+    a_cur += FLOAT_W_ob * FLOAT_C_ib; 
+
+#define INDIVIDUAL_SOFTSIGN_CALL \
+    {FLOAT_ABS_TILE_C(step, a_cur, FLOAT_W_ob, FLOAT_C_ob);} \
+    {const float scalar = 1.0f; FLOAT_EWISE_ADD_SCALAR_TILE_C(scalar, FLOAT_W_ob, FLOAT_C_ob);} \
+    {FLOAT_FUSED_DIV_TILE_C(step, a_cur, FLOAT_W_ob, FLOAT_C_ob);} \
+    result_accumulator = _mm256_add_ps(result_accumulator,  \
+            _mm256_add_ps(_mm256_add_ps(c0, c1), _mm256_add_ps(c2, c3))); \
+    result_accumulator = _mm256_add_ps(result_accumulator,  \
+            _mm256_add_ps(_mm256_add_ps(c4, c5), _mm256_add_ps(c6, c7))); \
+    result_accumulator = _mm256_add_ps(result_accumulator,  \
+            _mm256_add_ps(_mm256_add_ps(c8, c9), _mm256_add_ps(c10, c11))); \
+    a_cur += FLOAT_W_ob * FLOAT_C_ib;
+
+#if 1
 void test_performance_FLOAT_SOFTSIGN_TILE(void)
 {
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
     using BufferT = FloatBuffer;
     using ScalarT = typename BufferT::value_type;
-
-    volatile size_t const num_trails = 65536 * 4;
+    srand(time(0));
+    size_t const num_trails = 1000000;
     size_t const INPUT_SIZE = FLOAT_W_ob * FLOAT_C_ib * num_trails;
     BufferT input_buf(INPUT_SIZE);
     for (size_t ix = 0; ix < INPUT_SIZE; ++ix) input_buf[ix] = 2.0 * ((float)rand() / RAND_MAX) - 1;
@@ -122,7 +208,7 @@ void test_performance_FLOAT_SOFTSIGN_TILE(void)
     size_t const OUTPUT_SIZE = FLOAT_W_ob * FLOAT_C_ob;
     BufferT output_buf(OUTPUT_SIZE);
     for (size_t ix = 0; ix < OUTPUT_SIZE; ++ix) output_buf[ix] = 0.0f;
-
+    
     std::cout << std::endl;
 
     ScalarT *a_cur = input_buf.data();
@@ -138,37 +224,92 @@ void test_performance_FLOAT_SOFTSIGN_TILE(void)
     double tx(0.);
     double min_t = std::numeric_limits<double>::max();
     double max_t = 0.;
-    for (volatile size_t iy = 0; iy < 10; ++iy)
+    Timer my_timer;
+    __m256 result_accumulator = _mm256_setzero_ps();
+    for (size_t iy = 0; iy < num_trails / 100; ++iy)
     {
-        Timer my_timer;
+        
         my_timer.start();
-        #pragma GCC unroll 16
-        for (size_t ix = 0; ix < num_trails; ++ix)
-        {
-            
-            FLOAT_SOFTSIGN_TILE_C(step, a_cur, FLOAT_W_ob, FLOAT_C_ob);
-            a_cur += FLOAT_W_ob * FLOAT_C_ib;
-            
-        }
+        asm volatile("look_here:" ::: "memory");
+        REPEAT_100(SOFTSIGN_CALL);
+        // REPEAT_100(INDIVIDUAL_SOFTSIGN_CALL);
         my_timer.stop();
-
         auto elapsed = my_timer.elapsed();
-
         tx += elapsed;
         min_t = std::min(min_t, elapsed);
         max_t = std::max(max_t, elapsed);
     }
+    
+    const float cpu_freq = 3.2; // 2.5 GHz, adjust as needed
+    std::cout << "Min Ave time: " << min_t << " ns." << std::endl;
+    std::cout << "Max Ave time: " << max_t << " ns." << std::endl;
+    std::cout << "Peak: " << FLOAT_SIMD / (FLOAT_W_ob * FLOAT_C_ob / (min_t / 100 * cpu_freq))<< std::endl;
+    // a cross platform way to move results to the output buffer
+    FLOAT_STORE_TILE_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
+    _mm256_storeu_ps(output_buf.data(), result_accumulator);
+    std::cout << output_buf.data()[0] << std::endl;
+
+    //==================================================
+
+#endif
+}
+#endif
+
+void test_performance_FLOAT_FUSED_SOFTSIGN_TILE(void)
+{
+#if defined(SMALL_HAS_FLOAT_SUPPORT)
+    using BufferT = FloatBuffer;
+
+    volatile size_t const num_trails = 1000000;
+    size_t const INPUT_SIZE = FLOAT_W_ob * FLOAT_C_ib * num_trails;
+    BufferT input_buf(INPUT_SIZE);
+    for (size_t ix = 0; ix < INPUT_SIZE; ++ix) input_buf[ix] = 2.0 * ((float)rand() / RAND_MAX) - 1;
+
+    size_t const OUTPUT_SIZE = FLOAT_W_ob * FLOAT_C_ob;
+    BufferT output_buf(OUTPUT_SIZE);
+    for (size_t ix = 0; ix < OUTPUT_SIZE; ++ix) output_buf[ix] = input_buf[ix];
+
+    std::cout << std::endl;
+
+
+    //==================================================
+    FLOAT_DEF_TILE_C(FLOAT_W_ob, FLOAT_C_ob);
+
+    FLOAT_LOAD_TILE_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
+    
+    double tx(0.);
+    double min_t = std::numeric_limits<double>::max();
+    double max_t = 0.;
+    for (volatile size_t iy = 0; iy < 10; ++iy)
+    {
+        Timer my_timer;
         
+        #pragma GCC unroll 1
+        for (volatile size_t ix = 0; ix < num_trails; ++ix)
+        {   
+            my_timer.start();
+            FLOAT_FUSED_SOFTSIGN_TILE_C(FLOAT_W_ob, FLOAT_C_ob);
+            my_timer.stop();
+
+            auto elapsed = my_timer.elapsed();
+
+            tx += elapsed;
+            min_t = std::min(min_t, elapsed);
+            max_t = std::max(max_t, elapsed);
+        }
+    }
+    const float cpu_freq = 3.2; // 2.5 GHz, adjust as needed
     std::cout << "Min time: " << min_t << " ns." << std::endl;
     std::cout << "Max time: " << max_t << " ns." << std::endl;
     std::cout << "Avg time: " << (tx / num_trails / 10) << " ns." << std::endl;
-
+    std::cout << "Peak: " << FLOAT_SIMD / (FLOAT_W_ob * FLOAT_C_ob / (min_t * cpu_freq))<< std::endl;
     // a cross platform way to move results to the output buffer
     FLOAT_STORE_TILE_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
     //==================================================
 
 #endif
 }
+
 
 template <typename BufferT>
 BufferT create_softsign_data(size_t num_elements)
@@ -439,10 +580,14 @@ void measure_softsign_performance(void)
 TEST_LIST = {
     {"correctness FLOAT_SOFTSIGN_TILE",
      small::float_detail::test_correctness_FLOAT_SOFTSIGN_TILE},
+    {"correctness individual FLOAT_SOFTSIGN_TILE",
+     small::float_detail::test_correctness_individual_FLOAT_SOFTSIGN_TILE},
     // {"correctness FLOAT_FUSED_SOFTSIGN_TILE",
     //  small::float_detail::test_correctness_FLOAT_FUSED_SOFTSIGN_TILE},
     {"performance FLOAT_SOFTSIGN_TILE",
      small::float_detail::test_performance_FLOAT_SOFTSIGN_TILE},
+    // {"performance FLOAT_FUSED_SOFTSIGN_TILE",
+    //  small::float_detail::test_performance_FLOAT_FUSED_SOFTSIGN_TILE},
     // {"softsign single element",
     //  small::float_detail::test_softsign_single_element},
     // {"softsign single tile",
