@@ -103,6 +103,97 @@ bool compute_logsoftmax_output(LayerParams const &params)
     return true;
 }
 
+
+//****************************************************************************
+void test_logsoftmax_odd_channels(void)
+{
+#if !defined(QUANTIZED)
+    uint32_t H = 1; // image_height;
+    uint32_t W = 1; // image_width;
+    uint32_t logical_channels = 31;
+    uint32_t channels = logical_channels;
+
+    // Note: channels should be a multiple of channel blocking factor
+    // for all platforms
+    if ((channels % small::FloatBuffer::C_ob) != 0)
+    {
+        channels = channels + small::FloatBuffer::C_ob
+            -  (logical_channels % small::FloatBuffer::C_ob);
+    }
+
+    small::Tensor<small::FloatBuffer>  in_tensor({1, channels, H, W});
+    small::Tensor<small::FloatBuffer> out_tensor({1, channels, H, W});
+    small::init_zeros(in_tensor.buffer(), in_tensor.size());
+    in_tensor.buffer()[0] = 1.0f;
+    in_tensor.buffer()[channels - 1] = 10.0f;
+
+    float sum{0.f};
+    for (size_t ix = 0; ix < logical_channels; ++ix)
+    {
+        sum += std::exp(in_tensor.buffer()[ix]);
+    }
+    sum = -std::log(sum);
+
+    small::LogSoftMax(channels, logical_channels, H, W,
+                      in_tensor.buffer(), out_tensor.buffer());
+
+    for (size_t ix = 0; ix < channels; ++ix)
+    {
+        //std::cerr << ix << ":" << out_tensor.buffer()[ix] << "|"
+        //          << (in_tensor.buffer()[ix] + sum) << std::endl;
+        TEST_CHECK(out_tensor.buffer()[ix] == (in_tensor.buffer()[ix] + sum));
+        //std::cerr << ix << " in|out : " << in_tensor.buffer()[ix]
+        //          << "|" << out_tensor.buffer()[ix] << std::endl;
+    }
+#endif
+}
+
+//****************************************************************************
+void test_logsoftmax2_odd_channels(void)
+{
+#if !defined(QUANTIZED)
+    uint32_t H = 1; // image_height;
+    uint32_t W = 1; // image_width;
+    uint32_t logical_channels = 31;
+    uint32_t channels = logical_channels;
+
+    // Note: channels should be a multiple of channel blocking factor
+    // for all platforms
+    if ((channels % small::FloatBuffer::C_ob) != 0)
+    {
+        channels = channels + small::FloatBuffer::C_ob
+            -  (logical_channels % small::FloatBuffer::C_ob);
+    }
+
+    small::Tensor<small::FloatBuffer>  in_tensor({1, channels, H, W});
+    small::Tensor<small::FloatBuffer> out_tensor({1, channels, H, W});
+    small::init_zeros(in_tensor.buffer(), in_tensor.size());
+    in_tensor.buffer()[0] = 1.0f;
+    in_tensor.buffer()[channels - 1] = 10.0f;
+
+    float sum{0.f};
+    for (size_t ix = 0; ix < logical_channels; ++ix)
+    {
+        sum += std::exp(in_tensor.buffer()[ix]);
+    }
+    sum = -std::log(sum);
+
+    std::cerr << "XXX Calling LogSoftMax2\n";
+    small::LogSoftMax2(channels, logical_channels, H, W,
+                       in_tensor.buffer(), out_tensor.buffer());
+
+    for (size_t ix = 0; ix < channels; ++ix)
+    {
+        //std::cerr << ix << ":" << out_tensor.buffer()[ix] << "|"
+        //          << (in_tensor.buffer()[ix] + sum) << std::endl;
+        TEST_CHECK(almost_equal(out_tensor.buffer()[ix],
+                                (in_tensor.buffer()[ix] + sum)));
+        //std::cerr << ix << " in|out : " << in_tensor.buffer()[ix]
+        //          << "|" << out_tensor.buffer()[ix] << std::endl;
+    }
+#endif
+}
+
 //****************************************************************************
 void test_compute_logsoftmax_output(void)
 {
@@ -539,6 +630,8 @@ void measure_logsoftmax_performance(void)
 //****************************************************************************
 TEST_LIST = {
     //{"compute_output_logsoftmax", test_compute_logsoftmax_output},
+    {"logsoftmax_odd_channels", test_logsoftmax_odd_channels},
+    {"logsoftmax2_odd_channels", test_logsoftmax2_odd_channels},
     {"logsoftmax_regression_data", test_logsoftmax_regression_data},
     {"logsoftmax_layer_regression_data", test_logsoftmax_layer_regression_data},
     // {"logsoftmax_performance", measure_logsoftmax_performance},
