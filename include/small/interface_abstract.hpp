@@ -2117,7 +2117,7 @@ void LogSoftMax2(int channels,
             //        (FloatBuffer *)nullptr, &rem_buf);
         }
 
-        std::cerr << "sum " << softmax_norm_buf[0] << std::endl;
+        // std::cerr << "sum " << softmax_norm_buf[0] << std::endl;
 
         // take the log(1.0/sum) = -log(sum)
         if (softmax_norm_buf.data()[0] != 0.f)

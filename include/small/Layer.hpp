@@ -20,10 +20,16 @@
 
 namespace small
 {
-
-// Currently only for Conv2DLayer
+/**
+ * "In-place activation functions that can used in DenseLayer,
+ * Conv2D/Conv1DLayer, DepthwiseConv2DLayer, and PartialConv2DLayer
+ *
+ * @note LogSoftMax CANNOT be added here (it's not in-place)
+ *
+ * @todo Consider removing activations from within other layer classes
+ */
 enum ActivationType {
-    NONE    = 0,  // aka LINEAR
+    NONE    = 0,  // aka LINEAR/Identity
     RELU    = 1,
     LEAKY   = 2,
     SOFTMAX = 3
