@@ -24,8 +24,6 @@
 
 #include "test_utils.hpp"
 
-#include <immintrin.h>
-
 namespace small {
 namespace float_detail {
 
@@ -160,6 +158,10 @@ void test_correctness_FLOAT_FUSED_SOFTSIGN_TILE(void)
 #endif 
 }
 
+#if 0 // only support for zen2 
+
+#include <immintrin.h>
+
 #define REPEAT_10_BASE(macro, base) \
     macro(base##0); macro(base##1); macro(base##2); macro(base##3); macro(base##4); \
     macro(base##5); macro(base##6); macro(base##7); macro(base##8); macro(base##9);
@@ -280,6 +282,8 @@ void test_performance_FLOAT_SOFTSIGN_TILE(void)
     //==================================================
 #endif
 }
+
+#endif 
 
 
 template <typename BufferT>
@@ -555,8 +559,8 @@ TEST_LIST = {
      small::float_detail::test_correctness_individual_FLOAT_SOFTSIGN_TILE},
     {"correctness FLOAT_FUSED_SOFTSIGN_TILE",
      small::float_detail::test_correctness_FLOAT_FUSED_SOFTSIGN_TILE},
-    {"performance FLOAT_SOFTSIGN_TILE",
-     small::float_detail::test_performance_FLOAT_SOFTSIGN_TILE},
+    // {"performance FLOAT_SOFTSIGN_TILE",
+    //  small::float_detail::test_performance_FLOAT_SOFTSIGN_TILE},
     {"softsign single element",
      small::float_detail::test_softsign_single_element},
     {"softsign single tile",
