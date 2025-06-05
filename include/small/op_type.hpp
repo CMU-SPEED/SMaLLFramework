@@ -29,6 +29,8 @@ enum OpType
     OP_EXP = 8,
     OP_EWISE_ADD_SCALAR = 9,
     OP_SOFTSIGN = 10,
+    OP_ABS = 11,
+    OP_DIV = 12,
     OP_NONE = -1
 };
 

@@ -2249,6 +2249,38 @@ void SoftSign(int input_channels,
             1, 1,
             0, 0, 0, 0,
             &input_buf, (FloatBuffer *)nullptr, &output_buf);
+
+        // float_detail::abstract_layer<
+        //     FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_ABS, 0, 1>(
+        //     input_channels, // Output Channel Grouping
+        //     1,              // Output Channels per group
+        //     1,
+        //     input_height, input_width,
+        //     1, 1,
+        //     0, 0, 0, 0,
+        //     &input_buf, (FloatBuffer *)nullptr, &output_buf);
+
+        // FloatBuffer scalar_buf(1);
+        // scalar_buf.data()[0] = 1.0f;
+        // float_detail::abstract_layer<
+        //     FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_EWISE_ADD_SCALAR, 0, 0>(
+        //     input_channels, // Output Channel Grouping
+        //     1,              // Output Channels per group
+        //     1,
+        //     input_height, input_width,
+        //     1, 1,
+        //     0, 0, 0, 0,
+        //     &output_buf, &scalar_buf, &output_buf);
+
+        // float_detail::abstract_layer<
+        //     FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_DIV, 0, 0>(
+        //     input_channels, // Output Channel Grouping
+        //     1,              // Output Channels per group
+        //     1,
+        //     input_height, input_width,
+        //     1, 1,
+        //     0, 0, 0, 0,
+        //     &input_buf, (FloatBuffer *)nullptr, &output_buf);
     }
     else
     {

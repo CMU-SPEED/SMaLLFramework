@@ -158,33 +158,46 @@ void test_correctness_FLOAT_FUSED_SOFTSIGN_TILE(void)
 #endif 
 }
 
-
-#define REPEAT_10(macro) \
-    macro; macro; macro; macro; macro; \
-    macro; macro; macro; macro; macro;
+#define REPEAT_10_BASE(macro, base) \
+    macro(base##0); macro(base##1); macro(base##2); macro(base##3); macro(base##4); \
+    macro(base##5); macro(base##6); macro(base##7); macro(base##8); macro(base##9);
 
 #define REPEAT_100(macro) \
-    REPEAT_10(macro) REPEAT_10(macro) REPEAT_10(macro) REPEAT_10(macro) REPEAT_10(macro) \
-    REPEAT_10(macro) REPEAT_10(macro) REPEAT_10(macro) REPEAT_10(macro) REPEAT_10(macro)
+    REPEAT_10_BASE(macro, 0) REPEAT_10_BASE(macro, 1) REPEAT_10_BASE(macro, 2) \
+    REPEAT_10_BASE(macro, 3) REPEAT_10_BASE(macro, 4) REPEAT_10_BASE(macro, 5) \
+    REPEAT_10_BASE(macro, 6) REPEAT_10_BASE(macro, 7) REPEAT_10_BASE(macro, 8) \
+    REPEAT_10_BASE(macro, 9)
+
+#define REPEAT_100_BASE(macro, hundreds) \
+    REPEAT_10_BASE(macro, hundreds##0) REPEAT_10_BASE(macro, hundreds##1) \
+    REPEAT_10_BASE(macro, hundreds##2) REPEAT_10_BASE(macro, hundreds##3) \
+    REPEAT_10_BASE(macro, hundreds##4) REPEAT_10_BASE(macro, hundreds##5) \
+    REPEAT_10_BASE(macro, hundreds##6) REPEAT_10_BASE(macro, hundreds##7) \
+    REPEAT_10_BASE(macro, hundreds##8) REPEAT_10_BASE(macro, hundreds##9)
 
 #define REPEAT_1000(macro) \
-    REPEAT_100(macro) REPEAT_100(macro) REPEAT_100(macro) REPEAT_100(macro) REPEAT_100(macro) \
-    REPEAT_100(macro) REPEAT_100(macro) REPEAT_100(macro) REPEAT_100(macro) REPEAT_100(macro)
+    REPEAT_100_BASE(macro, 0) REPEAT_100_BASE(macro, 1) REPEAT_100_BASE(macro, 2) \
+    REPEAT_100_BASE(macro, 3) REPEAT_100_BASE(macro, 4) REPEAT_100_BASE(macro, 5) \
+    REPEAT_100_BASE(macro, 6) REPEAT_100_BASE(macro, 7) REPEAT_100_BASE(macro, 8) \
+    REPEAT_100_BASE(macro, 9)
 
-#define SOFTSIGN_CALL \
+#define REPEAT_1000_BASE(macro, thousands) \
+    REPEAT_100_BASE(macro, thousands##0) REPEAT_100_BASE(macro, thousands##1) \
+    REPEAT_100_BASE(macro, thousands##2) REPEAT_100_BASE(macro, thousands##3) \
+    REPEAT_100_BASE(macro, thousands##4) REPEAT_100_BASE(macro, thousands##5) \
+    REPEAT_100_BASE(macro, thousands##6) REPEAT_100_BASE(macro, thousands##7) \
+    REPEAT_100_BASE(macro, thousands##8) REPEAT_100_BASE(macro, thousands##9)
+
+#define REPEAT_10000(macro) \
+    REPEAT_1000_BASE(macro, 0) REPEAT_1000_BASE(macro, 1) REPEAT_1000_BASE(macro, 2) \
+    REPEAT_1000_BASE(macro, 3) REPEAT_1000_BASE(macro, 4) REPEAT_1000_BASE(macro, 5) \
+    REPEAT_1000_BASE(macro, 6) REPEAT_1000_BASE(macro, 7) REPEAT_1000_BASE(macro, 8) \
+    REPEAT_1000_BASE(macro, 9)
+
+    
+#define SOFTSIGN_CALL(iteration) \
+    asm volatile("iteration" #iteration ":" ::: "memory");\
     FLOAT_SOFTSIGN_TILE_C(step, a_cur, FLOAT_W_ob, FLOAT_C_ob); \
-    result_accumulator = _mm256_add_ps(result_accumulator,  \
-            _mm256_add_ps(_mm256_add_ps(c0, c1), _mm256_add_ps(c2, c3))); \
-    result_accumulator = _mm256_add_ps(result_accumulator,  \
-            _mm256_add_ps(_mm256_add_ps(c4, c5), _mm256_add_ps(c6, c7))); \
-    result_accumulator = _mm256_add_ps(result_accumulator,  \
-            _mm256_add_ps(_mm256_add_ps(c8, c9), _mm256_add_ps(c10, c11))); \
-    a_cur += FLOAT_W_ob * FLOAT_C_ib; 
-
-#define INDIVIDUAL_SOFTSIGN_CALL \
-    {FLOAT_ABS_TILE_C(step, a_cur, FLOAT_W_ob, FLOAT_C_ob);} \
-    {const float scalar = 1.0f; FLOAT_EWISE_ADD_SCALAR_TILE_C(scalar, FLOAT_W_ob, FLOAT_C_ob);} \
-    {FLOAT_FUSED_DIV_TILE_C(step, a_cur, FLOAT_W_ob, FLOAT_C_ob);} \
     result_accumulator = _mm256_add_ps(result_accumulator,  \
             _mm256_add_ps(_mm256_add_ps(c0, c1), _mm256_add_ps(c2, c3))); \
     result_accumulator = _mm256_add_ps(result_accumulator,  \
@@ -193,14 +206,27 @@ void test_correctness_FLOAT_FUSED_SOFTSIGN_TILE(void)
             _mm256_add_ps(_mm256_add_ps(c8, c9), _mm256_add_ps(c10, c11))); \
     a_cur += FLOAT_W_ob * FLOAT_C_ib;
 
-#if 1
+#define INDIVIDUAL_SOFTSIGN_CALL(iteration) \
+    asm volatile("iteration" #iteration ":" ::: "memory");\
+    {FLOAT_ABS_TILE_C(step, a_cur, FLOAT_W_ob, FLOAT_C_ob);} \
+    {const float scalar = 1.0f; FLOAT_EWISE_ADD_SCALAR_TILE_C(scalar, FLOAT_W_ob, FLOAT_C_ob);} \
+    {FLOAT_FUSED_DIV_TILE_C(step, a_cur, FLOAT_W_ob, FLOAT_C_ob);} \
+    result_accumulator = _mm256_add_ps(result_accumulator,  \
+            _mm256_add_ps(_mm256_add_ps(c0, c1), _mm256_add_ps(c2, c3))); \
+    result_accumulator = _mm256_add_ps(result_accumulator,  \
+            _mm256_add_ps(_mm256_add_ps(c4, c5), _mm256_add_ps(c6, c7))); \
+    result_accumulator = _mm256_add_ps(result_accumulator,  \
+            _mm256_add_ps(_mm256_add_ps(c8, c9), _mm256_add_ps(c10, c11)));\
+    a_cur += FLOAT_W_ob * FLOAT_C_ib;
+
+
 void test_performance_FLOAT_SOFTSIGN_TILE(void)
 {
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
     using BufferT = FloatBuffer;
     using ScalarT = typename BufferT::value_type;
     srand(time(0));
-    size_t const num_trails = 1000000;
+    size_t const num_trails = 100;
     size_t const INPUT_SIZE = FLOAT_W_ob * FLOAT_C_ib * num_trails;
     BufferT input_buf(INPUT_SIZE);
     for (size_t ix = 0; ix < INPUT_SIZE; ++ix) input_buf[ix] = 2.0 * ((float)rand() / RAND_MAX) - 1;
@@ -226,13 +252,13 @@ void test_performance_FLOAT_SOFTSIGN_TILE(void)
     double max_t = 0.;
     Timer my_timer;
     __m256 result_accumulator = _mm256_setzero_ps();
-    for (size_t iy = 0; iy < num_trails / 100; ++iy)
+    for (size_t iy = 0; iy < num_trails; ++iy)
     {
         
         my_timer.start();
         asm volatile("look_here:" ::: "memory");
-        REPEAT_100(SOFTSIGN_CALL);
-        // REPEAT_100(INDIVIDUAL_SOFTSIGN_CALL);
+        // REPEAT_10000(SOFTSIGN_CALL);
+        REPEAT_100(INDIVIDUAL_SOFTSIGN_CALL);
         my_timer.stop();
         auto elapsed = my_timer.elapsed();
         tx += elapsed;
@@ -240,73 +266,16 @@ void test_performance_FLOAT_SOFTSIGN_TILE(void)
         max_t = std::max(max_t, elapsed);
     }
     
-    const float cpu_freq = 3.2; // 2.5 GHz, adjust as needed
+    const float cpu_freq = 2.4; // 2.4 GHz, adjust as needed
     std::cout << "Min Ave time: " << min_t << " ns." << std::endl;
     std::cout << "Max Ave time: " << max_t << " ns." << std::endl;
-    std::cout << "Peak: " << FLOAT_SIMD / (FLOAT_W_ob * FLOAT_C_ob / (min_t / 100 * cpu_freq))<< std::endl;
+    std::cout << "Peak: " << (FLOAT_W_ob * FLOAT_C_ob / (min_t / 10000 * cpu_freq)) << std::endl;
     // a cross platform way to move results to the output buffer
     FLOAT_STORE_TILE_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
-    _mm256_storeu_ps(output_buf.data(), result_accumulator);
-    std::cout << output_buf.data()[0] << std::endl;
+    // _mm256_storeu_ps(output_buf.data(), result_accumulator);
+    // std::cout << output_buf.data()[0] << std::endl;
 
     //==================================================
-
-#endif
-}
-#endif
-
-void test_performance_FLOAT_FUSED_SOFTSIGN_TILE(void)
-{
-#if defined(SMALL_HAS_FLOAT_SUPPORT)
-    using BufferT = FloatBuffer;
-
-    volatile size_t const num_trails = 1000000;
-    size_t const INPUT_SIZE = FLOAT_W_ob * FLOAT_C_ib * num_trails;
-    BufferT input_buf(INPUT_SIZE);
-    for (size_t ix = 0; ix < INPUT_SIZE; ++ix) input_buf[ix] = 2.0 * ((float)rand() / RAND_MAX) - 1;
-
-    size_t const OUTPUT_SIZE = FLOAT_W_ob * FLOAT_C_ob;
-    BufferT output_buf(OUTPUT_SIZE);
-    for (size_t ix = 0; ix < OUTPUT_SIZE; ++ix) output_buf[ix] = input_buf[ix];
-
-    std::cout << std::endl;
-
-
-    //==================================================
-    FLOAT_DEF_TILE_C(FLOAT_W_ob, FLOAT_C_ob);
-
-    FLOAT_LOAD_TILE_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
-    
-    double tx(0.);
-    double min_t = std::numeric_limits<double>::max();
-    double max_t = 0.;
-    for (volatile size_t iy = 0; iy < 10; ++iy)
-    {
-        Timer my_timer;
-        
-        #pragma GCC unroll 1
-        for (volatile size_t ix = 0; ix < num_trails; ++ix)
-        {   
-            my_timer.start();
-            FLOAT_FUSED_SOFTSIGN_TILE_C(FLOAT_W_ob, FLOAT_C_ob);
-            my_timer.stop();
-
-            auto elapsed = my_timer.elapsed();
-
-            tx += elapsed;
-            min_t = std::min(min_t, elapsed);
-            max_t = std::max(max_t, elapsed);
-        }
-    }
-    const float cpu_freq = 3.2; // 2.5 GHz, adjust as needed
-    std::cout << "Min time: " << min_t << " ns." << std::endl;
-    std::cout << "Max time: " << max_t << " ns." << std::endl;
-    std::cout << "Avg time: " << (tx / num_trails / 10) << " ns." << std::endl;
-    std::cout << "Peak: " << FLOAT_SIMD / (FLOAT_W_ob * FLOAT_C_ob / (min_t * cpu_freq))<< std::endl;
-    // a cross platform way to move results to the output buffer
-    FLOAT_STORE_TILE_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
-    //==================================================
-
 #endif
 }
 
@@ -582,18 +551,16 @@ TEST_LIST = {
      small::float_detail::test_correctness_FLOAT_SOFTSIGN_TILE},
     {"correctness individual FLOAT_SOFTSIGN_TILE",
      small::float_detail::test_correctness_individual_FLOAT_SOFTSIGN_TILE},
-    // {"correctness FLOAT_FUSED_SOFTSIGN_TILE",
-    //  small::float_detail::test_correctness_FLOAT_FUSED_SOFTSIGN_TILE},
+    {"correctness FLOAT_FUSED_SOFTSIGN_TILE",
+     small::float_detail::test_correctness_FLOAT_FUSED_SOFTSIGN_TILE},
     {"performance FLOAT_SOFTSIGN_TILE",
      small::float_detail::test_performance_FLOAT_SOFTSIGN_TILE},
-    // {"performance FLOAT_FUSED_SOFTSIGN_TILE",
-    //  small::float_detail::test_performance_FLOAT_FUSED_SOFTSIGN_TILE},
-    // {"softsign single element",
-    //  small::float_detail::test_softsign_single_element},
-    // {"softsign single tile",
-    //  small::float_detail::test_softsign_single_tile},
-    // {"softsign large tile",
-    //  small::float_detail::test_softsign_large_tile},
+    {"softsign single element",
+     small::float_detail::test_softsign_single_element},
+    {"softsign single tile",
+     small::float_detail::test_softsign_single_tile},
+    {"softsign large tile",
+     small::float_detail::test_softsign_large_tile},
     {"softsign performance",
      small::float_detail::measure_softsign_performance},
      {NULL, NULL}
