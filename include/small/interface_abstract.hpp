@@ -1891,6 +1891,7 @@ void LogSoftMax(int channels,
 
         // global sum
         FloatBuffer softmax_norm_buf(1);
+        softmax_norm_buf[0] = 0.f;
 
         // support "odd" logical channels
         int rem_channels = logical_channels % FLOAT_C_ob;
@@ -1972,7 +1973,6 @@ void LogSoftMax(int channels,
         // {
         //     std::cerr << "add " << ix << ": " << output_buf[ix] << std::endl;
         // }
-
     }
     else
     {

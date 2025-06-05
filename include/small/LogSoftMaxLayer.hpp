@@ -25,6 +25,7 @@ class LogSoftMaxLayer : public Layer<BufferT>
 public:
     typedef typename BufferT::value_type value_type;
 
+    // ctor for actual == logical channels
     LogSoftMaxLayer(shape_type const &input_shape)
         : Layer<BufferT>(input_shape),       // input_shape == output_shape
           m_logical_channels(input_shape[CHANNEL])
@@ -45,6 +46,7 @@ public:
         }
     }
 
+    // ctor for logical != actual channels
     LogSoftMaxLayer(shape_type const &input_shape,
                     uint32_t          num_logical_channels)
         : Layer<BufferT>(input_shape),       // input_shape == output_shape
