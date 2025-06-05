@@ -24,6 +24,8 @@
 
 #include "test_utils.hpp"
 
+#include <immintrin.h>
+
 namespace small {
 namespace float_detail {
 
