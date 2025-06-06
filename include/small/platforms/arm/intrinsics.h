@@ -1077,13 +1077,57 @@ if constexpr(_C_ob == 1 && _C_ob != FLOAT_SIMD_EPILOGUE)\
         }                                               \
     }
 
-#define FLOAT_SOFTSIGN_TILE_C(step, a, W_ob, C_ob)                       \
-    c_tile_t *c_pixel = c_tile;                                         \
-    c_tile_t const *a_pixel = a;                                        \
-    for (uint32_t kk = 0; kk < W_ob; kk++)                              \
+//****************************************************************************
+// Softsign activation
+//****************************************************************************
+
+#define FLOAT_SOFTSIGN_SIMD_C(c_x_x, av, a, kk, jj, _W_ob, _C_ob) \
+    av = vld1q_f32(a + kk * step + jj * FLOAT_SIMD);              \
+    c_x_x = vabsq_f32(av);                                    \
+    c_x_x = vaddq_f32(c_x_x, vdupq_n_f32(1.0f));              \
+    c_x_x = vdivq_f32(av, c_x_x);                            
+
+#define FLOAT_SOFTSIGN_TILE_C(step, a, _W_ob, _C_ob)               \
+    float32x4_t av;                                                     \
+    FLOAT_SOFTSIGN_SIMD_C(c_0_0, av, a, 0, 0, _W_ob, _C_ob); \
+    FLOAT_SOFTSIGN_SIMD_C(c_0_1, av, a, 0, 1, _W_ob, _C_ob); \
+    FLOAT_SOFTSIGN_SIMD_C(c_0_2, av, a, 0, 2, _W_ob, _C_ob); \
+    FLOAT_SOFTSIGN_SIMD_C(c_0_3, av, a, 0, 3, _W_ob, _C_ob); \
+    /**/                                                     \
+    FLOAT_SOFTSIGN_SIMD_C(c_1_0, av, a, 1, 0, _W_ob, _C_ob); \
+    FLOAT_SOFTSIGN_SIMD_C(c_1_1, av, a, 1, 1, _W_ob, _C_ob); \
+    FLOAT_SOFTSIGN_SIMD_C(c_1_2, av, a, 1, 2, _W_ob, _C_ob); \
+    FLOAT_SOFTSIGN_SIMD_C(c_1_3, av, a, 1, 3, _W_ob, _C_ob); \
+    /**/                                                     \
+    FLOAT_SOFTSIGN_SIMD_C(c_2_0, av, a, 2, 0, _W_ob, _C_ob); \
+    FLOAT_SOFTSIGN_SIMD_C(c_2_1, av, a, 2, 1, _W_ob, _C_ob); \
+    FLOAT_SOFTSIGN_SIMD_C(c_2_2, av, a, 2, 2, _W_ob, _C_ob); \
+    FLOAT_SOFTSIGN_SIMD_C(c_2_3, av, a, 2, 3, _W_ob, _C_ob); \
+    /**/                                                     \
+    FLOAT_SOFTSIGN_SIMD_C(c_3_0, av, a, 3, 0, _W_ob, _C_ob); \
+    FLOAT_SOFTSIGN_SIMD_C(c_3_1, av, a, 3, 1, _W_ob, _C_ob); \
+    FLOAT_SOFTSIGN_SIMD_C(c_3_2, av, a, 3, 2, _W_ob, _C_ob); \
+    FLOAT_SOFTSIGN_SIMD_C(c_3_3, av, a, 3, 3, _W_ob, _C_ob); \
+    /**/                                                     \
+    FLOAT_SOFTSIGN_SIMD_C(c_4_0, av, a, 4, 0, _W_ob, _C_ob); \
+    FLOAT_SOFTSIGN_SIMD_C(c_4_1, av, a, 4, 1, _W_ob, _C_ob); \
+    FLOAT_SOFTSIGN_SIMD_C(c_4_2, av, a, 4, 2, _W_ob, _C_ob); \
+    FLOAT_SOFTSIGN_SIMD_C(c_4_3, av, a, 4, 3, _W_ob, _C_ob); \
+    /**/                                                     \
+    FLOAT_SOFTSIGN_SIMD_C(c_5_0, av, a, 5, 0, _W_ob, _C_ob); \
+    FLOAT_SOFTSIGN_SIMD_C(c_5_1, av, a, 5, 1, _W_ob, _C_ob); \
+    FLOAT_SOFTSIGN_SIMD_C(c_5_2, av, a, 5, 2, _W_ob, _C_ob); \
+    FLOAT_SOFTSIGN_SIMD_C(c_5_3, av, a, 5, 3, _W_ob, _C_ob);
+
+#if FLOAT_SIMD_EPILOGUE == 1
+#define FLOAT_SOFTSIGN_END_C(step, a, c_cur, W_last, C_ob)         \
+    dtype *c_pixel = c_cur;                                             \
+    dtype const *a_pixel = a;                                           \
+    dtype scale = b[0];                                                 \
+    for (uint32_t kk = 0; kk < W_last; kk++)                            \
     {                                                                   \
-        c_tile_t *c_channel = c_pixel;                                  \
-        c_tile_t const *a_channel = a_pixel;                            \
+        dtype *c_channel = c_pixel;                                     \
+        dtype const *a_channel = a_pixel;                               \
         for (uint32_t jj = 0; jj < C_ob; jj++)                          \
         {                                                               \
             *(c_channel) = *(a_channel) / (1.0f + std::abs(*a_channel)); \
@@ -1094,49 +1138,19 @@ if constexpr(_C_ob == 1 && _C_ob != FLOAT_SIMD_EPILOGUE)\
         c_pixel += C_ob;                                                \
     }
 
-#define FLOAT_SOFTSIGN_END_C(step, a, c_cur, W_last, C_ob) \
-    c_tile_t *c_pixel = c_cur;                                  \
-    c_tile_t const *a_pixel = a;                                \
-    for (uint32_t kk = 0; kk < W_last; kk++)                    \
-    {                                                           \
-        c_tile_t *c_channel = c_pixel;                          \
-        c_tile_t const *a_channel = a_pixel;                    \
-        for (uint32_t jj = 0; jj < C_ob; jj++)                  \
-        {                                                       \
-            *(c_channel) = *(a_channel) / (1.0f + std::abs(*a_channel)); \
-            c_channel++;                                        \
-            a_channel++;                                        \
-        }                                                       \
-        a_pixel += step;                                        \
-        c_pixel += C_ob;                                        \
+#else
+
+#define FLOAT_SOFTSIGN_END_C(step, a, c_cur, W_last, C_ob)         \
+    float32x4_t av;                                                     \
+    for (uint32_t kk = 0; kk < W_last; kk++)                            \
+    {                                                                   \
+        for (uint32_t jj = 0; jj < C_ob / FLOAT_SIMD; jj++)             \
+        {                                                               \
+            float32x4_t cv = c_cur[kk * (C_ob / FLOAT_SIMD) + jj];      \
+            FLOAT_SOFTSIGN_SIMD_C(cv, av, a, kk, jj, W_last, C_ob); \
+            c_cur[kk * (C_ob / FLOAT_SIMD) + jj] = cv;                  \
+        }                                                               \
     }
-
-#define FLOAT_FUSED_SOFTSIGN_TILE_C(W_ob, C_ob)       \
-    c_tile_t *c_pixel = c_tile;                  \
-    for (uint32_t kk = 0; kk < W_ob; kk++)       \
-    {                                            \
-        c_tile_t *c_channel = c_pixel;           \
-        for (uint32_t jj = 0; jj < C_ob; jj++)   \
-        {                                        \
-            *(c_channel) = *(c_channel) / (1.0f + std::abs(*(c_channel))); \
-            c_channel++;                         \
-        }                                        \
-        c_pixel += C_ob;                         \
-    }
-
-#define FLOAT_FUSED_SOFTSIGN_END_C(c_cur, W_last, C_ob) \
-    c_tile_t *c_pixel = c_cur;                     \
-    for (uint32_t kk = 0; kk < W_last; kk++)       \
-    {                                              \
-        c_tile_t *c_channel = c_pixel;             \
-        for (uint32_t jj = 0; jj < C_ob; jj++)     \
-        {                                          \
-            *(c_channel) = *(c_channel) / (1.0f + std::abs(*(c_channel))); \
-            c_channel++;                           \
-        }                                          \
-        c_pixel += C_ob;                           \
-    }
-
-
+#endif
 
 #include "intrinsics-gen.h"
