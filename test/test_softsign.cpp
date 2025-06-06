@@ -69,7 +69,7 @@ void test_correctness_FLOAT_SOFTSIGN_TILE(void)
     }
 #endif 
 }
-#if 0 // only support for zen2 
+
 void test_correctness_individual_FLOAT_SOFTSIGN_TILE(void)
 {
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
@@ -159,7 +159,7 @@ void test_correctness_FLOAT_FUSED_SOFTSIGN_TILE(void)
 }
 
 
-
+#if 0 // only support for zen2 
 #include <immintrin.h>
 
 #define REPEAT_10_BASE(macro, base) \
@@ -555,8 +555,8 @@ void measure_softsign_performance(void)
 TEST_LIST = {
     {"correctness FLOAT_SOFTSIGN_TILE",
      small::float_detail::test_correctness_FLOAT_SOFTSIGN_TILE},
-    // {"correctness individual FLOAT_SOFTSIGN_TILE",
-    //  small::float_detail::test_correctness_individual_FLOAT_SOFTSIGN_TILE},
+    {"correctness individual FLOAT_SOFTSIGN_TILE",
+     small::float_detail::test_correctness_individual_FLOAT_SOFTSIGN_TILE},
     // {"correctness FLOAT_FUSED_SOFTSIGN_TILE",
     //  small::float_detail::test_correctness_FLOAT_FUSED_SOFTSIGN_TILE},
     // {"performance FLOAT_SOFTSIGN_TILE",
