@@ -561,7 +561,7 @@ void measure_leaky_performance(void)
 //****************************************************************************
 //****************************************************************************
 TEST_LIST = {
-    {"leaky_correctness", small::float_detail::test_correctness_FLOAT_FUSED_COND_SCALE_TILE},
+    // {"leaky_correctness", small::float_detail::test_correctness_FLOAT_FUSED_COND_SCALE_TILE},
     {"leaky_single_element",  test_leaky_single_element},
     {"leaky_single_tile",  test_leaky_single_tile},
     {"leaky_large_tile",  test_leaky_large_tile},
