@@ -42,11 +42,11 @@ public:
             ((input_shape[CHANNEL] % BufferT::C_ob) != 0))
         {
             throw std::invalid_argument(
-                "Conv2DLayer::ctor ERROR: invalid number of channels.");
+                "LogSoftMaxLayer::ctor ERROR: invalid number of channels.");
         }
     }
 
-    // ctor for logical != actual channels
+    // ctor for actual != logical channels
     LogSoftMaxLayer(shape_type const &input_shape,
                     uint32_t          num_logical_channels)
         : Layer<BufferT>(input_shape),       // input_shape == output_shape
@@ -65,13 +65,13 @@ public:
             ((input_shape[CHANNEL] % BufferT::C_ob) != 0))
         {
             throw std::invalid_argument(
-                "Conv2DLayer::ctor ERROR: invalid number of channels.");
+                "LogSoftMaxLayer::ctor ERROR: invalid number of channels.");
         }
         if ((num_logical_channels < 1) ||
             (num_logical_channels > input_shape[CHANNEL]))
         {
             throw std::invalid_argument(
-                "Conv2DLayer::ctor ERROR: invalid number of logical channels.");
+                "LogSoftMaxLayer::ctor ERROR: invalid number of logical channels.");
         }
     }
 

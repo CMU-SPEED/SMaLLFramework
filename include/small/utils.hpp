@@ -79,7 +79,7 @@ inline void calc_padding(size_t    I_dim,
                   0;
     }
 
-#if defined(REVERSE_PADDING)
+#if defined(SMALL_REVERSE_PADDING)
     padding_back  = padding / 2;
     padding_front = padding - padding_back;
 #else
@@ -105,7 +105,7 @@ inline void CALC_PADDING(uint32_t I_dim,
     {
         padding = (K_dim > (I_dim % stride)) ? (K_dim - (I_dim % stride)) : 0;
     }
-#if defined(REVERSE_PADDING)
+#if defined(SMALL_REVERSE_PADDING)
     padding_back  = padding / 2;
     padding_front = padding - padding_back;
 #else

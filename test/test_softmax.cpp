@@ -103,6 +103,99 @@ bool compute_softmax_output(LayerParams const &params)
 }
 
 //****************************************************************************
+void test_softmax_odd_channels(void)
+{
+#if !defined(QUANTIZED)
+    uint32_t H = 1; // image_height;
+    uint32_t W = 1; // image_width;
+    uint32_t logical_channels = 31;
+    uint32_t channels = logical_channels;
+
+    // Note: channels should be a multiple of channel blocking factor
+    // for all platforms
+    if ((channels % small::FloatBuffer::C_ob) != 0)
+    {
+        channels = channels + small::FloatBuffer::C_ob
+            -  (logical_channels % small::FloatBuffer::C_ob);
+    }
+
+    small::Tensor<small::FloatBuffer>  in_tensor({1, channels, H, W});
+    small::Tensor<small::FloatBuffer> out_tensor({1, channels, H, W});
+    small::init_zeros(in_tensor.buffer(), in_tensor.size());
+    in_tensor.buffer()[0] = 1.0f;
+    in_tensor.buffer()[channels - 1] = 10.0f;
+
+    float sum{0.f};
+    for (size_t ix = 0; ix < logical_channels; ++ix)
+    {
+        sum += std::exp(in_tensor.buffer()[ix]);
+    }
+    sum = 1.0f/sum;
+
+    small::SoftMax(channels, logical_channels, H, W,
+                   in_tensor.buffer(), out_tensor.buffer());
+
+    for (size_t ix = 0; ix < logical_channels; ++ix)
+    {
+        // std::cerr << ix << ":" << out_tensor.buffer()[ix] << "|"
+        //           << (std::exp(in_tensor.buffer()[ix])*sum) << std::endl;
+        TEST_CHECK(out_tensor.buffer()[ix] ==
+                   (std::exp(in_tensor.buffer()[ix])*sum));
+        // std::cerr << ix << " in|out : " << in_tensor.buffer()[ix]
+        //           << "|" << out_tensor.buffer()[ix] << std::endl;
+    }
+#endif
+}
+
+//****************************************************************************
+void test_softmax_layer_odd_channels(void)
+{
+#if !defined(QUANTIZED)
+    uint32_t H = 1; // image_height;
+    uint32_t W = 1; // image_width;
+    uint32_t logical_channels = 31;
+    uint32_t channels = logical_channels;
+
+    // Note: channels should be a multiple of channel blocking factor
+    // for all platforms
+    if ((channels % small::FloatBuffer::C_ob) != 0)
+    {
+        channels = channels + small::FloatBuffer::C_ob
+            -  (logical_channels % small::FloatBuffer::C_ob);
+    }
+
+    small::Tensor<small::FloatBuffer>  in_tensor({1, channels, H, W});
+    small::Tensor<small::FloatBuffer> out_tensor({1, channels, H, W});
+    small::init_zeros(in_tensor.buffer(), in_tensor.size());
+    in_tensor.buffer()[0] = 1.0f;
+    in_tensor.buffer()[channels - 1] = 10.0f;
+
+    float sum{0.f};
+    for (size_t ix = 0; ix < logical_channels; ++ix)
+    {
+        sum += std::exp(in_tensor.buffer()[ix]);
+    }
+    sum = 1.0f/sum;
+
+    small::shape_type input_shape{1U, channels, H, W};
+    small::SoftMaxLayer<small::FloatBuffer> lsm_layer(input_shape,
+                                                      logical_channels);
+
+    lsm_layer.compute_output({&in_tensor}, &out_tensor);
+
+    for (size_t ix = 0; ix < logical_channels; ++ix)
+    {
+        // std::cerr << ix << ":" << out_tensor.buffer()[ix] << "|"
+        //           << (std::exp(in_tensor.buffer()[ix])*sum) << std::endl;
+        TEST_CHECK(out_tensor.buffer()[ix] ==
+                   (std::exp(in_tensor.buffer()[ix])*sum));
+        // std::cerr << ix << " in|out : " << in_tensor.buffer()[ix]
+        //           << "|" << out_tensor.buffer()[ix] << std::endl;
+    }
+#endif
+}
+
+//****************************************************************************
 void test_compute_softmax_output(void)
 {
     std::vector<LayerParams> params =
@@ -534,6 +627,8 @@ void measure_softmax_performance(void)
 //****************************************************************************
 TEST_LIST = {
     //{"compute_output", test_compute_softmax_output},
+    {"softmax_odd_channels", test_softmax_odd_channels},
+    {"softmax_layer_odd_channels", test_softmax_layer_odd_channels},
     {"softmax_regression_data", test_softmax_regression_data},
     {"softmax_layer_regression_data", test_softmax_layer_regression_data},
     // {"softmax_performance", measure_softmax_performance},
