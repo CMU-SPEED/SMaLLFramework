@@ -47,11 +47,6 @@ public:
 
     virtual ~DenseLayer() {}
 
-    virtual uint32_t get_effective_output_channels() const
-    {
-        return m_effective_output_channels;
-    }
-
     virtual void compute_output(
         std::vector<Tensor<BufferT> const *> input,
         Tensor<BufferT>*                     output) const;
@@ -64,7 +59,6 @@ private:
 
     // uint32_t   const m_kernel_height, m_kernel_width;
     // uint32_t   const m_stride;
-    uint32_t   const m_effective_output_channels;
 
     ActivationType const m_activation_type;
 
@@ -84,7 +78,7 @@ namespace detail
     template <class BufferT>
     void initialize_dense_buffers(
         uint32_t          num_output_channels,
-        uint32_t          num_effective_output_channels,
+        uint32_t          num_logical_output_channels,
         uint32_t          num_input_channels,
         BufferT    const &filters,
         BufferT    const &bias,
@@ -94,7 +88,7 @@ namespace detail
     {
         // ============ Filter weights ===========
         if (filters.size() !=   /// @todo consider allowing larger filter buffers??
-            num_effective_output_channels*num_input_channels)
+            num_logical_output_channels*num_input_channels)
         {
             throw std::invalid_argument(
                 "*DenseLayer::ctor ERROR: filters buffer is incorrect size.");
@@ -117,11 +111,11 @@ namespace detail
 
         if (!buffers_are_packed)
         {
-            if (num_output_channels != num_effective_output_channels)
+            if (num_output_channels != num_logical_output_channels)
             {
                 // pad out the unpacked
                 size_t unpacked_idx = 0;
-                for (size_t co = 0; co < num_effective_output_channels; ++co)
+                for (size_t co = 0; co < num_logical_output_channels; ++co)
                 {
                     for (size_t ci = 0; ci < num_input_channels; ++ci)
                     {
@@ -149,7 +143,7 @@ namespace detail
         }
         else
         {
-            if (num_output_channels != num_effective_output_channels)
+            if (num_output_channels != num_logical_output_channels)
             {
                 throw std::invalid_argument(
                     "DenseLayer::ctor error: invalid number of output channels.");
@@ -162,7 +156,7 @@ namespace detail
         // ============ Bias term ===========
         if (bias.size() > 0)
         {
-            if (bias.size() != num_effective_output_channels)
+            if (bias.size() != num_logical_output_channels)
             {
                 throw std::invalid_argument(
                     "*DenseLayer::ctor ERROR: bias buffer incorrect size.");
@@ -172,14 +166,14 @@ namespace detail
             BufferT local_bias(num_output_channels);
             small::init_zeros(local_bias, local_bias.size());  // optional
             std::copy(bias.data(),
-                      bias.data() + num_effective_output_channels,
+                      bias.data() + num_logical_output_channels,
                       local_bias.data());
             packed_bias = std::move(local_bias);
         }
 
 #if defined(DEBUG_LAYERS)
         std::cerr << "*Dense: ochans:" << num_output_channels
-                  << ",effective_ochans:" << num_effective_output_channels
+                  << ",logical_ochans:" << num_logical_output_channels
                   << std::endl;
         std::cerr << "*Dense: packed_bias.size():    "
                   << packed_bias.size() << std::endl;
@@ -198,14 +192,13 @@ namespace detail
 template <class BufferT>
 DenseLayer<BufferT>::DenseLayer(
     shape_type const &input_shape,         // todo: assert NCHW = (1, C_i, 1, 1)
-    uint32_t          num_output_channels, // assumes NCHW = (1, C_o, 1, 1)
+    uint32_t          num_logical_output_channels, // assumes NCHW = (1, C_o, 1, 1)
     BufferT    const &filters,
     bool              buffers_are_packed,
     ActivationType    activation_type,
     float             leaky_slope)
-    : Layer<BufferT>(),
+    : Layer<BufferT>(num_logical_output_channels),
       m_input_shape(input_shape),
-      m_effective_output_channels(num_output_channels),
       m_activation_type(activation_type),
       m_leaky_slope(1),  /// @note Allocating 1-element buffer
       m_packed_filters(),
@@ -214,20 +207,23 @@ DenseLayer<BufferT>::DenseLayer(
 #if defined(DEBUG_LAYERS)
     std::cerr << "Dense(batches:" << m_input_shape[BATCH]
               << ",ichans:" << m_input_shape[CHANNEL]
-              << ",ochans:" << num_output_channels
+              << ",ochans:" << num_logical_output_channels
               << ",img:" << m_input_shape[HEIGHT]
               << "x" << m_input_shape[WIDTH]
               << "), filters.size=" << filters.size() << std::endl;
 #endif
     if (((input_shape[CHANNEL] % BufferT::C_ib) != 0) &&
-        (input_shape[CHANNEL] != 3))
+        (input_shape[CHANNEL] != 3) &&  // all of the cases that Conv2D supports
+        (input_shape[CHANNEL] != 2) &&
+        (input_shape[CHANNEL] != 1))
     {
         throw std::invalid_argument(
             "DenseLayer::ctor ERROR: invalid number of input channels.");
     }
 
     // Deal with odd numbers of output channels by padding unpacked filters
-    if ((num_output_channels % BufferT::C_ob) != 0)
+    uint32_t num_output_channels{num_logical_output_channels};
+    if ((num_logical_output_channels % BufferT::C_ob) != 0)
     {
         if (buffers_are_packed)
         {
@@ -248,7 +244,7 @@ DenseLayer<BufferT>::DenseLayer(
 
     detail::initialize_dense_buffers(
         num_output_channels,
-        m_effective_output_channels,
+        num_logical_output_channels,
         m_input_shape[CHANNEL],
         filters,
         BufferT(),  // empty bias
@@ -278,7 +274,8 @@ DenseLayer<BufferT>::DenseLayer(
     else if (activation_type == SOFTMAX)
     {
         std::cerr << "Softmax(batches:" << output_shape[BATCH]
-                  << ",chans:" << output_shape[CHANNEL]
+                  << ",chans(logical):" << output_shape[CHANNEL]
+                  << "(" << num_logical_output_channels << ")"
                   << ",img:" << output_shape[HEIGHT]
                   << "x" << output_shape[WIDTH]
                   << ")" << std::endl;
@@ -290,15 +287,14 @@ DenseLayer<BufferT>::DenseLayer(
 template <class BufferT>
 DenseLayer<BufferT>::DenseLayer(
     shape_type const &input_shape,         // todo: assert NCHW = (1, C_i, 1, 1)
-    uint32_t          num_output_channels, // assumes NCHW = (1, C_o, 1, 1)
+    uint32_t          num_logical_output_channels, // assumes NCHW = (1, C_o, 1, 1)
     BufferT    const &filters,
     BufferT    const &bias,
     bool              buffers_are_packed,
     ActivationType    activation_type,
     float             leaky_slope)
-    : Layer<BufferT>(),
+    : Layer<BufferT>(num_logical_output_channels),
       m_input_shape(input_shape),
-      m_effective_output_channels(num_output_channels),
       m_activation_type(activation_type),
       m_leaky_slope(1),  /// @note Allocating 1-element buffer
       m_packed_filters(),
@@ -307,26 +303,29 @@ DenseLayer<BufferT>::DenseLayer(
 #if defined(DEBUG_LAYERS)
     std::cerr << "Dense(batches:" << m_input_shape[BATCH]
               << ",ichans:" << m_input_shape[CHANNEL]
-              << ",ochans:" << num_output_channels
+              << ",ochans:" << num_logical_output_channels
               << ",img:" << m_input_shape[HEIGHT]
               << "x" << m_input_shape[WIDTH]
               << "),filters.size=" << filters.size()
               << ",bias.size=" << bias.size() << std::endl;
 #endif
     if (((input_shape[CHANNEL] % BufferT::C_ib) != 0) &&
-        (input_shape[CHANNEL] != 3))
+        (input_shape[CHANNEL] != 3) &&  // all of the cases that Conv2D supports
+        (input_shape[CHANNEL] != 2) &&
+        (input_shape[CHANNEL] != 1))
     {
         throw std::invalid_argument(
             "DenseLayer::ctor ERROR: invalid number of input channels.");
     }
 
     // Deal with odd numbers of output channels by padding unpacked filters
-    if ((num_output_channels % BufferT::C_ob) != 0)
+    uint32_t num_output_channels{num_logical_output_channels};
+    if ((num_logical_output_channels % BufferT::C_ob) != 0)
     {
         if (buffers_are_packed)
         {
             throw std::invalid_argument(
-                "DenseLayer::ctor ERROR: invalid number of output channels.");
+                "DenseLayer::ctor ERROR: invalid number of output channels for packed weights.");
         }
 
         // set to next integer multiple of blocking factor (for this platform).
@@ -342,7 +341,7 @@ DenseLayer<BufferT>::DenseLayer(
 
     detail::initialize_dense_buffers(
         num_output_channels,
-        m_effective_output_channels,
+        num_logical_output_channels,
         m_input_shape[CHANNEL],
         filters,
         bias,
@@ -373,7 +372,8 @@ DenseLayer<BufferT>::DenseLayer(
     else if (activation_type == SOFTMAX)
     {
         std::cerr << "Softmax(batches:" << output_shape[BATCH]
-                  << ",chans:" << output_shape[CHANNEL]
+                  << ",chans(logical):" << output_shape[CHANNEL]
+                  << "(" << num_logical_output_channels << ")"
                   << ",img:" << output_shape[HEIGHT]
                   << "x" << output_shape[WIDTH]
                   << ")" << std::endl;
@@ -458,6 +458,7 @@ void DenseLayer<BufferT>::compute_output(
     else if (m_activation_type == SOFTMAX)
     {
         small::SoftMax(output_shape[CHANNEL],
+                       this->logical_output_channels(),
                        output_shape[HEIGHT], output_shape[WIDTH],
                        output->buffer(),
                        output->buffer());
