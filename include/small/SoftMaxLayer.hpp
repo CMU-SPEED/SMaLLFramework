@@ -18,7 +18,6 @@
 
 namespace small
 {
-
 //****************************************************************************
 template <typename BufferT>
 class SoftMaxLayer : public Layer<BufferT>
@@ -26,8 +25,10 @@ class SoftMaxLayer : public Layer<BufferT>
 public:
     typedef typename BufferT::value_type value_type;
 
+    // ctor for actual == logical channels
     SoftMaxLayer(shape_type const &input_shape)
-        : Layer<BufferT>(input_shape)       // input_shape == output_shape
+        : Layer<BufferT>(input_shape),       // input_shape == output_shape
+          m_logical_channels(input_shape[CHANNEL])
     {
 #if defined(DEBUG_LAYERS)
         auto const &output_shape(this->output_shape());
@@ -37,6 +38,41 @@ public:
                   << "x" << output_shape[WIDTH]
                   << ")" << std::endl;
 #endif
+        if (((input_shape[CHANNEL] % BufferT::C_ib) != 0) ||
+            ((input_shape[CHANNEL] % BufferT::C_ob) != 0))
+        {
+            throw std::invalid_argument(
+                "SoftMaxLayer::ctor ERROR: invalid number of channels.");
+        }
+    }
+
+    // ctor for actual != logical channels
+    SoftMaxLayer(shape_type const &input_shape,
+                 uint32_t          num_logical_channels)
+        : Layer<BufferT>(input_shape),       // input_shape == output_shape
+          m_logical_channels(num_logical_channels)
+    {
+#if defined(DEBUG_LAYERS)
+        auto const &output_shape(this->output_shape());
+        std::cerr << "SoftMax(batches:" << output_shape[BATCH]
+                  << ",chans/logical:" << output_shape[CHANNEL]
+                  << "/" << num_logical_channels
+                  << ",img:" << output_shape[HEIGHT]
+                  << "x" << output_shape[WIDTH]
+                  << ")" << std::endl;
+#endif
+        if (((input_shape[CHANNEL] % BufferT::C_ib) != 0) ||
+            ((input_shape[CHANNEL] % BufferT::C_ob) != 0))
+        {
+            throw std::invalid_argument(
+                "SoftMaxLayer::ctor ERROR: invalid number of channels.");
+        }
+        if ((num_logical_channels < 1) ||
+            (num_logical_channels > input_shape[CHANNEL]))
+        {
+            throw std::invalid_argument(
+                "SoftMaxLayer::ctor ERROR: invalid number of logical channels.");
+        }
     }
 
     virtual ~SoftMaxLayer() {}
@@ -62,12 +98,16 @@ public:
         auto const &output_shape(this->output_shape());
 
         small::SoftMax(output_shape[CHANNEL],
+                       m_logical_channels,
                        output_shape[HEIGHT], output_shape[WIDTH],
                        input[0]->buffer(),
                        output->buffer());
 
         output->set_shape(output_shape);
     }
+
+private:
+    uint32_t const m_logical_channels;
 };
 
 }

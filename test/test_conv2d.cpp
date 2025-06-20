@@ -73,7 +73,7 @@ void test_conv2d_layer_odd_output_channels(void)
                                   filters,
                                   false);
 
-        TEST_ASSERT(conv2d.get_effective_output_channels() == params.C_o);
+        TEST_ASSERT(conv2d.logical_output_channels() == params.C_o);
         if (params.C_o % BufferT::C_ob == 0)
         {
             TEST_ASSERT(conv2d.output_shape()[small::CHANNEL] == params.C_o);
@@ -105,7 +105,7 @@ void test_conv2d_layer_odd_output_channels(void)
                                   bias,
                                   false);
 
-        TEST_ASSERT(conv2d.get_effective_output_channels() == params.C_o);
+        TEST_ASSERT(conv2d.logical_output_channels() == params.C_o);
         if (params.C_o % BufferT::C_ob == 0)
         {
             TEST_ASSERT(conv2d.output_shape()[small::CHANNEL] == params.C_o);
@@ -144,7 +144,7 @@ void test_conv2d_layer_odd_output_channels(void)
                                   0.f,
                                   false);
 
-        TEST_ASSERT(conv2d.get_effective_output_channels() == params.C_o);
+        TEST_ASSERT(conv2d.logical_output_channels() == params.C_o);
         if (params.C_o % BufferT::C_ob == 0)
         {
             TEST_ASSERT(conv2d.output_shape()[small::CHANNEL] == params.C_o);

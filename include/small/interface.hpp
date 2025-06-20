@@ -435,6 +435,28 @@ void SoftMax(int input_channels,
              BufferT       &output_buf);
 
 //****************************************************************************
+/// @todo document this interface
+template <class BufferT, bool>
+void LogSoftMax(int channels,
+                int logical_channels,
+                int height, int width,
+                BufferT const &input_buf,
+                BufferT       &output_buf);
+
+template <class BufferT, bool>
+void LogSoftMax(int channels,
+                int height, int width,
+                BufferT const &input_buf,
+                BufferT       &output_buf);
+
+template <class BufferT, bool>
+void LogSoftMax2(int channels,
+                 int logical_channels,
+                 int height, int width,
+                 BufferT const &input_buf,
+                 BufferT       &output_buf);
+
+//****************************************************************************
 /**
  * Element-wise accumulation of input buffer into output buffer.
  *

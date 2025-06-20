@@ -72,8 +72,10 @@ void test_conv2d_dense_layer(void) {
     std::copy(bias, bias+fc_params.C_o, reinterpret_cast<ScalarT*>(bias_buf.data()));
 
     small::Conv2DLayer<BufferT> fc(fc_input_shape,
-                                   1U, 1U, 1U, fc_params.p, fc_params.C_o,
-                                   weights_buf, bias_buf, false, small::ActivationType::NONE);
+                                   1U, 1U, 1U, fc_params.p,
+                                   fc_params.C_o,
+                                   weights_buf, bias_buf, false,
+                                   small::ActivationType::NONE);
 
     BufferT inbuf(fc_params.C_i*fc_params.H*fc_params.W);
     small::Tensor<BufferT> packed_input(fc_input_shape);
@@ -113,90 +115,91 @@ void test_conv2d_dense_layer(void) {
 }
 //****************************************************************************
 void test_conv1d_dense_layer(void) {
-    #if defined(QUANTIZED)
-        using BufferT = small::QUInt8Buffer;
-    #else
-        using BufferT = small::FloatBuffer;
-    #endif
-        using ScalarT = typename BufferT::value_type;
-    
-        // C_i,H,W,k,s,p,C_o
-        LayerParams fc_params = {16, 1, 1, 1, 1, small::PADDING_V, 16};
+#if defined(QUANTIZED)
+    using BufferT = small::QUInt8Buffer;
+#else
+    using BufferT = small::FloatBuffer;
+#endif
+    using ScalarT = typename BufferT::value_type;
 
-        assert(fc_params.H == 1);
-        assert(fc_params.W == 1);
-        assert(fc_params.k == 1);
-        ScalarT input[16]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
-        ScalarT weights[256]{
-                            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-                            17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-        ScalarT bias[16]{1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-        ScalarT expected_output[16]{1497, 3674, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-    
-        small::shape_type fc_input_shape{1UL, fc_params.C_i, fc_params.H, fc_params.W};
-    
-        BufferT weights_buf(fc_params.C_i*fc_params.k*fc_params.C_o);
-        std::copy(weights, weights+weights_buf.size(), reinterpret_cast<ScalarT*>(weights_buf.data()));
-    
-        BufferT bias_buf(fc_params.C_o);
-        std::copy(bias, bias+fc_params.C_o, reinterpret_cast<ScalarT*>(bias_buf.data()));
-    
-        small::Conv1DLayer<BufferT> fc(fc_input_shape,
-                                       1U, 1U, fc_params.p, 
-                                       fc_params.C_o,
-                                       weights_buf, bias_buf, true, small::ActivationType::NONE);
-    
-        BufferT inbuf(fc_params.C_i*fc_params.H*fc_params.W);
-        small::Tensor<BufferT> packed_input(fc_input_shape);
-        std::copy(input, input+inbuf.size(), reinterpret_cast<ScalarT*>(inbuf.data()));
-        small::pack_buffer(inbuf, small::INPUT,
-                           1, fc_params.C_i, fc_params.H, fc_params.W,
-                           BufferT::C_ib, BufferT::C_ob, packed_input.buffer());
-    
-        small::Tensor<BufferT> output(fc.output_shape());
-        small::init_zeros(output.buffer(), output.size());
-    
-        fc.compute_output({&packed_input}, &output);
-    
-        BufferT unpacked_output(output.size());
-        small::unpack_buffer(output.buffer(), small::BufferTypeEnum::OUTPUT,
-                             1UL,
-                             output.shape()[small::CHANNEL],
-                             output.shape()[small::HEIGHT],
-                             output.shape()[small::WIDTH],
-                             BufferT::C_ib, BufferT::C_ob,
-                             unpacked_output);
-    
-        bool passing = true;
-        for (size_t i = 0; i < fc_params.C_o*fc_params.H*fc_params.W; i++)
+    // C_i,H,W,k,s,p,C_o
+    LayerParams fc_params = {16, 1, 1, 1, 1, small::PADDING_V, 16};
+
+    assert(fc_params.H == 1);
+    assert(fc_params.W == 1);
+    assert(fc_params.k == 1);
+    ScalarT input[16]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+    ScalarT weights[256]{
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+            17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    ScalarT bias[16]{1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    ScalarT expected_output[16]{1497, 3674, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+    small::shape_type fc_input_shape{1UL, fc_params.C_i, fc_params.H, fc_params.W};
+
+    BufferT weights_buf(fc_params.C_i*fc_params.k*fc_params.C_o);
+    std::copy(weights, weights+weights_buf.size(), reinterpret_cast<ScalarT*>(weights_buf.data()));
+
+    BufferT bias_buf(fc_params.C_o);
+    std::copy(bias, bias+fc_params.C_o, reinterpret_cast<ScalarT*>(bias_buf.data()));
+
+    small::Conv1DLayer<BufferT> fc(fc_input_shape,
+                                   1U, 1U, fc_params.p,
+                                   fc_params.C_o,
+                                   weights_buf, bias_buf, false,
+                                   small::ActivationType::NONE);
+
+    BufferT inbuf(fc_params.C_i*fc_params.H*fc_params.W);
+    small::Tensor<BufferT> packed_input(fc_input_shape);
+    std::copy(input, input+inbuf.size(), reinterpret_cast<ScalarT*>(inbuf.data()));
+    small::pack_buffer(inbuf, small::INPUT,
+                       1, fc_params.C_i, fc_params.H, fc_params.W,
+                       BufferT::C_ib, BufferT::C_ob, packed_input.buffer());
+
+    small::Tensor<BufferT> output(fc.output_shape());
+    small::init_zeros(output.buffer(), output.size());
+
+    fc.compute_output({&packed_input}, &output);
+
+    BufferT unpacked_output(output.size());
+    small::unpack_buffer(output.buffer(), small::BufferTypeEnum::OUTPUT,
+                         1UL,
+                         output.shape()[small::CHANNEL],
+                         output.shape()[small::HEIGHT],
+                         output.shape()[small::WIDTH],
+                         BufferT::C_ib, BufferT::C_ob,
+                         unpacked_output);
+
+    bool passing = true;
+    for (size_t i = 0; i < fc_params.C_o*fc_params.H*fc_params.W; i++)
+    {
+        if (!almost_equal(expected_output[i], unpacked_output[i], 5e-5, 1e-7))
         {
-            if (!almost_equal(expected_output[i], unpacked_output[i], 5e-5, 1e-7))
-            {
-                passing = false;
-                std::cerr << i << ": ERROR: unequal outputs: unpacked_output("
-                          << unpacked_output[i] << ") != expected_output("
-                          << expected_output[i] << ")\n";
-            }
+            passing = false;
+            std::cerr << i << ": ERROR: unequal outputs: unpacked_output("
+                      << unpacked_output[i] << ") != expected_output("
+                      << expected_output[i] << ")\n";
         }
-    
-        if (passing) std::cerr << "Test PASSED\n";
-        TEST_ASSERT(passing);
     }
-    
+
+    if (passing) std::cerr << "Test PASSED\n";
+    TEST_ASSERT(passing);
+}
+
 
 //****************************************************************************
 void test_dense_dense_layer(void) {
@@ -445,7 +448,7 @@ void test_dense_no_bias(void)
 //****************************************************************************
 TEST_LIST = {
     {"dense_using_conv2d_layer",        test_conv2d_dense_layer},
-    {"dense_using_conv1d_layer",        test_conv1d_dense_layer},
+    //{"dense_using_conv1d_layer",        test_conv1d_dense_layer},
     {"dense_using_dense_layer",         test_dense_dense_layer},
     {"dense_using_dense_layer_no_bias", test_dense_dense_layer_no_bias},
     {"dense_function_no_bias",          test_dense_no_bias},

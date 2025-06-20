@@ -30,7 +30,7 @@ public:
                        uint32_t          kernel_width,
                        uint32_t          stride,
                        PaddingEnum       padding_type)
-        : Layer<BufferT>(),
+        : Layer<BufferT>(input_shape[CHANNEL]),
           m_input_shape(input_shape),
           m_kernel_width(kernel_width),
           m_stride(stride),

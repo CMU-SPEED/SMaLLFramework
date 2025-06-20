@@ -151,7 +151,7 @@ namespace detail
         if (packed_filters.size() == 0)
         {
             BufferT filters(num_channels*kernel_height*kernel_width);
-            // OPTIONAL: Uncomment when using effective output channels
+            // OPTIONAL: Uncomment when using odd numbers of logical output channels
             //small::init_zeros(filters, filters.size());
             packed_filters = std::move(filters);
         }
@@ -314,7 +314,7 @@ DepthwiseConv2DLayer<BufferT>::DepthwiseConv2DLayer(
     bool              buffers_are_packed,
     ActivationType    activation_type,
     float             leaky_slope)
-    : Layer<BufferT>(),
+    : Layer<BufferT>(input_shape[CHANNEL]),
       m_input_shape(input_shape),
       m_kernel_height(kernel_height),
       m_kernel_width(kernel_width),
@@ -395,7 +395,7 @@ DepthwiseConv2DLayer<BufferT>::DepthwiseConv2DLayer(
     bool              buffers_are_packed,
     ActivationType    activation_type,
     float             leaky_slope)
-    : Layer<BufferT>(),
+    : Layer<BufferT>(input_shape[CHANNEL]),
       m_input_shape(input_shape),
       m_kernel_height(kernel_height),
       m_kernel_width(kernel_width),
@@ -483,7 +483,7 @@ DepthwiseConv2DLayer<BufferT>::DepthwiseConv2DLayer(
     bool              buffers_are_packed,
     ActivationType    activation_type,
     float             leaky_slope)
-    : Layer<BufferT>(),
+    : Layer<BufferT>(input_shape[CHANNEL]),
       m_input_shape(input_shape),
       m_kernel_height(kernel_height),
       m_kernel_width(kernel_width),
@@ -577,7 +577,7 @@ DepthwiseConv2DLayer<BufferT>::DepthwiseConv2DLayer(
     bool              buffers_are_packed,
     ActivationType    activation_type,
     float             leaky_slope)
-    : Layer<BufferT>(),
+    : Layer<BufferT>(input_shape[CHANNEL]),
       m_input_shape(input_shape),
       m_kernel_height(kernel_height),
       m_kernel_width(kernel_width),

@@ -45,7 +45,7 @@ public:
     // two input shapes
     RouteLayer(shape_type const &input0_shape,
                shape_type const &input1_shape)
-        : Layer<BufferT>(),
+        : Layer<BufferT>(input0_shape[CHANNEL] + input1_shape[CHANNEL]),
           m_num_inputs(2U),
           m_input0_shape(input0_shape),
           m_input1_shape(input1_shape)

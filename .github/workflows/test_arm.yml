@@ -15,6 +15,7 @@ jobs:
       - uses: pguyot/arm-runner-action@v2.6.5
         with:
           #base_image: https://dietpi.com/downloads/images/DietPi_RPi-ARMv8-Bullseye.img.xz
+          #base_image: https://dietpi.com/downloads/images/DietPi_Container-ARMv8-Bullseye.img.xz
           base_image: https://dietpi.com/downloads/images/DietPi_RPi5-ARMv8-Bookworm.img.xz
           cpu: cortex-a72
           image_additional_mb: 4000
