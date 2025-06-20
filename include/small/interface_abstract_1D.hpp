@@ -53,6 +53,7 @@ void Conv1D(
     BufferT const &filter_buf,
     BufferT &output_buf)
 {
+
 #if defined(RECORD_CALLS)
     std::cout << "Conv1D<float>(k:"
               << kernel_width
@@ -71,6 +72,7 @@ void Conv1D(
     {
         if (stride == 1)
         {
+        
             float_detail::abstract_layer_1D<
                 FloatBuffer, 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob, 1, FLOAT_UNROLL, OP_CONV, 2, 1>(
@@ -431,7 +433,7 @@ void PartialConv1D(
               << ",img:" << batch_size << "x" << input_width
               << ",I,F,O)\n";
 #endif
-    if (input_channels % FLOAT_C_ib == 0 && input_width > 1)
+    if (input_channels % FLOAT_C_ib == 0)
     {
         if (stride == 1)
         {

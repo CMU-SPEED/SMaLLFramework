@@ -68,9 +68,12 @@ void test_conv2d_dense_layer(void) {
     BufferT weights_buf(fc_params.C_i*fc_params.k*fc_params.C_o);
     std::copy(weights, weights+weights_buf.size(), reinterpret_cast<ScalarT*>(weights_buf.data()));
 
+    
     BufferT bias_buf(fc_params.C_o);
     std::copy(bias, bias+fc_params.C_o, reinterpret_cast<ScalarT*>(bias_buf.data()));
+    
 
+    //weights are packed in the constructor
     small::Conv2DLayer<BufferT> fc(fc_input_shape,
                                    1U, 1U, 1U, fc_params.p, fc_params.C_o,
                                    weights_buf, bias_buf, false, small::ActivationType::NONE);
@@ -151,21 +154,26 @@ void test_conv1d_dense_layer(void) {
     
         BufferT weights_buf(fc_params.C_i*fc_params.k*fc_params.C_o);
         std::copy(weights, weights+weights_buf.size(), reinterpret_cast<ScalarT*>(weights_buf.data()));
-    
+   
+
         BufferT bias_buf(fc_params.C_o);
         std::copy(bias, bias+fc_params.C_o, reinterpret_cast<ScalarT*>(bias_buf.data()));
-    
+      
+     
         small::Conv1DLayer<BufferT> fc(fc_input_shape,
                                        1U, 1U, fc_params.p, 
                                        fc_params.C_o,
-                                       weights_buf, bias_buf, true, small::ActivationType::NONE);
+                                       weights_buf, bias_buf, false, small::ActivationType::NONE);
     
         BufferT inbuf(fc_params.C_i*fc_params.H*fc_params.W);
         small::Tensor<BufferT> packed_input(fc_input_shape);
         std::copy(input, input+inbuf.size(), reinterpret_cast<ScalarT*>(inbuf.data()));
+        //pack input
         small::pack_buffer(inbuf, small::INPUT,
                            1, fc_params.C_i, fc_params.H, fc_params.W,
                            BufferT::C_ib, BufferT::C_ob, packed_input.buffer());
+
+
     
         small::Tensor<BufferT> output(fc.output_shape());
         small::init_zeros(output.buffer(), output.size());
