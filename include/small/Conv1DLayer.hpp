@@ -33,7 +33,7 @@ public:
                 uint32_t          kernel_width,
                 uint32_t          stride,
                 PaddingEnum       padding_type,
-                uint32_t          num_output_channels,
+                uint32_t          num_logical_output_channels,
                 BufferT    const &filters,
                 bool              buffers_are_packed = true,
                 ActivationType    activation_type = NONE,
@@ -44,7 +44,7 @@ public:
                 uint32_t          kernel_width,
                 uint32_t          stride,
                 PaddingEnum       padding_type,
-                uint32_t          num_output_channels,
+                uint32_t          num_logical_output_channels,
                 BufferT    const &filters,
                 BufferT    const &bias,
                 bool              buffers_are_packed = true,
@@ -56,7 +56,7 @@ public:
                 uint32_t          kernel_width,
                 uint32_t          stride,
                 PaddingEnum       padding_type,
-                uint32_t          num_output_channels,
+                uint32_t          num_logical_output_channels,
                 BufferT    const &filters,
                 BufferT    const &bn_weight,            // gamma
                 BufferT    const &bn_bias,              // beta
@@ -68,11 +68,6 @@ public:
                 float             leaky_slope = 1.e-2);
 
     virtual ~Conv1DLayer() {}
-
-    virtual uint32_t get_effective_output_channels() const
-    {
-        return m_effective_output_channels;
-    }
 
     virtual void compute_output(
         std::vector<Tensor<BufferT> const *> input,
@@ -89,7 +84,6 @@ private:
 
     uint32_t   const m_kernel_width;
     uint32_t   const m_stride;
-    uint32_t   const m_effective_output_channels;
 
     ActivationType const m_activation_type;
 
@@ -109,7 +103,7 @@ namespace detail
     template <class BufferT>
     void initialize_conv1d_buffers(
         uint32_t          num_output_channels,
-        uint32_t          num_effective_output_channels,
+        uint32_t          num_logical_output_channels,
         uint32_t          num_input_channels,
         uint32_t          kernel_width,
         BufferT    const &filters,
@@ -125,14 +119,14 @@ namespace detail
     {
         // ============ Filter weights ===========
         if (filters.size() !=   /// @todo consider allowing larger filter buffers??
-            num_effective_output_channels*num_input_channels*kernel_width)
+            num_logical_output_channels*num_input_channels*kernel_width)
         {
             throw std::invalid_argument(
                 ((std::string)"*Conv1DLayer::ctor ERROR: filters buffer is incorrect size. Expecting " +
-                (std::string)"num_effective_output_channels(" + std::to_string(num_effective_output_channels) + (std::string)")*" +
+                (std::string)"num_logical_output_channels(" + std::to_string(num_logical_output_channels) + (std::string)")*" +
                 (std::string)"num_input_channels(" + std::to_string(num_input_channels) + (std::string)")*" +
                 (std::string)"kernel_width(" + std::to_string(kernel_width) + (std::string)") = " +
-                std::to_string(num_effective_output_channels*num_input_channels*kernel_width) +
+                std::to_string(num_logical_output_channels*num_input_channels*kernel_width) +
                 (std::string)", but the filters buffer size is " + std::to_string(filters.size())));
         }
 
@@ -153,11 +147,11 @@ namespace detail
 
         if (!buffers_are_packed)
         {
-            if (num_output_channels != num_effective_output_channels)
+            if (num_output_channels != num_logical_output_channels)
             {
                 // pad out the unpacked
                 size_t unpacked_idx = 0;
-                for (size_t co = 0; co < num_effective_output_channels; ++co)
+                for (size_t co = 0; co < num_logical_output_channels; ++co)
                     for (size_t ci = 0; ci < num_input_channels; ++ci)
                         for (size_t w = 0; w < kernel_width; ++w)
                         {
@@ -184,7 +178,7 @@ namespace detail
         }
         else
         {
-            if (num_output_channels != num_effective_output_channels)
+            if (num_output_channels != num_logical_output_channels)
             {
                 throw std::invalid_argument(
                     "Conv1DLayer::ctor error: invalid number of output channels.");
@@ -197,7 +191,7 @@ namespace detail
         // ============ Bias term ===========
         if (bias.size() > 0)
         {
-            if (bias.size() != num_effective_output_channels)
+            if (bias.size() != num_logical_output_channels)
             {
                 throw std::invalid_argument(
                     "*Conv1DLayer::ctor ERROR: "
@@ -208,7 +202,7 @@ namespace detail
             BufferT local_bias(num_output_channels);
             small::init_zeros(local_bias, local_bias.size());  // optional
             std::copy(bias.data(),
-                      bias.data() + num_effective_output_channels,
+                      bias.data() + num_logical_output_channels,
                       local_bias.data());
             packed_bias = std::move(local_bias);
         }
@@ -220,10 +214,10 @@ namespace detail
             (bn_running_mean.size() > 0) ||
             (bn_running_variance.size() > 0))
         {
-            if ((bn_weight.size() != num_effective_output_channels) ||
-                (bn_bias.size() != num_effective_output_channels) ||
-                (bn_running_mean.size() != num_effective_output_channels) ||
-                (bn_running_variance.size() != num_effective_output_channels))
+            if ((bn_weight.size() != num_logical_output_channels) ||
+                (bn_bias.size() != num_logical_output_channels) ||
+                (bn_running_mean.size() != num_logical_output_channels) ||
+                (bn_running_variance.size() != num_logical_output_channels))
             {
                 throw std::invalid_argument(
                     "*Conv1DLayer::ctor ERROR: "
@@ -261,7 +255,7 @@ namespace detail
                 no_bias = true;
             }
 
-            for (size_t ochan = 0; ochan < num_effective_output_channels; ++ochan)
+            for (size_t ochan = 0; ochan < num_logical_output_channels; ++ochan)
             {
                 // compute scaling factor for filters of this output channel
                 float filter_scale =
@@ -303,7 +297,7 @@ namespace detail
         }
 #if defined(DEBUG_LAYERS)
         std::cerr << "*Conv1D: ochans:" << num_output_channels
-                  << ",effective_ochans:" << num_effective_output_channels
+                  << ",logical_ochans:" << num_logical_output_channels
                   << std::endl;
         std::cerr << "*Conv1D: packed_bias.size():    "
                   << packed_bias.size() << std::endl;
@@ -325,16 +319,15 @@ Conv1DLayer<BufferT>::Conv1DLayer(
     uint32_t          kernel_width,
     uint32_t          stride,
     PaddingEnum       padding_type,
-    uint32_t          num_output_channels,
+    uint32_t          num_logical_output_channels,
     BufferT    const &filters,
     bool              buffers_are_packed,
     ActivationType    activation_type,
     float             leaky_slope)
-    : Layer<BufferT>(),
+    : Layer<BufferT>(num_logical_output_channels),
       m_input_shape(input_shape),
       m_kernel_width(kernel_width),
       m_stride(stride),
-      m_effective_output_channels(num_output_channels),
       m_activation_type(activation_type),
       m_l_pad(0), m_r_pad(0),
       m_leaky_slope(1),  /// @note Allocating 1-element buffer
@@ -347,7 +340,7 @@ Conv1DLayer<BufferT>::Conv1DLayer(
               << ",s:" << m_stride
               << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
               << ",ichans:" << m_input_shape[CHANNEL]
-              << ",ochans:" << num_output_channels
+              << ",ochans:" << num_logical_output_channels
               << ",img:" << m_input_shape[HEIGHT]
               << "x" << m_input_shape[WIDTH]
               << "), filters.size=" << filters.size() << std::endl;
@@ -362,12 +355,13 @@ Conv1DLayer<BufferT>::Conv1DLayer(
     }
 
     // Deal with odd numbers of output channels by padding unpacked filters
+    uint32_t num_output_channels{num_logical_output_channels};
     if ((num_output_channels % BufferT::C_ob) != 0)
     {
         if (buffers_are_packed)
         {
             throw std::invalid_argument(
-                "Conv1DLayer::ctor ERROR: invalid number of output channels.");
+                "Conv1DLayer::ctor ERROR: invalid number of output channels for packed weights.");
         }
 
         // set to next integer multiple of blocking factor (for this platform).
@@ -384,7 +378,7 @@ Conv1DLayer<BufferT>::Conv1DLayer(
 
     detail::initialize_conv1d_buffers(
         num_output_channels,
-        m_effective_output_channels,
+        num_logical_output_channels,
         m_input_shape[CHANNEL],
         m_kernel_width,
         filters,
@@ -416,7 +410,8 @@ Conv1DLayer<BufferT>::Conv1DLayer(
     else if (activation_type == SOFTMAX)
     {
         std::cerr << "Softmax(batches:" << output_shape[BATCH]
-                  << ",chans:" << output_shape[CHANNEL]
+                  << ",chans(logical):" << output_shape[CHANNEL]
+                  << "(" << num_logical_output_channels << ")"
                   << ",img:" << output_shape[HEIGHT]
                   << "x" << output_shape[WIDTH]
                   << ")" << std::endl;
@@ -431,17 +426,16 @@ Conv1DLayer<BufferT>::Conv1DLayer(
     uint32_t          kernel_width,
     uint32_t          stride,
     PaddingEnum       padding_type,
-    uint32_t          num_output_channels,
+    uint32_t          num_logical_output_channels,
     BufferT    const &filters,
     BufferT    const &bias,
     bool              buffers_are_packed,
     ActivationType    activation_type,
     float             leaky_slope)
-    : Layer<BufferT>(),
+    : Layer<BufferT>(num_logical_output_channels),
       m_input_shape(input_shape),
       m_kernel_width(kernel_width),
       m_stride(stride),
-      m_effective_output_channels(num_output_channels),
       m_activation_type(activation_type),
       m_l_pad(0), m_r_pad(0),
       m_leaky_slope(1),  /// @note Allocating 1-element buffer
@@ -454,7 +448,7 @@ Conv1DLayer<BufferT>::Conv1DLayer(
               << ",s:" << m_stride
               << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
               << ",ichans:" << m_input_shape[CHANNEL]
-              << ",ochans:" << num_output_channels
+              << ",ochans:" << num_logical_output_channels
               << ",img:" << m_input_shape[HEIGHT]
               << "x" << m_input_shape[WIDTH]
               << "),filters.size=" << filters.size()
@@ -470,6 +464,7 @@ Conv1DLayer<BufferT>::Conv1DLayer(
     }
 
     // Deal with odd numbers of output channels by padding unpacked filters
+    uint32_t num_output_channels{num_logical_output_channels};
     if ((num_output_channels % BufferT::C_ob) != 0)
     {
         if (buffers_are_packed)
@@ -492,7 +487,7 @@ Conv1DLayer<BufferT>::Conv1DLayer(
 
     detail::initialize_conv1d_buffers(
         num_output_channels,
-        m_effective_output_channels,
+        num_logical_output_channels,
         m_input_shape[CHANNEL],
         m_kernel_width,
         filters,
@@ -525,7 +520,8 @@ Conv1DLayer<BufferT>::Conv1DLayer(
     else if (activation_type == SOFTMAX)
     {
         std::cerr << "Softmax(batches:" << output_shape[BATCH]
-                  << ",chans:" << output_shape[CHANNEL]
+                  << ",chans(logical):" << output_shape[CHANNEL]
+                  << "(" << num_logical_output_channels << ")"
                   << ",img:" << output_shape[HEIGHT]
                   << "x" << output_shape[WIDTH]
                   << ")" << std::endl;
@@ -541,7 +537,7 @@ Conv1DLayer<BufferT>::Conv1DLayer(
     uint32_t          kernel_width,
     uint32_t          stride,
     PaddingEnum       padding_type,
-    uint32_t          num_output_channels,
+    uint32_t          num_logical_output_channels,
     BufferT    const &filters,
     BufferT    const &bn_weight,            // gamma
     BufferT    const &bn_bias,              // beta
@@ -551,11 +547,10 @@ Conv1DLayer<BufferT>::Conv1DLayer(
     bool              buffers_are_packed,
     ActivationType    activation_type,
     float             leaky_slope)
-    : Layer<BufferT>(),
+    : Layer<BufferT>(num_logical_output_channels),
       m_input_shape(input_shape),
       m_kernel_width(kernel_width),
       m_stride(stride),
-      m_effective_output_channels(num_output_channels),
       m_activation_type(activation_type),
       m_l_pad(0), m_r_pad(0),
       m_leaky_slope(1),  /// @note Allocating 1-element buffer
@@ -568,7 +563,7 @@ Conv1DLayer<BufferT>::Conv1DLayer(
               << ",s:" << m_stride
               << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
               << ",ichans:" << m_input_shape[CHANNEL]
-              << ",ochans:" << num_output_channels
+              << ",ochans:" << num_logical_output_channels
               << ",img:" << m_input_shape[HEIGHT]
               << "x" << m_input_shape[WIDTH]
               << "), filters.size=" << filters.size()
@@ -589,6 +584,7 @@ Conv1DLayer<BufferT>::Conv1DLayer(
     }
 
     // Deal with odd numbers of output channels by padding unpacked filters
+    uint32_t num_output_channels{num_logical_output_channels};
     if ((num_output_channels % BufferT::C_ob) != 0)
     {
         if (buffers_are_packed)
@@ -611,7 +607,7 @@ Conv1DLayer<BufferT>::Conv1DLayer(
 
     detail::initialize_conv1d_buffers(
         num_output_channels,
-        m_effective_output_channels,
+        num_logical_output_channels,
         m_input_shape[CHANNEL],
         m_kernel_width,
         filters,
@@ -645,7 +641,8 @@ Conv1DLayer<BufferT>::Conv1DLayer(
     else if (activation_type == SOFTMAX)
     {
         std::cerr << "Softmax(batches:" << output_shape[BATCH]
-                  << ",chans:" << output_shape[CHANNEL]
+                  << ",chans(logical):" << output_shape[CHANNEL]
+                  << "(" << num_logical_output_channels << ")"
                   << ",img:" << output_shape[HEIGHT]
                   << "x" << output_shape[WIDTH]
                   << ")" << std::endl;
@@ -726,6 +723,7 @@ void Conv1DLayer<BufferT>::compute_output(
     else if (m_activation_type == SOFTMAX)
     {
         small::SoftMax(output_shape[CHANNEL],
+                       this->logical_output_channels(),
                        output_shape[HEIGHT],  /// @todo BATCH?
                        output_shape[WIDTH],
                        output->buffer(),

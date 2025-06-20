@@ -28,7 +28,7 @@ public:
 
     UpSample2DLayer(shape_type const &input_shape,
                     uint32_t scale_factor)
-        : Layer<BufferT>(),
+        : Layer<BufferT>(input_shape[CHANNEL]),
           m_input_shape(input_shape),
           m_scale_factor(scale_factor)
     {
