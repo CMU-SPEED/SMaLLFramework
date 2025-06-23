@@ -451,7 +451,7 @@ void test_dense_no_bias(void)
 //****************************************************************************
 TEST_LIST = {
     {"dense_using_conv2d_layer",        test_conv2d_dense_layer},
-    //{"dense_using_conv1d_layer",        test_conv1d_dense_layer},
+    {"dense_using_conv1d_layer",        test_conv1d_dense_layer},
     {"dense_using_dense_layer",         test_dense_dense_layer},
     {"dense_using_dense_layer_no_bias", test_dense_dense_layer_no_bias},
     {"dense_function_no_bias",          test_dense_no_bias},
