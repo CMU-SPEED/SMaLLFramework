@@ -59,6 +59,187 @@ void test_conv1d_layer(void)
 }
 
 //****************************************************************************
+void test_conv1d_layer_odd_output_channels(void)
+{
+#if defined(QUANTIZED)
+    using BufferT = small::QUInt8Buffer;
+#else
+    using BufferT = small::FloatBuffer;
+#endif
+
+    // C_i,H,W,k,s,p,C_o
+    LayerParams params {16, 1, 13, 1, 1, small::PADDING_F, 13};
+
+    // Odd packed buffers should fail
+    try
+    {
+        small::shape_type input_shape{1U, params.C_i, params.H, params.W};
+        BufferT filters(params.C_i*params.k*params.k*params.C_o);
+        small::Conv1DLayer conv1d(input_shape,
+                                  params.k,
+                                  params.s, params.p,
+                                  params.C_o,
+                                  filters,
+                                  true);
+
+        TEST_ASSERT(params.C_o % BufferT::C_ob == 0);
+    }
+    catch (std::invalid_argument &e_obj)
+    {
+        TEST_CHECK(params.C_o % BufferT::C_ob != 0);
+    }
+
+    // Odd unpacked buffers should not fail
+    try
+    {
+        small::shape_type input_shape{1U, params.C_i, params.H, params.W};
+
+        BufferT filters(params.C_i*params.k*params.k*params.C_o);
+
+        small::Conv1DLayer conv1d(input_shape,
+                                  params.k,
+                                  params.s, params.p,
+                                  params.C_o,
+                                  filters,
+                                  false);
+
+        TEST_ASSERT(conv1d.logical_output_channels() == params.C_o);
+        if (params.C_o % BufferT::C_ob == 0)
+        {
+            TEST_ASSERT(conv1d.output_shape()[small::CHANNEL] == params.C_o);
+        }
+        else
+        {
+            TEST_ASSERT(conv1d.output_shape()[small::CHANNEL] ==
+                        (params.C_o + (BufferT::C_ob - params.C_o % BufferT::C_ob)));
+        }
+    }
+    catch (std::invalid_argument &e_obj)
+    {
+        TEST_CHECK(false);
+    }
+
+    // Test with bias
+    try
+    {
+        small::shape_type input_shape{1U, params.C_i, params.H, params.W};
+
+        BufferT filters(params.C_i*params.k*params.k*params.C_o);
+        BufferT bias(params.C_o);
+
+        small::Conv1DLayer conv1d(input_shape,
+                                  params.k,
+                                  params.s, params.p,
+                                  params.C_o,
+                                  filters,
+                                  bias,
+                                  false);
+
+        TEST_ASSERT(conv1d.logical_output_channels() == params.C_o);
+        if (params.C_o % BufferT::C_ob == 0)
+        {
+            TEST_ASSERT(conv1d.output_shape()[small::CHANNEL] == params.C_o);
+        }
+        else
+        {
+            TEST_ASSERT(conv1d.output_shape()[small::CHANNEL] ==
+                        (params.C_o + (BufferT::C_ob - params.C_o % BufferT::C_ob)));
+        }
+    }
+    catch (std::invalid_argument &e_obj)
+    {
+        TEST_CHECK(false);
+    }
+
+    // Test with batchnorm params
+    try
+    {
+        small::shape_type input_shape{1U, params.C_i, params.H, params.W};
+
+        BufferT filters(params.C_i*params.k*params.k*params.C_o);
+        BufferT bn_weight(params.C_o);
+        BufferT bn_bias(params.C_o);
+        BufferT bn_running_mean(params.C_o);
+        BufferT bn_running_variance(params.C_o);
+
+        small::Conv1DLayer conv1d(input_shape,
+                                  params.k,
+                                  params.s, params.p,
+                                  params.C_o,
+                                  filters,
+                                  bn_weight,
+                                  bn_bias,
+                                  bn_running_mean,
+                                  bn_running_variance,
+                                  0.f,
+                                  false);
+
+        TEST_ASSERT(conv1d.logical_output_channels() == params.C_o);
+        if (params.C_o % BufferT::C_ob == 0)
+        {
+            TEST_ASSERT(conv1d.output_shape()[small::CHANNEL] == params.C_o);
+        }
+        else
+        {
+            TEST_ASSERT(conv1d.output_shape()[small::CHANNEL] ==
+                        (params.C_o + (BufferT::C_ob - params.C_o % BufferT::C_ob)));
+        }
+    }
+    catch (std::invalid_argument &e_obj)
+    {
+        std::cerr << "EXCEPTION: " << e_obj.what() << std::endl;
+        TEST_CHECK(false);
+    }
+
+    // Test extra channel values are zero with random filter and bias
+    try
+    {
+        small::shape_type input_shape{1U, params.C_i, params.H, params.W};
+
+        BufferT filters(params.C_i*params.k*params.k*params.C_o);
+        small::init(filters, filters.size());
+        BufferT bias(params.C_o);
+        small::init(bias, bias.size());
+
+        small::Conv1DLayer conv1d(input_shape,
+                                  params.k,
+                                  params.s, params.p,
+                                  params.C_o,
+                                  filters,
+                                  bias,
+                                  false);
+
+        small::Tensor<BufferT>  input(input_shape);
+        small::Tensor<BufferT> output(conv1d.output_size());
+
+        conv1d.compute_output({&input}, &output);
+        for (size_t co = params.C_o;
+             co < conv1d.output_shape()[small::CHANNEL]; ++co)
+        {
+            for (size_t h = 0; h < conv1d.output_shape()[small::HEIGHT]; ++h)
+            {
+                for (size_t w = 0; w < conv1d.output_shape()[small::WIDTH]; ++w)
+                {
+                    size_t packed_index =
+                        small::packed_buffer_index(
+                            conv1d.output_shape()[small::CHANNEL],
+                            conv1d.output_shape()[small::HEIGHT],
+                            conv1d.output_shape()[small::WIDTH],
+                            BufferT::C_ob,
+                            co, h, w);
+                    TEST_ASSERT(0.f == output.buffer()[packed_index]);
+                }
+            }
+        }
+    }
+    catch (std::invalid_argument &e_obj)
+    {
+        std::cerr << "Unexpected exception caught: " << e_obj.what() << std::endl;
+        TEST_CHECK(false);
+    }
+}
+
+//****************************************************************************
 void test_conv1d_weights_1_channel(void) {
 #if defined(QUANTIZED)
     using BufferT = small::QUInt8Buffer;
@@ -1865,6 +2046,7 @@ void test_conv1d_with_weights_and_batchnorm_params_simple(void) {
 //****************************************************************************
 TEST_LIST = {
     {"conv1d_layer",   test_conv1d_layer},
+    {"conv1d_layer_odd_output_channels", test_conv1d_layer_odd_output_channels},
     {"conv1d_weights_1_channel", test_conv1d_weights_1_channel},
     {"conv1d_weights_2_channel", test_conv1d_weights_2_channel},
     {"conv1d_weights_2_channel_big", test_conv1d_weights_2_channel_big},

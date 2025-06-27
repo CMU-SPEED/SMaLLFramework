@@ -422,20 +422,20 @@ void DenseLayer<BufferT>::compute_output(
     }
     else
     {
-        small::Conv2D(1, 1, 1,
-                      0U, 0U, 0U, 0U,
-                      output_shape[CHANNEL],
-                      m_input_shape[CHANNEL],
-                      m_input_shape[HEIGHT], m_input_shape[WIDTH],
-                      input[0]->buffer(),
-                      m_packed_filters,
-                      output->buffer());
-        /// @todo ERROR THE FOLLOWING DOES NOT WORK (Address sanitizer, heap overflow, ZEN2)
-        // small::Dense(output_shape[CHANNEL]*output_shape[HEIGHT]*output_shape[WIDTH],
-        //              m_input_shape[CHANNEL]*m_input_shape[HEIGHT]*m_input_shape[WIDTH],
-        //              input[0]->buffer(),
-        //              m_packed_filters,
-        //              output->buffer());
+        // small::Conv2D(1, 1, 1,
+        //               0U, 0U, 0U, 0U,
+        //               output_shape[CHANNEL],
+        //               m_input_shape[CHANNEL],
+        //               m_input_shape[HEIGHT], m_input_shape[WIDTH],
+        //               input[0]->buffer(),
+        //               m_packed_filters,
+        //               output->buffer());
+
+        small::Dense(output_shape[CHANNEL]*output_shape[HEIGHT]*output_shape[WIDTH],
+                     m_input_shape[CHANNEL]*m_input_shape[HEIGHT]*m_input_shape[WIDTH],
+                     input[0]->buffer(),
+                     m_packed_filters,
+                     output->buffer());
    }
 
     output->set_shape(output_shape);
