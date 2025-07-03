@@ -31,12 +31,4 @@
 // ================== Public API ====================
 #include <small/utils.hpp>
 #include <small/buffers.hpp>
-// #include <small/interface.hpp>
-
-
-#include <small/interface_abstract.hpp>
-#include <small/interface_abstract_1D.hpp>
-
-// #include <small/fused_interface.hpp>
-#include <small/interface_abstract_fused.hpp>
-#include <small/interface_abstract_1D_fused.hpp>
+#include <small/interface.hpp> // functional interface
