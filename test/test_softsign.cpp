@@ -342,6 +342,16 @@ void test_softsign_single_element(void)
         //          << output_dc[ix] << " " << input_dc[ix]/(1.0f + std::abs(input_dc[ix])) << std::endl;
         //          std::cout << "ptr: " << std::hex << *ptr << " ptr_ref: " << *ptr_ref << std::endl;
     }
+
+    small::SoftSign_3Pass(
+        C_i, H, W,
+        input_dc,
+        output_dc
+    );
+    for (size_t ix = 0; ix < num_input_elts; ++ix)
+    {
+        TEST_CHECK(output_dc[ix] == input_dc[ix]/(1.0f + std::abs(input_dc[ix])));
+    }
 }
 
 void test_softsign_single_tile(void)
@@ -377,6 +387,16 @@ void test_softsign_single_tile(void)
         // std::cout << ix << ": softsign(" << input_dc[ix] << ")-->"
         //          << output_dc[ix] << " " << input_dc[ix]/(1.0f + std::abs(input_dc[ix])) << std::endl;
     }
+
+    small::SoftSign_3Pass(
+        C_i, H, W,
+        input_dc,
+        output_dc
+    );
+    for (size_t ix = 0; ix < num_input_elts; ++ix)
+    {
+        TEST_CHECK(output_dc[ix] == input_dc[ix]/(1.0f + std::abs(input_dc[ix])));
+    }
 }
 
 
@@ -411,6 +431,16 @@ void test_softsign_large_tile(void)
         TEST_CHECK(output_dc[ix] == input_dc[ix]/(1.0f + std::abs(input_dc[ix])));
         // std::cout << ix << ": softsign(" << input_dc[ix] << ")-->"
         //          << output_dc[ix] << " " << input_dc[ix]/(1.0f + std::abs(input_dc[ix])) << std::endl;
+    }
+
+    small::SoftSign_3Pass(
+        C_i, H, W,
+        input_dc,
+        output_dc
+    );
+    for (size_t ix = 0; ix < num_input_elts; ++ix)
+    {
+        TEST_CHECK(output_dc[ix] == input_dc[ix]/(1.0f + std::abs(input_dc[ix])));
     }
 }
 
@@ -557,8 +587,8 @@ TEST_LIST = {
      small::float_detail::test_correctness_FLOAT_SOFTSIGN_TILE},
     {"correctness individual FLOAT_SOFTSIGN_TILE",
      small::float_detail::test_correctness_individual_FLOAT_SOFTSIGN_TILE},
-    // {"correctness FLOAT_FUSED_SOFTSIGN_TILE",
-    //  small::float_detail::test_correctness_FLOAT_FUSED_SOFTSIGN_TILE},
+    {"correctness FLOAT_FUSED_SOFTSIGN_TILE",
+     small::float_detail::test_correctness_FLOAT_FUSED_SOFTSIGN_TILE},
     // {"performance FLOAT_SOFTSIGN_TILE",
     //  small::float_detail::test_performance_FLOAT_SOFTSIGN_TILE},
     {"softsign single element",

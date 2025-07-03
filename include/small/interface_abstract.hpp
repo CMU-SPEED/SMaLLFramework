@@ -2249,38 +2249,65 @@ void SoftSign(int input_channels,
             1, 1,
             0, 0, 0, 0,
             &input_buf, (FloatBuffer *)nullptr, &output_buf);
+    }
+    else
+    {
+        throw std::invalid_argument(
+            "SoftSign<float> ERROR: in_channels unsupported.");
+    }
 
-        // float_detail::abstract_layer<
-        //     FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_ABS, 0, 1>(
-        //     input_channels, // Output Channel Grouping
-        //     1,              // Output Channels per group
-        //     1,
-        //     input_height, input_width,
-        //     1, 1,
-        //     0, 0, 0, 0,
-        //     &input_buf, (FloatBuffer *)nullptr, &output_buf);
+}
+#endif
 
-        // FloatBuffer scalar_buf(1);
-        // scalar_buf.data()[0] = 1.0f;
-        // float_detail::abstract_layer<
-        //     FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_EWISE_ADD_SCALAR, 0, 0>(
-        //     input_channels, // Output Channel Grouping
-        //     1,              // Output Channels per group
-        //     1,
-        //     input_height, input_width,
-        //     1, 1,
-        //     0, 0, 0, 0,
-        //     &output_buf, &scalar_buf, &output_buf);
+//===========================================================================
+#if defined(SMALL_HAS_FLOAT_SUPPORT)
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<FloatBuffer, BufferT>::value, bool> = true>
+void SoftSign_3Pass(int input_channels,
+              int input_height, int input_width,
+              BufferT const &input_buf,
+              BufferT       &output_buf)
+{
+#if defined(RECORD_CALLS)
+    std::cout << "SoftSign<float>(chans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I,O)\n";
+#endif
 
-        // float_detail::abstract_layer<
-        //     FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_DIV, 0, 0>(
-        //     input_channels, // Output Channel Grouping
-        //     1,              // Output Channels per group
-        //     1,
-        //     input_height, input_width,
-        //     1, 1,
-        //     0, 0, 0, 0,
-        //     &input_buf, (FloatBuffer *)nullptr, &output_buf);
+    if (input_channels % FLOAT_C_ib == 0)
+    {
+        float_detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_ABS, 0, 1>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            1, 1,
+            0, 0, 0, 0,
+            &input_buf, (FloatBuffer *)nullptr, &output_buf);
+
+        FloatBuffer scalar_buf(1);
+        scalar_buf.data()[0] = 1.0f;
+        float_detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_EWISE_ADD_SCALAR, 0, 0>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            1, 1,
+            0, 0, 0, 0,
+            &output_buf, &scalar_buf, &output_buf);
+
+        float_detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_DIV, 0, 0>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            1, 1,
+            0, 0, 0, 0,
+            &input_buf, (FloatBuffer *)nullptr, &output_buf);
     }
     else
     {
