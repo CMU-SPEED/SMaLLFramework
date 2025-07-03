@@ -573,6 +573,80 @@ else\
     }
 #endif
 
+#define FLOAT_FUSED_COND_SCALE_SIMD_C(c_x_x, mask, bv, av, _W_ob, _C_ob) \
+    av = vmovq_n_f32(0.0f);                                             \
+    mask = vcltq_f32(c_x_x, av);                                        \
+    av = vmulq_f32(c_x_x, bv);                                          \
+    c_x_x = vmaxq_f32(vmovq_n_f32(0.0f), c_x_x);                                       \
+    av = (float32x4_t) vandq_s32((int32x4_t)(av), (int32x4_t)(mask));   \
+    c_x_x = vaddq_f32(av, c_x_x);
+
+#define FLOAT_FUSED_COND_SCALE_TILE_C(b, _W_ob, _C_ob)               \
+    float32x4_t bv = vld1q_dup_f32(b);                                  \
+    float32x4_t av;                                                     \
+    uint32x4_t mask;                                                    \
+    FLOAT_FUSED_COND_SCALE_SIMD_C(c_0_0, mask, bv, av, _W_ob, _C_ob); \
+    FLOAT_FUSED_COND_SCALE_SIMD_C(c_0_1, mask, bv, av, _W_ob, _C_ob); \
+    FLOAT_FUSED_COND_SCALE_SIMD_C(c_0_2, mask, bv, av, _W_ob, _C_ob); \
+    FLOAT_FUSED_COND_SCALE_SIMD_C(c_0_3, mask, bv, av, _W_ob, _C_ob); \
+    /**/                                                       \
+    FLOAT_FUSED_COND_SCALE_SIMD_C(c_1_0, mask, bv, av, _W_ob, _C_ob); \
+    FLOAT_FUSED_COND_SCALE_SIMD_C(c_1_1, mask, bv, av, _W_ob, _C_ob); \
+    FLOAT_FUSED_COND_SCALE_SIMD_C(c_1_2, mask, bv, av, _W_ob, _C_ob); \
+    FLOAT_FUSED_COND_SCALE_SIMD_C(c_1_3, mask, bv, av, _W_ob, _C_ob); \
+    /**/                                                       \
+    FLOAT_FUSED_COND_SCALE_SIMD_C(c_2_0, mask, bv, av, _W_ob, _C_ob); \
+    FLOAT_FUSED_COND_SCALE_SIMD_C(c_2_1, mask, bv, av, _W_ob, _C_ob); \
+    FLOAT_FUSED_COND_SCALE_SIMD_C(c_2_2, mask, bv, av, _W_ob, _C_ob); \
+    FLOAT_FUSED_COND_SCALE_SIMD_C(c_2_3, mask, bv, av, _W_ob, _C_ob); \
+    /**/                                                       \
+    FLOAT_FUSED_COND_SCALE_SIMD_C(c_3_0, mask, bv, av, _W_ob, _C_ob); \
+    FLOAT_FUSED_COND_SCALE_SIMD_C(c_3_1, mask, bv, av, _W_ob, _C_ob); \
+    FLOAT_FUSED_COND_SCALE_SIMD_C(c_3_2, mask, bv, av, _W_ob, _C_ob); \
+    FLOAT_FUSED_COND_SCALE_SIMD_C(c_3_3, mask, bv, av, _W_ob, _C_ob); \
+    /**/                                                       \
+    FLOAT_FUSED_COND_SCALE_SIMD_C(c_4_0, mask, bv, av, _W_ob, _C_ob); \
+    FLOAT_FUSED_COND_SCALE_SIMD_C(c_4_1, mask, bv, av, _W_ob, _C_ob); \
+    FLOAT_FUSED_COND_SCALE_SIMD_C(c_4_2, mask, bv, av, _W_ob, _C_ob); \
+    FLOAT_FUSED_COND_SCALE_SIMD_C(c_4_3, mask, bv, av, _W_ob, _C_ob); \
+    /**/                                                       \
+    FLOAT_FUSED_COND_SCALE_SIMD_C(c_5_0, mask, bv, av, _W_ob, _C_ob); \
+    FLOAT_FUSED_COND_SCALE_SIMD_C(c_5_1, mask, bv, av, _W_ob, _C_ob); \
+    FLOAT_FUSED_COND_SCALE_SIMD_C(c_5_2, mask, bv, av, _W_ob, _C_ob); \
+    FLOAT_FUSED_COND_SCALE_SIMD_C(c_5_3, mask, bv, av, _W_ob, _C_ob);
+
+#if FLOAT_SIMD_EPILOGUE == 1
+#define FLOAT_FUSED_COND_SCALE_END_C(b, c_cur, W_last, C_ob)         \
+    dtype *c_pixel = c_cur;                                             \
+    dtype scale = b[0];                                                 \
+    for (uint32_t kk = 0; kk < W_last; kk++)                            \
+    {                                                                   \
+        dtype *c_channel = c_pixel;                                     \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                          \
+        {                                                               \
+            *(c_channel) = (0.0 > *(c_channel)) ? (*(c_channel) * (scale)) : *(c_channel); \
+            c_channel++;                                                \
+        }                                                               \
+        c_pixel += C_ob;                                                \
+    }
+
+#else
+
+#define FLOAT_FUSED_COND_SCALE_END_C(b, c_cur, W_last, C_ob)         \
+    float32x4_t bv = vld1q_dup_f32(b);                                  \
+    float32x4_t av;                                                     \
+    uint32x4_t mask;                                                    \
+    for (uint32_t kk = 0; kk < W_last; kk++)                            \
+    {                                                                   \
+        for (uint32_t jj = 0; jj < C_ob / FLOAT_SIMD; jj++)             \
+        {                                                               \
+            float32x4_t cv = c_cur[kk * (C_ob / FLOAT_SIMD) + jj];      \
+            FLOAT_FUSED_COND_SCALE_SIMD_C(cv, mask, bv, av, W_last, C_ob); \
+            c_cur[kk * (C_ob / FLOAT_SIMD) + jj] = cv;                  \
+        }                                                               \
+    }
+#endif
+
 
 //****************************************************************************
 // Accumulation kernels
