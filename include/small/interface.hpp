@@ -400,9 +400,10 @@ void ReLUActivation1D(int input_channels,
  * @param[in]  input_channels  Number of channels associated with input image
  * @param[in]  input_height    Height of input image in pixels
  * @param[in]  input_width     Width of input image in pixels
- * @param[in]  negative_slope  The attenuation factor for negative values (1e-2)
  * @param[in]  input_buf       Buffer of input (image x channels) data
  *                             size = Ci x iH x iW
+ * @param[in]  slope_buf       A buffer of one element containing the slope
+ *                             of the function in the negative range
  * @param[out] output_buf      Buffer of output data computed for layer
  *                             size = oH x oW x Co where the output image size
  *                             depends on input image size, kernel, padding
@@ -411,8 +412,8 @@ void ReLUActivation1D(int input_channels,
 template <class BufferT, bool>
 void LeakyReLUActivation(int input_channels,
                          int input_height, int input_width,
-                         float negative_slope,  /// @todo should this be valueT
                          BufferT const &input_buf,
+                         BufferT const &slope_buf,
                          BufferT       &output_buf);
 
 
@@ -433,6 +434,30 @@ void SoftMax(int input_channels,
              int input_height, int input_width,
              BufferT const &input_buf,
              BufferT       &output_buf);
+
+//****************************************************************************
+/// @todo document this interface
+template <class BufferT, bool>
+void LogSoftMax(int input_channels,
+                int input_height, int input_width,
+                BufferT const &input_buf,
+                BufferT       &output_buf);
+
+//****************************************************************************
+/// @todo document this interface
+template <class BufferT, bool>
+void SoftSign(int input_channels,
+              int input_height, int input_width,
+              BufferT const &input_buf,
+              BufferT       &output_buf);
+
+//****************************************************************************
+/// @todo document this interface
+template <class BufferT, bool>
+void SoftSign_3Pass(int input_channels,
+                    int input_height, int input_width,
+                    BufferT const &input_buf,
+                    BufferT       &output_buf);
 
 //****************************************************************************
 /**
@@ -496,3 +521,15 @@ void Dense(int output_elements, int input_elements,
            BufferT const &filter_buf,
            BufferT       &output_buf);
 } // ns small
+
+//****************************************************************************
+// Include definitions of all interface functions here.
+//****************************************************************************
+
+#include <small/interface_abstract.hpp>
+#include <small/interface_abstract_1D.hpp>
+
+/// @todo create a fused_interface.hpp someday and have it include the other 2
+// #include <small/fused_interface.hpp>
+#include <small/interface_abstract_fused.hpp>
+#include <small/interface_abstract_1D_fused.hpp>
