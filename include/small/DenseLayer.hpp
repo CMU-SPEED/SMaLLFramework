@@ -125,7 +125,8 @@ namespace detail
                             BufferT::C_ob, BufferT::C_ib,
                             co, ci, 0UL, 0UL);
                         //std::cerr << "unpacked-->packed: " << unpacked_idx
-                        //          << "-->" << packed_idx << std::endl;
+                        //          << "-->" << packed_idx
+                        //          << ", val = " << filters[unpacked_idx] << std::endl;
                         packed_filters[packed_idx] = filters[unpacked_idx++];
                     }
                 }
@@ -253,7 +254,6 @@ DenseLayer<BufferT>::DenseLayer(
         m_packed_bias);
 
 #if defined(DEBUG_LAYERS)
-    auto &output_shape = this->output_shape();
     if (activation_type == RELU)
     {
         std::cerr << "ReLU(batches:" << output_shape[BATCH]
@@ -351,7 +351,6 @@ DenseLayer<BufferT>::DenseLayer(
 
 
 #if defined(DEBUG_LAYERS)
-    auto &output_shape = this->output_shape();
     if (activation_type == RELU)
     {
         std::cerr << "ReLU(batches:" << output_shape[BATCH]
