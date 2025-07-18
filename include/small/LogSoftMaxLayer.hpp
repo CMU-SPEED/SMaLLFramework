@@ -27,13 +27,13 @@ public:
 
     // ctor for actual == logical channels
     LogSoftMaxLayer(shape_type const &input_shape)
-        : Layer<BufferT>(input_shape),       // input_shape == output_shape
-          m_logical_channels(input_shape[CHANNEL])
+        : Layer<BufferT>(input_shape)       // input_shape == output_shape
     {
 #if defined(DEBUG_LAYERS)
         auto const &output_shape(this->output_shape());
         std::cerr << "LogSoftMax(batches:" << output_shape[BATCH]
-                  << ",chans:" << output_shape[CHANNEL]
+                  << ",chans/logical:" << output_shape[CHANNEL]
+                  << "/" << this->logical_output_channels()
                   << ",img:" << output_shape[HEIGHT]
                   << "x" << output_shape[WIDTH]
                   << ")" << std::endl;
@@ -49,14 +49,13 @@ public:
     // ctor for actual != logical channels
     LogSoftMaxLayer(shape_type const &input_shape,
                     uint32_t          num_logical_channels)
-        : Layer<BufferT>(input_shape),       // input_shape == output_shape
-          m_logical_channels(num_logical_channels)
+        : Layer<BufferT>(input_shape, num_logical_channels)       // input_shape == output_shape
     {
 #if defined(DEBUG_LAYERS)
         auto const &output_shape(this->output_shape());
         std::cerr << "LogSoftMax(batches:" << output_shape[BATCH]
                   << ",chans/logical:" << output_shape[CHANNEL]
-                  << "/" << num_logical_channels
+                  << "/" << this->logical_output_channels()
                   << ",img:" << output_shape[HEIGHT]
                   << "x" << output_shape[WIDTH]
                   << ")" << std::endl;
@@ -98,16 +97,13 @@ public:
         auto const &output_shape(this->output_shape());
 
         small::LogSoftMax(output_shape[CHANNEL],
-                          m_logical_channels,
+                          this->logical_output_channels(),
                           output_shape[HEIGHT], output_shape[WIDTH],
                           input[0]->buffer(),
                           output->buffer());
 
         output->set_shape(output_shape);
     }
-
-private:
-    uint32_t const m_logical_channels;
 };
 
 }

@@ -2486,16 +2486,7 @@ void Bias(int num_channels,
               << ",I,O)\n";
 #endif
 
-#if defined(ANNIKAS_TESTS)
-    // current attempt (updated upstream)
-    if (num_channels % FLOAT_C_ob == 0 && (output_width != 1 || output_height != 1))
-#elif defined(ANNIKAS_TEST2)
-    // stashed code
-    if (num_channels % FLOAT_C_ob == 0 && output_width == 1)
-#else
-    // original code
     if (num_channels % FLOAT_C_ob == 0)
-#endif
     {
         float_detail::abstract_layer<
             FloatBuffer, FLOAT_C_ob, 1, 1,
@@ -2508,37 +2499,6 @@ void Bias(int num_channels,
             0, 0, 0, 0,
             &input_buf, (FloatBuffer *)nullptr, &output_buf);
     }
-#if defined(ANNIKAS_TEST)
-    // current attempt (updated upstream)
-    else if (output_width == 1 && output_height == 1)
-    {
-        float_detail::abstract_layer<
-            FloatBuffer, FLOAT_C_ob, 1, 1,
-            1, std::numeric_limits<dim_t>::max(), 1, OP_UPSAMPLE, 0, 1>(
-            num_channels, // Output Channel Grouping
-            1,            // Output Channels per group
-            1,
-            output_height, output_width,
-            1, 1,
-            0, 0, 0, 0,
-            &input_buf, (FloatBuffer *)nullptr, &output_buf);
-    }
-#elif defined(ANNIKAS_TEST2)
-    // stashed code
-    else if (output_width == 1)
-    {
-        float_detail::abstract_layer<
-            FloatBuffer, /*FLOAT_C_ob*/1, 1, 1,
-            1, std::numeric_limits<dim_t>::max(), 1, OP_UPSAMPLE, 0, 1>(
-            num_channels, // Output Channel Grouping
-            1,            // Output Channels per group
-            1,
-            output_height, output_width,
-            1, 1,
-            0, 0, 0, 0,
-            &input_buf, (FloatBuffer *)nullptr, &output_buf);
-    }
-#endif
     else
     {
         throw std::invalid_argument(
