@@ -379,10 +379,11 @@ void Resnet1D<BufferT>::create_model_and_buffers(
     std::vector<small::Layer<BufferT>*> layers;
     construct_resnet(state_dict_content, num_stacks, num_blocks, num_classes);
 
-    // HACK
-    m_buffer_0 = new BufferT(65536);
-    m_buffer_1 = new BufferT(65536);
-    m_buffer_2 = new BufferT(65536);
+    // HACK placeholder
+    size_t max_elt = 65536;
+    m_buffer_0 = new Tensor<BufferT>(max_elt);
+    m_buffer_1 = new Tensor<BufferT>(max_elt);
+    m_buffer_2 = new Tensor<BufferT>(max_elt);
 }
 
 //****************************************************************************
@@ -390,9 +391,9 @@ template <typename BufferT>
 std::vector<Tensor<BufferT>*> Resnet1D<BufferT>::inference(
     Tensor<BufferT> const *input)
 {
-    shape_type output_shape(1, m_num_classes, 1, 1);
-
-    return {new Tensor<BufferT>(output_shape, m_buffer_0)};
+    // HACK placeholder
+    m_buffer_0->set_shape((this->m_layers).back()->output_shape());
+    return {m_buffer_0};
 }
 
 }

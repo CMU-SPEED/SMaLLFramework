@@ -89,14 +89,15 @@ public:
     {
         if (compute_size(m_shape) > buffer.size())
         {
-            throw std::invalid_argument((std::string)"Tensor ctor ERROR: " +
-                                        (std::string)"insufficient buffer size.\n" +
-                                        (std::string) "Expected shape: {" + std::to_string(shape[small::BATCH]) +
-                                            (std::string)", " + std::to_string(shape[small::CHANNEL]) + 
-                                            (std::string)", " + std::to_string(shape[small::HEIGHT]) + 
-                                            (std::string)", " + std::to_string(shape[small::WIDTH]) + 
-                                        (std::string)"}, with size (at least) " + std::to_string(compute_size(m_shape)) +
-                                        (std::string)"\nBut received buffer with size " + std::to_string(buffer.size()));
+            throw std::invalid_argument(
+                (std::string)"Tensor ctor ERROR: " +
+                (std::string)"insufficient buffer size.\n" +
+                (std::string) "Expected shape: {" + std::to_string(shape[small::BATCH]) +
+                (std::string)", " + std::to_string(shape[small::CHANNEL]) +
+                (std::string)", " + std::to_string(shape[small::HEIGHT]) +
+                (std::string)", " + std::to_string(shape[small::WIDTH]) +
+                (std::string)"}, with size (at least) " + std::to_string(compute_size(m_shape)) +
+                (std::string)"\nBut received buffer with size " + std::to_string(buffer.size()));
         }
         m_buffer = buffer;
     }
@@ -107,14 +108,15 @@ public:
     {
         if (compute_size(m_shape) > buffer.size())
         {
-            throw std::invalid_argument((std::string)"Tensor ctor ERROR: " +
-                                        (std::string)"insufficient buffer size.\n" +
-                                        (std::string) "Expected shape: {" + std::to_string(shape[small::BATCH]) +
-                                            (std::string)", " + std::to_string(shape[small::CHANNEL]) + 
-                                            (std::string)", " + std::to_string(shape[small::HEIGHT]) + 
-                                            (std::string)", " + std::to_string(shape[small::WIDTH]) + 
-                                        (std::string)"}, with size (at least) " + std::to_string(compute_size(m_shape)) +
-                                        (std::string)"\nBut received buffer with size " + std::to_string(buffer.size()));
+            throw std::invalid_argument(
+                (std::string)"Tensor ctor ERROR: " +
+                (std::string)"insufficient buffer size.\n" +
+                (std::string) "Expected shape: {" + std::to_string(shape[small::BATCH]) +
+                (std::string)", " + std::to_string(shape[small::CHANNEL]) +
+                (std::string)", " + std::to_string(shape[small::HEIGHT]) +
+                (std::string)", " + std::to_string(shape[small::WIDTH]) +
+                (std::string)"}, with size (at least) " + std::to_string(compute_size(m_shape)) +
+                (std::string)"\nBut received buffer with size " + std::to_string(buffer.size()));
         }
         m_buffer = std::move(buffer);
     }
