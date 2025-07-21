@@ -206,6 +206,7 @@ void Resnet1D<BufferT>::construct_resnet_stack_layers(
             state_dict_content,
             param_prefix + ".bn1.running_var")};
 
+        // #1, #
         small::Conv1DLayer<BufferT> *conv1 =
             new small::Conv1DLayer<BufferT>(
                 input_shape1,
@@ -389,8 +390,24 @@ void Resnet1D<BufferT>::create_model_and_buffers(
 //****************************************************************************
 template <typename BufferT>
 std::vector<Tensor<BufferT>*> Resnet1D<BufferT>::inference(
-    Tensor<BufferT> const *input)
+    Tensor<BufferT> const *input_tensor)
 {
+    // assert(input_tensor[0]->size() is correct);
+
+    size_t layer_num = 0;
+    get_layer(layer_num++)->compute_output({input_tensor},
+                                           m_buffer_0);    // Conv2D+ReLU
+
+    for (uint32_t sid = 0; sid < m_num_stacks; ++sid)
+    {
+        // stack_idx = sid + 1
+        for (uint32_t block_idx = 0; block_idx < m_num_blocks; ++block_idx)
+        {
+            get_layer(layer_num++)->compute_output({m_buffer_0},
+                                                   m_buffer_1);   // Conv2D+ReLU
+        }
+    }
+
     // HACK placeholder
     m_buffer_0->set_shape((this->m_layers).back()->output_shape());
     return {m_buffer_0};
