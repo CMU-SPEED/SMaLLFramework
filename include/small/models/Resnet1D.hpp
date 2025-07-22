@@ -12,11 +12,14 @@
 
 #pragma once
 
+#define DEBUG_LAYERS
+
 #include <vector>
 #include <small.h>
 #include <small/state_dict_utils.hpp>
 #include <small/Model.hpp>
 #include <small/Conv1DLayer.hpp>
+#include <small/PartialConv1DLayer.hpp>
 #include <small/AveragePool1DLayer.hpp>
 #include <small/LogSoftMaxLayer.hpp>
 #include <small/DenseLayer.hpp>
@@ -133,6 +136,7 @@ void Resnet1D<BufferT>::construct_resnet_input_layers(
     BufferT bn_var_buf{extract_param<BufferT>(state_dict_content,
                                               "bnIn.running_var")};
 
+    // Layer #0
     small::Conv1DLayer<BufferT> *conv_in =
         new small::Conv1DLayer<BufferT>(input_shape,
                                         params.k, params.s, params.p,
@@ -160,6 +164,7 @@ void Resnet1D<BufferT>::construct_resnet_stack_layers(
 
     for (uint32_t block_idx = 0; block_idx < num_blocks; block_idx++)
     {
+        // C_i,H,W,k,s,p,C_o
         LayerParams params1 =
             {
                 (stack_idx == 1)
@@ -206,7 +211,7 @@ void Resnet1D<BufferT>::construct_resnet_stack_layers(
             state_dict_content,
             param_prefix + ".bn1.running_var")};
 
-        // #1, #
+        // Layer #1, #
         small::Conv1DLayer<BufferT> *conv1 =
             new small::Conv1DLayer<BufferT>(
                 input_shape1,
@@ -230,6 +235,7 @@ void Resnet1D<BufferT>::construct_resnet_stack_layers(
                                         };
             small::shape_type avgpool_input_shape{
                 1UL, avgpool_params.C_i, avgpool_params.H, avgpool_params.W};
+            // Layer #?
             small::AveragePool1DLayer<BufferT> *avgpool =
                 new small::AveragePool1DLayer<BufferT>(
                     avgpool_input_shape,
@@ -260,8 +266,9 @@ void Resnet1D<BufferT>::construct_resnet_stack_layers(
         BufferT bn_var_buf2{extract_param<BufferT>(
                 state_dict_content, param_prefix+".bn2.running_var")};
 
-        small::Conv1DLayer<BufferT> *conv2 =
-            new small::Conv1DLayer<BufferT>(
+        // Layer #2, #
+        small::PartialConv1DLayer<BufferT> *conv2 =
+            new small::PartialConv1DLayer<BufferT>(
                 input_shape2,
                 params2.k, params2.s, params2.p, params2.C_o,
                 conv_weight_buf2,
@@ -393,24 +400,106 @@ std::vector<Tensor<BufferT>*> Resnet1D<BufferT>::inference(
     Tensor<BufferT> const *input_tensor)
 {
     // assert(input_tensor[0]->size() is correct);
+    Layer<BufferT> *curr_layer{nullptr};
 
+    std::cout << "=============== ResNet1D ===================\n";
+    std::cout << "stacks/blocks/classes: " << m_num_stacks << "/"
+              << m_num_blocks << "/" << m_num_classes << std::endl;
+    std::cout << "================ INPUT =====================\n";
     size_t layer_num = 0;
-    get_layer(layer_num++)->compute_output({input_tensor},
-                                           m_buffer_0);    // Conv2D+ReLU
+
+    std::cout << "Layer #" << layer_num << std::endl;
+    curr_layer = this->get_layer(layer_num++);
+    std::cout << "input tensor shape: " << input_tensor->shape() << std::endl;
+    std::cout << "layer input shape:  " << this->m_input_shape << std::endl;
+    std::cout << "layer output shape: " << curr_layer->output_shape() << std::endl;
+    std::cout << "layer logical C_o:  " << curr_layer->logical_output_channels() << std::endl;
+
+    curr_layer->compute_output({input_tensor}, m_buffer_0);    // Conv2D+ReLU
+
+    std::cout << "output tensor shape:" << m_buffer_0->shape() << std::endl;
 
     for (uint32_t sid = 0; sid < m_num_stacks; ++sid)
     {
-        // stack_idx = sid + 1
+        uint32_t stack_idx = sid + 1;
+        std::cout << "================ STACK " << stack_idx << " ===================\n";
+
         for (uint32_t block_idx = 0; block_idx < m_num_blocks; ++block_idx)
         {
-            get_layer(layer_num++)->compute_output({m_buffer_0},
-                                                   m_buffer_1);   // Conv2D+ReLU
+            // for each block m_buffer_0 contains the input and stores the output
+            std::cout << "---------------- BLOCK " << block_idx << " -------------------\n";
+
+            std::cout << "Layer #" << layer_num << std::endl;
+            curr_layer = this->get_layer(layer_num++);
+            std::cout << "input tensor shape: " << m_buffer_0->shape() << std::endl;
+            std::cout << "conv1 output shape: " << curr_layer->output_shape() << std::endl;
+            std::cout << "layer logical C_o:  " << curr_layer->logical_output_channels() << std::endl;
+
+            curr_layer->compute_output({m_buffer_0}, m_buffer_1);    // Conv2D+ReLU
+
+            std::cout << "output tensor shape:" << m_buffer_1->shape() << std::endl;
+
+            // Downsample in first block after the first stack
+            if ((stack_idx > 1) && (block_idx == 0))
+            {
+                std::cout << "Layer #" << layer_num << std::endl;
+                curr_layer = this->get_layer(layer_num++);
+                std::cout << "input tensor shape: " << m_buffer_0->shape() << std::endl;
+                std::cout << "avgpl output shape: " << curr_layer->output_shape() << std::endl;
+                std::cout << "avgpl logical C_o:  " << curr_layer->logical_output_channels() << std::endl;
+
+                curr_layer->compute_output({m_buffer_0}, m_buffer_2);    // AvgPool
+
+                std::cout << "output tensor shape:" << m_buffer_2->shape() << std::endl;
+                m_buffer_0->swap(*m_buffer_2);
+                // TODO: Need to pad m_buffer_2 with the right size?
+            }
+
+            std::cout << "Layer #" << layer_num << std::endl;
+            curr_layer = this->get_layer(layer_num++);
+            std::cout << "input tensor shape: " << m_buffer_1->shape() << std::endl;
+            std::cout << "conv2 output shape: " << curr_layer->output_shape() << std::endl;
+            std::cout << "conv2 logical C_o:  " << curr_layer->logical_output_channels() << std::endl;
+
+            curr_layer->compute_output({m_buffer_1}, m_buffer_0);    // Conv2D+ReLU
+
+            std::cout << "output tensor shape:" << m_buffer_1->shape() << std::endl;
         }
     }
 
-    // HACK placeholder
-    m_buffer_0->set_shape((this->m_layers).back()->output_shape());
-    return {m_buffer_0};
+    std::cout << "================ OUTPUT ====================\n";
+
+    std::cout << "Layer #" << layer_num << std::endl;
+    curr_layer = this->get_layer(layer_num++);
+    std::cout << "input tensor shape: " << m_buffer_0->shape() << std::endl;
+    std::cout << "avgpl output shape: " << curr_layer->output_shape() << std::endl;
+    std::cout << "avgpl logical C_o:  " << curr_layer->logical_output_channels() << std::endl;
+
+    curr_layer->compute_output({m_buffer_0}, m_buffer_1);    // AvgPool
+
+    std::cout << "output tensor shape:" << m_buffer_1->shape() << std::endl;
+
+    std::cout << "Layer #" << layer_num << std::endl;
+    curr_layer = this->get_layer(layer_num++);
+    std::cout << "input tensor shape: " << m_buffer_1->shape() << std::endl;
+    std::cout << "FC    output shape: " << curr_layer->output_shape() << std::endl;
+    std::cout << "FC    logical C_o:  " << curr_layer->logical_output_channels() << std::endl;
+
+    curr_layer->compute_output({m_buffer_1}, m_buffer_0);    // FC/Dense
+
+    std::cout << "output tensor shape:" << m_buffer_0->shape() << std::endl;
+
+    std::cout << "Layer #" << layer_num << std::endl;
+    curr_layer = this->get_layer(layer_num++);
+    std::cout << "input tensor shape: " << m_buffer_0->shape() << std::endl;
+    std::cout << "logsm output shape: " << curr_layer->output_shape() << std::endl;
+    std::cout << "logsm logical C_o:  " << curr_layer->logical_output_channels() << std::endl;
+
+    curr_layer->compute_output({m_buffer_0}, m_buffer_1);    // LogSoftMax
+
+    std::cout << "output tensor shape:" << m_buffer_1->shape() << std::endl;
+
+    return {m_buffer_1};
 }
 
 }

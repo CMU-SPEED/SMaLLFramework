@@ -458,10 +458,6 @@ void Conv2DLayer<BufferT>::initialize(
 }
 
 //****************************************************************************
-/// @param[in] filters  Unpacked set of filters with dimensions packed
-///                     in the following order:
-///                     {in_chans, out_chans, kern_h, kern_w}
-///
 template <class BufferT>
 Conv2DLayer<BufferT>::Conv2DLayer(
     shape_type const &input_shape,

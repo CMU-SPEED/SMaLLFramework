@@ -12,79 +12,79 @@
 
 #pragma once
 
-#include <cmath>
 #include <small.h>
 #include <small/buffers.hpp>
 #include <small/Layer.hpp>
+#include <small/Conv1DLayer.hpp>  // for detail::initialize_conv1d_buffers
 
 namespace small
 {
 //****************************************************************************
 template <typename BufferT>
-class Conv1DLayer : public Layer<BufferT>
+class PartialConv1DLayer : public Layer<BufferT>
 {
 public:
     typedef typename BufferT::value_type value_type;
 
-    //Conv1DLayer () delete;
+    //PartialConv1DLayer () delete;
 
     // No bias, no batch normalization
-    Conv1DLayer(shape_type const &input_shape,    //pred.output_shape()
-                uint32_t          kernel_width,
-                uint32_t          stride,
-                PaddingEnum       padding_type,
-                uint32_t          num_logical_output_channels,
-                BufferT    const &filters,
-                bool              buffers_are_packed = true,
-                ActivationType    activation_type = NONE,
-                float             leaky_slope = 1.e-2);
+    PartialConv1DLayer(shape_type const &input_shape,    //pred.output_shape()
+                       uint32_t          kernel_width,
+                       uint32_t          stride,
+                       PaddingEnum       padding_type,
+                       uint32_t          num_logical_output_channels,
+                       BufferT    const &filters,
+                       bool              buffers_are_packed = true,
+                       ActivationType    activation_type = NONE,
+                       float             leaky_slope = 1.e-2);
 
     // With bias term
-    Conv1DLayer(shape_type const &input_shape,    //pred.output_shape()
-                uint32_t          kernel_width,
-                uint32_t          stride,
-                PaddingEnum       padding_type,
-                uint32_t          num_logical_output_channels,
-                BufferT    const &filters,
-                BufferT    const &bias,
-                bool              buffers_are_packed = true,
-                ActivationType    activation_type = NONE,
-                float             leaky_slope = 1.e-2);
+    PartialConv1DLayer(shape_type const &input_shape,    //pred.output_shape()
+                       uint32_t          kernel_width,
+                       uint32_t          stride,
+                       PaddingEnum       padding_type,
+                       uint32_t          num_logical_output_channels,
+                       BufferT    const &filters,
+                       BufferT    const &bias,
+                       bool              buffers_are_packed = true,
+                       ActivationType    activation_type = NONE,
+                       float             leaky_slope = 1.e-2);
 
     // With fused batch normalization
-    Conv1DLayer(shape_type const &input_shape,    //pred.output_shape()
-                uint32_t          kernel_width,
-                uint32_t          stride,
-                PaddingEnum       padding_type,
-                uint32_t          num_logical_output_channels,
-                BufferT    const &filters,
-                BufferT    const &bn_weight,            // gamma
-                BufferT    const &bn_bias,              // beta
-                BufferT    const &bn_running_mean,      // mu_hat
-                BufferT    const &bn_running_variance,  // sigma_hat^2
-                float      const &bn_eps = 1.e-3,       // float?
-                bool              buffers_are_packed = true,
-                ActivationType    activation_type = NONE,
-                float             leaky_slope = 1.e-2);
+    PartialConv1DLayer(shape_type const &input_shape,    //pred.output_shape()
+                       uint32_t          kernel_width,
+                       uint32_t          stride,
+                       PaddingEnum       padding_type,
+                       uint32_t          num_logical_output_channels,
+                       BufferT    const &filters,
+                       BufferT    const &bn_weight,            // gamma
+                       BufferT    const &bn_bias,              // beta
+                       BufferT    const &bn_running_mean,      // mu_hat
+                       BufferT    const &bn_running_variance,  // sigma_hat^2
+                       float      const &bn_eps = 1.e-3,       // float?
+                       bool              buffers_are_packed = true,
+                       ActivationType    activation_type = NONE,
+                       float             leaky_slope = 1.e-2);
 
     // With bias and fused batch normalization
-    Conv1DLayer(shape_type const &input_shape,    //pred.output_shape()
-                uint32_t          kernel_width,
-                uint32_t          stride,
-                PaddingEnum       padding_type,
-                uint32_t          num_logical_output_channels,
-                BufferT    const &filters,
-                BufferT    const &bias,
-                BufferT    const &bn_weight,            // gamma
-                BufferT    const &bn_bias,              // beta
-                BufferT    const &bn_running_mean,      // mu_hat
-                BufferT    const &bn_running_variance,  // sigma_hat^2
-                float      const &bn_eps = 1.e-3,       // float?
-                bool              buffers_are_packed = true,
-                ActivationType    activation_type = NONE,
-                float             leaky_slope = 1.e-2);
+    PartialConv1DLayer(shape_type const &input_shape,    //pred.output_shape()
+                       uint32_t          kernel_width,
+                       uint32_t          stride,
+                       PaddingEnum       padding_type,
+                       uint32_t          num_logical_output_channels,
+                       BufferT    const &filters,
+                       BufferT    const &bias,
+                       BufferT    const &bn_weight,            // gamma
+                       BufferT    const &bn_bias,              // beta
+                       BufferT    const &bn_running_mean,      // mu_hat
+                       BufferT    const &bn_running_variance,  // sigma_hat^2
+                       float      const &bn_eps = 1.e-3,       // float?
+                       bool              buffers_are_packed = true,
+                       ActivationType    activation_type = NONE,
+                       float             leaky_slope = 1.e-2);
 
-    virtual ~Conv1DLayer() {}
+    virtual ~PartialConv1DLayer() {}
 
     virtual void compute_output(
         std::vector<Tensor<BufferT> const *> input,
@@ -135,220 +135,9 @@ private:
 
 //****************************************************************************
 
-namespace detail
-{
-    //************************************************************************
-    template <class BufferT>
-    void initialize_conv1d_buffers(
-        uint32_t          num_output_channels,
-        uint32_t          num_logical_output_channels,
-        uint32_t          num_input_channels,
-        uint32_t          kernel_width,
-        BufferT    const &filters,
-        BufferT    const &bias,
-        BufferT    const &bn_weight,            // gamma
-        BufferT    const &bn_bias,              // beta
-        BufferT    const &bn_running_mean,      // mu_hat
-        BufferT    const &bn_running_variance,  // sigma_hat^2
-        float      const &bn_eps,               // float?
-        bool              buffers_are_packed,
-        BufferT          &packed_filters,
-        BufferT          &packed_bias)
-    {
-        // ============ Filter weights ===========
-        if (filters.size() !=   /// @todo consider allowing larger filter buffers??
-            num_logical_output_channels*num_input_channels*kernel_width)
-        {
-            throw std::invalid_argument(
-                ((std::string)"*Conv1DLayer::ctor ERROR: filters buffer is incorrect size. Expecting " +
-                (std::string)"num_logical_output_channels(" + std::to_string(num_logical_output_channels) + (std::string)")*" +
-                (std::string)"num_input_channels(" + std::to_string(num_input_channels) + (std::string)")*" +
-                (std::string)"kernel_width(" + std::to_string(kernel_width) + (std::string)") = " +
-                std::to_string(num_logical_output_channels*num_input_channels*kernel_width) +
-                (std::string)", but the filters buffer size is " + std::to_string(filters.size())));
-        }
-
-        // Allocate packed filters if necessary
-        if (packed_filters.size() == 0)
-        {
-            BufferT filters(num_input_channels*kernel_width*num_output_channels);
-            small::init_zeros(filters, filters.size()); // optional
-            packed_filters = std::move(filters);
-        }
-        else if (packed_filters.size() !=
-                 num_input_channels*kernel_width*num_output_channels)
-        {
-            throw std::invalid_argument(
-                "*Conv1DLayer::ctor ERROR: "
-                "packed filters buffer incorrect size.");
-        }
-
-        if (!buffers_are_packed)
-        {
-            if (num_output_channels != num_logical_output_channels)
-            {
-                // pad out the unpacked
-                size_t unpacked_idx = 0;
-                for (size_t co = 0; co < num_logical_output_channels; ++co)
-                    for (size_t ci = 0; ci < num_input_channels; ++ci)
-                        for (size_t w = 0; w < kernel_width; ++w)
-                        {
-                            size_t packed_idx = small::packed_weight_index(
-                                num_output_channels, num_input_channels,
-                                1, kernel_width,
-                                BufferT::C_ob, BufferT::C_ib,
-                                co, ci, 0, w);
-                            //std::cerr << "unpacked-->packed: " << unpacked_idx
-                            //          << "-->" << packed_idx << std::endl;
-                            packed_filters[packed_idx] = filters[unpacked_idx++];
-                        }
-            }
-            else
-            {
-                // Pack the filter buffers for SMaLL use
-                small::pack_buffer(filters,
-                                   FILTER_CONV,
-                                   num_output_channels, num_input_channels,
-                                   1, kernel_width,
-                                   BufferT::C_ib, BufferT::C_ob,
-                                   packed_filters);
-            }
-        }
-        else
-        {
-            if (num_output_channels != num_logical_output_channels)
-            {
-                throw std::invalid_argument(
-                    "Conv1DLayer::ctor error: invalid number of output channels.");
-            }
-            std::copy(filters.data(),
-                      filters.data() + packed_filters.size(),
-                      packed_filters.data());
-        }
-
-        // ============ Bias term ===========
-        if (bias.size() > 0)
-        {
-            if (bias.size() != num_logical_output_channels)
-            {
-                throw std::invalid_argument(
-                    "*Conv1DLayer::ctor ERROR: "
-                    "bias buffer incorrect size.");
-            }
-
-            // if (!buffers_are_packed)
-            BufferT local_bias(num_output_channels);
-            small::init_zeros(local_bias, local_bias.size());  // optional
-            std::copy(bias.data(),
-                      bias.data() + num_logical_output_channels,
-                      local_bias.data());
-            packed_bias = std::move(local_bias);
-        }
-
-        // ============ BN terms ===========
-        // Note: it is all or nothing for 4 buffers
-        if ((bn_weight.size() > 0) ||
-            (bn_bias.size() > 0) ||
-            (bn_running_mean.size() > 0) ||
-            (bn_running_variance.size() > 0))
-        {
-            if ((bn_weight.size() != num_logical_output_channels) ||
-                (bn_bias.size() != num_logical_output_channels) ||
-                (bn_running_mean.size() != num_logical_output_channels) ||
-                (bn_running_variance.size() != num_logical_output_channels))
-            {
-                throw std::invalid_argument(
-                    "*Conv1DLayer::ctor ERROR: "
-                    "BN buffers incorrect size.");
-            }
-
-            // Fuse the BN parameters with packed filters and bias
-            /* ----------------------------------------------------------------
-             * From: https://nenadmarkus.com/p/fusing-batchnorm-and-conv/
-             *
-             * # prepare filters
-             * w_conv = conv.weight.clone().view(conv.out_channels, -1)
-             * w_bn = torch.diag(bn.weight.div(torch.sqrt(bn.eps+bn.running_var)))
-             *
-             * fusedconv.weight.copy_(
-             *     torch.mm(w_bn, w_conv).view(fusedconv.weight.size()) )
-             *
-             * # prepare spatial bias
-             * if conv.bias is not None:
-             *     b_conv = conv.bias
-             * else:
-             *     b_conv = torch.zeros( conv.weight.size(0) )
-             *
-             * b_bn = bn.bias -
-             *        bn.weight.mul(bn.running_mean).div(
-             *            torch.sqrt(bn.running_var + bn.eps))
-             *
-             * fusedconv.bias.copy_( torch.matmul(w_bn, b_conv) + b_bn )
-             */
-            bool no_bias = false;
-            if (packed_bias.size() == 0)
-            {
-                packed_bias = std::move(BufferT(num_output_channels));
-                small::init_zeros(packed_bias, packed_bias.size());
-                no_bias = true;
-            }
-
-            for (size_t ochan = 0; ochan < num_logical_output_channels; ++ochan)
-            {
-                // compute scaling factor for filters of this output channel
-                float filter_scale =
-                    bn_weight[ochan]/std::sqrt(bn_running_variance[ochan] + bn_eps);
-
-                /// @todo REVISIT: this does not look like python code above
-                if (no_bias)
-                {
-                    packed_bias[ochan] =
-                        bn_bias[ochan] - bn_running_mean[ochan]*filter_scale;
-                }
-                else
-                {
-                    packed_bias[ochan] = filter_scale*packed_bias[ochan] +
-                        bn_bias[ochan] - bn_running_mean[ochan]*filter_scale;
-                }
-                //std::cerr << ": packed_bias(" << ochan << ") = "
-                //          << packed_bias[ochan]
-                //          << std::endl;
-
-                for (size_t ichan = 0; ichan < num_input_channels; ++ichan)
-                {
-                    for (size_t fw = 0; fw < kernel_width; ++fw)
-                    {
-                        size_t packed_index =
-                            packed_weight_index(num_output_channels,
-                                                num_input_channels,
-                                                1,
-                                                kernel_width,
-                                                BufferT::C_ob,
-                                                BufferT::C_ib,
-                                                ochan, ichan, 0, fw);
-                        //std::cerr << "packed_index = " << packed_index
-                        //          << std::endl;
-                        packed_filters[packed_index] *= filter_scale;
-                    }
-                }
-            }
-        }
-#if defined(DEBUG_LAYERS)
-        std::cerr << "*Conv1D: ochans:" << num_output_channels
-                  << ",logical_ochans:" << num_logical_output_channels
-                  << std::endl;
-        std::cerr << "*Conv1D: packed_bias.size():    "
-                  << packed_bias.size() << std::endl;
-        std::cerr << "*Conv1D: packed_filters.size(): "
-                  << packed_filters.size() << std::endl;
-#endif
-    }
-
-} // detail
-
 //****************************************************************************
 template <class BufferT>
-void Conv1DLayer<BufferT>::initialize(
+void PartialConv1DLayer<BufferT>::initialize(
     shape_type const &input_shape,
     uint32_t          kernel_width,
     uint32_t          stride,
@@ -371,13 +160,13 @@ void Conv1DLayer<BufferT>::initialize(
         (input_shape[CHANNEL] != 1))
     {
         throw std::invalid_argument(
-            "Conv1DLayer::ctor ERROR: invalid number of input channels.");
+            "PartialConv1DLayer::ctor ERROR: invalid number of input channels.");
     }
 
     if ((stride != 1) && (stride != 2))
     {
         throw std::invalid_argument(
-            "Conv1DLayer::ctor ERROR: invalid stride.");
+            "PartialConv1DLayer::ctor ERROR: invalid stride.");
     }
 
     // Deal with odd numbers of output channels by padding unpacked filters
@@ -387,7 +176,7 @@ void Conv1DLayer<BufferT>::initialize(
         if (buffers_are_packed)
         {
             throw std::invalid_argument(
-                "Conv1DLayer::ctor ERROR: "
+                "PartialConv1DLayer::ctor ERROR: "
                 "invalid number of output channels for packed weights.");
         }
 
@@ -449,7 +238,7 @@ void Conv1DLayer<BufferT>::initialize(
 
 //****************************************************************************
 template <class BufferT>
-Conv1DLayer<BufferT>::Conv1DLayer(
+PartialConv1DLayer<BufferT>::PartialConv1DLayer(
     shape_type const &input_shape,
     uint32_t          kernel_width,
     uint32_t          stride,
@@ -470,7 +259,7 @@ Conv1DLayer<BufferT>::Conv1DLayer(
       m_packed_bias()
 {
 #if defined(DEBUG_LAYERS)
-    std::cerr << "Conv1D(batches:" << m_input_shape[BATCH]
+    std::cerr << "PartialConv1D(batches:" << m_input_shape[BATCH]
               << ",k:" << m_kernel_width
               << ",s:" << m_stride
               << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
@@ -490,7 +279,7 @@ Conv1DLayer<BufferT>::Conv1DLayer(
 
 //****************************************************************************
 template <class BufferT>
-Conv1DLayer<BufferT>::Conv1DLayer(
+PartialConv1DLayer<BufferT>::PartialConv1DLayer(
     shape_type const &input_shape,
     uint32_t          kernel_width,
     uint32_t          stride,
@@ -512,7 +301,7 @@ Conv1DLayer<BufferT>::Conv1DLayer(
       m_packed_bias()
 {
 #if defined(DEBUG_LAYERS)
-    std::cerr << "Conv1D(batches:" << m_input_shape[BATCH]
+    std::cerr << "PartialConv1D(batches:" << m_input_shape[BATCH]
               << ",k:" << m_kernel_width
               << ",s:" << m_stride
               << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
@@ -533,7 +322,7 @@ Conv1DLayer<BufferT>::Conv1DLayer(
 
 //****************************************************************************
 template <class BufferT>
-Conv1DLayer<BufferT>::Conv1DLayer(
+PartialConv1DLayer<BufferT>::PartialConv1DLayer(
     shape_type const &input_shape,
     uint32_t          kernel_width,
     uint32_t          stride,
@@ -559,7 +348,7 @@ Conv1DLayer<BufferT>::Conv1DLayer(
       m_packed_bias()
 {
 #if defined(DEBUG_LAYERS)
-    std::cerr << "Conv1D(batches:" << m_input_shape[BATCH]
+    std::cerr << "PartialConv1D(batches:" << m_input_shape[BATCH]
               << ",k:" << m_kernel_width
               << ",s:" << m_stride
               << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
@@ -586,7 +375,7 @@ Conv1DLayer<BufferT>::Conv1DLayer(
 
 //****************************************************************************
 template <class BufferT>
-Conv1DLayer<BufferT>::Conv1DLayer(
+PartialConv1DLayer<BufferT>::PartialConv1DLayer(
     shape_type const &input_shape,
     uint32_t          kernel_width,
     uint32_t          stride,
@@ -613,7 +402,7 @@ Conv1DLayer<BufferT>::Conv1DLayer(
       m_packed_bias()
 {
 #if defined(DEBUG_LAYERS)
-    std::cerr << "Conv1D(batches:" << m_input_shape[BATCH]
+    std::cerr << "PartialConv1D(batches:" << m_input_shape[BATCH]
               << ",k:" << m_kernel_width
               << ",s:" << m_stride
               << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
@@ -641,53 +430,42 @@ Conv1DLayer<BufferT>::Conv1DLayer(
 
 //****************************************************************************
 template <class BufferT>
-void Conv1DLayer<BufferT>::compute_output(
+void PartialConv1DLayer<BufferT>::compute_output(
     std::vector<Tensor<BufferT> const *> input,
     Tensor<BufferT>*                     output) const
 {
     if ((input.size() != 1) || (input[0]->shape() != m_input_shape))
     {
         throw std::invalid_argument(
-            "Conv1DLayer::compute_output() ERROR: "
+            "PartialConv1DLayer::compute_output() ERROR: "
             "incorrect input buffer shape.");
     }
 
     if (output->capacity() < this->output_size())
     {
         throw std::invalid_argument(
-            "Conv1DLayer::compute_output() ERROR: "
+            "PartialConv1DLayer::compute_output() ERROR: "
             "insufficient output buffer space.");
     }
 
     auto& output_shape(this->output_shape());
 
+    small::PartialConv1D(m_kernel_width, m_stride,
+                         m_l_pad, m_r_pad,
+                         output_shape[CHANNEL],
+                         m_input_shape[CHANNEL],
+                         m_input_shape[HEIGHT],  /// @todo BATCH?
+                         m_input_shape[WIDTH],
+                         input[0]->buffer(),
+                         m_packed_filters,
+                         output->buffer());
+
     if (m_packed_bias.size() == output_shape[CHANNEL])
     {
-        small::Bias(output_shape[CHANNEL],
-                    output_shape[HEIGHT],
-                    output_shape[WIDTH],
-                    m_packed_bias, output->buffer());
-        small::PartialConv1D(m_kernel_width, m_stride,
-                             m_l_pad, m_r_pad,
-                             output_shape[CHANNEL],
-                             m_input_shape[CHANNEL],
-                             m_input_shape[HEIGHT],  /// @todo BATCH?
-                             m_input_shape[WIDTH],
-                             input[0]->buffer(),
-                             m_packed_filters,
-                             output->buffer());
-    }
-    else
-    {
-        small::Conv1D(m_kernel_width, m_stride,
-                      m_l_pad, m_r_pad,
-                      output_shape[CHANNEL],
-                      m_input_shape[CHANNEL],
-                      m_input_shape[HEIGHT],  /// @todo BATCH?
-                      m_input_shape[WIDTH],
-                      input[0]->buffer(),
-                      m_packed_filters,
-                      output->buffer());
+        small::PartialBias(output_shape[CHANNEL],
+                           output_shape[HEIGHT], output_shape[WIDTH],
+                           m_packed_bias,
+                           output->buffer());
     }
 
     output->set_shape(output_shape);
@@ -722,7 +500,7 @@ void Conv1DLayer<BufferT>::compute_output(
 
 //****************************************************************************
 template <class BufferT>
-void Conv1DLayer<BufferT>::compute_padding_output_shape(
+void PartialConv1DLayer<BufferT>::compute_padding_output_shape(
     shape_type const &input_shape,
     uint32_t          kernel_width,
     uint32_t          stride,
@@ -743,7 +521,7 @@ void Conv1DLayer<BufferT>::compute_padding_output_shape(
                                       output_shape[WIDTH]);
 
 #if defined(DEBUG_LAYERS)
-    std::cerr << "Conv1D padding: "
+    std::cerr << "PartialConv1D padding: "
               << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
 #endif
 
