@@ -225,20 +225,20 @@ void Resnet1D<BufferT>::construct_resnet_stack_layers(
 
         if (stack_idx > 1 && block_idx == 0)
         {
-            LayerParams avgpool_params = {  params1.C_o,      // C_i
+            LayerParams avgpool_params = {  params1.C_i,      // C_i
                                             1,                // H
-                                            params1.W/2,      // W
+                                            params1.W,        // W
                                             1,                // k
                                             2,                // s
                                             small::PADDING_V, // p
-                                            params1.C_o       // C_o
+                                            params1.C_i       // C_o
                                         };
-            small::shape_type avgpool_input_shape{
-                1UL, avgpool_params.C_i, avgpool_params.H, avgpool_params.W};
+            //small::shape_type avgpool_input_shape{
+            //    1UL, avgpool_params.C_i, avgpool_params.H, avgpool_params.W};
             // Layer #?
             small::AveragePool1DLayer<BufferT> *avgpool =
                 new small::AveragePool1DLayer<BufferT>(
-                    avgpool_input_shape,
+                    input_shape1, //avgpool_input_shape,
                     avgpool_params.k, avgpool_params.s, avgpool_params.p);
             this->m_layers.push_back(avgpool);
         }
@@ -442,7 +442,7 @@ std::vector<Tensor<BufferT>*> Resnet1D<BufferT>::inference(
             // Downsample in first block after the first stack
             if ((stack_idx > 1) && (block_idx == 0))
             {
-                std::cout << "Layer #" << layer_num << std::endl;
+                std::cout << "DOWNSAMPLE Layer #" << layer_num << std::endl;
                 curr_layer = this->get_layer(layer_num++);
                 std::cout << "input tensor shape: " << m_buffer_0->shape() << std::endl;
                 std::cout << "avgpl output shape: " << curr_layer->output_shape() << std::endl;
@@ -450,9 +450,21 @@ std::vector<Tensor<BufferT>*> Resnet1D<BufferT>::inference(
 
                 curr_layer->compute_output({m_buffer_0}, m_buffer_2);    // AvgPool
 
-                std::cout << "output tensor shape:" << m_buffer_2->shape() << std::endl;
-                m_buffer_0->swap(*m_buffer_2);
-                // TODO: Need to pad m_buffer_2 with the right size?
+                std::cout << "output tensor shape: " << m_buffer_2->shape() << std::endl;
+                //m_buffer_0->swap(*m_buffer_2);
+                // Need to pad m_buffer_2 with the right size (double the channels)
+                std::cout << "padded tensor shape: " << m_buffer_0->shape() << std::endl;
+                m_buffer_0->set_shape(m_buffer_1->shape());
+                size_t buf2_size{m_buffer_2->size()};
+
+                // buf2 = self.downsample(buf0)
+                // zero = torch.mul(buf2, 0)
+                // buf0 = torch.cat((buf2, zero), dim=1)
+                for (size_t ix = 0; ix < buf2_size; ++ix)
+                {
+                    m_buffer_0->buffer()[ix] = m_buffer_2->buffer()[ix];
+                    m_buffer_0->buffer()[ix + buf2_size] = 0.f;
+                }
             }
 
             std::cout << "Layer #" << layer_num << std::endl;
