@@ -12,7 +12,7 @@
 
 #pragma once
 
-#define DEBUG_LAYERS
+// #define DEBUG_LAYERS
 
 #include <vector>
 #include <small.h>
@@ -26,7 +26,19 @@
 namespace small
 {
 
-//****************************************************************************
+///****************************************************************************
+/// The state_dict_filepath is a path to an ASCII file containing a pickled
+/// pytorch stat_dict (I think).  This model requires a specific set of key
+/// names in order to load properly.
+///
+/// @todo Is there a more generic way to load the pretrained model weights?
+/// @todo Is there a way to advertise the state_dict keys (layer names) that
+///       are expected?
+///
+/// From https://github.com/a-martyn/resnet
+/// Modified to fit complex input signals (two channels) instead of images
+/// Modified by A. Reddy to use 1D convolutional kernels instead of 2D
+///
 template <typename BufferT>
 class Resnet1D : public Model<BufferT>
 {
@@ -34,10 +46,10 @@ public:
     Resnet1D() = delete;
 
     // Assume one input layer with a single shape for now
-    Resnet1D(shape_type  const &input_shape,
-             uint32_t           num_stacks,  // 3
-             uint32_t           num_blocks,  // 5
-             uint32_t           num_classes, // 2
+    Resnet1D(shape_type  const &input_shape,          // NCHW = (1, 2, 1, 1024)
+             uint32_t           num_stacks,           // 3
+             uint32_t           num_blocks,           // 5
+             uint32_t           num_classes,          // 2
              std::string const &state_dict_filepath,
              bool               filters_are_packed = false)
         : Model<BufferT>(input_shape),
@@ -69,34 +81,27 @@ public:
         Tensor<BufferT> const *input);
 
 private:
-    struct LayerParams
-    {
-        uint32_t C_i;
-        uint32_t H; // image_height;
-        uint32_t W; // image_width;
-        uint32_t k; // kernel_size;
-        uint16_t s; // stride;
-        small::PaddingEnum p; // PADDING_V or _F
-        uint32_t C_o;
-    };
-
     void construct_resnet_input_layers(
-        std::string const &state_dict_content);
+        std::string const &state_dict_content,
+        size_t            &max_buffer_size);
 
     void construct_resnet_stack_layers(
         const std::string &state_dict_content,
         uint32_t stack_idx,
-        uint32_t num_blocks);
+        uint32_t num_blocks,
+        size_t            &max_buffer_size);
 
     void construct_resnet_output_layers(
         std::string const &state_dict_content,
-        uint32_t           num_classes);
+        uint32_t           num_classes,
+        size_t            &max_buffer_size);
 
     void construct_resnet(
         std::string const &state_dict_content,
         uint32_t           num_stacks,
         uint32_t           num_blocks,
-        uint32_t           num_classes);
+        uint32_t           num_classes,
+        size_t            &max_buffer_size);
 
     void create_model_and_buffers(
         shape_type  const &input_shape,
@@ -119,12 +124,14 @@ private:
 //****************************************************************************
 template<typename BufferT>
 void Resnet1D<BufferT>::construct_resnet_input_layers(
-    std::string const &state_dict_content)
+    std::string const &state_dict_content,
+    size_t            &max_buffer_size)
 {
-    // C_i,H,W,k,s,p,C_o
-    LayerParams params = {2, 1, 1024, 3, 1, small::PADDING_F, 16};
-    small::shape_type input_shape{1UL, params.C_i, params.H, params.W};
+    max_buffer_size = small::compute_size(this->get_input_shape());
 
+    uint32_t C_o = 16U;
+
+    /// @todo is there a better way to import pretrained model weights?
     BufferT conv_weight_buf{extract_param<BufferT>(state_dict_content,
                                                    "convIn.weight")};
     BufferT bn_weight_buf{extract_param<BufferT>(state_dict_content,
@@ -136,20 +143,22 @@ void Resnet1D<BufferT>::construct_resnet_input_layers(
     BufferT bn_var_buf{extract_param<BufferT>(state_dict_content,
                                               "bnIn.running_var")};
 
-    // Layer #0
     small::Conv1DLayer<BufferT> *conv_in =
-        new small::Conv1DLayer<BufferT>(input_shape,
-                                        params.k, params.s, params.p,
-                                        params.C_o,
+        new small::Conv1DLayer<BufferT>(this->get_input_shape(), //NCHW_i,
+                                        3U,                // kernel_size
+                                        1U,                // stride
+                                        small::PADDING_F,  // padding
+                                        C_o,               // filters
                                         conv_weight_buf,
                                         bn_weight_buf,
                                         bn_bias_buf,
                                         bn_mean_buf,
                                         bn_var_buf,
-                                        /*bn_eps = */1.e-5,
-                                        /*buffers_are_packed = */false,
+                                        1.e-5,             // bn_epsilon
+                                        false,             // buffers_are_packed
                                         small::ActivationType::RELU);
 
+    max_buffer_size = std::max(max_buffer_size, conv_in->output_size());
     this->m_layers.push_back(conv_in);
 }
 
@@ -158,37 +167,16 @@ template<typename BufferT>
 void Resnet1D<BufferT>::construct_resnet_stack_layers(
     std::string const &state_dict_content,
     uint32_t           stack_idx,
-    uint32_t           num_blocks)
+    uint32_t           num_blocks,
+    size_t            &max_buffer_size)
 {
-    std::cout << "Constructing stack " << stack_idx << "...\n";
-
     for (uint32_t block_idx = 0; block_idx < num_blocks; block_idx++)
     {
-        // C_i,H,W,k,s,p,C_o
-        LayerParams params1 =
-            {
-                (stack_idx == 1)
-                ? 16
-                : 16*(uint32_t)std::pow(2, stack_idx-(block_idx == 0
-                                                      ? 2
-                                                      : 1)),  // C_i
-                1, // H
-                (stack_idx == 1)
-                ? 1024
-                : 1024 / (uint32_t)std::pow(2, stack_idx - (block_idx == 0
-                                                            ? 2
-                                                            : 1)), // W
-                3, // k
-                stack_idx > 1 && block_idx == 0
-                ? (uint16_t)2
-                : (uint16_t)1, // s
+        bool downsample{((stack_idx > 1) && (block_idx == 0))};
 
-                small::PADDING_F, // p
-                16*(uint32_t)std::pow(2,(stack_idx-1)) // C_o
-            };
-        small::shape_type input_shape1{
-            1UL, params1.C_i, params1.H, params1.W};
-
+        //--------------------------------------------------------
+        // Conv1D
+        //--------------------------------------------------------
         std::string param_prefix =
             "stack" + std::to_string(stack_idx) +
             ((stack_idx > 1)
@@ -211,49 +199,37 @@ void Resnet1D<BufferT>::construct_resnet_stack_layers(
             state_dict_content,
             param_prefix + ".bn1.running_var")};
 
-        // Layer #1, #
+        // conv1
+        auto& input_shape1{ (this->m_layers.back())->output_shape() };
+
         small::Conv1DLayer<BufferT> *conv1 =
             new small::Conv1DLayer<BufferT>(
                 input_shape1,
-                params1.k, params1.s, params1.p, params1.C_o,
+                3U,                                // kernel_size
+                (downsample ? 2U : 1U),            // stride,
+                small::PADDING_F,                  // padding
+                (downsample ? 2*input_shape1[CHANNEL] : input_shape1[CHANNEL]), // C_o
                 conv_weight_buf1,
                 bn_weight_buf1, bn_bias_buf1, bn_mean_buf1, bn_var_buf1,
-                /*bn_eps = */1.e-5,
-                /*buffers_are_packed = */false,
+                1.e-5,                             // bn_eps
+                false,                             // buffers_are_packed
                 small::ActivationType::RELU);
+
+        max_buffer_size = std::max(max_buffer_size, conv1->output_size());
         this->m_layers.push_back(conv1);
 
-        if (stack_idx > 1 && block_idx == 0)
+        if (downsample)
         {
-            LayerParams avgpool_params = {  params1.C_i,      // C_i
-                                            1,                // H
-                                            params1.W,        // W
-                                            1,                // k
-                                            2,                // s
-                                            small::PADDING_V, // p
-                                            params1.C_i       // C_o
-                                        };
-            //small::shape_type avgpool_input_shape{
-            //    1UL, avgpool_params.C_i, avgpool_params.H, avgpool_params.W};
-            // Layer #?
             small::AveragePool1DLayer<BufferT> *avgpool =
                 new small::AveragePool1DLayer<BufferT>(
-                    input_shape1, //avgpool_input_shape,
-                    avgpool_params.k, avgpool_params.s, avgpool_params.p);
+                    input_shape1,
+                    1U,                                   // kernel size
+                    2U,                                   // stride
+                    small::PADDING_V);
+
+            max_buffer_size = std::max(max_buffer_size, avgpool->output_size());
             this->m_layers.push_back(avgpool);
         }
-
-        LayerParams params2 =
-            {
-                16*(uint32_t)std::pow(2, stack_idx-1),  // C_i
-                1,                                      // H
-                (stack_idx ==  1 || block_idx > 0) ? params1.W : params1.W/2, // W
-                3,                                      // k
-                (uint16_t)1,                            // s
-                small::PADDING_F,                       // p
-                16*(uint32_t)std::pow(2, stack_idx-1)   // C_o
-            };
-        small::shape_type input_shape2{1UL, params2.C_i, params2.H, params2.W};
 
         BufferT conv_weight_buf2{extract_param<BufferT>(
                 state_dict_content, param_prefix+".conv2.weight")};
@@ -266,16 +242,23 @@ void Resnet1D<BufferT>::construct_resnet_stack_layers(
         BufferT bn_var_buf2{extract_param<BufferT>(
                 state_dict_content, param_prefix+".bn2.running_var")};
 
-        // Layer #2, #
+        // conv2
+        auto &input_shape2{conv1->output_shape()};  // pred. output
+
         small::PartialConv1DLayer<BufferT> *conv2 =
             new small::PartialConv1DLayer<BufferT>(
                 input_shape2,
-                params2.k, params2.s, params2.p, params2.C_o,
+                3U,       // kernel
+                1U,       // stride
+                small::PADDING_F,
+                input_shape2[CHANNEL], //C_o,
                 conv_weight_buf2,
                 bn_weight_buf2, bn_bias_buf2, bn_mean_buf2, bn_var_buf2,
-                /*bn_eps = */1.e-5,
-                /*buffers_are_packed = */false,
+                1.e-5,    // bn_eps
+                false,    // buffers_are_packed
                 small::ActivationType::RELU);
+
+        max_buffer_size = std::max(max_buffer_size, conv2->output_size());
         this->m_layers.push_back(conv2);
     }
 }
@@ -284,59 +267,56 @@ void Resnet1D<BufferT>::construct_resnet_stack_layers(
 template<typename BufferT>
 void Resnet1D<BufferT>::construct_resnet_output_layers(
     std::string const &state_dict_content,
-    uint32_t           num_classes)
+    uint32_t           num_classes,
+    size_t            &max_buffer_size)
 {
     uint32_t num_classes_padded{num_classes};
     if (num_classes % BufferT::C_ib != 0)
     {
         num_classes_padded += (BufferT::C_ib - (num_classes % BufferT::C_ib));
     }
-    std::cerr << "Constructing output layers: num_classes(" << num_classes
-              << "), num_classes_padded(" << num_classes_padded << ")\n";
 
+    //-------------------------------------------------------------------------
+    // AveragePool
+    //-------------------------------------------------------------------------
+    small::shape_type input_shape( (this->m_layers.back())->output_shape() );
+
+    small::AveragePool1DLayer<BufferT> *avgpool =
+        new small::AveragePool1DLayer<BufferT>(
+            input_shape,
+            input_shape[small::WIDTH],   // kernel size = input width
+            1U,
+            small::PADDING_V);
+
+    max_buffer_size = std::max(max_buffer_size, avgpool->output_size());
+    this->m_layers.push_back(avgpool);
+
+    //-------------------------------------------------------------------------
+    // FC/Dense (will pad odd channels in the output buffer)
+    //-------------------------------------------------------------------------
     BufferT fc_o_weights{
         extract_param<BufferT>(state_dict_content, "fcOut.weight")};
     BufferT fc_o_biases{
         extract_param<BufferT>(state_dict_content, "fcOut.bias")};
 
-    // C_i, H, W, k, s, p, C_o
-    LayerParams avgpool_params = {64, 1, 256, 256, 1, small::PADDING_V, 64};
-    small::shape_type avgpool_input_shape{
-        1UL, avgpool_params.C_i, avgpool_params.H, avgpool_params.W};
-    small::AveragePool1DLayer<BufferT> *avgpool =
-        new small::AveragePool1DLayer<BufferT>(
-            avgpool_input_shape,
-            avgpool_params.k, avgpool_params.s, avgpool_params.p);
-    this->m_layers.push_back(avgpool);
-
-    // C_i, H, W, k, s, p, C_o
-    LayerParams fc_params = {64, 1, 1, 1, 1, small::PADDING_V, num_classes}; //_padded};
-
-    small::shape_type fc_input_shape{1UL, fc_params.C_i, fc_params.H, fc_params.W};
-    TEST_ASSERT(fc_input_shape == avgpool->output_shape());
-
     small::DenseLayer<BufferT> *fc =
         new small::DenseLayer<BufferT>(
-            avgpool->output_shape(), //fc_input_shape,
-            num_classes,               // fc_params.C_o,
+            avgpool->output_shape(),     // fc_input_shape,
+            num_classes,                 // fc_params,
             fc_o_weights, fc_o_biases,
             false, small::ActivationType::NONE);
+
+    max_buffer_size = std::max(max_buffer_size, fc->output_size());
     this->m_layers.push_back(fc);
 
-    // C_i, H, W, k, s, p, C_o
-    LayerParams logsoftmax_params =
-        {num_classes_padded, 1, 1, 1, 1, small::PADDING_V, num_classes}; //_padded};
-    small::shape_type logsoftmax_input_shape{
-        1UL, logsoftmax_params.C_i, logsoftmax_params.H, logsoftmax_params.W};
-
-    TEST_ASSERT(logsoftmax_input_shape == fc->output_shape());
-    TEST_ASSERT(num_classes == fc->logical_output_channels());
-
-    std::cerr << "LogSoftMax shape params: " << fc->output_shape() << ","
-              << fc->logical_output_channels() << std::endl;
+    //-------------------------------------------------------------------------
+    // LogSoftMax (account for the possibility of 'odd' channels on input
+    //-------------------------------------------------------------------------
     small::LogSoftMaxLayer<BufferT> *logsoftmax =
         new small::LogSoftMaxLayer<BufferT>(fc->output_shape(),
                                             fc->logical_output_channels());
+
+    max_buffer_size = std::max(max_buffer_size, logsoftmax->output_size());
     this->m_layers.push_back(logsoftmax);
 }
 
@@ -346,21 +326,24 @@ void Resnet1D<BufferT>::construct_resnet(
     std::string const &state_dict_content,
     uint32_t           num_stacks,
     uint32_t           num_blocks,
-    uint32_t           num_classes)
+    uint32_t           num_classes,
+    size_t            &max_buffer_size)
 {
-    construct_resnet_input_layers(state_dict_content);
+    construct_resnet_input_layers(state_dict_content,
+                                  max_buffer_size);
 
-    for (uint32_t i = 0; i < num_stacks; i++)
+    /// @todo weird stack id's
+    for (uint32_t stack_idx = 1; stack_idx <= num_stacks; ++stack_idx)
     {
         construct_resnet_stack_layers(state_dict_content,
-                                      i+1,
-                                      num_blocks);
+                                      stack_idx,
+                                      num_blocks,
+                                      max_buffer_size);
     }
 
     construct_resnet_output_layers(state_dict_content,
-                                   num_classes);
-
-    std::cout << "Done constructing model.\n";
+                                   num_classes,
+                                   max_buffer_size);
 }
 
 //****************************************************************************
@@ -373,25 +356,21 @@ void Resnet1D<BufferT>::create_model_and_buffers(
         std::string const &state_dict_filepath,
         bool               weights_are_packed)
 {
-    uint32_t num_classes_padded{num_classes};
-    if (num_classes % BufferT::C_ib != 0)
-    {
-        num_classes_padded += (BufferT::C_ib - (num_classes % BufferT::C_ib));
-    }
-    std::cerr << "Setting up model with: num_classes(" << num_classes
-              << "), num_classes_padded(" << num_classes_padded << ")\n";
+    size_t max_buffer_size{0};
 
     std::string state_dict_content;
     extract_file_content(state_dict_filepath, state_dict_content);
 
-    std::vector<small::Layer<BufferT>*> layers;
-    construct_resnet(state_dict_content, num_stacks, num_blocks, num_classes);
+    construct_resnet(state_dict_content,
+                     num_stacks, num_blocks, num_classes,
+                     max_buffer_size);
 
-    // HACK placeholder
-    size_t max_elt = 65536;
-    m_buffer_0 = new Tensor<BufferT>(max_elt);
-    m_buffer_1 = new Tensor<BufferT>(max_elt);
-    m_buffer_2 = new Tensor<BufferT>(max_elt);
+    // std::cerr << "Allocating activation buffers with size: "
+    //           << max_buffer_size << std::endl;
+
+    m_buffer_0 = new Tensor<BufferT>(max_buffer_size);
+    m_buffer_1 = new Tensor<BufferT>(max_buffer_size);
+    m_buffer_2 = new Tensor<BufferT>(max_buffer_size);
 }
 
 //****************************************************************************
@@ -399,67 +378,39 @@ template <typename BufferT>
 std::vector<Tensor<BufferT>*> Resnet1D<BufferT>::inference(
     Tensor<BufferT> const *input_tensor)
 {
-    // assert(input_tensor[0]->size() is correct);
-    Layer<BufferT> *curr_layer{nullptr};
-
-    std::cout << "=============== ResNet1D ===================\n";
-    std::cout << "stacks/blocks/classes: " << m_num_stacks << "/"
-              << m_num_blocks << "/" << m_num_classes << std::endl;
-    std::cout << "================ INPUT =====================\n";
     size_t layer_num = 0;
 
-    std::cout << "Layer #" << layer_num << std::endl;
-    curr_layer = this->get_layer(layer_num++);
-    std::cout << "input tensor shape: " << input_tensor->shape() << std::endl;
-    std::cout << "layer input shape:  " << this->m_input_shape << std::endl;
-    std::cout << "layer output shape: " << curr_layer->output_shape() << std::endl;
-    std::cout << "layer logical C_o:  " << curr_layer->logical_output_channels() << std::endl;
+    // assert(input_tensor[0]->size() is correct);
 
+    // Input layer
+    Layer<BufferT> *curr_layer = this->get_layer(layer_num++);
     curr_layer->compute_output({input_tensor}, m_buffer_0);    // Conv2D+ReLU
 
-    std::cout << "output tensor shape:" << m_buffer_0->shape() << std::endl;
-
-    for (uint32_t sid = 0; sid < m_num_stacks; ++sid)
+    // Stacks 1, 2, 3...
+    for (uint32_t stack_idx = 1; stack_idx <= m_num_stacks; ++stack_idx)
     {
-        uint32_t stack_idx = sid + 1;
-        std::cout << "================ STACK " << stack_idx << " ===================\n";
-
+        // Blocks 0, 1, 2, 3, 4...
         for (uint32_t block_idx = 0; block_idx < m_num_blocks; ++block_idx)
         {
             // for each block m_buffer_0 contains the input and stores the output
-            std::cout << "---------------- BLOCK " << block_idx << " -------------------\n";
 
-            std::cout << "Layer #" << layer_num << std::endl;
             curr_layer = this->get_layer(layer_num++);
-            std::cout << "input tensor shape: " << m_buffer_0->shape() << std::endl;
-            std::cout << "conv1 output shape: " << curr_layer->output_shape() << std::endl;
-            std::cout << "layer logical C_o:  " << curr_layer->logical_output_channels() << std::endl;
-
             curr_layer->compute_output({m_buffer_0}, m_buffer_1);    // Conv2D+ReLU
 
-            std::cout << "output tensor shape:" << m_buffer_1->shape() << std::endl;
-
-            // Downsample in first block after the first stack
+            // Downsample in first block after the first stack requires a buffer merge
             if ((stack_idx > 1) && (block_idx == 0))
             {
-                std::cout << "DOWNSAMPLE Layer #" << layer_num << std::endl;
-                curr_layer = this->get_layer(layer_num++);
-                std::cout << "input tensor shape: " << m_buffer_0->shape() << std::endl;
-                std::cout << "avgpl output shape: " << curr_layer->output_shape() << std::endl;
-                std::cout << "avgpl logical C_o:  " << curr_layer->logical_output_channels() << std::endl;
+                // Need to pad m_buffer_2 with the right size (double the channels)
+                // The code that follows is equivalent to the following python:
+                //   m_buffer_2  = average_pool(m_buffer_0, kernel=1, stride=2)
+                //   zero_buffer = torch.mul(m_buffer_2, 0)
+                //   m_buffer_0  = torch.cat((m_buffer_2, zero_buffer), dim=1)
 
+                curr_layer = this->get_layer(layer_num++);
                 curr_layer->compute_output({m_buffer_0}, m_buffer_2);    // AvgPool
 
-                std::cout << "output tensor shape: " << m_buffer_2->shape() << std::endl;
-                //m_buffer_0->swap(*m_buffer_2);
-                // Need to pad m_buffer_2 with the right size (double the channels)
-                std::cout << "padded tensor shape: " << m_buffer_0->shape() << std::endl;
                 m_buffer_0->set_shape(m_buffer_1->shape());
                 size_t buf2_size{m_buffer_2->size()};
-
-                // buf2 = self.downsample(buf0)
-                // zero = torch.mul(buf2, 0)
-                // buf0 = torch.cat((buf2, zero), dim=1)
                 for (size_t ix = 0; ix < buf2_size; ++ix)
                 {
                     m_buffer_0->buffer()[ix] = m_buffer_2->buffer()[ix];
@@ -467,49 +418,20 @@ std::vector<Tensor<BufferT>*> Resnet1D<BufferT>::inference(
                 }
             }
 
-            std::cout << "Layer #" << layer_num << std::endl;
             curr_layer = this->get_layer(layer_num++);
-            std::cout << "input tensor shape: " << m_buffer_1->shape() << std::endl;
-            std::cout << "conv2 output shape: " << curr_layer->output_shape() << std::endl;
-            std::cout << "conv2 logical C_o:  " << curr_layer->logical_output_channels() << std::endl;
-
             curr_layer->compute_output({m_buffer_1}, m_buffer_0);    // Conv2D+ReLU
-
-            std::cout << "output tensor shape:" << m_buffer_1->shape() << std::endl;
         }
     }
 
-    std::cout << "================ OUTPUT ====================\n";
-
-    std::cout << "Layer #" << layer_num << std::endl;
+    // Output layers
     curr_layer = this->get_layer(layer_num++);
-    std::cout << "input tensor shape: " << m_buffer_0->shape() << std::endl;
-    std::cout << "avgpl output shape: " << curr_layer->output_shape() << std::endl;
-    std::cout << "avgpl logical C_o:  " << curr_layer->logical_output_channels() << std::endl;
-
     curr_layer->compute_output({m_buffer_0}, m_buffer_1);    // AvgPool
 
-    std::cout << "output tensor shape:" << m_buffer_1->shape() << std::endl;
-
-    std::cout << "Layer #" << layer_num << std::endl;
     curr_layer = this->get_layer(layer_num++);
-    std::cout << "input tensor shape: " << m_buffer_1->shape() << std::endl;
-    std::cout << "FC    output shape: " << curr_layer->output_shape() << std::endl;
-    std::cout << "FC    logical C_o:  " << curr_layer->logical_output_channels() << std::endl;
-
     curr_layer->compute_output({m_buffer_1}, m_buffer_0);    // FC/Dense
 
-    std::cout << "output tensor shape:" << m_buffer_0->shape() << std::endl;
-
-    std::cout << "Layer #" << layer_num << std::endl;
     curr_layer = this->get_layer(layer_num++);
-    std::cout << "input tensor shape: " << m_buffer_0->shape() << std::endl;
-    std::cout << "logsm output shape: " << curr_layer->output_shape() << std::endl;
-    std::cout << "logsm logical C_o:  " << curr_layer->logical_output_channels() << std::endl;
-
     curr_layer->compute_output({m_buffer_0}, m_buffer_1);    // LogSoftMax
-
-    std::cout << "output tensor shape:" << m_buffer_1->shape() << std::endl;
 
     return {m_buffer_1};
 }
