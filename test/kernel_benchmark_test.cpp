@@ -67,7 +67,7 @@ typedef small::FloatBuffer::value_type c_tile_t;
     {                                                                    \
         FLOAT_ACCUM_TILE_C(step, a_cur, _O_wb, _C_ob);                   \
     }                                                                    \
-    else if constexpr (op_type == small::OP_MUL)                         \
+    else if constexpr (op_type == small::OP_EWISE_MUL_SCALAR)                         \
     {                                                                    \
         float drop_out_rate = b_cur[0];                                  \
         FLOAT_DIV_TILE_C(drop_out_rate, _O_wb, _C_ob)                    \

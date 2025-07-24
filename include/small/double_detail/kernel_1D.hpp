@@ -17,11 +17,11 @@
 #include <small/op_type.hpp>
 #include <small/utils.hpp>
 
-#include <small/float_detail/abstract_op.hpp>
+#include <small/double_detail/abstract_op.hpp>
 
 namespace small
 {
-namespace float_detail
+namespace double_detail
 {
 
 //****************************************************************************
@@ -61,33 +61,33 @@ void inline kernel_1D(
     // const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
     // const dim_t W_UPPER = ((!W_ub) * (F_w)) + (W_ub);
 
-    FLOAT_DEF_TILE_C(_O_wb, _C_ob);
+    DOUBLE_DEF_TILE_C(_O_wb, _C_ob);
     if (first)
     {
-        FLOAT_ZERO_TILE_C(_O_wb, _C_ob);
+        DOUBLE_ZERO_TILE_C(_O_wb, _C_ob);
         if (op_type == OP_MAX_POOL || op_type == OP_EWISE_MUL_SCALAR)
         {
             /// @note using platform C_ob
-            FLOAT_LOAD_TILE_C_strided(I, step, _O_wb, FLOAT_C_ob);
+            DOUBLE_LOAD_TILE_C_strided(I, step, _O_wb, DOUBLE_C_ob);
         }
         else if (op_type == OP_UPSAMPLE)
         {
-            FLOAT_LOAD_TILE_C_upsample(I, _stride, _C_ib, _O_wb, _C_ob);
+            DOUBLE_LOAD_TILE_C_upsample(I, _stride, _C_ib, _O_wb, _C_ob);
         }
     }
     else
     {
-        FLOAT_LOAD_TILE_C(O, _O_wb, _C_ob);
+        DOUBLE_LOAD_TILE_C(O, _O_wb, _C_ob);
         if constexpr (op_type == OP_UPSAMPLE)
         {
-            FLOAT_ACCUM_TILE_C_upsample(I, _stride, _C_ib, _O_wb, _C_ob);
+            DOUBLE_ACCUM_TILE_C_upsample(I, _stride, _C_ib, _O_wb, _C_ob);
         }
         //@todo support reduction tree-like kernel (for global reductions)
     }
 
     if constexpr (fused_single_element_before == OP_UPSAMPLE)
     {
-        FLOAT_ACCUM_TILE_C_upsample(F_b, _stride_before, _C_ib, _O_wb, _C_ob);
+        DOUBLE_ACCUM_TILE_C_upsample(F_b, _stride_before, _C_ib, _O_wb, _C_ob);
     }
 
     for (uint32_t m = 0; m < F_w; m++)
@@ -101,22 +101,22 @@ void inline kernel_1D(
         for (uint32_t ii = 0; ii < _F_cb / _UNROLL; ii++)
         {
             /// @note using platform C_ob
-            ScalarT const *b_cur = b + ii * _UNROLL * FLOAT_C_ob;
+            ScalarT const *b_cur = b + ii * _UNROLL * DOUBLE_C_ob;
             ScalarT const *a_cur = a + ii * _UNROLL;
-            FLOAT_ABSTRACT_OP(step, op_type, op_class, a_cur, b_cur, _O_wb, _C_ob); /// @todo pass _C_ob
+            DOUBLE_ABSTRACT_OP(step, op_type, op_class, a_cur, b_cur, _O_wb, _C_ob); /// @todo pass _C_ob
         }
     }
 
     if (op_type == OP_AVERAGE_POOL)
     {
-        float norm = 1.0 / (1.0 * F_w);
-        FLOAT_DIV_TILE_C(norm, _O_wb, _C_ob);
+        double norm = 1.0 / (1.0 * F_w);
+        DOUBLE_DIV_TILE_C(norm, _O_wb, _C_ob);
     }
 
-    FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_TILE(step, fused_single_element_after,
+    DOUBLE_ABSTRACT_SINGLE_ELEMENT_OP_TILE(step, fused_single_element_after,
                                           0, F_a, _O_wb, _C_ob);
 
-    FLOAT_STORE_TILE_C(O, _O_wb, _C_ob);
+    DOUBLE_STORE_TILE_C(O, _O_wb, _C_ob);
     //@todo support reduction-tree like store for global reductions
 }
 

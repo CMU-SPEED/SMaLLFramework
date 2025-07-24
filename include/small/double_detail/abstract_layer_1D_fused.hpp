@@ -21,9 +21,9 @@
 #include <small/op_type.hpp>
 #include <small/utils.hpp>
 
-#include <small/float_detail/kernel_left_1D.hpp>
-#include <small/float_detail/kernel_1D.hpp>
-#include <small/float_detail/kernel_right_1D.hpp>
+#include <small/double_detail/kernel_left_1D.hpp>
+#include <small/double_detail/kernel_1D.hpp>
+#include <small/double_detail/kernel_right_1D.hpp>
 
 #define DEBUG 0
 
@@ -34,7 +34,7 @@
 
 namespace small
 {
-namespace float_detail
+namespace double_detail
 {
 
 //****************************************************************************
@@ -389,7 +389,7 @@ void fused_abstract_layer_1D(
                     for (index_t j = height_tid; j < O_h; j += T_height)
                     {
                         ScalarT const *I_row;
-                        // @todo cast index calculation as int and make stride a float value.
+                        // @todo cast index calculation as int and make stride a double value.
                         // I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
                         if constexpr (op_type == OP_UPSAMPLE)
                         {
@@ -423,7 +423,7 @@ void fused_abstract_layer_1D(
                         for (index_t l = 0; l < O_w_full; l += _O_wb)
                         {
                             ScalarT const *I_col;
-                            // @todo cast index calculation as int and make stride a float value.
+                            // @todo cast index calculation as int and make stride a double value.
                             // I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
                             if constexpr (op_type == OP_UPSAMPLE)
                             {
@@ -539,7 +539,7 @@ void fused_abstract_layer_1D(
                     for (index_t j = height_tid; j < O_h; j += T_height)
                     {
                         ScalarT const *I_row;
-                        // @todo cast index calculation as int and make stride a float value.
+                        // @todo cast index calculation as int and make stride a double value.
                         // I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
                         if constexpr (op_type == OP_UPSAMPLE)
                         {
@@ -580,7 +580,7 @@ void fused_abstract_layer_1D(
                         for (index_t l = 0; l < O_w_full; l += _O_wb)
                         {
                             ScalarT const *I_col;
-                            // @todo cast index calculation as int and make stride a float value.
+                            // @todo cast index calculation as int and make stride a double value.
                             // I_x = I_x + (int)(j * _stride) * (<remaining dimensions>)
                             if constexpr (op_type == OP_UPSAMPLE)
                             {
@@ -665,5 +665,5 @@ void fused_abstract_layer_1D(
 }
 
 
-} // ns float_detail
+} // ns double_detail
 } // ns small

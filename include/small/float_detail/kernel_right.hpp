@@ -71,7 +71,7 @@ void inline kernel_right(
         {
             FLOAT_ZERO_END_C(O_w_left, _C_ob);
 
-            if ( (op_type == OP_MUL)|| (op_type == OP_EWISE_ADD_SCALAR) || (op_type == OP_MAX_POOL && H_lb == 0 && H_ub == 0))
+            if ( (op_type == OP_EWISE_MUL_SCALAR)|| (op_type == OP_EWISE_ADD_SCALAR) || (op_type == OP_MAX_POOL && H_lb == 0 && H_ub == 0))
             {
                 FLOAT_LOAD_END_C_strided(I, step, O_w_left, _C_ob);
             }
@@ -150,7 +150,7 @@ void inline kernel_right(
 
         //@note padding should always be 'v' for pointwise operations,
         //      so this code path should not be used
-        if (op_type == OP_MUL || op_type == OP_EWISE_ADD_SCALAR)
+        if (op_type == OP_EWISE_MUL_SCALAR || op_type == OP_EWISE_ADD_SCALAR)
         {
             FLOAT_LOAD_END_C_strided(I_ptr, step, r_pad_el, _C_ob);
         }

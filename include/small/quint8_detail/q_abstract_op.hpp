@@ -50,11 +50,11 @@ namespace quint8_detail
         /*QUINT8_ACCUM_TILE_C(step, a_cur, _O_wb, _C_ob);*/             \
         throw std::invalid_argument("*_ABSTRACT_OP ERROR: no support for op_type OP_ADD/AVERAGE_POOL"); \
     }                                                                    \
-    else if constexpr (op_type == OP_MUL)                                \
+    else if constexpr (op_type == OP_EWISE_MUL_SCALAR)                                \
     {                                                                    \
         /*float drop_out_rate = b_cur[0]; */                             \
         /*QUINT8_DIV_TILE_C(drop_out_rate, O_wb, C_ob) */                \
-        throw std::invalid_argument("*_ABSTRACT_OP ERROR: no support for op_type OP_MUL"); \
+        throw std::invalid_argument("*_ABSTRACT_OP ERROR: no support for op_type OP_EWISE_MUL_SCALAR"); \
     }                                                                       \
     else if constexpr (op_type == OP_EXP)                                \
     {                                                                    \
@@ -90,11 +90,11 @@ namespace quint8_detail
         /*QUINT8_ACCUM_END_C(step, a_cur, c_cur, W_elements, _C_ob, a_offset);*/ \
         throw std::invalid_argument("*_ABSTRACT_OP_END ERROR: no support for op_type OP_ADD/AVERAGE_POOL"); \
     }                                                    \
-    else if constexpr (op_type == OP_MUL)                                \
+    else if constexpr (op_type == OP_EWISE_MUL_SCALAR)                                \
     {                                                                    \
         /*float drop_out_rate = b_cur[0]; */                             \
         /*QUINT8_DIV_TILE_C(drop_out_rate, O_wb, C_ob) */                \
-        throw std::invalid_argument("*_ABSTRACT_OP ERROR: no support for op_type OP_MUL"); \
+        throw std::invalid_argument("*_ABSTRACT_OP ERROR: no support for op_type OP_EWISE_MUL_SCALAR"); \
     }                                                                       \
     else if constexpr (op_type == OP_EXP)                                \
     {                                                                    \

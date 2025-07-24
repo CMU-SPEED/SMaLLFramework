@@ -15,4 +15,5 @@
 #include <params.h>
 
 #include <intrinsics_float.h>
+#include <intrinsics_double.h>
 #include <intrinsics_quint8.h>

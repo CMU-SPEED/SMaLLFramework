@@ -1452,6 +1452,8 @@ if constexpr(_C_ob == 1 && _C_ob != FLOAT_SIMD_EPILOGUE)\
         a_pixel += step;                                        \
         c_pixel += C_ob;                                        \
     }
+
+
 #if 0
 
 #define FLOAT_LOAD_TILE_C_POOL(O, W_ob, C_ob)                                         \

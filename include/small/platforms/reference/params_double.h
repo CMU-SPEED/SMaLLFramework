@@ -12,11 +12,14 @@
 
 #pragma once
 
-#define SMALL_HAS_FLOAT_SUPPORT  1
-#include <params_float.h>
+#define DOUBLE_W_ob   1
+#define DOUBLE_C_ob   1
+#define DOUBLE_SIMD   1
+#define DOUBLE_UNROLL 1
+#define DOUBLE_C_ib   DOUBLE_C_ob
 
-#define SMALL_HAS_DOUBLE_SUPPORT  1
-#include <params_double.h>
-
-#define SMALL_HAS_QUINT8_SUPPORT 1
-#include <params_quint8.h>
+//Potential blocking parameters for packing
+#define DOUBLE_NUM_FMA 1
+#define DOUBLE_NUM_MAX 1
+#define DOUBLE_NUM_LOAD 1
+#define DOUBLE_NUM_STORE 1

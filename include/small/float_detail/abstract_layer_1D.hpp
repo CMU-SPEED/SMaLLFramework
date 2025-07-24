@@ -76,7 +76,7 @@ void abstract_layer_1D(
     ScalarT const *I_buf = I->data(); //__restrict__ ?
 
     ScalarT const *F_buf = nullptr;
-    if constexpr (op_type == OP_CONV || op_type == OP_LEAKY_RELU || op_type == OP_MUL) // if (F != nullptr)
+    if constexpr (op_type == OP_CONV || op_type == OP_LEAKY_RELU || op_type == OP_EWISE_MUL_SCALAR) // if (F != nullptr)
     {
         F_buf = F->data();
     }
@@ -291,7 +291,7 @@ void abstract_layer_1D(
             // if leaky relu, the weight pointer does not change with the group id
 
             ScalarT const *F_group;
-            if constexpr ((op_type == OP_LEAKY_RELU) || (op_type == OP_MUL))
+            if constexpr ((op_type == OP_LEAKY_RELU) || (op_type == OP_EWISE_MUL_SCALAR))
             {
                 F_group = F_buf;
             }

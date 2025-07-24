@@ -67,7 +67,7 @@ void inline kernel_pad(
 
         //@note padding should always be 'v' for pointwise operations,
         //      so this code path should not be used
-        if (op_type == OP_MUL)
+        if (op_type == OP_EWISE_MUL_SCALAR)
         {
             FLOAT_LOAD_TILE_C_strided(I, step, _O_wb, _C_ob);
         }

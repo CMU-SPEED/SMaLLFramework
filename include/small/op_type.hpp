@@ -24,13 +24,21 @@ enum OpType
     OP_LEAKY_RELU = 3,    // 'l'
     OP_ADD = 4,           // 'd'
     OP_AVERAGE_POOL = 5,  // 's'
-    OP_MUL = 6,
+    OP_EWISE_MUL_SCALAR = 6,
     OP_UPSAMPLE = 7,      // 'u'
     OP_EXP = 8,
     OP_EWISE_ADD_SCALAR = 9,
     OP_SOFTSIGN = 10,
     OP_ABS = 11,
     OP_DIV = 12, // c_i = a_i / c_i
+    OP_HALFSUM = 13,
+    OP_HALFDIFF = 14,
+    OP_SQRT = 15,
+    OP_MUL = 16,
+    OP_SIGN = 17,
+    OP_NSIGN = 18, 
+    OP_SUB = 19,
+    OP_COND_NSIGN = 20,
     OP_NONE = -1
 };
 

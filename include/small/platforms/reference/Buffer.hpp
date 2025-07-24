@@ -19,6 +19,10 @@
 #include <FloatBuffer.hpp>
 #endif
 
+#if defined(SMALL_HAS_DOUBLE_SUPPORT)
+#include <DoubleBuffer.hpp>
+#endif
+
 #if defined(SMALL_HAS_QUINT8_SUPPORT)
 #include <QUInt8Buffer.hpp>
 #endif
@@ -46,6 +50,12 @@ inline BufferT *alloc_buffer(size_t num_elts)
     if constexpr (std::is_same_v<BufferT, FloatBuffer>)
     {
         return new FloatBuffer(num_elts);
+    }
+#endif
+#if defined(SMALL_HAS_DOUBLE_SUPPORT)
+    if constexpr (std::is_same_v<BufferT, DoubleBuffer>)
+    {
+        return new DoubleBuffer(num_elts);
     }
 #endif
 
