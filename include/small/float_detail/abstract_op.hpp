@@ -72,14 +72,6 @@ namespace float_detail
     {                                                                    \
         FLOAT_FUSED_DIV_TILE_C(step, a_cur, O_wb, C_ob);                   \
     }                                                                   \
-    else if constexpr (op_type == OP_HALFSUM)                            \
-    {                                                                   \
-        FLOAT_HALFSUM_TILE_C(step, a_cur, O_wb, C_ob);           \
-    }                                                                   \
-    else if constexpr (op_type == OP_HALFDIFF)                            \
-    {                                                                   \
-        FLOAT_HALFDIFF_TILE_C(step, a_cur, O_wb, C_ob);                 \
-    }                                                                   \
     else if constexpr (op_type == OP_SQRT)                              \
     {                                                                   \
         FLOAT_SQRT_TILE_C(step, a_cur, O_wb, C_ob);                     \
@@ -155,14 +147,6 @@ namespace float_detail
     else if constexpr (op_type == OP_DIV)                                     \
     {                                                                         \
         FLOAT_FUSED_DIV_END_C(step, a_cur, c_cur, W_elements, C_ob);          \
-    }                                                                         \
-    else if constexpr (op_type == OP_HALFSUM)                                 \
-    {                                                                         \
-        FLOAT_HALFSUM_END_C(step, a_cur, c_cur, W_elements, C_ob);            \
-    }                                                                         \
-    else if constexpr (op_type == OP_HALFDIFF)                                \
-    {                                                                         \
-        FLOAT_HALFDIFF_END_C(step, a_cur, c_cur, W_elements, C_ob);           \
     }                                                                         \
     else if constexpr (op_type == OP_SQRT)                                    \
     {                                                                         \

@@ -2892,7 +2892,7 @@ void Upwind(int input_channels,
         std::copy(input_high_rho_buf.data(), input_high_rho_buf.data() + size,
                 rhobar_buf.data());
         float_detail::abstract_layer<
-            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_HALFSUM, 0, 0>(
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_ADD, 0, 0>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
@@ -2900,7 +2900,18 @@ void Upwind(int input_channels,
             1, 1,
             0, 0, 0, 0,
             &input_low_rho_buf, (FloatBuffer *)nullptr, &rhobar_buf);
-        
+
+        FloatBuffer scalar_buf(1);
+        scalar_buf.data()[0] = 0.5f;
+        float_detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_EWISE_MUL_SCALAR, 0, 0>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            1, 1,
+            0, 0, 0, 0,
+            &rhobar_buf, &scalar_buf, &rhobar_buf);
 
         /* ubar = (G_low(dir) + G_high(dir)) * 0.5 */
         FloatBuffer ubar_buf(input_channels * input_height * input_width);
@@ -2913,7 +2924,7 @@ void Upwind(int input_channels,
                 low_G_buf.data());
         
         float_detail::abstract_layer<
-            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_HALFSUM, 0, 0>(
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_ADD, 0, 0>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
@@ -2922,12 +2933,23 @@ void Upwind(int input_channels,
             0, 0, 0, 0,
             &low_G_buf, (FloatBuffer *)nullptr, &ubar_buf);
 
+        float_detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_EWISE_MUL_SCALAR, 0, 0>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            1, 1,
+            0, 0, 0, 0,
+            &ubar_buf, &scalar_buf, &ubar_buf);
+
+
         /* pbar = (E_low(dir) + E_high(dir)) * 0.5 */
         FloatBuffer pbar_buf(input_channels * input_height * input_width);
         std::copy(input_high_E_buf.data(), input_high_E_buf.data() + size,
                 pbar_buf.data());
         float_detail::abstract_layer<
-            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_HALFSUM, 0, 0>(
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_ADD, 0, 0>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
@@ -2935,6 +2957,16 @@ void Upwind(int input_channels,
             1, 1,
             0, 0, 0, 0,
             &input_low_E_buf, (FloatBuffer *)nullptr, &pbar_buf);
+
+        float_detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_EWISE_MUL_SCALAR, 0, 0>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            1, 1,
+            0, 0, 0, 0,
+            &pbar_buf, &scalar_buf, &pbar_buf);
 
 
         /* cbar = sqrt(gamma * pbar / rhobar) */
@@ -2997,18 +3029,31 @@ void Upwind(int input_channels,
                 ustar_buf.data());
 
         FloatBuffer udiff_buf(input_channels * input_height * input_width);
+        FloatBuffer high_G_buf(input_channels * input_height * input_width);
         std::copy(input_high_G_buf.data() + size * dir, input_high_G_buf.data() + size * (dir + 1), 
+                high_G_buf.data());
+        std::copy(input_low_G_buf.data() + size * dir, input_low_G_buf.data() + size * (dir + 1), 
                 udiff_buf.data());
 
         float_detail::abstract_layer<
-            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_HALFDIFF, 0, 0>(
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_SUB, 0, 0>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
             input_height, input_width,
             1, 1,
             0, 0, 0, 0,
-            &low_G_buf, (FloatBuffer *)nullptr, &udiff_buf);
+            &high_G_buf, (FloatBuffer *)nullptr, &udiff_buf);
+
+        float_detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_EWISE_MUL_SCALAR, 0, 0>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            1, 1,
+            0, 0, 0, 0,
+            &udiff_buf, &scalar_buf, &udiff_buf);
         
         float_detail::abstract_layer<
             FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_MUL, 0, 0>(
@@ -3034,17 +3079,27 @@ void Upwind(int input_channels,
         
 
         FloatBuffer pdiff_buf(input_channels * input_height * input_width);
-        std::copy(input_high_E_buf.data(), input_high_E_buf.data() + size, 
+        std::copy(input_low_E_buf.data(), input_low_E_buf.data() + size, 
                 pdiff_buf.data());
         float_detail::abstract_layer<
-            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_HALFDIFF, 0, 0>(
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_SUB, 0, 0>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
             input_height, input_width,
             1, 1,
             0, 0, 0, 0,
-            &input_low_E_buf, (FloatBuffer *)nullptr, &pdiff_buf);
+            &input_high_E_buf, (FloatBuffer *)nullptr, &pdiff_buf);
+        
+        float_detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_EWISE_MUL_SCALAR, 0, 0>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            1, 1,
+            0, 0, 0, 0,
+            &pdiff_buf, &scalar_buf, &pdiff_buf);
         
         float_detail::abstract_layer<
             FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_DIV, 0, 0>(
@@ -3446,7 +3501,7 @@ void Upwind(int input_channels,
         std::copy(input_high_rho_buf.data(), input_high_rho_buf.data() + size,
                 rhobar_buf.data());
         double_detail::abstract_layer<
-            DoubleBuffer, DOUBLE_C_ob, 1, 1, DOUBLE_W_ob, 1, 1, OP_HALFSUM, 0, 0>(
+            DoubleBuffer, DOUBLE_C_ob, 1, 1, DOUBLE_W_ob, 1, 1, OP_ADD, 0, 0>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
@@ -3454,6 +3509,18 @@ void Upwind(int input_channels,
             1, 1,
             0, 0, 0, 0,
             &input_low_rho_buf, (DoubleBuffer *)nullptr, &rhobar_buf);
+
+        DoubleBuffer scalar_buf(1);
+        scalar_buf.data()[0] = 0.5;
+        double_detail::abstract_layer<
+            DoubleBuffer, DOUBLE_C_ob, 1, 1, DOUBLE_W_ob, 1, 1, OP_EWISE_MUL_SCALAR, 0, 1>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            1, 1,
+            0, 0, 0, 0,
+            &rhobar_buf, &scalar_buf, &rhobar_buf);
         
 
         /* ubar = (G_low(dir) + G_high(dir)) * 0.5 */
@@ -3467,7 +3534,7 @@ void Upwind(int input_channels,
                 low_G_buf.data());
         
         double_detail::abstract_layer<
-            DoubleBuffer, DOUBLE_C_ob, 1, 1, DOUBLE_W_ob, 1, 1, OP_HALFSUM, 0, 0>(
+            DoubleBuffer, DOUBLE_C_ob, 1, 1, DOUBLE_W_ob, 1, 1, OP_ADD, 0, 0>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
@@ -3475,13 +3542,23 @@ void Upwind(int input_channels,
             1, 1,
             0, 0, 0, 0,
             &low_G_buf, (DoubleBuffer *)nullptr, &ubar_buf);
+        
+        double_detail::abstract_layer<
+            DoubleBuffer, DOUBLE_C_ob, 1, 1, DOUBLE_W_ob, 1, 1, OP_EWISE_MUL_SCALAR, 0, 0>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            1, 1,
+            0, 0, 0, 0,
+            &ubar_buf, &scalar_buf, &ubar_buf);
 
         /* pbar = (E_low(dir) + E_high(dir)) * 0.5 */
         DoubleBuffer pbar_buf(input_channels * input_height * input_width);
         std::copy(input_high_E_buf.data(), input_high_E_buf.data() + size,
                 pbar_buf.data());
         double_detail::abstract_layer<
-            DoubleBuffer, DOUBLE_C_ob, 1, 1, DOUBLE_W_ob, 1, 1, OP_HALFSUM, 0, 0>(
+            DoubleBuffer, DOUBLE_C_ob, 1, 1, DOUBLE_W_ob, 1, 1, OP_ADD, 0, 0>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
@@ -3490,6 +3567,15 @@ void Upwind(int input_channels,
             0, 0, 0, 0,
             &input_low_E_buf, (DoubleBuffer *)nullptr, &pbar_buf);
 
+        double_detail::abstract_layer<
+            DoubleBuffer, DOUBLE_C_ob, 1, 1, DOUBLE_W_ob, 1, 1, OP_EWISE_MUL_SCALAR, 0, 0>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            1, 1,
+            0, 0, 0, 0,
+            &pbar_buf, &scalar_buf, &pbar_buf);
 
         /* cbar = sqrt(gamma * pbar / rhobar) */
         DoubleBuffer cbar_buf(input_channels * input_height * input_width);
@@ -3551,18 +3637,32 @@ void Upwind(int input_channels,
                 ustar_buf.data());
 
         DoubleBuffer udiff_buf(input_channels * input_height * input_width);
-        std::copy(input_high_G_buf.data() + size * dir, input_high_G_buf.data() + size * (dir + 1), 
+        std::copy(input_low_G_buf.data() + size * dir, input_low_G_buf.data() + size * (dir + 1), 
                 udiff_buf.data());
+        DoubleBuffer high_G_buf(input_channels * input_height * input_width);
+        std::copy(input_high_G_buf.data() + size * dir, input_high_G_buf.data() + size * (dir + 1), 
+                high_G_buf.data());
+        
 
         double_detail::abstract_layer<
-            DoubleBuffer, DOUBLE_C_ob, 1, 1, DOUBLE_W_ob, 1, 1, OP_HALFDIFF, 0, 0>(
+            DoubleBuffer, DOUBLE_C_ob, 1, 1, DOUBLE_W_ob, 1, 1, OP_SUB, 0, 0>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
             input_height, input_width,
             1, 1,
             0, 0, 0, 0,
-            &low_G_buf, (DoubleBuffer *)nullptr, &udiff_buf);
+            &high_G_buf, (DoubleBuffer *)nullptr, &udiff_buf);
+        
+        double_detail::abstract_layer<
+            DoubleBuffer, DOUBLE_C_ob, 1, 1, DOUBLE_W_ob, 1, 1, OP_EWISE_MUL_SCALAR, 0, 0>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            1, 1,
+            0, 0, 0, 0,
+            &udiff_buf, &scalar_buf, &udiff_buf);
         
         double_detail::abstract_layer<
             DoubleBuffer, DOUBLE_C_ob, 1, 1, DOUBLE_W_ob, 1, 1, OP_MUL, 0, 0>(
@@ -3588,18 +3688,28 @@ void Upwind(int input_channels,
         
 
         DoubleBuffer pdiff_buf(input_channels * input_height * input_width);
-        std::copy(input_high_E_buf.data(), input_high_E_buf.data() + size, 
+        std::copy(input_low_E_buf.data(), input_low_E_buf.data() + size, 
                 pdiff_buf.data());
         double_detail::abstract_layer<
-            DoubleBuffer, DOUBLE_C_ob, 1, 1, DOUBLE_W_ob, 1, 1, OP_HALFDIFF, 0, 0>(
+            DoubleBuffer, DOUBLE_C_ob, 1, 1, DOUBLE_W_ob, 1, 1, OP_SUB, 0, 0>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
             input_height, input_width,
             1, 1,
             0, 0, 0, 0,
-            &input_low_E_buf, (DoubleBuffer *)nullptr, &pdiff_buf);
-        
+            &input_high_E_buf, (DoubleBuffer *)nullptr, &pdiff_buf);
+
+        double_detail::abstract_layer<
+            DoubleBuffer, DOUBLE_C_ob, 1, 1, DOUBLE_W_ob, 1, 1, OP_EWISE_MUL_SCALAR, 0, 0>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            1, 1,
+            0, 0, 0, 0,
+            &pdiff_buf, &scalar_buf, &pdiff_buf);
+
         double_detail::abstract_layer<
             DoubleBuffer, DOUBLE_C_ob, 1, 1, DOUBLE_W_ob, 1, 1, OP_DIV, 0, 0>(
             input_channels, // Output Channel Grouping

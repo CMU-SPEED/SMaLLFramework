@@ -18,27 +18,25 @@ namespace small
 /// op_types used to control how abstract_layer() performs computation.
 enum OpType
 {
-    OP_CONV = 0,          // 'c'
-    OP_RELU = 1,          // 'a'
-    OP_MAX_POOL = 2,      // 'p'
-    OP_LEAKY_RELU = 3,    // 'l'
-    OP_ADD = 4,           // 'd'
-    OP_AVERAGE_POOL = 5,  // 's'
-    OP_EWISE_MUL_SCALAR = 6,
-    OP_UPSAMPLE = 7,      // 'u'
-    OP_EXP = 8,
-    OP_EWISE_ADD_SCALAR = 9,
-    OP_SOFTSIGN = 10,
-    OP_ABS = 11,
-    OP_DIV = 12, // c_i = a_i / c_i
-    OP_HALFSUM = 13,
-    OP_HALFDIFF = 14,
-    OP_SQRT = 15,
-    OP_MUL = 16,
-    OP_SIGN = 17,
-    OP_NSIGN = 18, 
-    OP_SUB = 19,
-    OP_COND_NSIGN = 20,
+    OP_CONV,          // 'c'
+    OP_RELU,          // 'a'
+    OP_MAX_POOL,      // 'p'
+    OP_LEAKY_RELU,    // 'l'
+    OP_ADD,           // 'd'
+    OP_AVERAGE_POOL,  // 's'
+    OP_EWISE_MUL_SCALAR,
+    OP_UPSAMPLE,      // 'u'
+    OP_EXP,
+    OP_EWISE_ADD_SCALAR ,
+    OP_SOFTSIGN,
+    OP_ABS,
+    OP_DIV, // c_i = a_i / c_i
+    OP_SQRT,
+    OP_MUL,
+    OP_SIGN,
+    OP_NSIGN,
+    OP_SUB,
+    OP_COND_NSIGN,
     OP_NONE = -1
 };
 
