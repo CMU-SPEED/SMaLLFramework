@@ -4593,48 +4593,6 @@ void WaveSpeedBound(int input_channels,
 
 #endif 
 
-#if defined(SMALL_HAS_FLOAT_SUPPORT)
-template <class BufferT,
-          std::enable_if_t<
-              std::is_same<FloatBuffer, BufferT>::value, bool> = true>
-void Stencil(int input_channels,
-              int input_height, int input_width,
-              int l_pad, int r_pad,
-              BufferT const &input_buf,
-              BufferT       &output_buf)
-{
-#if defined(RECORD_CALLS)
-    std::cout << "Stencil<float>(chans:" << input_channels
-              << ",img:" << input_height << "x" << input_width
-              << ",I,O)\n";
-#endif
-
-    if ((input_channels % FLOAT_C_ib == 0))
-    {
-        std::cout << "Stencil<float> ERROR: in_channels == 1, no filter needed.\n";
-        FloatBuffer filter_buf(2);
-        filter_buf.data()[0] = 0.5f; // left
-        filter_buf.data()[1] = 0.5f; // right
-        float_detail::abstract_layer<
-                FloatBuffer, 1, FLOAT_C_ob, 1,
-                FLOAT_W_ob, 1, 1, OP_CONV, 2, 1>(
-                1,               // Output Channel Grouping
-                input_channels, // Output Channels per group
-                input_channels,
-                input_height, input_width,
-                1, 2,
-                0, l_pad, r_pad, 0,
-                &input_buf, &filter_buf, &output_buf);
-    }
-    else
-    {
-        throw std::invalid_argument(
-            "Stencil<float> ERROR: in_channels unsupported.");
-    }
-
-}
-#endif
-
 #if defined(SMALL_HAS_DOUBLE_SUPPORT)
 template <class BufferT,
           std::enable_if_t<
