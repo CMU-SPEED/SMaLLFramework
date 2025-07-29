@@ -14,31 +14,105 @@
 
 #include <array>
 #include <ostream>
+#include <initializer_list>
+
 #include <small.h>
 #include <small/buffers.hpp>
 
 namespace small
 {
 
-typedef std::array<size_t, 4UL> shape_type; //{batch_size, num_channels, H, W}
+//typedef std::array<size_t, 5UL> shape_type; //{N, C, H, W, logical_channels}
 
 enum ShapeFields {
     BATCH   = 0,
     CHANNEL = 1,
     HEIGHT  = 2,
-    WIDTH   = 3
+    WIDTH   = 3,
+    L_CHAN  = 4
+};
+
+// Augmented logical shape: {N, C, H, W, logical_C}
+class shape_type
+{
+public:
+    shape_type()
+        : m_dims({0, 0, 0, 0, 0}) {}
+
+    shape_type(std::initializer_list<size_t> &&dims)
+    {
+        if ((dims.size() < 4) || (dims.size() > 5))
+        {
+            throw std::invalid_argument(
+                "shape_type ERROR: wrong size for ctor.");
+        }
+        if ((dims.size() == 5) &&
+            (dims.begin()[4] > dims.begin()[1]))
+        {
+            throw std::invalid_argument(
+                "shape_type ERROR: bad logical channels.");
+        }
+
+        std::copy(dims.begin(), dims.end(), m_dims.begin());
+        if (dims.size() == 4)
+        {
+            m_dims[4] = dims.begin()[1];
+        }
+    }
+
+    // Access elements (example)
+    size_t& operator[](size_t index) {
+        return m_dims[index];
+    }
+
+    const size_t& operator[](size_t index) const {
+        return m_dims[index];
+    }
+
+    bool operator==(shape_type const &other) const {
+        return m_dims == other.m_dims;
+    }
+
+    bool operator!=(shape_type const &other) const {
+        return !(m_dims == other.m_dims);
+    }
+
+    void swap(shape_type &other)
+    {
+        m_dims.swap(other.m_dims);
+    }
+
+    size_t size() const
+    {
+        return m_dims[0]*m_dims[CHANNEL]*m_dims[2]*m_dims[3];
+    }
+
+    size_t logical_size() const
+    {
+        return m_dims[0]*m_dims[L_CHAN]*m_dims[2]*m_dims[3];
+    }
+private:
+    std::array<size_t, 5UL> m_dims;
 };
 
 inline size_t compute_size(shape_type const &shape)
 {
-    return shape[0]*shape[1]*shape[2]*shape[3];
+    return shape[0]*shape[CHANNEL]*shape[2]*shape[3];
+}
+
+inline size_t compute_logical_size(shape_type const &shape)
+{
+    return shape[0]*shape[L_CHAN]*shape[2]*shape[3];
 }
 }
 
+
+
 std::ostream &operator<<(std::ostream &ostr, small::shape_type const &shape)
 {
-    ostr << "(" << shape[0] << ", " << shape[1] << ", "
-         << shape[2] << ", " << shape[3] << ")";
+    ostr << "(" << shape[small::BATCH] << ", "
+         << shape[small::CHANNEL] << "/" << shape[small::L_CHAN] << ", "
+         << shape[small::HEIGHT] << ", " << shape[small::WIDTH] << ")";
     return ostr;
 }
 
@@ -66,7 +140,7 @@ public:
     Tensor() = delete;
 
     Tensor(size_t capacity)
-        : m_shape({capacity, 1, 1, 1}),  /// @todo revisit
+        : m_shape({capacity, 1, 1, 1, 1}),  /// @todo revisit
           m_buffer(capacity)
     {
     }

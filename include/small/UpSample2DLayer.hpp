@@ -28,7 +28,7 @@ public:
 
     UpSample2DLayer(shape_type const &input_shape,
                     uint32_t scale_factor)
-        : Layer<BufferT>(input_shape[CHANNEL]),
+        : Layer<BufferT>(),
           m_input_shape(input_shape),
           m_scale_factor(scale_factor)
     {
@@ -55,7 +55,8 @@ public:
             {m_input_shape[BATCH],
              m_input_shape[CHANNEL],
              m_input_shape[HEIGHT]*scale_factor,
-             m_input_shape[WIDTH]*scale_factor});
+             m_input_shape[WIDTH]*scale_factor,
+             m_input_shape[L_CHAN]});
     }
 
     virtual ~UpSample2DLayer() {}

@@ -423,7 +423,7 @@ DepthwiseConv2DLayer<BufferT>::DepthwiseConv2DLayer(
     bool              buffers_are_packed,
     ActivationType    activation_type,
     float             leaky_slope)
-    : Layer<BufferT>(input_shape[CHANNEL]),
+    : Layer<BufferT>(),
       m_input_shape(input_shape),
       m_kernel_height(kernel_height),
       m_kernel_width(kernel_width),
@@ -464,7 +464,7 @@ DepthwiseConv2DLayer<BufferT>::DepthwiseConv2DLayer(
     bool              buffers_are_packed,
     ActivationType    activation_type,
     float             leaky_slope)
-    : Layer<BufferT>(input_shape[CHANNEL]),
+    : Layer<BufferT>(),
       m_input_shape(input_shape),
       m_kernel_height(kernel_height),
       m_kernel_width(kernel_width),
@@ -510,7 +510,7 @@ DepthwiseConv2DLayer<BufferT>::DepthwiseConv2DLayer(
     bool              buffers_are_packed,
     ActivationType    activation_type,
     float             leaky_slope)
-    : Layer<BufferT>(input_shape[CHANNEL]),
+    : Layer<BufferT>(),
       m_input_shape(input_shape),
       m_kernel_height(kernel_height),
       m_kernel_width(kernel_width),
@@ -562,7 +562,7 @@ DepthwiseConv2DLayer<BufferT>::DepthwiseConv2DLayer(
     bool              buffers_are_packed,
     ActivationType    activation_type,
     float             leaky_slope)
-    : Layer<BufferT>(input_shape[CHANNEL]),
+    : Layer<BufferT>(),
       m_input_shape(input_shape),
       m_kernel_height(kernel_height),
       m_kernel_width(kernel_width),
@@ -680,21 +680,18 @@ void DepthwiseConv2DLayer<BufferT>::compute_padding_output_shape(
     uint32_t          stride,
     PaddingEnum       padding_type)
 {
-    shape_type output_shape;
-
     /// @todo is there a clean way to make these const members, or
     ///       will image size get moved to compute_output and all of
     ///       this moves to compute output?
-    output_shape[BATCH] = input_shape[BATCH];
-    output_shape[CHANNEL] = input_shape[CHANNEL];
+    size_t H, W;
     small::compute_padding_output_dim(input_shape[HEIGHT], kernel_height,
                                       stride, padding_type,
                                       m_t_pad, m_b_pad,
-                                      output_shape[HEIGHT]);
+                                      H);
     small::compute_padding_output_dim(input_shape[WIDTH], kernel_width,
                                       stride, padding_type,
                                       m_l_pad, m_r_pad,
-                                      output_shape[WIDTH]);
+                                      W);
 
 #if defined(DEBUG_LAYERS)
     std::cerr << "DepthwiseConv2D padding: "
@@ -702,7 +699,11 @@ void DepthwiseConv2DLayer<BufferT>::compute_padding_output_shape(
               << "," << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
 #endif
 
-    this->set_output_shape(output_shape);
+    this->set_output_shape(
+        {input_shape[BATCH],
+         input_shape[CHANNEL], H, W,
+         input_shape[L_CHAN]});
+
 }
 
 } // small

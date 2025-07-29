@@ -45,7 +45,7 @@ public:
     // two input shapes
     RouteLayer(shape_type const &input0_shape,
                shape_type const &input1_shape)
-        : Layer<BufferT>(input0_shape[CHANNEL] + input1_shape[CHANNEL]),
+        : Layer<BufferT>(),
           m_num_inputs(2U),
           m_input0_shape(input0_shape),
           m_input1_shape(input1_shape)
@@ -76,6 +76,9 @@ public:
         // only concat along channel dimension
         shape_type output_shape = input0_shape;
         output_shape[CHANNEL] = input0_shape[CHANNEL] + input1_shape[CHANNEL];
+
+        /// @todo What to do about odd channels on both sides?
+        output_shape[L_CHAN]  = input0_shape[L_CHAN]  + input1_shape[L_CHAN];
 
         this->set_output_shape(output_shape);
     }

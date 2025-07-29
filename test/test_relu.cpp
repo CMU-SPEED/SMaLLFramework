@@ -211,8 +211,8 @@ void test_relu_layer_odd_channels(void)
             -  (logical_channels % small::FloatBuffer::C_ob);
     }
 
-    small::Tensor<small::FloatBuffer>  in_tensor({1, channels, H, W});
-    small::Tensor<small::FloatBuffer> out_tensor({1, channels, H, W});
+    small::Tensor<small::FloatBuffer>  in_tensor({1, channels, H, W, logical_channels});
+    small::Tensor<small::FloatBuffer> out_tensor({1, channels, H, W, logical_channels});
     for (size_t ix = 0; ix < logical_channels; ++ix)
     {
         in_tensor.buffer()[ix] = (float)(logical_channels - logical_channels/2);
@@ -222,7 +222,7 @@ void test_relu_layer_odd_channels(void)
         in_tensor.buffer()[ix] = -1.0f;
     }
 
-    small::ReLULayer<small::FloatBuffer> relu_layer(in_tensor.shape(), logical_channels);
+    small::ReLULayer<small::FloatBuffer> relu_layer(in_tensor.shape());
 
     relu_layer.compute_output({&in_tensor}, &out_tensor);
 

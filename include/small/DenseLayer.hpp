@@ -55,6 +55,14 @@ public:
     BufferT const &get_packed_bias()    const { return m_packed_bias; }
 
 private:
+    void initialize(shape_type const &input_shape,
+                    uint32_t          num_logical_output_channels,
+                    BufferT    const &filters,
+                    BufferT    const &bias,
+                    bool              buffers_are_packed,
+                    ActivationType    activation_type,
+                    float             leaky_slope);
+
     shape_type const m_input_shape;
 
     // uint32_t   const m_kernel_height, m_kernel_width;
@@ -198,7 +206,7 @@ DenseLayer<BufferT>::DenseLayer(
     bool              buffers_are_packed,
     ActivationType    activation_type,
     float             leaky_slope)
-    : Layer<BufferT>(num_logical_output_channels),
+    : Layer<BufferT>(),
       m_input_shape(input_shape),
       m_activation_type(activation_type),
       m_leaky_slope(1),  /// @note Allocating 1-element buffer
@@ -213,74 +221,10 @@ DenseLayer<BufferT>::DenseLayer(
               << "x" << m_input_shape[WIDTH]
               << "), filters.size=" << filters.size() << std::endl;
 #endif
-    if (((input_shape[CHANNEL] % BufferT::C_ib) != 0) &&
-        (input_shape[CHANNEL] != 3) &&  // all of the cases that Conv2D supports
-        (input_shape[CHANNEL] != 2) &&
-        (input_shape[CHANNEL] != 1))
-    {
-        throw std::invalid_argument(
-            "DenseLayer::ctor ERROR: invalid number of input channels.");
-    }
 
-    // Deal with odd numbers of output channels by padding unpacked filters
-    uint32_t num_output_channels{num_logical_output_channels};
-    if ((num_logical_output_channels % BufferT::C_ob) != 0)
-    {
-        if (buffers_are_packed)
-        {
-            throw std::invalid_argument(
-                "DenseLayer::ctor ERROR: invalid number of output channels.");
-        }
-
-        // set to next integer multiple of blocking factor (for this platform).
-        num_output_channels +=
-            (BufferT::C_ob - (num_output_channels % BufferT::C_ob));
-    }
-
-    m_leaky_slope[0] = leaky_slope;
-
-    shape_type output_shape{input_shape[BATCH],  num_output_channels,
-                            input_shape[HEIGHT], input_shape[WIDTH]};
-    this->set_output_shape(output_shape);
-
-    detail::initialize_dense_buffers(
-        num_output_channels,
-        num_logical_output_channels,
-        m_input_shape[CHANNEL],
-        filters,
-        BufferT(),  // empty bias
-        buffers_are_packed,
-        m_packed_filters,
-        m_packed_bias);
-
-#if defined(DEBUG_LAYERS)
-    if (activation_type == RELU)
-    {
-        std::cerr << "ReLU(batches:" << output_shape[BATCH]
-                  << ",chans:" << output_shape[CHANNEL]
-                  << ",img:" << output_shape[HEIGHT]
-                  << "x" << output_shape[WIDTH]
-                  << ")" << std::endl;
-    }
-    else if (activation_type == LEAKY)
-    {
-        std::cerr << "LeakyReLU(batches:" << output_shape[BATCH]
-                  << ",chans:" << output_shape[CHANNEL]
-                  << ",slope:" << leaky_slope
-                  << ",img:" << output_shape[HEIGHT]
-                  << "x" << output_shape[WIDTH]
-                  << ")" << std::endl;
-    }
-    else if (activation_type == SOFTMAX)
-    {
-        std::cerr << "Softmax(batches:" << output_shape[BATCH]
-                  << ",chans(logical):" << output_shape[CHANNEL]
-                  << "(" << num_logical_output_channels << ")"
-                  << ",img:" << output_shape[HEIGHT]
-                  << "x" << output_shape[WIDTH]
-                  << ")" << std::endl;
-    }
-#endif
+    initialize(input_shape, num_logical_output_channels,
+               filters, BufferT(), buffers_are_packed, // no bias
+               activation_type, leaky_slope);
 }
 
 //****************************************************************************
@@ -293,7 +237,7 @@ DenseLayer<BufferT>::DenseLayer(
     bool              buffers_are_packed,
     ActivationType    activation_type,
     float             leaky_slope)
-    : Layer<BufferT>(num_logical_output_channels),
+    : Layer<BufferT>(),
       m_input_shape(input_shape),
       m_activation_type(activation_type),
       m_leaky_slope(1),  /// @note Allocating 1-element buffer
@@ -309,6 +253,22 @@ DenseLayer<BufferT>::DenseLayer(
               << "),filters.size=" << filters.size()
               << ",bias.size=" << bias.size() << std::endl;
 #endif
+
+    initialize(input_shape, num_logical_output_channels,
+               filters, bias, buffers_are_packed,
+               activation_type, leaky_slope);
+}
+
+//****************************************************************************
+template <class BufferT>
+void DenseLayer<BufferT>::initialize(shape_type const &input_shape,
+                                     uint32_t          num_logical_output_channels,
+                                     BufferT    const &filters,
+                                     BufferT    const &bias,
+                                     bool              buffers_are_packed,
+                                     ActivationType    activation_type,
+                                     float             leaky_slope)
+{
     if (((input_shape[CHANNEL] % BufferT::C_ib) != 0) &&
         (input_shape[CHANNEL] != 3) &&  // all of the cases that Conv2D supports
         (input_shape[CHANNEL] != 2) &&
@@ -335,9 +295,10 @@ DenseLayer<BufferT>::DenseLayer(
 
     m_leaky_slope[0] = leaky_slope;
 
-    shape_type output_shape{input_shape[BATCH],  num_output_channels,
-                            input_shape[HEIGHT], input_shape[WIDTH]};
-    this->set_output_shape(output_shape);
+    this->set_output_shape(
+        {input_shape[BATCH],  num_output_channels,
+         input_shape[HEIGHT], input_shape[WIDTH],
+         num_logical_output_channels});
 
     detail::initialize_dense_buffers(
         num_output_channels,
@@ -378,7 +339,6 @@ DenseLayer<BufferT>::DenseLayer(
                   << ")" << std::endl;
     }
 #endif
-
 }
 
 //****************************************************************************

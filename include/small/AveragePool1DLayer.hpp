@@ -30,15 +30,13 @@ public:
                        uint32_t          kernel_width,
                        uint32_t          stride,
                        PaddingEnum       padding_type)
-        : Layer<BufferT>(input_shape[CHANNEL]),
+        : Layer<BufferT>(),
           m_input_shape(input_shape),
           m_kernel_width(kernel_width),
           m_stride(stride),
           m_l_pad(0), m_r_pad(0)
     {
 #if defined(DEBUG_LAYERS)
-        std::cerr << input_shape << std::endl;
-        std::cerr << m_input_shape << std::endl;
         std::cerr << "AveragePool1D(batches:" << m_input_shape[BATCH]
                   << ",k:"  << kernel_width
                   << ",s:" << stride
@@ -48,23 +46,26 @@ public:
                   << "x" << m_input_shape[WIDTH] << ")"
                   << std::endl;
 #endif
+        /// @todo assert m_input_shape[HEIGHT] == 1
 
         /// @todo is there a clean way to make these const members, or
         ///       will image size get moved to compute_output() and all of
         ///       this moves to compute_output()?
-        shape_type output_shape;
-        output_shape[BATCH] = m_input_shape[BATCH];
-        output_shape[CHANNEL] = m_input_shape[CHANNEL];
-        output_shape[HEIGHT] = 1;
+        size_t W;
         small::compute_padding_output_dim(m_input_shape[WIDTH], kernel_width,
                                           stride, padding_type,
                                           m_l_pad, m_r_pad,
-                                          output_shape[WIDTH]);
+                                          W);
 #if defined(DEBUG_LAYERS)
         std::cerr << "AveragePool1D padding: " << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
 #endif
 
-        this->set_output_shape(output_shape);
+        this->set_output_shape(
+            {m_input_shape[BATCH],
+             m_input_shape[CHANNEL],
+             1U, // m_input_shape[HEIGHT],
+             W,
+             m_input_shape[L_CHAN]});
     }
 
     virtual ~AveragePool1DLayer() {}

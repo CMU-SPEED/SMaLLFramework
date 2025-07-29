@@ -116,12 +116,14 @@ private:
         ActivationType    activation_type,
         float             leaky_slope);
 
-    void compute_padding_output_shape(shape_type const &input_shape,
-                                      uint32_t          kernel_height,
-                                      uint32_t          kernel_width,
-                                      uint32_t          stride,
-                                      PaddingEnum       padding_type,
-                                      uint32_t          num_output_channels);
+    void compute_padding_output_shape(
+        shape_type const &input_shape,
+        uint32_t          kernel_height,
+        uint32_t          kernel_width,
+        uint32_t          stride,
+        PaddingEnum       padding_type,
+        uint32_t          num_output_channels,
+        uint32_t          num_logical_output_channels);
 
 private:
     shape_type const m_input_shape;
@@ -195,7 +197,8 @@ void PartialConv2DLayer<BufferT>::initialize(
                                  kernel_height, kernel_width,
                                  stride,
                                  padding_type,
-                                 num_output_channels);
+                                 num_output_channels,
+                                 num_logical_output_channels);
 
     detail::initialize_conv2d_buffers(
         num_output_channels,
@@ -254,7 +257,7 @@ PartialConv2DLayer<BufferT>::PartialConv2DLayer(
     bool              buffers_are_packed,
     ActivationType    activation_type,
     float             leaky_slope)
-: Layer<BufferT>(num_logical_output_channels),
+: Layer<BufferT>(),
   m_input_shape(input_shape),
   m_kernel_height(kernel_height),
   m_kernel_width(kernel_width),
@@ -298,7 +301,7 @@ PartialConv2DLayer<BufferT>::PartialConv2DLayer(
     bool              buffers_are_packed,
     ActivationType    activation_type,
     float             leaky_slope)
-: Layer<BufferT>(num_logical_output_channels),
+: Layer<BufferT>(),
   m_input_shape(input_shape),
   m_kernel_height(kernel_height),
   m_kernel_width(kernel_width),
@@ -347,7 +350,7 @@ PartialConv2DLayer<BufferT>::PartialConv2DLayer(
     bool              buffers_are_packed,
     ActivationType    activation_type,
     float             leaky_slope)
-: Layer<BufferT>(num_logical_output_channels),
+: Layer<BufferT>(),
   m_input_shape(input_shape),
   m_kernel_height(kernel_height),
   m_kernel_width(kernel_width),
@@ -403,7 +406,7 @@ PartialConv2DLayer<BufferT>::PartialConv2DLayer(
     bool              buffers_are_packed,
     ActivationType    activation_type,
     float             leaky_slope)
-: Layer<BufferT>(num_logical_output_channels),
+: Layer<BufferT>(),
   m_input_shape(input_shape),
   m_kernel_height(kernel_height),
   m_kernel_width(kernel_width),
@@ -516,23 +519,21 @@ void PartialConv2DLayer<BufferT>::compute_padding_output_shape(
     uint32_t          kernel_width,
     uint32_t          stride,
     PaddingEnum       padding_type,
-    uint32_t          num_output_channels)
+    uint32_t          num_output_channels,
+    uint32_t          num_logical_output_channels)
 {
-    shape_type output_shape;
-
     /// @todo is there a clean way to make these const members, or
     ///       will image size get moved to compute_output and all of
     ///       this moves to compute output?
-    output_shape[BATCH] = input_shape[BATCH];
-    output_shape[CHANNEL] = num_output_channels;
+    size_t H, W;
     small::compute_padding_output_dim(input_shape[HEIGHT], kernel_height,
                                       stride, padding_type,
                                       m_t_pad, m_b_pad,
-                                      output_shape[HEIGHT]);
+                                      H);
     small::compute_padding_output_dim(input_shape[WIDTH], kernel_width,
                                       stride, padding_type,
                                       m_l_pad, m_r_pad,
-                                      output_shape[WIDTH]);
+                                      W);
 
 #if defined(DEBUG_LAYERS)
     std::cerr << "PartialConv2D padding: "
@@ -540,7 +541,9 @@ void PartialConv2DLayer<BufferT>::compute_padding_output_shape(
               << "," << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
 #endif
 
-    this->set_output_shape(output_shape);
+    this->set_output_shape(
+        {input_shape[BATCH], num_output_channels,
+         H, W, num_logical_output_channels});
 }
 
 }

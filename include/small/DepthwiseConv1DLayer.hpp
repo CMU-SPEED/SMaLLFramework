@@ -665,25 +665,25 @@ void DepthwiseConv1DLayer<BufferT>::compute_padding_output_shape(
     uint32_t          stride,
     PaddingEnum       padding_type)
 {
-    shape_type output_shape;
-
     /// @todo is there a clean way to make these const members, or
     ///       will image size get moved to compute_output and all of
     ///       this moves to compute output?
-    output_shape[BATCH] = input_shape[BATCH];
-    output_shape[CHANNEL] = input_shape[CHANNEL];
-    output_shape[HEIGHT] = input_shape[HEIGHT]; // batch?
+    size_t W;
     small::compute_padding_output_dim(input_shape[WIDTH], kernel_width,
                                       stride, padding_type,
                                       m_l_pad, m_r_pad,
-                                      output_shape[WIDTH]);
+                                      W);
 
 #if defined(DEBUG_LAYERS)
     std::cerr << "DepthwiseConv1D padding: "
               << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
 #endif
 
-    this->set_output_shape(output_shape);
+    this->set_output_shape(
+        {input_shape[BATCH],
+         input_shape[CHANNEL],
+         input_shape[HEIGHT], W,
+         input_shape[L_CHAN]});
 }
 
 } // small

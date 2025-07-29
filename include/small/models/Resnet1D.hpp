@@ -310,11 +310,10 @@ void Resnet1D<BufferT>::construct_resnet_output_layers(
     this->m_layers.push_back(fc);
 
     //-------------------------------------------------------------------------
-    // LogSoftMax (account for the possibility of 'odd' channels on input
+    // LogSoftMax
     //-------------------------------------------------------------------------
     small::LogSoftMaxLayer<BufferT> *logsoftmax =
-        new small::LogSoftMaxLayer<BufferT>(fc->output_shape(),
-                                            fc->logical_output_channels());
+        new small::LogSoftMaxLayer<BufferT>(fc->output_shape());
 
     max_buffer_size = std::max(max_buffer_size, logsoftmax->output_size());
     this->m_layers.push_back(logsoftmax);

@@ -74,7 +74,7 @@ public:
               std::vector<std::pair<uint32_t, uint32_t>> masked_anchors,
               size_t num_classes,
               size_t input_img_size) /// @todo assumes square image
-        : Layer<BufferT>(1U),
+        : Layer<BufferT>(),
           m_input_shape(input_shape),
           m_unpacked_input(
               input_shape[CHANNEL]*input_shape[HEIGHT]*input_shape[WIDTH]),
@@ -93,6 +93,7 @@ public:
                   << ",img:" << input_shape[HEIGHT] << "x" << input_shape[WIDTH]
                   << ")" << std::endl;
 #endif
+        /// @todo assert(m_effective_channels == input_shape[L_CHAN]);
 
         // HACK
         // Since Conv2D can't support channel dimensions that are not a multiple
@@ -104,7 +105,7 @@ public:
         //                        allocated in the buffer (i.e., padded)
 
         this->set_output_shape(
-            {input_shape[BATCH], 1U, m_num_pred, m_sizeof_pred});
+            {input_shape[BATCH], 1U, m_num_pred, m_sizeof_pred, 1U});
     }
 
     virtual ~YOLOLayer() {}

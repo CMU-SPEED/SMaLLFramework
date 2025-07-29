@@ -165,8 +165,10 @@ void test_logsoftmax_layer_odd_channels(void)
             -  (logical_channels % small::FloatBuffer::C_ob);
     }
 
-    small::Tensor<small::FloatBuffer>  in_tensor({1, channels, H, W});
-    small::Tensor<small::FloatBuffer> out_tensor({1, channels, H, W});
+    small::Tensor<small::FloatBuffer>  in_tensor(
+        {1, channels, H, W, logical_channels});
+    small::Tensor<small::FloatBuffer> out_tensor(
+        {1, channels, H, W, logical_channels});
     small::init_zeros(in_tensor.buffer(), in_tensor.size());
     in_tensor.buffer()[0] = 1.0f;
     in_tensor.buffer()[channels - 1] = 10.0f;
@@ -178,9 +180,8 @@ void test_logsoftmax_layer_odd_channels(void)
     }
     sum = -std::log(sum);
 
-    small::shape_type input_shape{1U, channels, H, W};
-    small::LogSoftMaxLayer<small::FloatBuffer> lsm_layer(input_shape,
-                                                         logical_channels);
+    small::shape_type input_shape{1U, channels, H, W, logical_channels};
+    small::LogSoftMaxLayer<small::FloatBuffer> lsm_layer(input_shape);
 
     lsm_layer.compute_output({&in_tensor}, &out_tensor);
 
