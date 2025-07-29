@@ -141,7 +141,7 @@ namespace small
     {                                          \
         for (uint32_t jj = 0; jj < C_ob; jj++) \
         {                                      \
-            c_tile[kk * C_ob + jj] = 0.f;      \
+            c_tile[kk * C_ob + jj] = 0.0;      \
         }                                      \
     }
 
@@ -156,7 +156,7 @@ namespace small
     {                                          \
         for (uint32_t jj = 0; jj < C_ob; jj++) \
         {                                      \
-            c_tile[kk * C_ob + jj] = 0.f;      \
+            c_tile[kk * C_ob + jj] = 0.0;      \
         }                                      \
     }
 
@@ -768,7 +768,7 @@ namespace small
         c_tile_t const *a_channel = a_pixel;                            \
         for (uint32_t jj = 0; jj < C_ob; jj++)                          \
         {                                                               \
-            *(c_channel) = *(a_channel) / (1.0f + std::abs(*a_channel)); \
+            *(c_channel) = *(a_channel) / (1.0 + std::abs(*a_channel)); \
             c_channel++;                                                \
             a_channel++;                                                \
         }                                                               \
@@ -785,7 +785,7 @@ namespace small
         c_tile_t const *a_channel = a_pixel;                    \
         for (uint32_t jj = 0; jj < C_ob; jj++)                  \
         {                                                       \
-            *(c_channel) = *(a_channel) / (1.0f + std::abs(*a_channel)); \
+            *(c_channel) = *(a_channel) / (1.0 + std::abs(*a_channel)); \
             c_channel++;                                        \
             a_channel++;                                        \
         }                                                       \
@@ -800,7 +800,7 @@ namespace small
         c_tile_t *c_channel = c_pixel;           \
         for (uint32_t jj = 0; jj < C_ob; jj++)   \
         {                                        \
-            *(c_channel) = *(c_channel) / (1.0f + std::abs(*(c_channel))); \
+            *(c_channel) = *(c_channel) / (1.0 + std::abs(*(c_channel))); \
             c_channel++;                         \
         }                                        \
         c_pixel += C_ob;                         \
@@ -813,7 +813,7 @@ namespace small
         c_tile_t *c_channel = c_pixel;             \
         for (uint32_t jj = 0; jj < C_ob; jj++)     \
         {                                          \
-            *(c_channel) = *(c_channel) / (1.0f + std::abs(*(c_channel))); \
+            *(c_channel) = *(c_channel) / (1.0 + std::abs(*(c_channel))); \
             c_channel++;                           \
         }                                          \
         c_pixel += C_ob;                           \
