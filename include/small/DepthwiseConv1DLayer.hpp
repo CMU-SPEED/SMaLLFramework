@@ -415,7 +415,7 @@ DepthwiseConv1DLayer<BufferT>::DepthwiseConv1DLayer(
     bool              buffers_are_packed,
     ActivationType    activation_type,
     float             leaky_slope)
-    : Layer<BufferT>(input_shape[CHANNEL]),
+    : Layer<BufferT>(),
       m_input_shape(input_shape),
       m_kernel_width(kernel_width),
       m_stride(stride),
@@ -430,7 +430,8 @@ DepthwiseConv1DLayer<BufferT>::DepthwiseConv1DLayer(
               << ",k:" << kernel_width
               << ",s:" << stride
               << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
-              << ",chans:" << m_input_shape[CHANNEL]
+              << ",chans/lchans:" << m_input_shape[CHANNEL]
+              << "/" << m_input_shape[L_CHAN]
               << ",img:" << m_input_shape[HEIGHT]
               << "x" << m_input_shape[WIDTH]
               << "), filters.size=" << filters.size() << std::endl;
@@ -454,7 +455,7 @@ DepthwiseConv1DLayer<BufferT>::DepthwiseConv1DLayer(
     bool              buffers_are_packed,
     ActivationType    activation_type,
     float             leaky_slope)
-    : Layer<BufferT>(input_shape[CHANNEL]),
+    : Layer<BufferT>(),
       m_input_shape(input_shape),
       m_kernel_width(kernel_width),
       m_stride(stride),
@@ -469,7 +470,8 @@ DepthwiseConv1DLayer<BufferT>::DepthwiseConv1DLayer(
               << ",k:" << m_kernel_width
               << ",s:" << m_stride
               << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
-              << ",chans:" << m_input_shape[CHANNEL]
+              << ",chans/lchans:" << m_input_shape[CHANNEL]
+              << "/" << m_input_shape[L_CHAN]
               << ",img:" << m_input_shape[HEIGHT]
               << "x" << m_input_shape[WIDTH]
               << "), filters.size=" << filters.size()
@@ -498,7 +500,7 @@ DepthwiseConv1DLayer<BufferT>::DepthwiseConv1DLayer(
     bool              buffers_are_packed,
     ActivationType    activation_type,
     float             leaky_slope)
-    : Layer<BufferT>(input_shape[CHANNEL]),
+    : Layer<BufferT>(),
       m_input_shape(input_shape),
       m_kernel_width(kernel_width),
       m_stride(stride),
@@ -513,7 +515,8 @@ DepthwiseConv1DLayer<BufferT>::DepthwiseConv1DLayer(
               << ",k:" << m_kernel_width
               << ",s:" << m_stride
               << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
-              << ",chans:" << m_input_shape[CHANNEL]
+              << ",chans/lchans:" << m_input_shape[CHANNEL]
+              << "/" << m_input_shape[L_CHAN]
               << ",img:" << m_input_shape[HEIGHT]
               << "x" << m_input_shape[WIDTH]
               << "), filters.size=" << filters.size()
@@ -548,7 +551,7 @@ DepthwiseConv1DLayer<BufferT>::DepthwiseConv1DLayer(
     bool              buffers_are_packed,
     ActivationType    activation_type,
     float             leaky_slope)
-    : Layer<BufferT>(input_shape[CHANNEL]),
+: Layer<BufferT>(),
       m_input_shape(input_shape),
       m_kernel_width(kernel_width),
       m_stride(stride),
@@ -563,7 +566,8 @@ DepthwiseConv1DLayer<BufferT>::DepthwiseConv1DLayer(
               << ",k:" << m_kernel_width
               << ",s:" << m_stride
               << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
-              << ",chans:" << m_input_shape[CHANNEL]
+              << ",chans/lchans:" << m_input_shape[CHANNEL]
+              << "/" << m_input_shape[L_CHAN]
               << ",img:" << m_input_shape[HEIGHT]
               << "x" << m_input_shape[WIDTH]
               << "), filters.size=" << filters.size()
