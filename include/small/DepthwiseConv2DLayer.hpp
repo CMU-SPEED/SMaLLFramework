@@ -386,7 +386,8 @@ void DepthwiseConv2DLayer<BufferT>::initialize(
     if (activation_type == RELU)
     {
         std::cerr << "ReLU(batches:" << output_shape[BATCH]
-                  << ",chans:" << output_shape[CHANNEL]
+                  << ",chans/lchans:" << output_shape[CHANNEL]
+                  << "/" << output_shape[L_CHAN]
                   << ",img:" << output_shape[HEIGHT]
                   << "x" << output_shape[WIDTH]
                   << ")" << std::endl;
@@ -394,7 +395,8 @@ void DepthwiseConv2DLayer<BufferT>::initialize(
     else if (activation_type == LEAKY)
     {
         std::cerr << "LeakyReLU(batches:" << output_shape[BATCH]
-                  << ",chans:" << output_shape[CHANNEL]
+                  << ",chans/lchans:" << output_shape[CHANNEL]
+                  << "/" << output_shape[L_CHAN]
                   << ",slope:" << leaky_slope
                   << ",img:" << output_shape[HEIGHT]
                   << "x" << output_shape[WIDTH]
@@ -403,7 +405,8 @@ void DepthwiseConv2DLayer<BufferT>::initialize(
     else if (activation_type == SOFTMAX)
     {
         std::cerr << "Softmax(batches:" << output_shape[BATCH]
-                  << ",chans:" << output_shape[CHANNEL]
+                  << ",chans/lchans:" << output_shape[CHANNEL]
+                  << "/" << output_shape[L_CHAN]
                   << ",img:" << output_shape[HEIGHT]
                   << "x" << output_shape[WIDTH]
                   << ")" << std::endl;
@@ -439,7 +442,8 @@ DepthwiseConv2DLayer<BufferT>::DepthwiseConv2DLayer(
               << ",k:" << kernel_height << "x" << kernel_width
               << ",s:" << stride
               << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
-              << ",chans:" << m_input_shape[CHANNEL]
+              << ",chans/lchans:" << m_input_shape[CHANNEL]
+              << "/" << m_input_shape[L_CHAN]
               << ",img:" << m_input_shape[HEIGHT]
               << "x" << m_input_shape[WIDTH]
               << "), filters.size=" << filters.size() << std::endl;
@@ -480,7 +484,8 @@ DepthwiseConv2DLayer<BufferT>::DepthwiseConv2DLayer(
               << ",k:" << m_kernel_height << "x" << m_kernel_width
               << ",s:" << m_stride
               << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
-              << ",chans:" << m_input_shape[CHANNEL]
+              << ",chans/lchans:" << m_input_shape[CHANNEL]
+              << "/" << m_input_shape[L_CHAN]
               << ",img:" << m_input_shape[HEIGHT]
               << "x" << m_input_shape[WIDTH]
               << "), filters.size=" << filters.size()
@@ -526,7 +531,8 @@ DepthwiseConv2DLayer<BufferT>::DepthwiseConv2DLayer(
               << ",k:" << m_kernel_height << "x" << m_kernel_width
               << ",s:" << m_stride
               << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
-              << ",chans:" << m_input_shape[CHANNEL]
+              << ",chans/lchans:" << m_input_shape[CHANNEL]
+              << "/" << m_input_shape[L_CHAN]
               << ",img:" << m_input_shape[HEIGHT]
               << "x" << m_input_shape[WIDTH]
               << "), filters.size=" << filters.size()
@@ -578,7 +584,8 @@ DepthwiseConv2DLayer<BufferT>::DepthwiseConv2DLayer(
               << ",k:" << m_kernel_height << "x" << m_kernel_width
               << ",s:" << m_stride
               << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
-              << ",chans:" << m_input_shape[CHANNEL]
+              << ",chans/lchans:" << m_input_shape[CHANNEL]
+              << "/" << m_input_shape[L_CHAN]
               << ",img:" << m_input_shape[HEIGHT]
               << "x" << m_input_shape[WIDTH]
               << "), filters.size=" << filters.size()

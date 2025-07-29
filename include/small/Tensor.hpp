@@ -47,7 +47,8 @@ public:
                 "shape_type ERROR: wrong size for ctor.");
         }
         if ((dims.size() == 5) &&
-            (dims.begin()[4] > dims.begin()[1]))
+            ((dims.begin()[L_CHAN] > dims.begin()[CHANNEL]) ||
+             (dims.begin()[L_CHAN] < 1)))
         {
             throw std::invalid_argument(
                 "shape_type ERROR: bad logical channels.");
@@ -56,7 +57,7 @@ public:
         std::copy(dims.begin(), dims.end(), m_dims.begin());
         if (dims.size() == 4)
         {
-            m_dims[4] = dims.begin()[1];
+            m_dims[L_CHAN] = dims.begin()[CHANNEL];
         }
     }
 

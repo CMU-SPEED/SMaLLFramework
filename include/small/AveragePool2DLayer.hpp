@@ -43,7 +43,8 @@ public:
                   << ",k:" << kernel_height << "x" << kernel_width
                   << ",s:" << stride
                   << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
-                  << ",chans:" << m_input_shape[CHANNEL]
+                  << ",chans/lchans:" << m_input_shape[CHANNEL]
+                  << "/" << m_input_shape[L_CHAN]
                   << ",img:" << m_input_shape[HEIGHT]
                   << "x" << m_input_shape[WIDTH] << ")"
                   << std::endl;

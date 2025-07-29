@@ -11,7 +11,6 @@
 //****************************************************************************
 
 #define PARALLEL 1
-
 #include <acutest.h>
 #include <stdlib.h>
 
@@ -154,18 +153,20 @@ void test_softmax_layer_odd_channels(void)
     uint32_t H = 1; // image_height;
     uint32_t W = 1; // image_width;
     uint32_t logical_channels = 31;
-    uint32_t channels = logical_channels;
 
     // Note: channels should be a multiple of channel blocking factor
     // for all platforms
+    uint32_t channels = logical_channels;
     if ((channels % small::FloatBuffer::C_ob) != 0)
     {
         channels = channels + small::FloatBuffer::C_ob
             -  (logical_channels % small::FloatBuffer::C_ob);
     }
 
-    small::Tensor<small::FloatBuffer>  in_tensor({1, channels, H, W});
-    small::Tensor<small::FloatBuffer> out_tensor({1, channels, H, W});
+    small::Tensor<small::FloatBuffer>  in_tensor(
+        {1, channels, H, W, logical_channels});
+    small::Tensor<small::FloatBuffer> out_tensor(
+        {1, channels, H, W, logical_channels});
     small::init_zeros(in_tensor.buffer(), in_tensor.size());
     in_tensor.buffer()[0] = 1.0f;
     in_tensor.buffer()[channels - 1] = 10.0f;
@@ -177,9 +178,8 @@ void test_softmax_layer_odd_channels(void)
     }
     sum = 1.0f/sum;
 
-    small::shape_type input_shape{1U, channels, H, W};
-    small::SoftMaxLayer<small::FloatBuffer> lsm_layer(input_shape,
-                                                      logical_channels);
+    small::shape_type input_shape{1U, channels, H, W, logical_channels};
+    small::SoftMaxLayer<small::FloatBuffer> lsm_layer(input_shape);
 
     lsm_layer.compute_output({&in_tensor}, &out_tensor);
 

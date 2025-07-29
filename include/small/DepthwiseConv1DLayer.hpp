@@ -375,7 +375,8 @@ void DepthwiseConv1DLayer<BufferT>::initialize(
     if (activation_type == RELU)
     {
         std::cerr << "ReLU(batches:" << output_shape[BATCH]
-                  << ",chans:" << output_shape[CHANNEL]
+                  << ",chans/lchans:" << output_shape[CHANNEL]
+                  << "/" << output_shape[L_CHAN]
                   << ",img:" << output_shape[HEIGHT]
                   << "x" << output_shape[WIDTH]
                   << ")" << std::endl;
@@ -383,7 +384,8 @@ void DepthwiseConv1DLayer<BufferT>::initialize(
     else if (activation_type == LEAKY)
     {
         std::cerr << "LeakyReLU(batches:" << output_shape[BATCH]
-                  << ",chans:" << output_shape[CHANNEL]
+                  << ",chans/lchans:" << output_shape[CHANNEL]
+                  << "/" << output_shape[L_CHAN]
                   << ",slope:" << leaky_slope
                   << ",img:" << output_shape[HEIGHT]
                   << "x" << output_shape[WIDTH]
@@ -392,7 +394,8 @@ void DepthwiseConv1DLayer<BufferT>::initialize(
     else if (activation_type == SOFTMAX)
     {
         std::cerr << "Softmax(batches:" << output_shape[BATCH]
-                  << ",chans:" << output_shape[CHANNEL]
+                  << ",chans/lchans:" << output_shape[CHANNEL]
+                  << "/" << output_shape[L_CHAN]
                   << ",img:" << output_shape[HEIGHT]
                   << "x" << output_shape[WIDTH]
                   << ")" << std::endl;

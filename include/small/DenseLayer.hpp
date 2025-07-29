@@ -215,7 +215,8 @@ DenseLayer<BufferT>::DenseLayer(
 {
 #if defined(DEBUG_LAYERS)
     std::cerr << "Dense(batches:" << m_input_shape[BATCH]
-              << ",ichans:" << m_input_shape[CHANNEL]
+              << ",ichans/lchans:" << m_input_shape[CHANNEL]
+              << "/" << m_input_shape[L_CHAN]
               << ",ochans:" << num_logical_output_channels
               << ",img:" << m_input_shape[HEIGHT]
               << "x" << m_input_shape[WIDTH]
@@ -246,7 +247,8 @@ DenseLayer<BufferT>::DenseLayer(
 {
 #if defined(DEBUG_LAYERS)
     std::cerr << "Dense(batches:" << m_input_shape[BATCH]
-              << ",ichans:" << m_input_shape[CHANNEL]
+              << ",ichans/lchans:" << m_input_shape[CHANNEL]
+              << "/" << m_input_shape[L_CHAN]
               << ",ochans:" << num_logical_output_channels
               << ",img:" << m_input_shape[HEIGHT]
               << "x" << m_input_shape[WIDTH]
@@ -312,10 +314,12 @@ void DenseLayer<BufferT>::initialize(shape_type const &input_shape,
 
 
 #if defined(DEBUG_LAYERS)
+    auto &output_shape = this->output_shape();
     if (activation_type == RELU)
     {
         std::cerr << "ReLU(batches:" << output_shape[BATCH]
-                  << ",chans:" << output_shape[CHANNEL]
+                  << ",chans/lchans:" << output_shape[CHANNEL]
+                  << "/" << output_shape[L_CHAN]
                   << ",img:" << output_shape[HEIGHT]
                   << "x" << output_shape[WIDTH]
                   << ")" << std::endl;
@@ -323,7 +327,8 @@ void DenseLayer<BufferT>::initialize(shape_type const &input_shape,
     else if (activation_type == LEAKY)
     {
         std::cerr << "LeakyReLU(batches:" << output_shape[BATCH]
-                  << ",chans:" << output_shape[CHANNEL]
+                  << ",chans/lchans:" << output_shape[CHANNEL]
+                  << "/" << output_shape[L_CHAN]
                   << ",slope:" << leaky_slope
                   << ",img:" << output_shape[HEIGHT]
                   << "x" << output_shape[WIDTH]
@@ -332,8 +337,8 @@ void DenseLayer<BufferT>::initialize(shape_type const &input_shape,
     else if (activation_type == SOFTMAX)
     {
         std::cerr << "Softmax(batches:" << output_shape[BATCH]
-                  << ",chans(logical):" << output_shape[CHANNEL]
-                  << "(" << num_logical_output_channels << ")"
+                  << ",chans/lchans:" << output_shape[CHANNEL]
+                  << "/" << output_shape[L_CHAN]
                   << ",img:" << output_shape[HEIGHT]
                   << "x" << output_shape[WIDTH]
                   << ")" << std::endl;

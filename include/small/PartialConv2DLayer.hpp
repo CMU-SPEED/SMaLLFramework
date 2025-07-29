@@ -218,7 +218,8 @@ void PartialConv2DLayer<BufferT>::initialize(
     if (activation_type == RELU)
     {
         std::cerr << "ReLU(batches:" << output_shape[BATCH]
-                  << ",chans:" << output_shape[CHANNEL]
+                  << ",chans/lchans:" << output_shape[CHANNEL]
+                  << "/" << output_shape[L_CHAN]
                   << ",img:" << output_shape[HEIGHT]
                   << "x" << output_shape[WIDTH]
                   << ")" << std::endl;
@@ -226,7 +227,8 @@ void PartialConv2DLayer<BufferT>::initialize(
     else if (activation_type == LEAKY)
     {
         std::cerr << "LeakyReLU(batches:" << output_shape[BATCH]
-                  << ",chans:" << output_shape[CHANNEL]
+                  << ",chans/lchans:" << output_shape[CHANNEL]
+                  << "/" << output_shape[L_CHAN]
                   << ",slope:" << leaky_slope
                   << ",img:" << output_shape[HEIGHT]
                   << "x" << output_shape[WIDTH]
@@ -235,8 +237,8 @@ void PartialConv2DLayer<BufferT>::initialize(
     else if (activation_type == SOFTMAX)
     {
         std::cerr << "SoftMax(batches:" << output_shape[BATCH]
-                  << ",chans(logical):" << output_shape[CHANNEL]
-                  << "(" << num_logical_output_channels << ")"
+                  << ",chans/lchans:" << output_shape[CHANNEL]
+                  << "/" << output_shape[L_CHAN]
                   << ",img:" << output_shape[HEIGHT]
                   << "x" << output_shape[WIDTH]
                   << ")" << std::endl;
@@ -273,7 +275,8 @@ PartialConv2DLayer<BufferT>::PartialConv2DLayer(
               << ",k:" << m_kernel_height << "x" << m_kernel_width
               << ",s:" << m_stride
               << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
-              << ",ichans:" << m_input_shape[CHANNEL]
+              << ",ichans/lchans:" << m_input_shape[CHANNEL]
+              << "/" << m_input_shape[L_CHAN]
               << ",ochans:" << num_logical_output_channels
               << ",img:" << m_input_shape[HEIGHT]
               << "x" << m_input_shape[WIDTH]
@@ -317,7 +320,8 @@ PartialConv2DLayer<BufferT>::PartialConv2DLayer(
               << ",k:" << m_kernel_height << "x" << m_kernel_width
               << ",s:" << m_stride
               << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
-              << ",ichans:" << m_input_shape[CHANNEL]
+              << ",ichans/lchans:" << m_input_shape[CHANNEL]
+              << "/" << m_input_shape[L_CHAN]
               << ",ochans:" << num_logical_output_channels
               << ",img:" << m_input_shape[HEIGHT]
               << "x" << m_input_shape[WIDTH]
@@ -366,7 +370,8 @@ PartialConv2DLayer<BufferT>::PartialConv2DLayer(
               << ",k:" << m_kernel_height << "x" << m_kernel_width
               << ",s:" << m_stride
               << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
-              << ",ichans:" << m_input_shape[CHANNEL]
+              << ",ichans/lchans:" << m_input_shape[CHANNEL]
+              << "/" << m_input_shape[L_CHAN]
               << ",ochans:" << num_logical_output_channels
               << ",img:" << m_input_shape[HEIGHT]
               << "x" << m_input_shape[WIDTH]
@@ -422,7 +427,8 @@ PartialConv2DLayer<BufferT>::PartialConv2DLayer(
               << ",k:" << m_kernel_height << "x" << m_kernel_width
               << ",s:" << m_stride
               << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
-              << ",ichans:" << m_input_shape[CHANNEL]
+              << ",ichans/lchans:" << m_input_shape[CHANNEL]
+              << "/" << m_input_shape[L_CHAN]
               << ",ochans:" << num_logical_output_channels
               << ",img:" << m_input_shape[HEIGHT]
               << "x" << m_input_shape[WIDTH]

@@ -26,20 +26,19 @@ class ReLULayer : public Layer<BufferT>
 public:
     typedef typename BufferT::value_type value_type;
 
-    ReLULayer(shape_type const &input_shape)
-        : Layer<BufferT>(input_shape)       // input_shape == output_shape
+    ReLULayer(shape_type const &shape)
+        : Layer<BufferT>(shape)       // input_shape == output_shape
     {
 #if defined(DEBUG_LAYERS)
-        auto const &output_shape(this->output_shape());
-        std::cerr << "ReLU(batches:" << output_shape[BATCH]
-                  << ",chans/logical:" << output_shape[CHANNEL]
-                  << "/" << this->logical_output_channels()
-                  << ",img:" << output_shape[HEIGHT]
-                  << "x" << output_shape[WIDTH]
+        std::cerr << "ReLU(batches:" << shape[BATCH]
+                  << ",chans/lchans:" << shape[CHANNEL]
+                  << "/" << shape[L_CHAN]
+                  << ",img:" << shape[HEIGHT]
+                  << "x" << shape[WIDTH]
                   << ")" << std::endl;
 #endif
-        if (((input_shape[CHANNEL] % BufferT::C_ib) != 0) ||
-            ((input_shape[CHANNEL] % BufferT::C_ob) != 0))
+        if (((shape[CHANNEL] % BufferT::C_ib) != 0) ||
+            ((shape[CHANNEL] % BufferT::C_ob) != 0))
         {
             throw std::invalid_argument(
                 "ReLULayer::ctor ERROR: invalid number of channels.");
