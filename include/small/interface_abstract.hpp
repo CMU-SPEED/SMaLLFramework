@@ -2496,6 +2496,43 @@ void Mul(int input_channels,
 }
 #endif
 
+#if defined(SMALL_HAS_DOUBLE_SUPPORT)
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<DoubleBuffer, BufferT>::value, bool> = true>
+void Mul(int input_channels,
+              int input_height, int input_width,
+              BufferT const &input_buf,
+              BufferT       &output_buf)
+{
+#if defined(RECORD_CALLS)
+    std::cout << "Mul<double>(chans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I,O)\n";
+#endif
+
+    if ((input_channels % DOUBLE_C_ib == 0))
+    {
+        float_detail::abstract_layer<
+                DoubleBuffer, 1, DOUBLE_C_ob, 1,
+                DOUBLE_W_ob, 1, 1, OP_MUL, 0, 0>(
+                input_channels,               // Output Channel Grouping
+                1, // Output Channels per group
+                1,
+                input_height, input_width,
+                1, 1,
+                0, 0, 0, 0,
+                &input_buf, (DoubleBuffer *)nullptr, &output_buf);
+    }
+    else
+    {
+        throw std::invalid_argument(
+            "Mul<double> ERROR: in_channels unsupported.");
+    }
+
+}
+#endif
+
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
 template <class BufferT,
           std::enable_if_t<
@@ -2604,6 +2641,43 @@ void Div(int input_channels,
     {
         throw std::invalid_argument(
             "Div<float> ERROR: in_channels unsupported.");
+    }
+
+}
+#endif
+
+#if defined(SMALL_HAS_DOUBLE_SUPPORT)
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<DoubleBuffer, BufferT>::value, bool> = true>
+void Div(int input_channels,
+              int input_height, int input_width,
+              BufferT const &input_buf,
+              BufferT       &output_buf)
+{
+#if defined(RECORD_CALLS)
+    std::cout << "Div<double>(chans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I,O)\n";
+#endif
+
+    if ((input_channels % DOUBLE_C_ib == 0))
+    {
+        float_detail::abstract_layer<
+                DoubleBuffer, 1, DOUBLE_C_ob, 1,
+                DOUBLE_W_ob, 1, 1, OP_DIV, 0, 0>(
+                input_channels,               // Output Channel Grouping
+                1, // Output Channels per group
+                1,
+                input_height, input_width,
+                1, 1,
+                0, 0, 0, 0,
+                &input_buf, (DoubleBuffer *)nullptr, &output_buf);
+    }
+    else
+    {
+        throw std::invalid_argument(
+            "Div<double> ERROR: in_channels unsupported.");
     }
 
 }
