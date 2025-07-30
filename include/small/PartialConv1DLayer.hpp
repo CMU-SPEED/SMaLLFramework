@@ -253,7 +253,7 @@ PartialConv1DLayer<BufferT>::PartialConv1DLayer(
     bool              buffers_are_packed,
     ActivationType    activation_type,
     float             leaky_slope)
-    : Layer<BufferT>(num_logical_output_channels),
+    : Layer<BufferT>(),
       m_input_shape(input_shape),
       m_kernel_width(kernel_width),
       m_stride(stride),
@@ -296,7 +296,7 @@ PartialConv1DLayer<BufferT>::PartialConv1DLayer(
     bool              buffers_are_packed,
     ActivationType    activation_type,
     float             leaky_slope)
-    : Layer<BufferT>(num_logical_output_channels),
+    : Layer<BufferT>(),
       m_input_shape(input_shape),
       m_kernel_width(kernel_width),
       m_stride(stride),

@@ -1,6 +1,6 @@
 //****************************************************************************
 // SMaLL, Software for Machine Learning Libraries
-// Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
+// Copyright 2025 by The SMaLL Contributors, All Rights Reserved.
 // SPDX-License-Identifier: BSD-3-Clause
 //
 // For additional details (including references to third party source code and
@@ -22,7 +22,7 @@
 
 #include <small.h>
 #include <small/utils/Timer.hpp>
-#include <small/UpSample2DLayer.hpp>
+#include <small/UpSample1DLayer.hpp>
 
 #include "test_utils.hpp"
 
@@ -43,18 +43,15 @@ F[(filter_idx/filter_blocking) * ((num_channels/channel_blocking) *  num_rows * 
 +                                                                                                                             (filter_idx % filter_blocking)]
 
 //upsample checker
-#define CHECK_UPSAMPLE(C_i, H, W, scale_factor, input_dc, output_dc, passing)\
+#define CHECK_UPSAMPLE(C_i, W, scale_factor, input_dc, output_dc, passing)\
 {\
     for (size_t k = 0; k < C_i; k++)\
     {\
-        for (size_t i = 0; i < H * scale_factor; i++)\
+        for (size_t j = 0; j < W * scale_factor; j++)\
         {\
-            for (size_t j = 0; j < W * scale_factor; j++)\
-            {\
-                /*printf("%.2f ", INDEX_tensor(output_dc, C_i, H * scale_factor, W * scale_factor, BufferT::C_ob, k, i, j));*/\
-                passing &= (INDEX_tensor(output_dc, C_i, H * scale_factor, W * scale_factor, BufferT::C_ob, k, i, j) == INDEX_tensor(input_dc, C_i, H, W, BufferT::C_ob, k, i / scale_factor, j / scale_factor));\
-            }\
-            /*printf("\n");*/\
+            /*printf("%.2f ", INDEX_tensor(output_dc, C_i, 1, W * scale_factor, BufferT::C_ob, k, 0, j));*/\
+            passing &= (INDEX_tensor(output_dc, C_i, 1, W * scale_factor, BufferT::C_ob, k, 0, j) == \
+                        INDEX_tensor(input_dc,  C_i, 1, W,                BufferT::C_ob, k, 0, j / scale_factor)); \
         }\
         /*printf("\n");*/\
     }\
@@ -62,7 +59,7 @@ F[(filter_idx/filter_blocking) * ((num_channels/channel_blocking) *  num_rows * 
 }
 //****************************************************************************
 template <class BufferT>
-BufferT create_upsample2d_data(size_t num_elements)
+BufferT create_upsample1d_data(size_t num_elements)
 {
     BufferT input_dc(num_elements);
 
@@ -75,15 +72,15 @@ BufferT create_upsample2d_data(size_t num_elements)
 }
 
 //****************************************************************************
-void test_upsample2d_single_element(void)
+void test_upsample1d_single_element(void)
 {
     size_t const C_i = 16;
-    size_t const H = 1;
+    //size_t const H = 1;
     size_t const W = 1;
     uint32_t const scale_factor = 2;
 
-    size_t const num_input_elts = C_i * H * W;
-    size_t const num_output_elts = C_i * H * scale_factor * W * scale_factor;
+    size_t const num_input_elts = C_i * W;
+    size_t const num_output_elts = C_i * W * scale_factor;
 
 #if defined(QUANTIZED)
     using BufferT = small::QUInt8Buffer;
@@ -92,10 +89,10 @@ void test_upsample2d_single_element(void)
 #endif
 
     BufferT input_dc =
-        create_upsample2d_data<BufferT>(num_input_elts);
+        create_upsample1d_data<BufferT>(num_input_elts);
     BufferT output_dc(num_output_elts);
 
-    small::UpSample2D(scale_factor, C_i, H, W, input_dc, output_dc);
+    small::UpSample1D(scale_factor, C_i, 1, W, input_dc, output_dc);
 
     // for (size_t ix = 0; ix < num_input_elts; ++ix)
     // {
@@ -107,7 +104,7 @@ void test_upsample2d_single_element(void)
 
     bool passing = true;
 
-    CHECK_UPSAMPLE(C_i, H, W, scale_factor, input_dc, output_dc, passing)
+    CHECK_UPSAMPLE(C_i, W, scale_factor, input_dc, output_dc, passing)
 
     // for (size_t ix = 0; ix < num_output_elts; ++ix)
     // {
@@ -119,25 +116,24 @@ void test_upsample2d_single_element(void)
 
     TEST_CHECK(passing);
 
-    small::UpSample2DLayer<BufferT> up_layer({1UL, C_i, H, W}, scale_factor);
-    small::Tensor<BufferT> in_tensor({1UL, C_i, H, W}, input_dc);
+    small::UpSample1DLayer<BufferT> up_layer({1UL, C_i, 1UL, W}, scale_factor);
+    small::Tensor<BufferT> in_tensor({1UL, C_i, 1UL, W}, input_dc);
     small::Tensor<BufferT> out_tensor(num_output_elts);
     up_layer.compute_output({&in_tensor}, &out_tensor);
 
-    CHECK_UPSAMPLE(C_i, H, W, scale_factor, input_dc, out_tensor.buffer(), passing);
+    CHECK_UPSAMPLE(C_i, W, scale_factor, input_dc, out_tensor.buffer(), passing);
     TEST_CHECK(passing);
 }
 
 //****************************************************************************
-void test_upsample2d_single_tile(void)
+void test_upsample1d_single_tile(void)
 {
     size_t const C_i = 16;
-    size_t const H = 1;
     size_t const W = 3;
     uint32_t const scale_factor = 2;
 
-    size_t const num_input_elts = C_i * H * W;
-    size_t const num_output_elts = C_i * H * scale_factor * W * scale_factor;
+    size_t const num_input_elts = C_i * W;
+    size_t const num_output_elts = C_i * W * scale_factor;
 
 #if defined(QUANTIZED)
     using BufferT = small::QUInt8Buffer;
@@ -146,10 +142,10 @@ void test_upsample2d_single_tile(void)
 #endif
 
     BufferT input_dc =
-        create_upsample2d_data<BufferT>(num_input_elts);
+        create_upsample1d_data<BufferT>(num_input_elts);
     BufferT output_dc(num_output_elts);
 
-    small::UpSample2D(scale_factor, C_i, H, W, input_dc, output_dc);
+    small::UpSample1D(scale_factor, C_i, 1, W, input_dc, output_dc);
 
     // for (size_t ix = 0; ix < num_input_elts; ++ix)
     // {
@@ -160,28 +156,27 @@ void test_upsample2d_single_tile(void)
     // }
 
     bool passing = true;
-    CHECK_UPSAMPLE(C_i, H, W, scale_factor, input_dc, output_dc, passing)
+    CHECK_UPSAMPLE(C_i, W, scale_factor, input_dc, output_dc, passing)
     TEST_CHECK(passing);
 
-    small::UpSample2DLayer<BufferT> up_layer({1UL, C_i, H, W}, scale_factor);
-    small::Tensor<BufferT> in_tensor({1UL, C_i, H, W}, input_dc);
+    small::UpSample1DLayer<BufferT> up_layer({1UL, C_i, 1UL, W}, scale_factor);
+    small::Tensor<BufferT> in_tensor({1UL, C_i, 1UL, W}, input_dc);
     small::Tensor<BufferT> out_tensor(num_output_elts);
     up_layer.compute_output({&in_tensor}, &out_tensor);
 
-    CHECK_UPSAMPLE(C_i, H, W, scale_factor, input_dc, out_tensor.buffer(), passing);
+    CHECK_UPSAMPLE(C_i, W, scale_factor, input_dc, out_tensor.buffer(), passing);
     TEST_CHECK(passing);
 }
 
 //****************************************************************************
-void test_upsample2d_large_tile(void)
+void test_upsample1d_large_tile(void)
 {
     size_t const C_i = 96;
-    size_t const H = 13;
     size_t const W = 13;
     uint32_t const scale_factor = 2;
 
-    size_t const num_input_elts = C_i * H * W;
-    size_t const num_output_elts = C_i * H * scale_factor * W * scale_factor;
+    size_t const num_input_elts = C_i * W;
+    size_t const num_output_elts = C_i * W * scale_factor;
 
 #if defined(QUANTIZED)
     using BufferT = small::QUInt8Buffer;
@@ -190,10 +185,10 @@ void test_upsample2d_large_tile(void)
 #endif
 
     BufferT input_dc =
-        create_upsample2d_data<BufferT>(num_input_elts);
+        create_upsample1d_data<BufferT>(num_input_elts);
     BufferT output_dc(num_output_elts);
 
-    small::UpSample2D(scale_factor, C_i, H, W, input_dc, output_dc);
+    small::UpSample1D(scale_factor, C_i, 1, W, input_dc, output_dc);
 
     // for (size_t ix = 0; ix < num_input_elts; ++ix)
     // {
@@ -204,22 +199,22 @@ void test_upsample2d_large_tile(void)
     // }
 
     bool passing = true;
-    CHECK_UPSAMPLE(C_i, H, W, scale_factor, input_dc, output_dc, passing)
+    CHECK_UPSAMPLE(C_i, W, scale_factor, input_dc, output_dc, passing)
     TEST_CHECK(passing);
 
-    small::UpSample2DLayer<BufferT> up_layer({1UL, C_i, H, W}, scale_factor);
-    small::Tensor<BufferT> in_tensor({1UL, C_i, H, W}, input_dc);
+    small::UpSample1DLayer<BufferT> up_layer({1UL, C_i, 1UL, W}, scale_factor);
+    small::Tensor<BufferT> in_tensor({1UL, C_i, 1UL, W}, input_dc);
     small::Tensor<BufferT> out_tensor(num_output_elts);
     up_layer.compute_output({&in_tensor}, &out_tensor);
 
-    CHECK_UPSAMPLE(C_i, H, W, scale_factor, input_dc, out_tensor.buffer(), passing);
+    CHECK_UPSAMPLE(C_i, W, scale_factor, input_dc, out_tensor.buffer(), passing);
     TEST_CHECK(passing);
 }
 //****************************************************************************
 //****************************************************************************
 TEST_LIST = {
-    {"upsample2d_single_element", test_upsample2d_single_element},
-    {"upsample2d_single_tile", test_upsample2d_single_tile},
-    {"upsample2d_large_tile", test_upsample2d_large_tile},
+    {"upsample1d_single_element", test_upsample1d_single_element},
+    {"upsample1d_single_tile", test_upsample1d_single_tile},
+    {"upsample1d_large_tile", test_upsample1d_large_tile},
     {NULL, NULL}
 };
