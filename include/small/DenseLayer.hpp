@@ -65,13 +65,9 @@ private:
 
     shape_type const m_input_shape;
 
-    // uint32_t   const m_kernel_height, m_kernel_width;
-    // uint32_t   const m_stride;
-
     ActivationType const m_activation_type;
 
     /// @todo: how to make const?
-    // uint8_t          m_t_pad, m_b_pad, m_l_pad, m_r_pad;
 
     BufferT          m_leaky_slope;
     BufferT          m_packed_filters;
@@ -312,7 +308,6 @@ void DenseLayer<BufferT>::initialize(shape_type const &input_shape,
         m_packed_filters,
         m_packed_bias);
 
-
 #if defined(DEBUG_LAYERS)
     auto &output_shape = this->output_shape();
     if (activation_type == RELU)
@@ -336,7 +331,7 @@ void DenseLayer<BufferT>::initialize(shape_type const &input_shape,
     }
     else if (activation_type == SOFTMAX)
     {
-        std::cerr << "Softmax(batches:" << output_shape[BATCH]
+        std::cerr << "SoftMax(batches:" << output_shape[BATCH]
                   << ",chans/lchans:" << output_shape[CHANNEL]
                   << "/" << output_shape[L_CHAN]
                   << ",img:" << output_shape[HEIGHT]
@@ -374,6 +369,7 @@ void DenseLayer<BufferT>::compute_output(
                     output_shape[HEIGHT],
                     output_shape[WIDTH],
                     m_packed_bias, output->buffer());
+        /// @todo Consider implementing PartialDense
         small::PartialConv2D(1, 1, 1,
                              0U, 0U, 0U, 0U,
                              output_shape[CHANNEL],
@@ -386,15 +382,6 @@ void DenseLayer<BufferT>::compute_output(
     }
     else
     {
-        // small::Conv2D(1, 1, 1,
-        //               0U, 0U, 0U, 0U,
-        //               output_shape[CHANNEL],
-        //               m_input_shape[CHANNEL],
-        //               m_input_shape[HEIGHT], m_input_shape[WIDTH],
-        //               input[0]->buffer(),
-        //               m_packed_filters,
-        //               output->buffer());
-
         small::Dense(output_shape[CHANNEL]*output_shape[HEIGHT]*output_shape[WIDTH],
                      m_input_shape[CHANNEL]*m_input_shape[HEIGHT]*m_input_shape[WIDTH],
                      input[0]->buffer(),

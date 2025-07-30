@@ -29,7 +29,7 @@
 std::string const data_dir("../test/regression_data");
 
 //****************************************************************************
-void test_dw_bias(void)
+void test_dw_2d_bias(void)
 {
 #if defined(QUANTIZED)
     using BufferT = small::QUInt8Buffer;
@@ -156,7 +156,7 @@ void test_dw_bias(void)
 }
 
 //****************************************************************************
-void test_dw_batchnorm_identity(void)
+void test_dw_2d_batchnorm_identity(void)
 {
 #if defined(QUANTIZED)
     using BufferT = small::QUInt8Buffer;
@@ -293,7 +293,7 @@ void test_dw_batchnorm_identity(void)
 }
 
 //****************************************************************************
-void test_dw_batchnorm_bias_1(void)
+void test_dw_2d_batchnorm_bias_1(void)
 {
 #if defined(QUANTIZED)
     using BufferT = small::QUInt8Buffer;
@@ -431,7 +431,7 @@ void test_dw_batchnorm_bias_1(void)
 }
 
 //****************************************************************************
-void test_dw_batchnorm_mean_1(void)
+void test_dw_2d_batchnorm_mean_1(void)
 {
 #if defined(QUANTIZED)
     using BufferT = small::QUInt8Buffer;
@@ -573,7 +573,7 @@ void test_dw_batchnorm_mean_1(void)
 }
 
 //****************************************************************************
-void test_dw_batchnorm_mean_variance_1(void)
+void test_dw_2d_batchnorm_mean_variance_1(void)
 {
 #if defined(QUANTIZED)
     using BufferT = small::QUInt8Buffer;
@@ -865,7 +865,7 @@ bool run_dw_layer_config(LayerParams const &params)
 
     //=========================================================================
     small::shape_type input_shape({1UL, params.C_i, params.H, params.W});
-    size_t input_size = small::compute_size(input_shape);
+    size_t input_size = input_shape.size();
     small::DepthwiseConv2DLayer<BufferT> dw_layer(input_shape,
                                                   params.k, params.k, params.s,
                                                   params.p,
@@ -962,7 +962,7 @@ bool run_dw_layer_config(LayerParams const &params)
 
 //****************************************************************************
 //****************************************************************************
-void test_dw_regression_data(void)
+void test_dw_2d_regression_data(void)
 {
     std::vector<LayerParams> params =
     {
@@ -993,7 +993,7 @@ void test_dw_regression_data(void)
 }
 
 //****************************************************************************
-void test_dw_layer_regression_data(void)
+void test_dw_2d_layer_regression_data(void)
 {
     std::vector<LayerParams> params =
     {
@@ -1192,13 +1192,13 @@ void measure_dw_performance(void)
 //****************************************************************************
 //****************************************************************************
 TEST_LIST = {
-    {"dw_bias",                  test_dw_bias},
-    {"dw_batchnorm_identity",    test_dw_batchnorm_identity},
-    {"dw_batchnorm_bias_1",      test_dw_batchnorm_bias_1},
-    {"dw_batchnorm_mean_1",      test_dw_batchnorm_mean_1},
-    {"dw_batchnorm_mean_variance_1", test_dw_batchnorm_mean_variance_1},
-    {"dw_regression_data",       test_dw_regression_data},
-    {"dw_layer_regression_data", test_dw_layer_regression_data},
-    // {"dw_performance", measure_dw_performance},
+    {"dw_2d_bias",                  test_dw_2d_bias},
+    {"dw_2d_batchnorm_identity",    test_dw_2d_batchnorm_identity},
+    {"dw_2d_batchnorm_bias_1",      test_dw_2d_batchnorm_bias_1},
+    {"dw_2d_batchnorm_mean_1",      test_dw_2d_batchnorm_mean_1},
+    {"dw_2d_batchnorm_mean_variance_1", test_dw_2d_batchnorm_mean_variance_1},
+    {"dw_2d_regression_data",       test_dw_2d_regression_data},
+    {"dw_2d_layer_regression_data", test_dw_2d_layer_regression_data},
+    // {"dw_2d_performance", measure_dw_2d_performance},
     {NULL, NULL}
 };

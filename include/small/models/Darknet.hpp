@@ -871,7 +871,7 @@ private:
 #endif
                     prev_shape = this->m_input_shape;
                     max_buffer_size = std::max(max_buffer_size,
-                                                 compute_size(prev_shape));
+                                               prev_shape.size());
 
                     continue;
                 }
@@ -1017,7 +1017,7 @@ private:
 
                 prev_shape = prev->output_shape();
                 max_buffer_size = std::max(max_buffer_size,
-                                             compute_size(prev_shape));
+                                           prev_shape.size());
 
                 this->m_layers.push_back(prev);
 

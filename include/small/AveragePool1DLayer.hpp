@@ -47,7 +47,12 @@ public:
                   << "x" << m_input_shape[WIDTH] << ")"
                   << std::endl;
 #endif
-        /// @todo assert m_input_shape[HEIGHT] == 1
+        /// @todo assert m_input_shape[HEIGHT] == 1 or support batches?
+        if (m_input_shape[HEIGHT] != 1U)
+        {
+            throw std::invalid_argument(
+                "AveragePool1DLayer ERROR: image height must be 1.");
+        }
 
         /// @todo is there a clean way to make these const members, or
         ///       will image size get moved to compute_output() and all of
@@ -58,7 +63,8 @@ public:
                                           m_l_pad, m_r_pad,
                                           W);
 #if defined(DEBUG_LAYERS)
-        std::cerr << "AveragePool1D padding: " << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
+        std::cerr << "AveragePool1D padding: "
+                  << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
 #endif
 
         this->set_output_shape(

@@ -127,7 +127,7 @@ void Resnet1D<BufferT>::construct_resnet_input_layers(
     std::string const &state_dict_content,
     size_t            &max_buffer_size)
 {
-    max_buffer_size = small::compute_size(this->get_input_shape());
+    max_buffer_size = (this->get_input_shape()).size();
 
     uint32_t C_o = 16U;
 

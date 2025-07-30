@@ -1,6 +1,6 @@
 //****************************************************************************
 // SMaLL, Software for Machine Learning Libraries
-// Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
+// Copyright 2025 by The SMaLL Contributors, All Rights Reserved.
 // SPDX-License-Identifier: BSD-3-Clause
 //
 // For additional details (including references to third party source code and
@@ -21,19 +21,19 @@ namespace small
 
 //****************************************************************************
 template <typename BufferT>
-class UpSample2DLayer : public Layer<BufferT>
+class UpSample1DLayer : public Layer<BufferT>
 {
 public:
     typedef typename BufferT::value_type value_type;
 
-    UpSample2DLayer(shape_type const &input_shape,
+    UpSample1DLayer(shape_type const &input_shape,
                     uint32_t scale_factor)
         : Layer<BufferT>(),
           m_input_shape(input_shape),
           m_scale_factor(scale_factor)
     {
 #if defined(DEBUG_LAYERS)
-        std::cerr << "UpSample2D(batches:" << m_input_shape[BATCH]
+        std::cerr << "UpSample1D(batches:" << m_input_shape[BATCH]
                   << ",scale:" << scale_factor
                   << ",ichans/lchans:" << m_input_shape[CHANNEL]
                   << "/" << m_input_shape[L_CHAN]
@@ -41,11 +41,17 @@ public:
                   << "x" << m_input_shape[WIDTH]
                   << std::endl;
 #endif
+        /// @todo assert m_input_shape[HEIGHT] == 1 or support batches?
+        if (m_input_shape[HEIGHT] != 1U)
+        {
+            throw std::invalid_argument(
+                "UpSample1DLayer ERROR: image height must be 1.");
+        }
 
         if ((scale_factor != 1)  && (scale_factor !=2))
         {
             throw std::invalid_argument(
-                "UpSample2DLayer ERROR: unsupported scale factor.");
+                "UpSample1DLayer ERROR: unsupported scale factor.");
         }
 
         /// @todo is there a clean way to make these const members, or
@@ -55,12 +61,12 @@ public:
         this->set_output_shape(
             {m_input_shape[BATCH],
              m_input_shape[CHANNEL],
-             m_input_shape[HEIGHT]*scale_factor,
+             1U, //m_input_shape[HEIGHT]*scale_factor,
              m_input_shape[WIDTH]*scale_factor,
              m_input_shape[L_CHAN]});
     }
 
-    virtual ~UpSample2DLayer() {}
+    virtual ~UpSample1DLayer() {}
 
     virtual void compute_output(
         std::vector<Tensor<BufferT> const *> input,
@@ -69,20 +75,21 @@ public:
         if ((input.size() != 1) || (input[0]->shape() != m_input_shape))
         {
             throw std::invalid_argument(
-                "UpSample2DLayer::compute_output() ERROR: "
+                "UpSample1DLayer::compute_output() ERROR: "
                 "incorrect input buffer shape.");
         }
 
         if (output->capacity() < this->output_size())
         {
             throw std::invalid_argument(
-                "UpSample2DLayer::compute_output ERROR: "
+                "UpSample1DLayer::compute_output ERROR: "
                 "insufficient output buffer space.");
         }
 
-        UpSample2D(m_scale_factor,
+        UpSample1D(m_scale_factor,
                    m_input_shape[CHANNEL],
-                   m_input_shape[HEIGHT], m_input_shape[WIDTH],
+                   m_input_shape[HEIGHT], // BATCH
+                   m_input_shape[WIDTH],
                    input[0]->buffer(),
                    output->buffer());
 

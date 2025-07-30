@@ -32,6 +32,7 @@ enum ShapeFields {
     L_CHAN  = 4
 };
 
+//****************************************************************************
 // Augmented logical shape: {N, C, H, W, logical_C}
 class shape_type
 {
@@ -85,30 +86,21 @@ public:
 
     size_t size() const
     {
-        return m_dims[0]*m_dims[CHANNEL]*m_dims[2]*m_dims[3];
+        return m_dims[BATCH]*m_dims[CHANNEL]*m_dims[HEIGHT]*m_dims[WIDTH];
     }
 
     size_t logical_size() const
     {
-        return m_dims[0]*m_dims[L_CHAN]*m_dims[2]*m_dims[3];
+        return m_dims[BATCH]*m_dims[L_CHAN]*m_dims[HEIGHT]*m_dims[WIDTH];
     }
+
 private:
     std::array<size_t, 5UL> m_dims;
 };
 
-inline size_t compute_size(shape_type const &shape)
-{
-    return shape[0]*shape[CHANNEL]*shape[2]*shape[3];
-}
+} // ns small
 
-inline size_t compute_logical_size(shape_type const &shape)
-{
-    return shape[0]*shape[L_CHAN]*shape[2]*shape[3];
-}
-}
-
-
-
+//****************************************************************************
 std::ostream &operator<<(std::ostream &ostr, small::shape_type const &shape)
 {
     ostr << "(" << shape[small::BATCH] << ", "
@@ -148,12 +140,11 @@ public:
 
     Tensor(shape_type const &shape)
         : m_shape(shape),
-          m_buffer(compute_size(m_shape))
+          m_buffer(shape.size())
     {
-        if (compute_size(shape) == 0)
+        if (shape.size() == 0)
         {
-            throw std::invalid_argument("Tensor ctor ERROR: "
-                                        "invalid shape.");
+            throw std::invalid_argument("Tensor ctor ERROR: invalid shape.");
         }
     }
 
@@ -162,17 +153,20 @@ public:
         : m_shape(shape),
           m_buffer()
     {
-        if (compute_size(m_shape) > buffer.size())
+        if (m_shape.size() > buffer.size())
         {
             throw std::invalid_argument(
                 (std::string)"Tensor ctor ERROR: " +
                 (std::string)"insufficient buffer size.\n" +
-                (std::string) "Expected shape: {" + std::to_string(shape[small::BATCH]) +
+                (std::string) "Expected shape: {" +
+                std::to_string(shape[small::BATCH]) +
                 (std::string)", " + std::to_string(shape[small::CHANNEL]) +
                 (std::string)", " + std::to_string(shape[small::HEIGHT]) +
                 (std::string)", " + std::to_string(shape[small::WIDTH]) +
-                (std::string)"}, with size (at least) " + std::to_string(compute_size(m_shape)) +
-                (std::string)"\nBut received buffer with size " + std::to_string(buffer.size()));
+                (std::string)"}, with size (at least) " +
+                std::to_string(m_shape.size()) +
+                (std::string)"\nBut received buffer with size " +
+                std::to_string(buffer.size()));
         }
         m_buffer = buffer;
     }
@@ -181,17 +175,20 @@ public:
            BufferT  &&buffer)
         : m_shape(shape)
     {
-        if (compute_size(m_shape) > buffer.size())
+        if (m_shape.size() > buffer.size())
         {
             throw std::invalid_argument(
                 (std::string)"Tensor ctor ERROR: " +
                 (std::string)"insufficient buffer size.\n" +
-                (std::string) "Expected shape: {" + std::to_string(shape[small::BATCH]) +
+                (std::string) "Expected shape: {" +
+                std::to_string(shape[small::BATCH]) +
                 (std::string)", " + std::to_string(shape[small::CHANNEL]) +
                 (std::string)", " + std::to_string(shape[small::HEIGHT]) +
                 (std::string)", " + std::to_string(shape[small::WIDTH]) +
-                (std::string)"}, with size (at least) " + std::to_string(compute_size(m_shape)) +
-                (std::string)"\nBut received buffer with size " + std::to_string(buffer.size()));
+                (std::string)"}, with size (at least) " +
+                std::to_string(m_shape.size()) +
+                (std::string)"\nBut received buffer with size " +
+                std::to_string(buffer.size()));
         }
         m_buffer = std::move(buffer);
     }
@@ -200,7 +197,7 @@ public:
 
     void set_shape(shape_type const &new_shape)
     {
-        if (compute_size(new_shape) > m_buffer.size())
+        if (new_shape.size() > m_buffer.size())
         {
             throw std::invalid_argument("Tensor::set_shape() ERROR: "
                                         "insufficient buffer size.");
@@ -209,7 +206,8 @@ public:
     }
 
     shape_type const &shape() const { return m_shape; }
-    size_t size() const { return compute_size(m_shape); }
+    size_t size() const { return m_shape.size(); }
+    size_t logical_size() const { return m_shape.logical_size(); }
     size_t capacity() const { return m_buffer.size(); }
 
     BufferT &buffer() { return m_buffer; }
