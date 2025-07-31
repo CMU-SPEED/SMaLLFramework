@@ -54,6 +54,12 @@ public:
                 "MaxPool1DLayer ERROR: image height must be 1.");
         }
 
+        if (stride != 1 && stride != 2)
+        {
+            throw std::invalid_argument(
+                "MaxPool1DLayer ERROR: invalid stride.");
+        }
+
         /// @todo is there a clean way to make these const members, or
         ///       will image size get moved to compute_output() and all of
         ///       this moves to compute_output()?
