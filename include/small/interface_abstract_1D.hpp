@@ -1649,13 +1649,13 @@ void UpSample1D(int scale_factor,
         else
         {
             throw std::invalid_argument(
-                "Upsample<float> ERROR: in_channels unsupported.");
+                "UpSample1D<float> ERROR: in_channels unsupported.");
         }
     }
     else
     {
         throw std::invalid_argument(
-            "Upsample<float> ERROR: scale factor unsupported (only 1 or 2).");
+            "UpSample1D<float> ERROR: scale factor unsupported (only 1 or 2).");
     }
 }
 #endif
@@ -1701,13 +1701,13 @@ void UpSample1D(int scale_factor,
         else
         {
         throw std::invalid_argument(
-            "Upsample<quint8> ERROR: in_channels unsupported.");
+            "UpSample1D<quint8> ERROR: in_channels unsupported.");
         }
     }
     else
     {
         throw std::invalid_argument(
-            "Upsample<quint8> ERROR: scale factor unsupported (only 1 or 2).");
+            "UpSample1D<quint8> ERROR: scale factor unsupported (only 1 or 2).");
     }
 }
 #endif

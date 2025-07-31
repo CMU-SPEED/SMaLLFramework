@@ -50,6 +50,12 @@ public:
                   << std::endl;
 #endif
 
+        if (stride != 1 && stride != 2 && stride != 3)
+        {
+            throw std::invalid_argument(
+                "AveragePool1DLayer ERROR: invalid stride.");
+        }
+
         /// @todo is there a clean way to make these const members, or
         ///       will image size get moved to compute_output() and all of
         ///       this moves to compute_output()?

@@ -20,12 +20,15 @@ namespace small
 {
 
 //****************************************************************************
+/// @todo This is more like an AccumLayer: out_buf += in_buf
+///       This is NOT: outbuf = in_buf0 + in_buf1
 template <typename BufferT>
 class AddLayer : public Layer<BufferT>
 {
 public:
     typedef typename BufferT::value_type value_type;
 
+    /// @todo The second shape is unnecessary.  Remove.
     AddLayer(shape_type const &input1_shape,
              shape_type const &input2_shape)
         : Layer<BufferT>(input1_shape)
@@ -44,6 +47,12 @@ public:
             throw std::invalid_argument(
                 "AddLayer ctor ERROR: "
                 "predecessors do not have same output shape.");
+        }
+
+        if (input1_shape[CHANNEL] % BufferT::C_ib != 0)
+        {
+            throw std::invalid_argument(
+                "AddLayer ctor ERROR: invalid number of channels.");
         }
     }
 

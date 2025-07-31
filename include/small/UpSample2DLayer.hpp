@@ -48,6 +48,13 @@ public:
                 "UpSample2DLayer ERROR: unsupported scale factor.");
         }
 
+        if ((scale_factor == 2) &&
+            ((m_input_shape[CHANNEL] % BufferT::C_ib) != 0))
+        {
+            throw std::invalid_argument(
+                "UpSample1DLayer ERROR: invalid number of channels.");
+        }
+
         /// @todo is there a clean way to make these const members, or
         ///       will image size get moved to compute_output() and all of
         ///       this moves to compute_output()?
