@@ -18,7 +18,6 @@
 
 namespace small
 {
-
 //****************************************************************************
 template <typename BufferT>
 class SoftMaxLayer : public Layer<BufferT>
@@ -26,17 +25,23 @@ class SoftMaxLayer : public Layer<BufferT>
 public:
     typedef typename BufferT::value_type value_type;
 
-    SoftMaxLayer(shape_type const &input_shape)
-        : Layer<BufferT>(input_shape)       // input_shape == output_shape
+    SoftMaxLayer(shape_type const &shape)
+        : Layer<BufferT>(shape)       // input_shape == output_shape
     {
 #if defined(DEBUG_LAYERS)
-        auto const &output_shape(this->output_shape());
-        std::cerr << "SoftMax(batches:" << output_shape[BATCH]
-                  << ",chans:" << output_shape[CHANNEL]
-                  << ",img:" << output_shape[HEIGHT]
-                  << "x" << output_shape[WIDTH]
+        std::cerr << "SoftMax(batches:" << shape[BATCH]
+                  << ",ichans/lchans:" << shape[CHANNEL]
+                  << "/" << shape[L_CHAN]
+                  << ",img:" << shape[HEIGHT]
+                  << "x" << shape[WIDTH]
                   << ")" << std::endl;
 #endif
+        if (((shape[CHANNEL] % BufferT::C_ib) != 0) ||
+            ((shape[CHANNEL] % BufferT::C_ob) != 0))
+        {
+            throw std::invalid_argument(
+                "SoftMaxLayer::ctor ERROR: invalid number of channels.");
+        }
     }
 
     virtual ~SoftMaxLayer() {}
@@ -62,57 +67,7 @@ public:
         auto const &output_shape(this->output_shape());
 
         small::SoftMax(output_shape[CHANNEL],
-                       output_shape[HEIGHT], output_shape[WIDTH],
-                       input[0]->buffer(),
-                       output->buffer());
-
-        output->set_shape(output_shape);
-    }
-};
-
-//****************************************************************************
-template <typename BufferT>
-class LogSoftMaxLayer : public Layer<BufferT>
-{
-public:
-    typedef typename BufferT::value_type value_type;
-
-    LogSoftMaxLayer(shape_type const &input_shape)
-        : Layer<BufferT>(input_shape)       // input_shape == output_shape
-    {
-#if defined(DEBUG_LAYERS)
-        auto const &output_shape(this->output_shape());
-        std::cerr << "LogSoftMax(batches:" << output_shape[BATCH]
-                  << ",chans:" << output_shape[CHANNEL]
-                  << ",img:" << output_shape[HEIGHT]
-                  << "x" << output_shape[WIDTH]
-                  << ")" << std::endl;
-#endif
-    }
-
-    virtual ~LogSoftMaxLayer() {}
-
-    virtual void compute_output(
-        std::vector<Tensor<BufferT> const *> input,
-        Tensor<BufferT>*                     output) const
-    {
-        if ((input.size() != 1) || (input[0]->shape() != this->output_shape()))
-        {
-            throw std::invalid_argument(
-                "LogSoftMaxLayer::compute_output() ERROR: "
-                "incorrect input buffer shape.");
-        }
-
-        if (output->capacity() < this->output_size())
-        {
-            throw std::invalid_argument(
-                "LogSoftMaxLayer::compute_output() ERROR: "
-                "insufficient output buffer space.");
-        }
-
-        auto const &output_shape(this->output_shape());
-
-        small::LogSoftMax(output_shape[CHANNEL],
+                       output_shape[L_CHAN],
                        output_shape[HEIGHT], output_shape[WIDTH],
                        input[0]->buffer(),
                        output->buffer());

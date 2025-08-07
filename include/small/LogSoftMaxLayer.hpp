@@ -1,6 +1,6 @@
 //****************************************************************************
 // SMaLL, Software for Machine Learning Libraries
-// Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
+// Copyright 2025 by The SMaLL Contributors, All Rights Reserved.
 // SPDX-License-Identifier: BSD-3-Clause
 //
 // For additional details (including references to third party source code and
@@ -18,19 +18,18 @@
 
 namespace small
 {
-
 //****************************************************************************
 template <typename BufferT>
-class ReLULayer : public Layer<BufferT>
+class LogSoftMaxLayer : public Layer<BufferT>
 {
 public:
     typedef typename BufferT::value_type value_type;
 
-    ReLULayer(shape_type const &shape)
+    LogSoftMaxLayer(shape_type const &shape)
         : Layer<BufferT>(shape)       // input_shape == output_shape
     {
 #if defined(DEBUG_LAYERS)
-        std::cerr << "ReLU(batches:" << shape[BATCH]
+        std::cerr << "LogSoftMax(batches:" << shape[BATCH]
                   << ",chans/lchans:" << shape[CHANNEL]
                   << "/" << shape[L_CHAN]
                   << ",img:" << shape[HEIGHT]
@@ -41,11 +40,11 @@ public:
             ((shape[CHANNEL] % BufferT::C_ob) != 0))
         {
             throw std::invalid_argument(
-                "ReLULayer::ctor ERROR: invalid number of channels.");
+                "LogSoftMaxLayer::ctor ERROR: invalid number of channels.");
         }
     }
 
-    virtual ~ReLULayer() {}
+    virtual ~LogSoftMaxLayer() {}
 
     virtual void compute_output(
         std::vector<Tensor<BufferT> const *> input,
@@ -54,23 +53,24 @@ public:
         if ((input.size() != 1) || (input[0]->shape() != this->output_shape()))
         {
             throw std::invalid_argument(
-                "ReLULayer::compute_output() ERROR: "
+                "LogSoftMaxLayer::compute_output() ERROR: "
                 "incorrect input buffer shape.");
         }
 
         if (output->capacity() < this->output_size())
         {
             throw std::invalid_argument(
-                "ReLULayer::compute_output() ERROR: "
+                "LogSoftMaxLayer::compute_output() ERROR: "
                 "insufficient output buffer space.");
         }
 
         auto const &output_shape(this->output_shape());
 
-        small::ReLUActivation(output_shape[CHANNEL],
-                              output_shape[HEIGHT], output_shape[WIDTH],
-                              input[0]->buffer(),
-                              output->buffer());
+        small::LogSoftMax(output_shape[CHANNEL],
+                          this->logical_output_channels(),
+                          output_shape[HEIGHT], output_shape[WIDTH],
+                          input[0]->buffer(),
+                          output->buffer());
 
         output->set_shape(output_shape);
     }

@@ -43,7 +43,8 @@ public:
                   << ",k:" << kernel_height << "x" << kernel_width
                   << ",s:" << stride
                   << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
-                  << ",chans:" << m_input_shape[CHANNEL]
+                  << ",chans/lchans:" << m_input_shape[CHANNEL]
+                  << "/" << m_input_shape[L_CHAN]
                   << ",img:" << m_input_shape[HEIGHT]
                   << "x" << m_input_shape[WIDTH] << ")"
                   << std::endl;
@@ -52,24 +53,24 @@ public:
         /// @todo is there a clean way to make these const members, or
         ///       will image size get moved to compute_output() and all of
         ///       this moves to compute_output()?
-        shape_type output_shape;
-        output_shape[BATCH] = m_input_shape[BATCH];
-        output_shape[CHANNEL] = m_input_shape[CHANNEL];
+        size_t H, W;
         small::compute_padding_output_dim(m_input_shape[HEIGHT], kernel_height,
                                           stride, padding_type,
                                           m_t_pad, m_b_pad,
-                                          output_shape[HEIGHT]);
+                                          H);
         small::compute_padding_output_dim(m_input_shape[WIDTH], kernel_width,
                                           stride, padding_type,
                                           m_l_pad, m_r_pad,
-                                          output_shape[WIDTH]);
+                                          W);
 #if defined(DEBUG_LAYERS)
         std::cerr << "MaxPool2D padding: "
                   << (int)m_t_pad << "," << (int)m_b_pad
                  << "," << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
 #endif
 
-        this->set_output_shape(output_shape);
+        this->set_output_shape(
+            {m_input_shape[BATCH], m_input_shape[CHANNEL], H, W,
+             m_input_shape[L_CHAN]});
     }
 
     virtual ~MaxPool2DLayer() {}

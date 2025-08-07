@@ -192,6 +192,7 @@ uint32_t convert_tensor2dc(ScalarT               const *flat_t,
     }
     else if (type == FILTER_CONV || type == FILTER_DW || type == FILTER_FC)
     {
+        assert((C_o % _C_ob) == 0);
         // filter
         ip_block = _C_ib;
         op_block = _C_ob;

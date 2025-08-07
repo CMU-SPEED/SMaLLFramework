@@ -26,15 +26,16 @@ class SoftSignLayer : public Layer<BufferT>
 public:
     typedef typename BufferT::value_type value_type;
 
-    SoftSignLayer(shape_type const &input_shape)
-        : Layer<BufferT>(input_shape)  // input_shape == output_shape
+    SoftSignLayer(shape_type const &shape)
+        : Layer<BufferT>(shape)  // input_shape == output_shape
     {
 #if defined(DEBUG_LAYERS)
-        auto const &output_shape(this->output_shape());
-        std::cerr << "SoftSign(batches:" << output_shape[BATCH]
-                  << ",chans:" << output_shape[CHANNEL]
-                  << ",img:" << output_shape[HEIGHT]
-                  << "x" << output_shape[WIDTH]
+        std::cerr << "SoftSign(batches:" << shape[BATCH]
+                  << ",ichans/lchans:" << shape[CHANNEL]
+                  << "/" << shape[L_CHAN]
+                  << ",chans:" << shape[CHANNEL]
+                  << ",img:" << shape[HEIGHT]
+                  << "x" << shape[WIDTH]
                   << ")" << std::endl;
 #endif
     }
@@ -63,7 +64,7 @@ public:
 
         small::SoftSign(output_shape[CHANNEL],
                         output_shape[HEIGHT], output_shape[WIDTH],
-                        input[0]->buffer(), 
+                        input[0]->buffer(),
                         output->buffer());
 
         output->set_shape(this->output_shape());

@@ -1,6 +1,6 @@
 //****************************************************************************
 // SMaLL, Software for Machine Learning Libraries
-// Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
+// Copyright 2025 by The SMaLL Contributors, All Rights Reserved.
 // SPDX-License-Identifier: BSD-3-Clause
 //
 // For additional details (including references to third party source code and
@@ -11,6 +11,7 @@
 //****************************************************************************
 
 #define PARALLEL 1
+
 #include <acutest.h>
 #include <stdlib.h>
 
@@ -21,17 +22,17 @@
 
 #include <small.h>
 #include <small/utils/Timer.hpp>
-#include <small/SoftMaxLayer.hpp>
+#include <small/LogSoftMaxLayer.hpp>
 
 #include "test_utils.hpp"
 
 std::string const data_dir("../test/regression_data");
 
 //****************************************************************************
-// Generate softmax output regression data from unpack MaxPool input data.
+// Generate logsoftmax output regression data from unpack MaxPool input data.
 //****************************************************************************
 template <class BufferT>
-bool compute_softmax_output(LayerParams const &params)
+bool compute_logsoftmax_output(LayerParams const &params)
 {
     /// @todo add smart pointer to buffers
     // Read input data
@@ -39,7 +40,7 @@ bool compute_softmax_output(LayerParams const &params)
         get_pathname(data_dir, "in", "pool",
                      params,
                      params.C_i*params.H*params.W);
-    std::cout << "\nsoftmax: input file = " << in_fname << std::endl;
+    std::cout << "\nlogsoftmax: input file = " << in_fname << std::endl;
 
     BufferT input_dc = read_inputs<BufferT>(in_fname);
     TEST_ASSERT(input_dc.size() == params.C_i*params.H*params.W);
@@ -52,10 +53,10 @@ bool compute_softmax_output(LayerParams const &params)
     std::cerr << "Output image dims: " << Ho << ", " << Wo << std::endl;
     assert(Ho == params.H && Wo == params.W);
     std::string out_fname =
-        get_pathname(data_dir, "out", "softmax",
+        get_pathname(data_dir, "out", "logsoftmax",
                      params,
                      params.C_i*params.H*params.W);
-    std::cout << "softmax: output file= " << out_fname << std::endl;
+    std::cout << "logsoftmax: output file= " << out_fname << std::endl;
 
     BufferT output_dc_answers(params.C_i*Ho*Wo);
 
@@ -70,12 +71,12 @@ bool compute_softmax_output(LayerParams const &params)
               << "," << (int)l_pad << "," << (int)r_pad << std::endl;
 
 
-    // small::SoftMax(1, 1,1,
+    // small::LogSoftMax(1, 1,1,
     //                t_pad, b_pad, l_pad, r_pad,
     //                params.C_i, params.H, params.W,
     //                packed_input_dc, packed_output_dc);
 
-    // Compute softmax outputs
+    // Compute logsoftmax outputs
     size_t num_outputs = 0;
 
     //Ewise Exponent and sum
@@ -88,9 +89,10 @@ bool compute_softmax_output(LayerParams const &params)
         num_outputs++;
 
     }
+    sum = std::log(sum);
     for (size_t c = 0; c < params.C_i * params.H * params.W; ++c)
     {
-        output_dc_answers[c] /= sum;
+        output_dc_answers[c] = input_dc[c] - sum;
     }
 
     std::cerr << "num_outputs = " << num_outputs << std::endl;
@@ -101,8 +103,9 @@ bool compute_softmax_output(LayerParams const &params)
     return true;
 }
 
+
 //****************************************************************************
-void test_softmax_odd_channels(void)
+void test_logsoftmax_odd_channels(void)
 {
 #if !defined(QUANTIZED)
     uint32_t H = 1; // image_height;
@@ -129,34 +132,33 @@ void test_softmax_odd_channels(void)
     {
         sum += std::exp(in_tensor.buffer()[ix]);
     }
-    sum = 1.0f/sum;
+    sum = -std::log(sum);
 
-    small::SoftMax(channels, logical_channels, H, W,
-                   in_tensor.buffer(), out_tensor.buffer());
+    small::LogSoftMax(channels, logical_channels, H, W,
+                      in_tensor.buffer(), out_tensor.buffer());
 
-    for (size_t ix = 0; ix < logical_channels; ++ix)
+    for (size_t ix = 0; ix < channels; ++ix)
     {
-        // std::cerr << ix << ":" << out_tensor.buffer()[ix] << "|"
-        //           << (std::exp(in_tensor.buffer()[ix])*sum) << std::endl;
-        TEST_CHECK(out_tensor.buffer()[ix] ==
-                   (std::exp(in_tensor.buffer()[ix])*sum));
-        // std::cerr << ix << " in|out : " << in_tensor.buffer()[ix]
-        //           << "|" << out_tensor.buffer()[ix] << std::endl;
+        //std::cerr << ix << ":" << out_tensor.buffer()[ix] << "|"
+        //          << (in_tensor.buffer()[ix] + sum) << std::endl;
+        TEST_CHECK(out_tensor.buffer()[ix] == (in_tensor.buffer()[ix] + sum));
+        //std::cerr << ix << " in|out : " << in_tensor.buffer()[ix]
+        //          << "|" << out_tensor.buffer()[ix] << std::endl;
     }
 #endif
 }
 
 //****************************************************************************
-void test_softmax_layer_odd_channels(void)
+void test_logsoftmax_layer_odd_channels(void)
 {
 #if !defined(QUANTIZED)
     uint32_t H = 1; // image_height;
     uint32_t W = 1; // image_width;
     uint32_t logical_channels = 31;
+    uint32_t channels = logical_channels;
 
     // Note: channels should be a multiple of channel blocking factor
     // for all platforms
-    uint32_t channels = logical_channels;
     if ((channels % small::FloatBuffer::C_ob) != 0)
     {
         channels = channels + small::FloatBuffer::C_ob
@@ -176,27 +178,71 @@ void test_softmax_layer_odd_channels(void)
     {
         sum += std::exp(in_tensor.buffer()[ix]);
     }
-    sum = 1.0f/sum;
+    sum = -std::log(sum);
 
     small::shape_type input_shape{1U, channels, H, W, logical_channels};
-    small::SoftMaxLayer<small::FloatBuffer> lsm_layer(input_shape);
+    small::LogSoftMaxLayer<small::FloatBuffer> lsm_layer(input_shape);
 
     lsm_layer.compute_output({&in_tensor}, &out_tensor);
 
-    for (size_t ix = 0; ix < logical_channels; ++ix)
+    for (size_t ix = 0; ix < channels; ++ix)
     {
-        // std::cerr << ix << ":" << out_tensor.buffer()[ix] << "|"
-        //           << (std::exp(in_tensor.buffer()[ix])*sum) << std::endl;
-        TEST_CHECK(out_tensor.buffer()[ix] ==
-                   (std::exp(in_tensor.buffer()[ix])*sum));
-        // std::cerr << ix << " in|out : " << in_tensor.buffer()[ix]
-        //           << "|" << out_tensor.buffer()[ix] << std::endl;
+        //std::cerr << ix << ":" << out_tensor.buffer()[ix] << "|"
+        //          << (in_tensor.buffer()[ix] + sum) << std::endl;
+        TEST_CHECK(out_tensor.buffer()[ix] == (in_tensor.buffer()[ix] + sum));
+        //std::cerr << ix << " in|out : " << in_tensor.buffer()[ix]
+        //          << "|" << out_tensor.buffer()[ix] << std::endl;
     }
 #endif
 }
 
 //****************************************************************************
-void test_compute_softmax_output(void)
+void test_logsoftmax2_odd_channels(void)
+{
+#if !defined(QUANTIZED)
+    uint32_t H = 1; // image_height;
+    uint32_t W = 1; // image_width;
+    uint32_t logical_channels = 31;
+    uint32_t channels = logical_channels;
+
+    // Note: channels should be a multiple of channel blocking factor
+    // for all platforms
+    if ((channels % small::FloatBuffer::C_ob) != 0)
+    {
+        channels = channels + small::FloatBuffer::C_ob
+            -  (logical_channels % small::FloatBuffer::C_ob);
+    }
+
+    small::Tensor<small::FloatBuffer>  in_tensor({1, channels, H, W});
+    small::Tensor<small::FloatBuffer> out_tensor({1, channels, H, W});
+    small::init_zeros(in_tensor.buffer(), in_tensor.size());
+    in_tensor.buffer()[0] = 1.0f;
+    in_tensor.buffer()[channels - 1] = 10.0f;
+
+    float sum{0.f};
+    for (size_t ix = 0; ix < logical_channels; ++ix)
+    {
+        sum += std::exp(in_tensor.buffer()[ix]);
+    }
+    sum = -std::log(sum);
+
+    small::LogSoftMax2(channels, logical_channels, H, W,
+                       in_tensor.buffer(), out_tensor.buffer());
+
+    for (size_t ix = 0; ix < channels; ++ix)
+    {
+        //std::cerr << ix << ":" << out_tensor.buffer()[ix] << "|"
+        //          << (in_tensor.buffer()[ix] + sum) << std::endl;
+        TEST_CHECK(almost_equal(out_tensor.buffer()[ix],
+                                (in_tensor.buffer()[ix] + sum)));
+        //std::cerr << ix << " in|out : " << in_tensor.buffer()[ix]
+        //          << "|" << out_tensor.buffer()[ix] << std::endl;
+    }
+#endif
+}
+
+//****************************************************************************
+void test_compute_logsoftmax_output(void)
 {
     std::vector<LayerParams> params =
     {
@@ -215,16 +261,16 @@ void test_compute_softmax_output(void)
     for (LayerParams const &p: params)
     {
 #if defined(QUANTIZED)
-        TEST_CHECK(true == compute_softmax_output<small::QUInt8Buffer>(p));
+        TEST_CHECK(true == compute_logsoftmax_output<small::QUInt8Buffer>(p));
 #else
-        TEST_CHECK(true == compute_softmax_output<small::FloatBuffer>(p));
+        TEST_CHECK(true == compute_logsoftmax_output<small::FloatBuffer>(p));
 #endif
     }
 }
 
 //****************************************************************************
 template <class BufferT>
-bool run_softmax_config(LayerParams const &params)
+bool run_logsoftmax_config(LayerParams const &params)
 {
     /// @todo add smart pointer to buffers
     // Read input data
@@ -232,7 +278,7 @@ bool run_softmax_config(LayerParams const &params)
         get_pathname(data_dir, "in", "pool",
                      params,
                      params.C_i*params.H*params.W);
-    std::cout << "\nsoftmax: input file = " << in_fname << std::endl;
+    std::cout << "\nlogsoftmax: input file = " << in_fname << std::endl;
 
     BufferT input_dc = read_inputs<BufferT>(in_fname);
     TEST_ASSERT(input_dc.size() == params.C_i*params.H*params.W);
@@ -252,10 +298,10 @@ bool run_softmax_config(LayerParams const &params)
                   params.W, 1, 1, params.p));
     std::cerr << "Output image dims: " << Ho << ", " << Wo << std::endl;
     std::string out_fname =
-        get_pathname(data_dir, "out", "softmax",
+        get_pathname(data_dir, "out", "logsoftmax",
                      params,
                      params.C_i*Ho*Wo);
-    std::cout << "softmax: output file= " << out_fname << std::endl;
+    std::cout << "logsoftmax: output file= " << out_fname << std::endl;
 
     BufferT output_dc_answers = read_inputs<BufferT>(out_fname);
     TEST_ASSERT(output_dc_answers.size() == params.C_i*Ho*Wo);
@@ -283,7 +329,7 @@ bool run_softmax_config(LayerParams const &params)
     }
 
     // Compute layer
-    small::SoftMax(params.C_i, params.H, params.W,
+    small::LogSoftMax(params.C_i, params.H, params.W,
                    packed_input_dc, packed_output_dc);
 
     // Check answer
@@ -296,7 +342,7 @@ bool run_softmax_config(LayerParams const &params)
         {
             passing = false;
 
-            std::cout << "FAIL: softmax_out(" << ix << ")--> "
+            std::cout << "FAIL: logsoftmax_out(" << ix << ")--> "
                       << std::setw(12) << std::setprecision(10)
                       << packed_output_dc[ix] << "(computed) != "
                       << std::setw(12) << std::setprecision(10)
@@ -313,13 +359,15 @@ bool run_softmax_config(LayerParams const &params)
 //****************************************************************************
 
 template <typename BufferT>
-bool run_softmax_layer_config(LayerParams const &params)
+bool run_logsoftmax_layer_config(LayerParams const &params)
 {
+    // todo: adapt to logsoftmax
+
     /// @todo add smart pointer to buffers
     //=========================================================================
     small::shape_type input_shape({1UL, params.C_i, params.H, params.W});
     size_t input_size = params.C_i*params.H*params.W;
-    small::SoftMaxLayer<BufferT> softmax_layer(input_shape);
+    small::LogSoftMaxLayer<BufferT> logsoftmax_layer(input_shape);
     //=========================================================================
 
     // Read input data
@@ -327,7 +375,7 @@ bool run_softmax_layer_config(LayerParams const &params)
         get_pathname(data_dir, "in", "pool",
                      params,
                      input_size);
-    std::cout << "\nsoftmax: input file = " << in_fname << std::endl;
+    std::cout << "\nlogsoftmax: input file = " << in_fname << std::endl;
 
     // Allocate the input buffer
     BufferT input_dc = read_inputs<BufferT>(in_fname);
@@ -347,17 +395,17 @@ bool run_softmax_layer_config(LayerParams const &params)
         std::move(packed_input_dc));
 
     // Read output regression data
-    auto output_shape(softmax_layer.output_shape());
-    size_t output_buffer_size(softmax_layer.output_size());
+    auto output_shape(logsoftmax_layer.output_shape());
+    size_t output_buffer_size(logsoftmax_layer.output_size());
 
     std::cerr << "Output image dims: "
               << output_shape[small::HEIGHT] << "x" << output_shape[small::WIDTH]
               << std::endl;
     std::string out_fname =
-        get_pathname(data_dir, "out", "softmax",
+        get_pathname(data_dir, "out", "logsoftmax",
                      params,
                      output_buffer_size);
-    std::cout << "softmax: output file= " << out_fname << std::endl;
+    std::cout << "logsoftmax: output file= " << out_fname << std::endl;
 
     BufferT output_dc_answers = read_inputs<BufferT>(out_fname);
     TEST_ASSERT(output_dc_answers.size() == output_buffer_size);
@@ -381,7 +429,7 @@ bool run_softmax_layer_config(LayerParams const &params)
                                                 std::move(packed_output_dc));
 
     // Compute layer
-    softmax_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
+    logsoftmax_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
 
     // Check answer
     bool passing = true;
@@ -392,7 +440,7 @@ bool run_softmax_layer_config(LayerParams const &params)
         if (!almost_equal(buf[ix], packed_output_dc_answers[ix]))
         {
             passing = false;
-            std::cout << "FAIL: softmax_out(" << ix << ")--> "
+            std::cout << "FAIL: logsoftmax_out(" << ix << ")--> "
                       << std::setw(12) << std::setprecision(10)
                       << buf[ix] << "(computed) != "
                       << std::setw(12) << std::setprecision(10)
@@ -406,7 +454,7 @@ bool run_softmax_layer_config(LayerParams const &params)
 }
 
 //****************************************************************************
-void test_softmax_regression_data(void)
+void test_logsoftmax_regression_data(void)
 {
     std::vector<LayerParams> params =
     {
@@ -425,15 +473,15 @@ void test_softmax_regression_data(void)
     for (LayerParams const &p: params)
     {
 #if defined(QUANTIZED)
-        TEST_CHECK(true == run_softmax_config<small::QUInt8Buffer>(p));
+        TEST_CHECK(true == run_logsoftmax_config<small::QUInt8Buffer>(p));
 #else
-        TEST_CHECK(true == run_softmax_config<small::FloatBuffer>(p));
+        TEST_CHECK(true == run_logsoftmax_config<small::FloatBuffer>(p));
 #endif
     }
 }
 
 //****************************************************************************
-void test_softmax_layer_regression_data(void)
+void test_logsoftmax_layer_regression_data(void)
 {
     std::vector<LayerParams> params =
     {
@@ -452,16 +500,18 @@ void test_softmax_layer_regression_data(void)
     for (LayerParams const &p: params)
     {
 #if defined(QUANTIZED)
-        TEST_CHECK(true == run_softmax_layer_config<small::QUInt8Buffer>(p));
+        TEST_CHECK(true == run_logsoftmax_layer_config<small::QUInt8Buffer>(p));
 #else
-        TEST_CHECK(true == run_softmax_layer_config<small::FloatBuffer>(p));
+        TEST_CHECK(true == run_logsoftmax_layer_config<small::FloatBuffer>(p));
 #endif
     }
 }
 
 //****************************************************************************
-void measure_softmax_performance(void)
+void measure_logsoftmax_performance(void)
 {
+    // To do: adapt to logsoftmax
+
     // C_i,Hi,Wi,k,s,p,C_o
     std::vector<LayerParams> params =
     {
@@ -503,7 +553,7 @@ void measure_softmax_performance(void)
     using Buffer = small::FloatBuffer;
 #endif
 
-    printf("\nsoftmax2D(%s) func.\n", type.c_str());
+    printf("\nlogsoftmax2D(%s) func.\n", type.c_str());
     printf("\tC_i\tH\tW\tk\ts\tnthd\truns\tt_min\tt_max\tt_avg\n");
 
     for (LayerParams const &p: params)
@@ -536,14 +586,14 @@ void measure_softmax_performance(void)
             double max_t = 0.;
 
             // Warmup
-            small::SoftMax(
+            small::LogSoftMax(
                              p.C_i, p.H, p.W,
                              input_dc, output_dc);
 
             for (size_t iy = 0; iy < num_runs; ++iy)
             {
                 t.start();
-                small::SoftMax(
+                small::LogSoftMax(
                                  p.C_i, p.H, p.W,
                                  input_dc, output_dc);
                 t.stop();
@@ -560,7 +610,7 @@ void measure_softmax_performance(void)
         }
     }
 
-    printf("\nsoftmax2D(%s) class\n", type.c_str());
+    printf("\nlogsoftmax2D(%s) class\n", type.c_str());
     printf("\tC_i\tH\tW\tk\ts\tnthd\truns\tt_min\tt_max\tt_avg\n");
 
     for (LayerParams const &p: params)
@@ -588,8 +638,8 @@ void measure_softmax_performance(void)
         std::vector<small::Tensor<Buffer>*> outputs;
         outputs.push_back(&output_dc);
 
-        small::SoftMaxLayer<Buffer>
-            softmax_layer(input_shape);
+        small::LogSoftMaxLayer<Buffer>
+            logsoftmax_layer(input_shape);
 
         for (size_t ix = 0; ix < 3; ++ix)
         {
@@ -602,12 +652,12 @@ void measure_softmax_performance(void)
             double max_t = 0.;
 
             // Warm up
-            softmax_layer.compute_output({&input_dc}, &output_dc);
+            logsoftmax_layer.compute_output({&input_dc}, &output_dc);
 
             for (size_t iy = 0; iy < num_runs; ++iy)
             {
                 t.start();
-                softmax_layer.compute_output({&input_dc}, &output_dc);
+                logsoftmax_layer.compute_output({&input_dc}, &output_dc);
                 t.stop();
                 double ts = t.elapsed();
                 tx += ts;
@@ -626,11 +676,12 @@ void measure_softmax_performance(void)
 //****************************************************************************
 //****************************************************************************
 TEST_LIST = {
-    //{"compute_output", test_compute_softmax_output},
-    {"softmax_odd_channels", test_softmax_odd_channels},
-    {"softmax_layer_odd_channels", test_softmax_layer_odd_channels},
-    {"softmax_regression_data", test_softmax_regression_data},
-    {"softmax_layer_regression_data", test_softmax_layer_regression_data},
-    // {"softmax_performance", measure_softmax_performance},
+    //{"compute_output_logsoftmax", test_compute_logsoftmax_output},
+    {"logsoftmax_odd_channels", test_logsoftmax_odd_channels},
+    {"logsoftmax_layer_odd_channels", test_logsoftmax_layer_odd_channels},
+    {"logsoftmax2_odd_channels", test_logsoftmax2_odd_channels},
+    {"logsoftmax_regression_data", test_logsoftmax_regression_data},
+    {"logsoftmax_layer_regression_data", test_logsoftmax_layer_regression_data},
+    // {"logsoftmax_performance", measure_logsoftmax_performance},
     {NULL, NULL}
 };

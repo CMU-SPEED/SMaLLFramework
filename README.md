@@ -25,6 +25,10 @@ month = {jul}
 
 ## Build Instructions
 
+### System requirements
+
+A C++17 compiler that has std::reduce properly defined.  For g++, this is 9.1.0 or later, but the later versions are strongly recommended.
+
 ### Specify µArch
 
 The µarch is specified when building with CMake using the `CMAKE_UARCH ` parameter.

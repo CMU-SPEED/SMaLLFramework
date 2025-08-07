@@ -1,6 +1,6 @@
 //****************************************************************************
 // SMaLL, Software for Machine Learning Libraries
-// Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
+// Copyright 2025 by The SMaLL Contributors, All Rights Reserved.
 // SPDX-License-Identifier: BSD-3-Clause
 //
 // For additional details (including references to third party source code and
@@ -21,34 +21,38 @@ namespace small
 
 //****************************************************************************
 template <typename BufferT>
-class AveragePool2DLayer : public Layer<BufferT>
+class AveragePool1DLayer : public Layer<BufferT>
 {
 public:
     typedef typename BufferT::value_type value_type;
 
-    AveragePool2DLayer(shape_type const &input_shape,
-                       uint32_t          kernel_height,
+    AveragePool1DLayer(shape_type const &input_shape,
                        uint32_t          kernel_width,
                        uint32_t          stride,
                        PaddingEnum       padding_type)
         : Layer<BufferT>(),
           m_input_shape(input_shape),
-          m_kernel_height(kernel_height),
           m_kernel_width(kernel_width),
           m_stride(stride),
-          m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0)
+          m_l_pad(0), m_r_pad(0)
     {
 #if defined(DEBUG_LAYERS)
-        std::cerr << "AveragePool2D(batches:" << m_input_shape[BATCH]
-                  << ",k:" << kernel_height << "x" << kernel_width
+        std::cerr << "AveragePool1D(batches:" << m_input_shape[BATCH]
+                  << ",k:"  << kernel_width
                   << ",s:" << stride
                   << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
                   << ",chans/lchans:" << m_input_shape[CHANNEL]
                   << "/" << m_input_shape[L_CHAN]
-                  << ",img:" << m_input_shape[HEIGHT]
+                  << ",img: (" << m_input_shape[HEIGHT]
                   << "x" << m_input_shape[WIDTH] << ")"
                   << std::endl;
 #endif
+        /// @todo assert m_input_shape[HEIGHT] == 1 or support batches?
+        if (m_input_shape[HEIGHT] != 1U)
+        {
+            throw std::invalid_argument(
+                "AveragePool1DLayer ERROR: image height must be 1.");
+        }
 
         if (stride != 1 && stride != 2 && stride != 3)
         {
@@ -59,29 +63,25 @@ public:
         /// @todo is there a clean way to make these const members, or
         ///       will image size get moved to compute_output() and all of
         ///       this moves to compute_output()?
-        size_t H, W;
-        small::compute_padding_output_dim(m_input_shape[HEIGHT], kernel_height,
-                                          stride, padding_type,
-                                          m_t_pad, m_b_pad,
-                                          H);
+        size_t W;
         small::compute_padding_output_dim(m_input_shape[WIDTH], kernel_width,
                                           stride, padding_type,
                                           m_l_pad, m_r_pad,
                                           W);
 #if defined(DEBUG_LAYERS)
-        std::cerr << "AveragePool2D padding: "
-                  << (int)m_t_pad << "," << (int)m_b_pad
-                  << "," << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
+        std::cerr << "AveragePool1D padding: "
+                  << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
 #endif
 
         this->set_output_shape(
             {m_input_shape[BATCH],
              m_input_shape[CHANNEL],
-             H, W,
+             1U, // m_input_shape[HEIGHT],
+             W,
              m_input_shape[L_CHAN]});
     }
 
-    virtual ~AveragePool2DLayer() {}
+    virtual ~AveragePool1DLayer() {}
 
     virtual void compute_output(
         std::vector<Tensor<BufferT> const *> input,
@@ -101,11 +101,12 @@ public:
                 "insufficient output buffer space.");
         }
 
-        AveragePool2D(m_kernel_height, m_kernel_width,
+        AveragePool1D(m_kernel_width,
                       m_stride,
-                      m_t_pad, m_b_pad, m_l_pad, m_r_pad,
+                      m_l_pad, m_r_pad,
                       m_input_shape[CHANNEL],
-                      m_input_shape[HEIGHT], m_input_shape[WIDTH],
+                      m_input_shape[HEIGHT], // BATCH
+                      m_input_shape[WIDTH],
                       input[0]->buffer(),
                       output->buffer());
 
@@ -115,11 +116,11 @@ public:
 private:
     shape_type const m_input_shape;
 
-    uint32_t   const m_kernel_height, m_kernel_width;
+    uint32_t   const m_kernel_width;
     uint32_t   const m_stride;
 
     /// @todo: how to make const?
-    uint8_t          m_t_pad, m_b_pad, m_l_pad, m_r_pad;
+    uint8_t          m_l_pad, m_r_pad;
 };
 
 }

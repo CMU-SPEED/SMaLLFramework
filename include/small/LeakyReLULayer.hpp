@@ -26,18 +26,18 @@ class LeakyReLULayer : public Layer<BufferT>
 public:
     typedef typename BufferT::value_type value_type;
 
-    LeakyReLULayer(shape_type const &input_shape,
+    LeakyReLULayer(shape_type const &shape,
                    float             leaky_slope = 0.01f)  /// @todo use value_type?
-        : Layer<BufferT>(input_shape),          // input_shape == output_shape
+        : Layer<BufferT>(shape),          // input_shape == output_shape
           m_leaky_slope(1)
     {
 #if defined(DEBUG_LAYERS)
-        auto const &output_shape(this->output_shape());
-        std::cerr << "LeakyReLU(batches:" << output_shape[BATCH]
-                  << ",chans:" << output_shape[CHANNEL]
+        std::cerr << "LeakyReLU(batches:" << shape[BATCH]
+                  << ",chans/lchans:" << shape[CHANNEL]
+                  << "/" << shape[L_CHAN]
                   << ",leaky_slope:" << leaky_slope
-                  << ",img:" << output_shape[HEIGHT]
-                  << "x" << output_shape[WIDTH]
+                  << ",img:" << shape[HEIGHT]
+                  << "x" << shape[WIDTH]
                   << ")" << std::endl;
 #endif
         /// @todo Do any type conversion between float and value_type here.

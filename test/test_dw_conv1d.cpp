@@ -1,6 +1,6 @@
 //****************************************************************************
 // SMaLL, Software for Machine Learning Libraries
-// Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
+// Copyright 2025 by The SMaLL Contributors, All Rights Reserved.
 // SPDX-License-Identifier: BSD-3-Clause
 //
 // For additional details (including references to third party source code and
@@ -22,14 +22,90 @@
 
 #include <small.h>
 #include <small/utils/Timer.hpp>
-#include <small/DepthwiseConv2DLayer.hpp>
+#include <small/DepthwiseConv1DLayer.hpp>
 
 #include "test_utils.hpp"
 
 std::string const data_dir("../test/regression_data");
 
 //****************************************************************************
-void test_dw_bias(void)
+void test_dw_1d_filter(void)
+{
+#if defined(QUANTIZED)
+    using BufferT = small::QUInt8Buffer;
+#else
+    using BufferT = small::FloatBuffer;
+#endif
+    using ScalarT = typename BufferT::value_type;
+
+    // C_i,H,W,k,s,p,C_o
+    LayerParams params = {16, 1, 4, 3, 1, small::PADDING_F, 16};
+    ScalarT input[16*4]{
+                     1, 2, 3, 4,  1, 2, 3, 4,  1, 2, 3, 4,  1, 2, 3, 4,
+                     1, 2, 3, 4,  1, 2, 3, 4,  1, 2, 3, 4,  1, 2, 3, 4,
+                     1, 2, 3, 4,  1, 2, 3, 4,  1, 2, 3, 4,  1, 2, 3, 4,
+                     1, 2, 3, 4,  1, 2, 3, 4,  1, 2, 3, 4,  1, 2, 3, 4};
+    ScalarT weights[16*3]{
+                           1, 0, 0,  1, 0, 0,  1, 0, 0,  1, 0, 0,
+                           0, 1, 0,  0, 1, 0,  0, 1, 0,  0, 1, 0,
+                           0, 0, 1,  0, 0, 1,  0, 0, 1,  0, 0, 1,
+                           1, 1, 1,  1, 1, 1,  1, 1, 1,  1, 1, 1 };
+    ScalarT expected_output[16*4]{
+                                0, 1, 2, 3,  0, 1, 2, 3,  0, 1, 2, 3,  0, 1, 2, 3,
+                                1, 2, 3, 4,  1, 2, 3, 4,  1, 2, 3, 4,  1, 2, 3, 4,
+                                2, 3, 4, 0,  2, 3, 4, 0,  2, 3, 4, 0,  2, 3, 4, 0,
+                                3, 6, 9, 7,  3, 6, 9, 7,  3, 6, 9, 7,  3, 6, 9, 7};
+    small::shape_type input_shape{1UL, params.C_i, params.H, params.W};
+
+    BufferT filters(params.C_i*params.k);
+    std::copy(weights, weights+filters.size(), reinterpret_cast<ScalarT*>(filters.data()));
+
+    small::DepthwiseConv1DLayer dw_conv1d(
+        input_shape,
+        params.k, params.s, params.p,
+        filters, false, small::ActivationType::NONE);
+
+    BufferT inbuf(params.C_i*params.H*params.W);
+    small::Tensor<BufferT> packed_input(input_shape);
+    std::copy(input, input+inbuf.size(), reinterpret_cast<ScalarT*>(inbuf.data()));
+    small::pack_buffer(inbuf, small::BufferTypeEnum::INPUT,
+                       1UL, params.C_i, params.H, params.W,
+                       BufferT::C_ib, BufferT::C_ob, packed_input.buffer());
+
+    small::Tensor<BufferT> output(dw_conv1d.output_shape());
+    //std::cerr << "XX " << dw_conv1d.output_shape() << ", " << output.size() << std::endl;
+    small::init_zeros(output.buffer(), output.size());
+
+    dw_conv1d.compute_output({&packed_input}, &output);
+
+    BufferT unpacked_output(output.size());
+    small::unpack_buffer(output.buffer(), small::BufferTypeEnum::OUTPUT,
+                         1UL,
+                         output.shape()[small::CHANNEL],
+                         output.shape()[small::HEIGHT],
+                         output.shape()[small::WIDTH],
+                         BufferT::C_ib, BufferT::C_ob,
+                         unpacked_output);
+    //std::cerr << "XX  " << unpacked_output.size() << ":" << sizeof(expected_output) << std::endl;
+
+    bool passing = true;
+    for (size_t i = 0; i < params.C_o*params.H*params.W; i++)
+    {
+        if (unpacked_output[i] != expected_output[i])
+        {
+            passing = false;
+            std::cerr << i << ": ERROR: unequal outputs: unpacked_output("
+                      << unpacked_output[i] << ") != expected_output("
+                      << expected_output[i] << ")\n";
+        }
+    }
+
+    if (passing) std::cerr << "Test PASSED\n";
+    TEST_ASSERT(passing);
+}
+#if 0
+//****************************************************************************
+void test_dw_1d_bias(void)
 {
 #if defined(QUANTIZED)
     using BufferT = small::QUInt8Buffer;
@@ -37,18 +113,19 @@ void test_dw_bias(void)
     using BufferT = small::FloatBuffer;
 #endif
 
+
     // C_i,Hi,Wi,k,s,p,C_o
-    LayerParams params {96, 30, 30, 3, 2, small::PADDING_F, 96};
+    LayerParams params {96, 1, 30, 3, 2, small::PADDING_F, 96};
 
     // Read filter data
     std::string filter_fname =
-        get_pathname(data_dir, "filter", "dw_conv",
+        get_pathname(data_dir, "filter", "dw_1d_conv",
                      params,
                      params.C_i*params.k*params.k);
     std::cout << "DepthwiseConv: filter file= " << filter_fname << std::endl;
 
     BufferT filter_dc = read_inputs<BufferT>(filter_fname);
-    TEST_ASSERT(filter_dc.size() == params.C_i*params.k*params.k);
+    TEST_ASSERT(filter_dc.size() == params.C_i*params.k);
 
     //=========================================================================
     BufferT bias(params.C_o);
@@ -62,18 +139,18 @@ void test_dw_bias(void)
     small::shape_type input_shape({1UL, params.C_i, params.H, params.W});
     size_t input_size = params.C_i*params.H*params.W;
 
-    small::DepthwiseConv2DLayer<BufferT> dw_layer(input_shape,
+    small::DepthwiseConv1DLayer<BufferT> dw_1d_layer(input_shape,
                                                   params.k, params.k,
                                                   params.s, params.p,
                                                   filter_dc, bias, false);
 
-    small::shape_type output_shape(dw_layer.output_shape());
-    size_t output_buffer_size(dw_layer.output_size());
+    small::shape_type output_shape(dw_1d_layer.output_shape());
+    size_t output_buffer_size(dw_1d_layer.output_size());
     //=========================================================================
 
     // Read input data
     std::string in_fname =
-        get_pathname(data_dir, "in", "dw_conv",
+        get_pathname(data_dir, "in", "dw_1d_conv",
                      params,
                      input_size);
     std::cout << "\nDepthwiseConv: input file = " << in_fname << std::endl;
@@ -98,7 +175,7 @@ void test_dw_bias(void)
               << output_shape[small::HEIGHT] << "x" << output_shape[small::WIDTH]
               << std::endl;
     std::string out_fname =
-        get_pathname(data_dir, "out", "dw_conv",
+        get_pathname(data_dir, "out", "dw_1d_conv",
                      params,
                      output_buffer_size);
     std::cout << "DepthwiseConv: output file= " << out_fname << std::endl;
@@ -125,8 +202,8 @@ void test_dw_bias(void)
                                                 std::move(packed_output_dc));
 
     // Compute layer
-    dw_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
-    TEST_ASSERT(packed_output_tensor.size() == dw_layer.output_size());
+    dw_1d_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
+    TEST_ASSERT(packed_output_tensor.size() == dw_1d_layer.output_size());
 
     // Check answer
     bool passing = true;
@@ -156,7 +233,7 @@ void test_dw_bias(void)
 }
 
 //****************************************************************************
-void test_dw_batchnorm_identity(void)
+void test_dw_1d_batchnorm_identity(void)
 {
 #if defined(QUANTIZED)
     using BufferT = small::QUInt8Buffer;
@@ -169,7 +246,7 @@ void test_dw_batchnorm_identity(void)
 
     // Read filter data
     std::string filter_fname =
-        get_pathname(data_dir, "filter", "dw_conv",
+        get_pathname(data_dir, "filter", "dw_1d_conv",
                      params,
                      params.C_i*params.k*params.k);
     std::cout << "DepthwiseConv: filter file= " << filter_fname << std::endl;
@@ -194,7 +271,7 @@ void test_dw_batchnorm_identity(void)
     small::shape_type input_shape({1UL, params.C_i, params.H, params.W});
     size_t input_size = params.C_i*params.H*params.W;
 
-    small::DepthwiseConv2DLayer<BufferT> dw_layer(input_shape,
+    small::DepthwiseConv1DLayer<BufferT> dw_1d_layer(input_shape,
                                                   params.k, params.k,
                                                   params.s, params.p,
                                                   filter_dc,
@@ -204,13 +281,13 @@ void test_dw_batchnorm_identity(void)
                                                   bn_eps,
                                                   false);
 
-    small::shape_type output_shape(dw_layer.output_shape());
-    size_t output_buffer_size(dw_layer.output_size());
+    small::shape_type output_shape(dw_1d_layer.output_shape());
+    size_t output_buffer_size(dw_1d_layer.output_size());
     //=========================================================================
 
     // Read input data
     std::string in_fname =
-        get_pathname(data_dir, "in", "dw_conv",
+        get_pathname(data_dir, "in", "dw_1d_conv",
                      params,
                      input_size);
     std::cout << "\nDepthwiseConv: input file = " << in_fname << std::endl;
@@ -235,7 +312,7 @@ void test_dw_batchnorm_identity(void)
               << output_shape[small::HEIGHT] << "x" << output_shape[small::WIDTH]
               << std::endl;
     std::string out_fname =
-        get_pathname(data_dir, "out", "dw_conv",
+        get_pathname(data_dir, "out", "dw_1d_conv",
                      params,
                      output_buffer_size);
     std::cout << "DepthwiseConv: output file= " << out_fname << std::endl;
@@ -262,8 +339,8 @@ void test_dw_batchnorm_identity(void)
                                                 std::move(packed_output_dc));
 
     // Compute layer
-    dw_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
-    TEST_ASSERT(packed_output_tensor.size() == dw_layer.output_size());
+    dw_1d_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
+    TEST_ASSERT(packed_output_tensor.size() == dw_1d_layer.output_size());
 
     // Check answer
     bool passing = true;
@@ -293,7 +370,7 @@ void test_dw_batchnorm_identity(void)
 }
 
 //****************************************************************************
-void test_dw_batchnorm_bias_1(void)
+void test_dw_1d_batchnorm_bias_1(void)
 {
 #if defined(QUANTIZED)
     using BufferT = small::QUInt8Buffer;
@@ -306,7 +383,7 @@ void test_dw_batchnorm_bias_1(void)
 
     // Read filter data
     std::string filter_fname =
-        get_pathname(data_dir, "filter", "dw_conv",
+        get_pathname(data_dir, "filter", "dw_1d_conv",
                      params,
                      params.C_i*params.k*params.k);
     std::cout << "DepthwiseConv: filter file= " << filter_fname << std::endl;
@@ -332,7 +409,7 @@ void test_dw_batchnorm_bias_1(void)
     small::shape_type input_shape({1UL, params.C_i, params.H, params.W});
     size_t input_size = params.C_i*params.H*params.W;
 
-    small::DepthwiseConv2DLayer<BufferT> dw_layer(input_shape,
+    small::DepthwiseConv1DLayer<BufferT> dw_1d_layer(input_shape,
                                                   params.k, params.k,
                                                   params.s, params.p,
                                                   filter_dc,
@@ -342,13 +419,13 @@ void test_dw_batchnorm_bias_1(void)
                                                   bn_eps,
                                                   false);
 
-    small::shape_type output_shape(dw_layer.output_shape());
-    size_t output_buffer_size(dw_layer.output_size());
+    small::shape_type output_shape(dw_1d_layer.output_shape());
+    size_t output_buffer_size(dw_1d_layer.output_size());
     //=========================================================================
 
     // Read input data
     std::string in_fname =
-        get_pathname(data_dir, "in", "dw_conv",
+        get_pathname(data_dir, "in", "dw_1d_conv",
                      params,
                      input_size);
     std::cout << "\nDepthwiseConv: input file = " << in_fname << std::endl;
@@ -373,7 +450,7 @@ void test_dw_batchnorm_bias_1(void)
               << output_shape[small::HEIGHT] << "x" << output_shape[small::WIDTH]
               << std::endl;
     std::string out_fname =
-        get_pathname(data_dir, "out", "dw_conv",
+        get_pathname(data_dir, "out", "dw_1d_conv",
                      params,
                      output_buffer_size);
     std::cout << "DepthwiseConv: output file= " << out_fname << std::endl;
@@ -400,8 +477,8 @@ void test_dw_batchnorm_bias_1(void)
                                                 std::move(packed_output_dc));
 
     // Compute layer
-    dw_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
-    TEST_ASSERT(packed_output_tensor.size() == dw_layer.output_size());
+    dw_1d_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
+    TEST_ASSERT(packed_output_tensor.size() == dw_1d_layer.output_size());
 
     // Check answer
     bool passing = true;
@@ -431,7 +508,7 @@ void test_dw_batchnorm_bias_1(void)
 }
 
 //****************************************************************************
-void test_dw_batchnorm_mean_1(void)
+void test_dw_1d_batchnorm_mean_1(void)
 {
 #if defined(QUANTIZED)
     using BufferT = small::QUInt8Buffer;
@@ -444,7 +521,7 @@ void test_dw_batchnorm_mean_1(void)
 
     // Read filter data
     std::string filter_fname =
-        get_pathname(data_dir, "filter", "dw_conv",
+        get_pathname(data_dir, "filter", "dw_1d_conv",
                      params,
                      params.C_i*params.k*params.k);
     std::cout << "DepthwiseConv: filter file= " << filter_fname << std::endl;
@@ -470,7 +547,7 @@ void test_dw_batchnorm_mean_1(void)
     small::shape_type input_shape({1UL, params.C_i, params.H, params.W});
     size_t input_size = params.C_i*params.H*params.W;
 
-    small::DepthwiseConv2DLayer<BufferT> dw_layer(input_shape,
+    small::DepthwiseConv1DLayer<BufferT> dw_1d_layer(input_shape,
                                                   params.k, params.k,
                                                   params.s, params.p,
                                                   filter_dc,
@@ -480,13 +557,13 @@ void test_dw_batchnorm_mean_1(void)
                                                   bn_eps,
                                                   false);
 
-    small::shape_type output_shape(dw_layer.output_shape());
-    size_t output_buffer_size(dw_layer.output_size());
+    small::shape_type output_shape(dw_1d_layer.output_shape());
+    size_t output_buffer_size(dw_1d_layer.output_size());
     //=========================================================================
 
     // Read input data
     std::string in_fname =
-        get_pathname(data_dir, "in", "dw_conv",
+        get_pathname(data_dir, "in", "dw_1d_conv",
                      params,
                      input_size);
     std::cout << "\nDepthwiseConv: input file = " << in_fname << std::endl;
@@ -511,7 +588,7 @@ void test_dw_batchnorm_mean_1(void)
               << output_shape[small::HEIGHT] << "x" << output_shape[small::WIDTH]
               << std::endl;
     std::string out_fname =
-        get_pathname(data_dir, "out", "dw_conv",
+        get_pathname(data_dir, "out", "dw_1d_conv",
                      params,
                      output_buffer_size);
     std::cout << "DepthwiseConv: output file= " << out_fname << std::endl;
@@ -538,8 +615,8 @@ void test_dw_batchnorm_mean_1(void)
                                                 std::move(packed_output_dc));
 
     // Compute layer
-    dw_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
-    TEST_ASSERT(packed_output_tensor.size() == dw_layer.output_size());
+    dw_1d_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
+    TEST_ASSERT(packed_output_tensor.size() == dw_1d_layer.output_size());
 
     // Check answer
     bool passing = true;
@@ -573,7 +650,7 @@ void test_dw_batchnorm_mean_1(void)
 }
 
 //****************************************************************************
-void test_dw_batchnorm_mean_variance_1(void)
+void test_dw_1d_batchnorm_mean_variance_1(void)
 {
 #if defined(QUANTIZED)
     using BufferT = small::QUInt8Buffer;
@@ -586,7 +663,7 @@ void test_dw_batchnorm_mean_variance_1(void)
 
     // Read filter data
     std::string filter_fname =
-        get_pathname(data_dir, "filter", "dw_conv",
+        get_pathname(data_dir, "filter", "dw_1d_conv",
                      params,
                      params.C_i*params.k*params.k);
     std::cout << "DepthwiseConv: filter file= " << filter_fname << std::endl;
@@ -601,7 +678,7 @@ void test_dw_batchnorm_mean_variance_1(void)
 
     // Read input data
     std::string in_fname =
-        get_pathname(data_dir, "in", "dw_conv",
+        get_pathname(data_dir, "in", "dw_1d_conv",
                      params,
                      input_size);
     std::cout << "\nDepthwiseConv: input file = " << in_fname << std::endl;
@@ -635,7 +712,7 @@ void test_dw_batchnorm_mean_variance_1(void)
               << output_shape[small::HEIGHT] << "x" << output_shape[small::WIDTH]
               << std::endl;
     std::string out_fname =
-        get_pathname(data_dir, "out", "dw_conv",
+        get_pathname(data_dir, "out", "dw_1d_conv",
                      params,
                      output_buffer_size);
     std::cout << "DepthwiseConv: output file= " << out_fname << std::endl;
@@ -670,7 +747,7 @@ void test_dw_batchnorm_mean_variance_1(void)
         bn_bias[ix] = 0;
     }
 
-    small::DepthwiseConv2DLayer<BufferT> dw_layer(input_shape,
+    small::DepthwiseConv1DLayer<BufferT> dw_1d_layer(input_shape,
                                                   params.k, params.k,
                                                   params.s, params.p,
                                                   filter_dc,
@@ -680,8 +757,8 @@ void test_dw_batchnorm_mean_variance_1(void)
                                                   bn_eps,
                                                   false);
 
-    output_shape = dw_layer.output_shape();
-    output_buffer_size = dw_layer.output_size();
+    output_shape = dw_1d_layer.output_shape();
+    output_buffer_size = dw_1d_layer.output_size();
     //=========================================================================
 
     // Allocate output buffer
@@ -694,8 +771,8 @@ void test_dw_batchnorm_mean_variance_1(void)
                                                 std::move(packed_output_dc));
 
     // Compute layer
-    dw_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
-    TEST_ASSERT(packed_output_tensor.size() == dw_layer.output_size());
+    dw_1d_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
+    TEST_ASSERT(packed_output_tensor.size() == dw_1d_layer.output_size());
 
     //=========================================================================
     BufferT unpacked_output_tensor(packed_output_tensor.size());
@@ -740,12 +817,12 @@ void test_dw_batchnorm_mean_variance_1(void)
 
 //****************************************************************************
 template <class BufferT>
-bool run_dw_config(LayerParams const &params)
+bool run_dw_1d_config(LayerParams const &params)
 {
     /// @todo add smart pointer to buffers
     // Read input data
     std::string in_fname =
-        get_pathname(data_dir, "in", "dw_conv",
+        get_pathname(data_dir, "in", "dw_1d_conv",
                      params,
                      params.C_i*params.H*params.W);
     std::cout << "\nDepthwiseConv: input file = " << in_fname << std::endl;
@@ -763,7 +840,7 @@ bool run_dw_config(LayerParams const &params)
 
     // Read filter data
     std::string filter_fname =
-        get_pathname(data_dir, "filter", "dw_conv",
+        get_pathname(data_dir, "filter", "dw_1d_conv",
                      params,
                      params.C_i*params.k*params.k);
     std::cout << "DepthwiseConv: filter file= " << filter_fname << std::endl;
@@ -786,7 +863,7 @@ bool run_dw_config(LayerParams const &params)
                   params.W, params.k, params.s, params.p));
     std::cerr << "Output image dims: " << Ho << ", " << Wo << std::endl;
     std::string out_fname =
-        get_pathname(data_dir, "out", "dw_conv",
+        get_pathname(data_dir, "out", "dw_1d_conv",
                      params,
                      params.C_i*Ho*Wo);
     std::cout << "DepthwiseConv: output file= " << out_fname << std::endl;
@@ -817,7 +894,7 @@ bool run_dw_config(LayerParams const &params)
     }
 
     // Compute layer
-    small::DepthwiseConv2D(params.k, params.k, params.s,
+    small::DepthwiseConv1D(params.k, params.k, params.s,
                            t_pad, b_pad, l_pad, r_pad,
                            params.C_i, params.H, params.W,
                            packed_input_dc, packed_filter_dc, packed_output_dc);
@@ -850,12 +927,12 @@ bool run_dw_config(LayerParams const &params)
 
 //****************************************************************************
 template <class BufferT>
-bool run_dw_layer_config(LayerParams const &params)
+bool run_dw_1d_layer_config(LayerParams const &params)
 {
     /// @todo add smart pointer to buffers
     // Read filter data
     std::string filter_fname =
-        get_pathname(data_dir, "filter", "dw_conv",
+        get_pathname(data_dir, "filter", "dw_1d_conv",
                      params,
                      params.C_i*params.k*params.k);
     std::cout << "DepthwiseConv: filter file= " << filter_fname << std::endl;
@@ -866,7 +943,7 @@ bool run_dw_layer_config(LayerParams const &params)
     //=========================================================================
     small::shape_type input_shape({1UL, params.C_i, params.H, params.W});
     size_t input_size = small::compute_size(input_shape);
-    small::DepthwiseConv2DLayer<BufferT> dw_layer(input_shape,
+    small::DepthwiseConv1DLayer<BufferT> dw_1d_layer(input_shape,
                                                   params.k, params.k, params.s,
                                                   params.p,
                                                   filter_dc, false);
@@ -874,7 +951,7 @@ bool run_dw_layer_config(LayerParams const &params)
 
     // Read input data
     std::string in_fname =
-        get_pathname(data_dir, "in", "dw_conv",
+        get_pathname(data_dir, "in", "dw_1d_conv",
                      params,
                      input_size);
     std::cout << "\nDepthwiseConv: input file = " << in_fname << std::endl;
@@ -897,14 +974,14 @@ bool run_dw_layer_config(LayerParams const &params)
         std::move(packed_input_dc));
 
     // Read output regression data
-    auto output_shape(dw_layer.output_shape());
-    size_t output_buffer_size(dw_layer.output_size());
+    auto output_shape(dw_1d_layer.output_shape());
+    size_t output_buffer_size(dw_1d_layer.output_size());
 
     std::cerr << "Output image dims: "
               << output_shape[small::HEIGHT] << "x" << output_shape[small::WIDTH]
               << std::endl;
     std::string out_fname =
-        get_pathname(data_dir, "out", "dw_conv",
+        get_pathname(data_dir, "out", "dw_1d_conv",
                      params,
                      output_buffer_size);
     std::cout << "DepthwiseConv: output file= " << out_fname << std::endl;
@@ -931,7 +1008,7 @@ bool run_dw_layer_config(LayerParams const &params)
                                                 std::move(packed_output_dc));
 
     // Compute layer
-    dw_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
+    dw_1d_layer.compute_output({&packed_input_tensor}, &packed_output_tensor);
 
     // Check answer
     bool passing = true;
@@ -962,7 +1039,7 @@ bool run_dw_layer_config(LayerParams const &params)
 
 //****************************************************************************
 //****************************************************************************
-void test_dw_regression_data(void)
+void test_dw_1d_regression_data(void)
 {
     std::vector<LayerParams> params =
     {
@@ -985,15 +1062,15 @@ void test_dw_regression_data(void)
     for (LayerParams const &p: params)
     {
 #if defined(QUANTIZED)
-        TEST_CHECK(true == run_dw_config<small::QUInt8Buffer>(p));
+        TEST_CHECK(true == run_dw_1d_config<small::QUInt8Buffer>(p));
 #else
-        TEST_CHECK(true == run_dw_config<small::FloatBuffer>(p));
+        TEST_CHECK(true == run_dw_1d_config<small::FloatBuffer>(p));
 #endif
     }
 }
 
 //****************************************************************************
-void test_dw_layer_regression_data(void)
+void test_dw_1d_layer_regression_data(void)
 {
     std::vector<LayerParams> params =
     {
@@ -1016,15 +1093,15 @@ void test_dw_layer_regression_data(void)
     for (LayerParams const &p: params)
     {
 #if defined(QUANTIZED)
-        TEST_CHECK(true == run_dw_layer_config<small::QUInt8Buffer>(p));
+        TEST_CHECK(true == run_dw_1d_layer_config<small::QUInt8Buffer>(p));
 #else
-        TEST_CHECK(true == run_dw_layer_config<small::FloatBuffer>(p));
+        TEST_CHECK(true == run_dw_1d_layer_config<small::FloatBuffer>(p));
 #endif
     }
 }
 
 //****************************************************************************
-void measure_dw_performance(void)
+void measure_dw_1d_performance(void)
 {
     // C_i,Hi,Wi,k,s,p,C_o
     std::vector<LayerParams> params =
@@ -1064,7 +1141,7 @@ void measure_dw_performance(void)
     using Buffer = small::FloatBuffer;
 #endif
 
-    printf("\nDepthwiseConv2D(%s) func.\n", type.c_str());
+    printf("\nDepthwiseConv1D(%s) func.\n", type.c_str());
     printf("\tC_i\tH\tW\tk\ts\tnthd\truns\tt_min\tt_max\tt_avg\n");
 
     for (LayerParams const &p: params)
@@ -1100,7 +1177,7 @@ void measure_dw_performance(void)
             double max_t = 0.;
 
             // Warmup
-            small::DepthwiseConv2D(p.k, p.k, p.s,
+            small::DepthwiseConv1D(p.k, p.k, p.s,
                                    t_pad, b_pad, l_pad, r_pad,
                                    p.C_i, p.H, p.W,
                                    input_dc, filter_dc, output_dc);
@@ -1108,7 +1185,7 @@ void measure_dw_performance(void)
             for (size_t iy = 0; iy < num_runs; ++iy)
             {
                 t.start();
-                small::DepthwiseConv2D(p.k, p.k, p.s,
+                small::DepthwiseConv1D(p.k, p.k, p.s,
                                        t_pad, b_pad, l_pad, r_pad,
                                        p.C_i, p.H, p.W,
                                        input_dc, filter_dc, output_dc);
@@ -1126,7 +1203,7 @@ void measure_dw_performance(void)
         }
     }
 
-    printf("\nDepthwiseConv2D(%s) class\n", type.c_str());
+    printf("\nDepthwiseConv1D(%s) class\n", type.c_str());
     printf("\tC_i\tH\tW\tk\ts\tnthd\truns\tt_min\tt_max\tt_avg\n");
 
     for (LayerParams const &p: params)
@@ -1154,8 +1231,8 @@ void measure_dw_performance(void)
 
         small::Tensor<Buffer> output_dc(num_output_elts);
 
-        small::DepthwiseConv2DLayer<Buffer>
-            dw_layer(input_shape, p.k, p.k, p.s, p.p, filter_dc, true);
+        small::DepthwiseConv1DLayer<Buffer>
+            dw_1d_layer(input_shape, p.k, p.k, p.s, p.p, filter_dc, true);
 
         for (size_t ix = 0; ix < 3; ++ix)
         {
@@ -1168,12 +1245,12 @@ void measure_dw_performance(void)
             double max_t = 0.;
 
             // Warm up
-            dw_layer.compute_output({&input_dc}, &output_dc);
+            dw_1d_layer.compute_output({&input_dc}, &output_dc);
 
             for (size_t iy = 0; iy < num_runs; ++iy)
             {
                 t.start();
-                dw_layer.compute_output({&input_dc}, &output_dc);
+                dw_1d_layer.compute_output({&input_dc}, &output_dc);
                 t.stop();
                 double ts = t.elapsed();
                 tx += ts;
@@ -1188,17 +1265,18 @@ void measure_dw_performance(void)
         }
     }
 }
-
+#endif
 //****************************************************************************
 //****************************************************************************
 TEST_LIST = {
-    {"dw_bias",                  test_dw_bias},
-    {"dw_batchnorm_identity",    test_dw_batchnorm_identity},
-    {"dw_batchnorm_bias_1",      test_dw_batchnorm_bias_1},
-    {"dw_batchnorm_mean_1",      test_dw_batchnorm_mean_1},
-    {"dw_batchnorm_mean_variance_1", test_dw_batchnorm_mean_variance_1},
-    {"dw_regression_data",       test_dw_regression_data},
-    {"dw_layer_regression_data", test_dw_layer_regression_data},
-    // {"dw_performance", measure_dw_performance},
+    {"dw_1d_filter",                test_dw_1d_filter},
+    //{"dw_1d_bias",                  test_dw_1d_bias},
+    //{"dw_1d_batchnorm_identity",    test_dw_1d_batchnorm_identity},
+    //{"dw_1d_batchnorm_bias_1",      test_dw_1d_batchnorm_bias_1},
+    //{"dw_1d_batchnorm_mean_1",      test_dw_1d_batchnorm_mean_1},
+    //{"dw_1d_batchnorm_mean_variance_1", test_dw_1d_batchnorm_mean_variance_1},
+    //{"dw_1d_regression_data",       test_dw_1d_regression_data},
+    //{"dw_1d_layer_regression_data", test_dw_1d_layer_regression_data},
+    //{"dw_1d_performance", measure_dw_1d_performance},
     {NULL, NULL}
 };

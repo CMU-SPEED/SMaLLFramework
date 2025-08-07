@@ -438,10 +438,21 @@ void SoftMax(int input_channels,
 //****************************************************************************
 /// @todo document this interface
 template <class BufferT, bool>
-void LogSoftMax(int input_channels,
-                int input_height, int input_width,
+void LogSoftMax(int channels,
+                int logical_channels,
+                int height, int width,
                 BufferT const &input_buf,
                 BufferT       &output_buf);
+
+//****************************************************************************
+/// @todo document this interface
+/// A more numerically stable version
+template <class BufferT, bool>
+void LogSoftMax2(int channels,
+                 int logical_channels,
+                 int height, int width,
+                 BufferT const &input_buf,
+                 BufferT       &output_buf);
 
 //****************************************************************************
 /// @todo document this interface

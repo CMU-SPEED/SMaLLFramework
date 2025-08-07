@@ -15,22 +15,21 @@
 #include <small.h>
 #include <small/buffers.hpp>
 #include <small/Layer.hpp>
-#include <small/Conv2DLayer.hpp>  // for detail::initialize_conv2d_buffers
+#include <small/Conv1DLayer.hpp>  // for detail::initialize_conv1d_buffers
 
 namespace small
 {
 //****************************************************************************
 template <typename BufferT>
-class PartialConv2DLayer : public Layer<BufferT>
+class PartialConv1DLayer : public Layer<BufferT>
 {
 public:
     typedef typename BufferT::value_type value_type;
 
-    //PartialConv2DLayer () delete;
+    //PartialConv1DLayer () delete;
 
     // No bias, no batch normalization
-    PartialConv2DLayer(shape_type const &input_shape,    //pred.output_shape()
-                       uint32_t          kernel_height,
+    PartialConv1DLayer(shape_type const &input_shape,    //pred.output_shape()
                        uint32_t          kernel_width,
                        uint32_t          stride,
                        PaddingEnum       padding_type,
@@ -41,8 +40,7 @@ public:
                        float             leaky_slope = 1.e-2);
 
     // With bias term
-    PartialConv2DLayer(shape_type const &input_shape,    //pred.output_shape()
-                       uint32_t          kernel_height,
+    PartialConv1DLayer(shape_type const &input_shape,    //pred.output_shape()
                        uint32_t          kernel_width,
                        uint32_t          stride,
                        PaddingEnum       padding_type,
@@ -54,8 +52,7 @@ public:
                        float             leaky_slope = 1.e-2);
 
     // With fused batch normalization
-    PartialConv2DLayer(shape_type const &input_shape,    //pred.output_shape()
-                       uint32_t          kernel_height,
+    PartialConv1DLayer(shape_type const &input_shape,    //pred.output_shape()
                        uint32_t          kernel_width,
                        uint32_t          stride,
                        PaddingEnum       padding_type,
@@ -71,8 +68,7 @@ public:
                        float             leaky_slope = 1.e-2);
 
     // With bias and fused batch normalization
-    PartialConv2DLayer(shape_type const &input_shape,    //pred.output_shape()
-                       uint32_t          kernel_height,
+    PartialConv1DLayer(shape_type const &input_shape,    //pred.output_shape()
                        uint32_t          kernel_width,
                        uint32_t          stride,
                        PaddingEnum       padding_type,
@@ -88,7 +84,7 @@ public:
                        ActivationType    activation_type = NONE,
                        float             leaky_slope = 1.e-2);
 
-    virtual ~PartialConv2DLayer() {}
+    virtual ~PartialConv1DLayer() {}
 
     virtual void compute_output(
         std::vector<Tensor<BufferT> const *> input,
@@ -99,8 +95,7 @@ public:
 
 private:
     void initialize(
-        shape_type const &input_shape,    //pred.output_shape()
-        uint32_t          kernel_height,
+        shape_type const &input_shape,
         uint32_t          kernel_width,
         uint32_t          stride,
         PaddingEnum       padding_type,
@@ -118,7 +113,6 @@ private:
 
     void compute_padding_output_shape(
         shape_type const &input_shape,
-        uint32_t          kernel_height,
         uint32_t          kernel_width,
         uint32_t          stride,
         PaddingEnum       padding_type,
@@ -128,13 +122,13 @@ private:
 private:
     shape_type const m_input_shape;
 
-    uint32_t   const m_kernel_height, m_kernel_width;
+    uint32_t   const m_kernel_width;
     uint32_t   const m_stride;
 
     ActivationType const m_activation_type;
 
     /// @todo: how to make const?
-    uint8_t          m_t_pad, m_b_pad, m_l_pad, m_r_pad;
+    uint8_t          m_l_pad, m_r_pad;
 
     BufferT          m_leaky_slope;
     BufferT          m_packed_filters;
@@ -142,10 +136,11 @@ private:
 };
 
 //****************************************************************************
-template<class BufferT>
-void PartialConv2DLayer<BufferT>::initialize(
+
+//****************************************************************************
+template <class BufferT>
+void PartialConv1DLayer<BufferT>::initialize(
     shape_type const &input_shape,
-    uint32_t          kernel_height,
     uint32_t          kernel_width,
     uint32_t          stride,
     PaddingEnum       padding_type,
@@ -162,18 +157,18 @@ void PartialConv2DLayer<BufferT>::initialize(
     float             leaky_slope)
 {
     if (((input_shape[CHANNEL] % BufferT::C_ib) != 0) &&
-        (input_shape[CHANNEL] != 3) &&  // all of the cases that Conv2D supports
+        (input_shape[CHANNEL] != 3) &&
         (input_shape[CHANNEL] != 2) &&
         (input_shape[CHANNEL] != 1))
     {
         throw std::invalid_argument(
-            "PartialConv2DLayer::ctor ERROR: invalid number of input channels.");
+            "PartialConv1DLayer::ctor ERROR: invalid number of input channels.");
     }
 
     if ((stride != 1) && (stride != 2))
     {
         throw std::invalid_argument(
-            "PartialConv2DLayer::ctor ERROR: invalid stride.");
+            "PartialConv1DLayer::ctor ERROR: invalid stride.");
     }
 
     // Deal with odd numbers of output channels by padding unpacked filters
@@ -183,7 +178,7 @@ void PartialConv2DLayer<BufferT>::initialize(
         if (buffers_are_packed)
         {
             throw std::invalid_argument(
-                "PartialConv2DLayer::ctor ERROR: "
+                "PartialConv1DLayer::ctor ERROR: "
                 "invalid number of output channels for packed weights.");
         }
 
@@ -194,17 +189,17 @@ void PartialConv2DLayer<BufferT>::initialize(
 
     m_leaky_slope[0] = leaky_slope;
     compute_padding_output_shape(input_shape,
-                                 kernel_height, kernel_width,
+                                 kernel_width,
                                  stride,
                                  padding_type,
                                  num_output_channels,
                                  num_logical_output_channels);
 
-    detail::initialize_conv2d_buffers(
+    detail::initialize_conv1d_buffers(
         num_output_channels,
         num_logical_output_channels,
         input_shape[CHANNEL],
-        kernel_height, kernel_width,
+        kernel_width,
         filters,
         bias,
         bn_weight, bn_bias,
@@ -248,9 +243,8 @@ void PartialConv2DLayer<BufferT>::initialize(
 
 //****************************************************************************
 template <class BufferT>
-PartialConv2DLayer<BufferT>::PartialConv2DLayer(
+PartialConv1DLayer<BufferT>::PartialConv1DLayer(
     shape_type const &input_shape,
-    uint32_t          kernel_height,
     uint32_t          kernel_width,
     uint32_t          stride,
     PaddingEnum       padding_type,
@@ -259,20 +253,19 @@ PartialConv2DLayer<BufferT>::PartialConv2DLayer(
     bool              buffers_are_packed,
     ActivationType    activation_type,
     float             leaky_slope)
-: Layer<BufferT>(),
-  m_input_shape(input_shape),
-  m_kernel_height(kernel_height),
-  m_kernel_width(kernel_width),
-  m_stride(stride),
-  m_activation_type(activation_type),
-  m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0),
-  m_leaky_slope(1),  /// @note Allocating 1-element buffer
-  m_packed_filters(),
-  m_packed_bias()
+    : Layer<BufferT>(),
+      m_input_shape(input_shape),
+      m_kernel_width(kernel_width),
+      m_stride(stride),
+      m_activation_type(activation_type),
+      m_l_pad(0), m_r_pad(0),
+      m_leaky_slope(1),  /// @note Allocating 1-element buffer
+      m_packed_filters(),
+      m_packed_bias()
 {
 #if defined(DEBUG_LAYERS)
-    std::cerr << "PartialConv2D(batches:" << m_input_shape[BATCH]
-              << ",k:" << m_kernel_height << "x" << m_kernel_width
+    std::cerr << "PartialConv1D(batches:" << m_input_shape[BATCH]
+              << ",k:" << m_kernel_width
               << ",s:" << m_stride
               << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
               << ",ichans/lchans:" << m_input_shape[CHANNEL]
@@ -283,7 +276,7 @@ PartialConv2DLayer<BufferT>::PartialConv2DLayer(
               << "), filters.size=" << filters.size() << std::endl;
 #endif
 
-    initialize(input_shape, kernel_height, kernel_width, stride,
+    initialize(input_shape, kernel_width, stride,
                padding_type, num_logical_output_channels,
                filters, BufferT(), // no bias
                BufferT(), BufferT(), BufferT(), BufferT(), 0.f, // no BN
@@ -292,9 +285,8 @@ PartialConv2DLayer<BufferT>::PartialConv2DLayer(
 
 //****************************************************************************
 template <class BufferT>
-PartialConv2DLayer<BufferT>::PartialConv2DLayer(
+PartialConv1DLayer<BufferT>::PartialConv1DLayer(
     shape_type const &input_shape,
-    uint32_t          kernel_height,
     uint32_t          kernel_width,
     uint32_t          stride,
     PaddingEnum       padding_type,
@@ -304,20 +296,19 @@ PartialConv2DLayer<BufferT>::PartialConv2DLayer(
     bool              buffers_are_packed,
     ActivationType    activation_type,
     float             leaky_slope)
-: Layer<BufferT>(),
-  m_input_shape(input_shape),
-  m_kernel_height(kernel_height),
-  m_kernel_width(kernel_width),
-  m_stride(stride),
-  m_activation_type(activation_type),
-  m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0),
-  m_leaky_slope(1),  /// @note Allocating 1-element buffer
-  m_packed_filters(),
-  m_packed_bias()
+    : Layer<BufferT>(),
+      m_input_shape(input_shape),
+      m_kernel_width(kernel_width),
+      m_stride(stride),
+      m_activation_type(activation_type),
+      m_l_pad(0), m_r_pad(0),
+      m_leaky_slope(1),  /// @note Allocating 1-element buffer
+      m_packed_filters(),
+      m_packed_bias()
 {
 #if defined(DEBUG_LAYERS)
-    std::cerr << "PartialConv2D(batches:" << m_input_shape[BATCH]
-              << ",k:" << m_kernel_height << "x" << m_kernel_width
+    std::cerr << "PartialConv1D(batches:" << m_input_shape[BATCH]
+              << ",k:" << m_kernel_width
               << ",s:" << m_stride
               << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
               << ",ichans/lchans:" << m_input_shape[CHANNEL]
@@ -329,7 +320,7 @@ PartialConv2DLayer<BufferT>::PartialConv2DLayer(
               << ",bias.size=" << bias.size() << std::endl;
 #endif
 
-    initialize(input_shape, kernel_height, kernel_width, stride,
+    initialize(input_shape, kernel_width, stride,
                padding_type, num_logical_output_channels,
                filters, bias,
                BufferT(), BufferT(), BufferT(), BufferT(), 0.f, // no BN
@@ -338,9 +329,8 @@ PartialConv2DLayer<BufferT>::PartialConv2DLayer(
 
 //****************************************************************************
 template <class BufferT>
-PartialConv2DLayer<BufferT>::PartialConv2DLayer(
+PartialConv1DLayer<BufferT>::PartialConv1DLayer(
     shape_type const &input_shape,
-    uint32_t          kernel_height,
     uint32_t          kernel_width,
     uint32_t          stride,
     PaddingEnum       padding_type,
@@ -354,20 +344,19 @@ PartialConv2DLayer<BufferT>::PartialConv2DLayer(
     bool              buffers_are_packed,
     ActivationType    activation_type,
     float             leaky_slope)
-: Layer<BufferT>(),
-  m_input_shape(input_shape),
-  m_kernel_height(kernel_height),
-  m_kernel_width(kernel_width),
-  m_stride(stride),
-  m_activation_type(activation_type),
-  m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0),
-  m_leaky_slope(1),  /// @note Allocating 1-element buffer
-  m_packed_filters(),
-  m_packed_bias()
+    : Layer<BufferT>(),
+      m_input_shape(input_shape),
+      m_kernel_width(kernel_width),
+      m_stride(stride),
+      m_activation_type(activation_type),
+      m_l_pad(0), m_r_pad(0),
+      m_leaky_slope(1),  /// @note Allocating 1-element buffer
+      m_packed_filters(),
+      m_packed_bias()
 {
 #if defined(DEBUG_LAYERS)
-    std::cerr << "PartialConv2D(batches:" << m_input_shape[BATCH]
-              << ",k:" << m_kernel_height << "x" << m_kernel_width
+    std::cerr << "PartialConv1D(batches:" << m_input_shape[BATCH]
+              << ",k:" << m_kernel_width
               << ",s:" << m_stride
               << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
               << ",ichans/lchans:" << m_input_shape[CHANNEL]
@@ -384,7 +373,7 @@ PartialConv2DLayer<BufferT>::PartialConv2DLayer(
               << "),bn_eps:" << bn_eps << std::endl;
 #endif
 
-    initialize(input_shape, kernel_height, kernel_width, stride,
+    initialize(input_shape, kernel_width, stride,
                padding_type, num_logical_output_channels,
                filters, BufferT(), // no bias
                bn_weight, bn_bias,
@@ -394,9 +383,8 @@ PartialConv2DLayer<BufferT>::PartialConv2DLayer(
 
 //****************************************************************************
 template <class BufferT>
-PartialConv2DLayer<BufferT>::PartialConv2DLayer(
+PartialConv1DLayer<BufferT>::PartialConv1DLayer(
     shape_type const &input_shape,
-    uint32_t          kernel_height,
     uint32_t          kernel_width,
     uint32_t          stride,
     PaddingEnum       padding_type,
@@ -411,20 +399,19 @@ PartialConv2DLayer<BufferT>::PartialConv2DLayer(
     bool              buffers_are_packed,
     ActivationType    activation_type,
     float             leaky_slope)
-: Layer<BufferT>(),
-  m_input_shape(input_shape),
-  m_kernel_height(kernel_height),
-  m_kernel_width(kernel_width),
-  m_stride(stride),
-  m_activation_type(activation_type),
-  m_t_pad(0), m_b_pad(0), m_l_pad(0), m_r_pad(0),
-  m_leaky_slope(1),  /// @note Allocating 1-element buffer
-  m_packed_filters(),
-  m_packed_bias()
+    : Layer<BufferT>(),
+      m_input_shape(input_shape),
+      m_kernel_width(kernel_width),
+      m_stride(stride),
+      m_activation_type(activation_type),
+      m_l_pad(0), m_r_pad(0),
+      m_leaky_slope(1),  /// @note Allocating 1-element buffer
+      m_packed_filters(),
+      m_packed_bias()
 {
 #if defined(DEBUG_LAYERS)
-    std::cerr << "PartialConv2D(batches:" << m_input_shape[BATCH]
-              << ",k:" << m_kernel_height << "x" << m_kernel_width
+    std::cerr << "PartialConv1D(batches:" << m_input_shape[BATCH]
+              << ",k:" << m_kernel_width
               << ",s:" << m_stride
               << ",p:" << ((padding_type == PADDING_V) ? "'v'" : "'f'")
               << ",ichans/lchans:" << m_input_shape[CHANNEL]
@@ -442,7 +429,7 @@ PartialConv2DLayer<BufferT>::PartialConv2DLayer(
               << "),bn_eps:" << bn_eps << std::endl;
 #endif
 
-    initialize(input_shape, kernel_height, kernel_width, stride,
+    initialize(input_shape, kernel_width, stride,
                padding_type, num_logical_output_channels,
                filters, bias,
                bn_weight, bn_bias,
@@ -452,32 +439,32 @@ PartialConv2DLayer<BufferT>::PartialConv2DLayer(
 
 //****************************************************************************
 template <class BufferT>
-void PartialConv2DLayer<BufferT>::compute_output(
+void PartialConv1DLayer<BufferT>::compute_output(
     std::vector<Tensor<BufferT> const *> input,
     Tensor<BufferT>*                     output) const
 {
     if ((input.size() != 1) || (input[0]->shape() != m_input_shape))
     {
         throw std::invalid_argument(
-            "PartialConv2DLayer::compute_output() ERROR: "
+            "PartialConv1DLayer::compute_output() ERROR: "
             "incorrect input buffer shape.");
     }
 
     if (output->capacity() < this->output_size())
     {
         throw std::invalid_argument(
-            "PartialConv2DLayer::compute_output() ERROR: "
+            "PartialConv1DLayer::compute_output() ERROR: "
             "insufficient output buffer space.");
     }
 
     auto& output_shape(this->output_shape());
 
-    small::PartialConv2D(m_kernel_height, m_kernel_width,
-                         m_stride,
-                         m_t_pad, m_b_pad, m_l_pad, m_r_pad,
+    small::PartialConv1D(m_kernel_width, m_stride,
+                         m_l_pad, m_r_pad,
                          output_shape[CHANNEL],
                          m_input_shape[CHANNEL],
-                         m_input_shape[HEIGHT], m_input_shape[WIDTH],
+                         m_input_shape[HEIGHT],  /// @todo BATCH?
+                         m_input_shape[WIDTH],
                          input[0]->buffer(),
                          m_packed_filters,
                          output->buffer());
@@ -494,15 +481,17 @@ void PartialConv2DLayer<BufferT>::compute_output(
 
     if (m_activation_type == RELU)
     {
-        small::ReLUActivation(output_shape[CHANNEL],
-                              output_shape[HEIGHT], output_shape[WIDTH],
+        small::ReLUActivation(output_shape[CHANNEL], /// @todo 1D?
+                              output_shape[HEIGHT],  /// @todo BATCH?
+                              output_shape[WIDTH],
                               output->buffer(),
                               output->buffer());
     }
     else if (m_activation_type == LEAKY)
     {
-        small::LeakyReLUActivation(output_shape[CHANNEL],
-                                   output_shape[HEIGHT], output_shape[WIDTH],
+        small::LeakyReLUActivation(output_shape[CHANNEL], /// @todo 1D?
+                                   output_shape[HEIGHT],  /// @todo BATCH?
+                                   output_shape[WIDTH],
                                    output->buffer(),
                                    m_leaky_slope,
                                    output->buffer());
@@ -511,7 +500,8 @@ void PartialConv2DLayer<BufferT>::compute_output(
     {
         small::SoftMax(output_shape[CHANNEL],
                        this->logical_output_channels(),
-                       output_shape[HEIGHT], output_shape[WIDTH],
+                       output_shape[HEIGHT],  /// @todo BATCH?
+                       output_shape[WIDTH],
                        output->buffer(),
                        output->buffer());
     }
@@ -519,9 +509,8 @@ void PartialConv2DLayer<BufferT>::compute_output(
 
 //****************************************************************************
 template <class BufferT>
-void PartialConv2DLayer<BufferT>::compute_padding_output_shape(
+void PartialConv1DLayer<BufferT>::compute_padding_output_shape(
     shape_type const &input_shape,
-    uint32_t          kernel_height,
     uint32_t          kernel_width,
     uint32_t          stride,
     PaddingEnum       padding_type,
@@ -531,25 +520,24 @@ void PartialConv2DLayer<BufferT>::compute_padding_output_shape(
     /// @todo is there a clean way to make these const members, or
     ///       will image size get moved to compute_output and all of
     ///       this moves to compute output?
-    size_t H, W;
-    small::compute_padding_output_dim(input_shape[HEIGHT], kernel_height,
-                                      stride, padding_type,
-                                      m_t_pad, m_b_pad,
-                                      H);
+    size_t W;
     small::compute_padding_output_dim(input_shape[WIDTH], kernel_width,
                                       stride, padding_type,
                                       m_l_pad, m_r_pad,
                                       W);
 
 #if defined(DEBUG_LAYERS)
-    std::cerr << "PartialConv2D padding: "
-              << (int)m_t_pad << "," << (int)m_b_pad
-              << "," << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
+    std::cerr << "PartialConv1D padding: "
+              << (int)m_l_pad << "," << (int)m_r_pad << std::endl;
 #endif
 
     this->set_output_shape(
-        {input_shape[BATCH], num_output_channels,
-         H, W, num_logical_output_channels});
+        {input_shape[BATCH],
+         num_output_channels,
+         input_shape[HEIGHT],  // batch?
+         W,
+         num_logical_output_channels});
+
 }
 
 }

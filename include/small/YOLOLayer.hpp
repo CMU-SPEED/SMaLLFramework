@@ -42,6 +42,28 @@ namespace small
 {
 
 //****************************************************************************
+// The input activation buffer has (5 + num_classes)*num_anchors channels, and
+// input_height * input_width pixels.  The 5 is made up of a bounding box in
+// xywh format, and an object confidence/probability.
+//
+// Another way of thinking about this is that for each of the width by height
+// pixels each channel encodes one value (out of num_classes + 5 values) of a
+// detection 'proposal' for each of the anchors. (e.g. 3 anchors means there
+// are 3 predictions per pixel.
+//
+// i.e. there are:
+//   num_predictions    = num_anchors * input_height * input_width
+//   sizeof(prediction) = (5 + num_classes)
+//   num_channels       = num_anchors * sizeof(prediction)
+//
+// The YOLOLayer is a terminal layer so the output_shape definition is largely
+// arbitrary:
+//   num_logical_channels = 1
+//   output_height        = num_predictions
+//   output_width         = sizeof(prediction)
+//
+// This output buffer is not packed for SMaLL (the input buffer is).
+//
 template <typename BufferT>
 class YOLOLayer : public Layer<BufferT>
 {
@@ -60,9 +82,9 @@ public:
           m_anchors(masked_anchors),
           m_num_anchors(masked_anchors.size()),
           m_num_classes(num_classes),
-          m_num_outputs(num_classes + 5), // # of outputs per anchor
+          m_sizeof_pred(num_classes + 5), // # of outputs (sizeof(pred)) per anchor
           m_num_pred(m_num_anchors * input_shape[HEIGHT] * input_shape[WIDTH]),
-          m_effective_channels(m_num_anchors * m_num_outputs),
+          m_effective_channels(m_num_anchors * m_sizeof_pred),
           m_padded_channels(input_shape[CHANNEL])
     {
 #if defined(DEBUG_LAYERS)
@@ -71,6 +93,7 @@ public:
                   << ",img:" << input_shape[HEIGHT] << "x" << input_shape[WIDTH]
                   << ")" << std::endl;
 #endif
+        /// @todo assert(m_effective_channels == input_shape[L_CHAN]);
 
         // HACK
         // Since Conv2D can't support channel dimensions that are not a multiple
@@ -82,14 +105,14 @@ public:
         //                        allocated in the buffer (i.e., padded)
 
         this->set_output_shape(
-            {input_shape[BATCH], 1U, m_num_pred, m_num_outputs});
+            {input_shape[BATCH], 1U, m_num_pred, m_sizeof_pred, 1U});
     }
 
     virtual ~YOLOLayer() {}
 
     size_t get_num_pred() const { return m_num_pred; }
 
-    size_t get_num_outputs() const { return m_num_outputs; }
+    size_t get_sizeof_pred() const { return m_sizeof_pred; }
 
     // note: fastest dimension is rightmost
     // input is in packed format
@@ -229,7 +252,7 @@ private:
     std::vector<std::pair<uint32_t,uint32_t>> const m_anchors;
     size_t       m_num_anchors;
     size_t const m_num_classes;
-    size_t       m_num_outputs;
+    size_t       m_sizeof_pred;
     size_t       m_num_pred;
     size_t       m_effective_channels;
     size_t       m_padded_channels;
