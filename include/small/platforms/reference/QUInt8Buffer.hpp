@@ -111,6 +111,8 @@ public:
         : m_num_elts(0),
           m_buffer(nullptr)
     {
+        quantized_init();  // should not be necessary (to suppress warnings)
+
         //std::cerr << "QUInt8Buffer move ctor\n";
         std::swap(scale,      other.scale);
         std::swap(offset,     other.offset);  // not set by quantized_init

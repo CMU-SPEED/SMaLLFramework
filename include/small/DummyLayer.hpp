@@ -31,7 +31,8 @@ public:
     {
 #if defined(DEBUG_LAYERS)
         std::cerr << "Input(batches:" << shape[BATCH]
-                  << ",chans:" << shape[CHANNEL]
+                  << ",chans/lchans:" << shape[CHANNEL]
+                  << "/" << shape[L_CHAN]
                   << ",img:" << shape[HEIGHT] << "x" << shape[WIDTH]
                   << ")" << std::endl;
 #endif

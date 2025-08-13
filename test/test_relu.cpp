@@ -148,6 +148,103 @@ void test_relu_large_tile(void)
 }
 
 //****************************************************************************
+void test_relu_odd_channels(void)
+{
+#if !defined(QUANTIZED)
+    uint32_t H = 1; // image_height;
+    uint32_t W = 1; // image_width;
+    uint32_t logical_channels = 29;
+
+    // Note: channels should be a multiple of channel blocking factor
+    // for all platforms
+    uint32_t channels = logical_channels;
+    if ((channels % small::FloatBuffer::C_ob) != 0)
+    {
+        channels = channels + small::FloatBuffer::C_ob
+            -  (logical_channels % small::FloatBuffer::C_ob);
+    }
+
+    small::Tensor<small::FloatBuffer>  in_tensor({1, channels, H, W});
+    small::Tensor<small::FloatBuffer> out_tensor({1, channels, H, W});
+    for (size_t ix = 0; ix < logical_channels; ++ix)
+    {
+        in_tensor.buffer()[ix] = (float)(logical_channels - logical_channels/2);
+    }
+    for (size_t ix = logical_channels; ix < channels; ++ix)
+    {
+        in_tensor.buffer()[ix] = -1.0f;
+    }
+
+    small::ReLUActivation(channels, H, W,
+                          in_tensor.buffer(), out_tensor.buffer());
+
+    for (size_t ix = 0; ix < logical_channels; ++ix)
+    {
+        if (in_tensor.buffer()[ix] < 0.f)
+        {
+            TEST_CHECK(out_tensor.buffer()[ix] == 0.f);
+        }
+        else
+        {
+            TEST_CHECK(out_tensor.buffer()[ix] == in_tensor.buffer()[ix]);
+        }
+        // std::cerr << ix << " in|out : " << in_tensor.buffer()[ix]
+        //           << "|" << out_tensor.buffer()[ix] << std::endl;
+    }
+#endif
+}
+
+//****************************************************************************
+void test_relu_layer_odd_channels(void)
+{
+#if !defined(QUANTIZED)
+    uint32_t H = 1; // image_height;
+    uint32_t W = 1; // image_width;
+    uint32_t logical_channels = 29;
+
+    // Note: channels should be a multiple of channel blocking factor
+    // for all platforms
+    uint32_t channels = logical_channels;
+    if ((channels % small::FloatBuffer::C_ob) != 0)
+    {
+        channels = channels + small::FloatBuffer::C_ob
+            -  (logical_channels % small::FloatBuffer::C_ob);
+    }
+
+    small::Tensor<small::FloatBuffer>  in_tensor(
+        {1, channels, H, W, logical_channels});
+    small::Tensor<small::FloatBuffer> out_tensor(
+        {1, channels, H, W, logical_channels});
+    for (size_t ix = 0; ix < logical_channels; ++ix)
+    {
+        in_tensor.buffer()[ix] = (float)(logical_channels - logical_channels/2);
+    }
+    for (size_t ix = logical_channels; ix < channels; ++ix)
+    {
+        in_tensor.buffer()[ix] = -1.0f;
+    }
+
+    small::ReLULayer<small::FloatBuffer> relu_layer(in_tensor.shape());
+
+    relu_layer.compute_output({&in_tensor}, &out_tensor);
+
+    for (size_t ix = 0; ix < logical_channels; ++ix)
+    {
+        if (in_tensor.buffer()[ix] < 0.f)
+        {
+            TEST_CHECK(out_tensor.buffer()[ix] == 0.f);
+        }
+        else
+        {
+            TEST_CHECK(out_tensor.buffer()[ix] == in_tensor.buffer()[ix]);
+        }
+        // std::cerr << ix << " in|out : " << in_tensor.buffer()[ix]
+        //           << "|" << out_tensor.buffer()[ix] << std::endl;
+    }
+#endif
+}
+
+//****************************************************************************
 
 //****************************************************************************
 template <class BufferT>
@@ -499,6 +596,8 @@ TEST_LIST = {
     {"relu_single_element",  test_relu_single_element},
     {"relu_single_tile",  test_relu_single_tile},
     {"relu_large_tile",  test_relu_large_tile},
+    {"relu_odd_channels", test_relu_odd_channels},
+    {"relu_layer_odd_channels", test_relu_layer_odd_channels},
     {"relu_regression_data", test_relu_regression_data},
     {"relu_layer_regression_data", test_relu_layer_regression_data},
     // {"relu_performance", measure_relu_performance},

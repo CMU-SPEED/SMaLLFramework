@@ -35,7 +35,8 @@ public:
     {
 #if defined(DEBUG_LAYERS)
         std::cerr << "Route: (batches:" << input0_shape[BATCH]
-                  << ",chans:" << input0_shape[CHANNEL]
+                  << ",chans/lchans:" << input0_shape[CHANNEL]
+                  << "/" << input0_shape[L_CHAN]
                   << ",img:" << input0_shape[HEIGHT]
                   << "x" << input0_shape[WIDTH]
                   << ")" << std::endl;
@@ -52,12 +53,14 @@ public:
     {
 #if defined(DEBUG_LAYERS)
         std::cerr << "Route: (batches:" << input0_shape[BATCH]
-                  << ",chans:" << input0_shape[CHANNEL]
+                  << ",chans/lchans:" << input0_shape[CHANNEL]
+                  << "/" << input0_shape[L_CHAN]
                   << ",img:" << input0_shape[HEIGHT]
                   << "x" << input0_shape[WIDTH]
                   << ")+"
                   << "(batches:" << input1_shape[BATCH]
-                  << ",chans:" << input1_shape[CHANNEL]
+                  << ",chans/lchans:" << input1_shape[CHANNEL]
+                  << "/" << input1_shape[L_CHAN]
                   << ",img:" << input1_shape[HEIGHT]
                   << "x" << input1_shape[WIDTH]
                   << ")" << std::endl;
@@ -73,9 +76,19 @@ public:
                 "predecessors do not have same output shape.");
         }
 
+        if (input0_shape[CHANNEL] != input0_shape[L_CHAN])
+        {
+            throw std::invalid_argument(
+                "RouteLayer(concat) ctor ERROR: "
+                "does not support input0 with channel padding.");
+        }
+
         // only concat along channel dimension
         shape_type output_shape = input0_shape;
         output_shape[CHANNEL] = input0_shape[CHANNEL] + input1_shape[CHANNEL];
+
+        /// @todo What to do about odd channels on both sides?
+        output_shape[L_CHAN]  = input0_shape[L_CHAN]  + input1_shape[L_CHAN];
 
         this->set_output_shape(output_shape);
     }

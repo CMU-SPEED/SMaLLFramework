@@ -78,8 +78,14 @@ inline void calc_padding(size_t    I_dim,
                   (K_dim - (I_dim % stride)) :
                   0;
     }
+
+#if defined(SMALL_REVERSE_PADDING)
+    padding_back  = padding / 2;
+    padding_front = padding - padding_back;
+#else
     padding_front = padding / 2;
     padding_back  = padding - padding_front;
+#endif
 }
 
 //****************************************************************************
@@ -99,8 +105,13 @@ inline void CALC_PADDING(uint32_t I_dim,
     {
         padding = (K_dim > (I_dim % stride)) ? (K_dim - (I_dim % stride)) : 0;
     }
+#if defined(SMALL_REVERSE_PADDING)
+    padding_back  = padding / 2;
+    padding_front = padding - padding_back;
+#else
     padding_front = padding / 2;
     padding_back = padding - padding_front;
+#endif
 }
 #endif
 
@@ -242,8 +253,10 @@ inline void compute_padding_output_dim(size_t    unpadded_input_dim,
 
     if (padded_input_dim < kernel_dim)
     {
-        throw std::invalid_argument("compute_padding_output_dim() ERROR: "
-                                    "Bad combination, kernel too large.");
+        throw std::invalid_argument((std::string)"compute_padding_output_dim() ERROR: " +
+                                    (std::string)"Bad combination, kernel too large.\n" +
+                                    (std::string)"padded_input_dim(" + std::to_string(padded_input_dim) +
+                                    (std::string)") must be >= kernel_dim(" + std::to_string(kernel_dim) + (std::string)")");
     }
 
     output_dim = 1 + (padded_input_dim - kernel_dim)/stride;

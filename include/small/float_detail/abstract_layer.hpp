@@ -78,7 +78,7 @@ void abstract_layer( /// @todo add B (batch size) param?
     ScalarT const *I_buf = I->data(); //__restrict__ ?
 
     ScalarT const *F_buf = nullptr;
-    if constexpr (op_type == OP_CONV || op_type == OP_LEAKY_RELU || op_type == OP_MUL) // if (F != nullptr)
+    if constexpr (op_type == OP_CONV || op_type == OP_LEAKY_RELU || op_type == OP_MUL || op_type == OP_EWISE_ADD_SCALAR) // if (F != nullptr)
     {
         F_buf = F->data();
     }
@@ -169,7 +169,10 @@ void abstract_layer( /// @todo add B (batch size) param?
     // back padding elements
     dim_t H_back_index = H_full_index + _stride * (H_o);
     dim_t W_back_index = W_full_index + _stride * (W_o_full);
+    dim_t r_valid = I_w - W_back_index;
+    dim_t b_valid = I_h - H_back_index;
     dim_t b_pad_el, r_pad_el;
+
     if constexpr (op_type == OP_UPSAMPLE)
     {
         b_pad_el = 0;
@@ -292,7 +295,7 @@ void abstract_layer( /// @todo add B (batch size) param?
             // if leaky relu, the weight pointer does not change with the group id
 
             ScalarT const *F_group;
-            if constexpr ((op_type == OP_LEAKY_RELU) || (op_type == OP_MUL))
+            if constexpr ((op_type == OP_LEAKY_RELU) || (op_type == OP_MUL) || (op_type == OP_EWISE_ADD_SCALAR))
             {
                 F_group = F_buf;
             }
@@ -319,7 +322,7 @@ void abstract_layer( /// @todo add B (batch size) param?
                 // Loop over input channel reduction
                 for (index_t i = 0; i < (F_c / _F_cb); i++)
                 {
-                    bool first = rewrite_output && (i == 0);
+                    bool first = (rewrite_output || op_type == OP_EWISE_ADD_SCALAR) && (i == 0);
 
                     ScalarT const *I_channel_block_input =
                         I_channel_block_output + i * (I_h * I_w * _F_cb * _G_b);
@@ -334,7 +337,6 @@ void abstract_layer( /// @todo add B (batch size) param?
                     ScalarT const *I_row_top = I_channel_block_input;
                     ScalarT const *F_row_top = F_channel_block_input + 0;
                     AccumT        *O_row_top = O_channel_block_input;  // ScalarT --> AccumT
-
                     kernel_top<ScalarT, AccumT,
                                _G_b, _K_b, _F_cb, _O_wb, _stride,
                                _UNROLL, op_type, op_class>(
@@ -351,7 +353,7 @@ void abstract_layer( /// @todo add B (batch size) param?
                                    O_w_full,
                                    O_w_left,
                                    r_pad_el,
-                                   pad_right,
+                                   r_valid,
                                    I_row_top,
                                    F_row_top,
                                    O_row_top);
@@ -462,7 +464,7 @@ void abstract_layer( /// @todo add B (batch size) param?
                                          I_w * _C_ib,
                                          O_w_left,
                                          r_pad_el,
-                                         pad_right,
+                                         r_valid,
                                          I_col_left,
                                          F_col_left,
                                          O_col_left,
@@ -494,7 +496,7 @@ void abstract_layer( /// @todo add B (batch size) param?
                                       F_w,
                                       I_w * _C_ib,
                                       b_pad_el,
-                                      pad_bottom,
+                                      b_valid,
                                       W_full_index,
                                       l_pad_el,
                                       pad_left,
@@ -502,7 +504,7 @@ void abstract_layer( /// @todo add B (batch size) param?
                                       O_w_full,
                                       O_w_left,
                                       r_pad_el,
-                                      pad_right,
+                                      r_valid,
                                       I_row_bot,
                                       F_row_bot,
                                       O_row_bot);

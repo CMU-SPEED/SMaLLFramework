@@ -737,7 +737,7 @@ private:
         std::cout << "Parsing Network Block\n";
 #endif
 
-        shape_type input_shape = {1U,0,0,0};
+        size_t C=0UL, H=0UL, W=0UL;
         std::string line;
         int last_pos = cfg_file.tellg();
 
@@ -763,9 +763,9 @@ private:
             std::string key = line.substr(0, line.find("="));
             std::string value = line.substr(line.find("=") + 1);
 
-            if      (key == "height")   { input_shape[HEIGHT] =std::stoi(value); }
-            else if (key == "width")    { input_shape[WIDTH]  =std::stoi(value); }
-            else if (key == "channels") { input_shape[CHANNEL]=std::stoi(value); }
+            if      (key == "height")   { H = std::stoi(value); }
+            else if (key == "width")    { W = std::stoi(value); }
+            else if (key == "channels") { C = std::stoi(value); }
 #ifdef PARSER_DEBUG_VERBOSE
             else
             {
@@ -774,12 +774,12 @@ private:
             }
 #endif
         }
-        if (input_shape[1] == 0 || input_shape[2] == 0 || input_shape[3] == 0)
+        if (C == 0 || H == 0 || W == 0)
         {
             throw std::invalid_argument(
                 "Darknet::parse_network ERROR: a zero input dimension.");
         }
-        return input_shape;
+        return shape_type({1UL, C, H, W});
     }
 
     //************************************************************************
@@ -871,7 +871,7 @@ private:
 #endif
                     prev_shape = this->m_input_shape;
                     max_buffer_size = std::max(max_buffer_size,
-                                                 compute_size(prev_shape));
+                                               prev_shape.size());
 
                     continue;
                 }
@@ -1017,7 +1017,7 @@ private:
 
                 prev_shape = prev->output_shape();
                 max_buffer_size = std::max(max_buffer_size,
-                                             compute_size(prev_shape));
+                                           prev_shape.size());
 
                 this->m_layers.push_back(prev);
 

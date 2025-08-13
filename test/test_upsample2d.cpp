@@ -118,6 +118,14 @@ void test_upsample2d_single_element(void)
     // }
 
     TEST_CHECK(passing);
+
+    small::UpSample2DLayer<BufferT> up_layer({1UL, C_i, H, W}, scale_factor);
+    small::Tensor<BufferT> in_tensor({1UL, C_i, H, W}, input_dc);
+    small::Tensor<BufferT> out_tensor(num_output_elts);
+    up_layer.compute_output({&in_tensor}, &out_tensor);
+
+    CHECK_UPSAMPLE(C_i, H, W, scale_factor, input_dc, out_tensor.buffer(), passing);
+    TEST_CHECK(passing);
 }
 
 //****************************************************************************
@@ -154,6 +162,14 @@ void test_upsample2d_single_tile(void)
     bool passing = true;
     CHECK_UPSAMPLE(C_i, H, W, scale_factor, input_dc, output_dc, passing)
     TEST_CHECK(passing);
+
+    small::UpSample2DLayer<BufferT> up_layer({1UL, C_i, H, W}, scale_factor);
+    small::Tensor<BufferT> in_tensor({1UL, C_i, H, W}, input_dc);
+    small::Tensor<BufferT> out_tensor(num_output_elts);
+    up_layer.compute_output({&in_tensor}, &out_tensor);
+
+    CHECK_UPSAMPLE(C_i, H, W, scale_factor, input_dc, out_tensor.buffer(), passing);
+    TEST_CHECK(passing);
 }
 
 //****************************************************************************
@@ -189,6 +205,14 @@ void test_upsample2d_large_tile(void)
 
     bool passing = true;
     CHECK_UPSAMPLE(C_i, H, W, scale_factor, input_dc, output_dc, passing)
+    TEST_CHECK(passing);
+
+    small::UpSample2DLayer<BufferT> up_layer({1UL, C_i, H, W}, scale_factor);
+    small::Tensor<BufferT> in_tensor({1UL, C_i, H, W}, input_dc);
+    small::Tensor<BufferT> out_tensor(num_output_elts);
+    up_layer.compute_output({&in_tensor}, &out_tensor);
+
+    CHECK_UPSAMPLE(C_i, H, W, scale_factor, input_dc, out_tensor.buffer(), passing);
     TEST_CHECK(passing);
 }
 //****************************************************************************
