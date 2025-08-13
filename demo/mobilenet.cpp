@@ -29,7 +29,12 @@
 #define RUNS 10
 #endif
 
+#ifndef TRIALS
+#define TRIALS 100
+#endif
+
 #define SUMMARY 1
+
 //****************************************************************************
 /* This is the runtime recording:
 
@@ -573,13 +578,16 @@ void inference()
     {
         my_timer.start();
 
+        for(int i = 0; i < TRIALS; i++)
+        {
         //auto &output_dc =
             model_inference(layer_num_total, layer_params, intermediate_dims,
                             filter_buf_ptrs,
                             input_dc, inter_0_dc, inter_1_dc);
+        }
 
         my_timer.stop();
-        auto diff = my_timer.elapsed();
+        auto diff = (1.0*my_timer.elapsed())/(1.0*TRIALS);
         min_small = std::min<double>(min_small, diff);
         small_timing.push_back(diff);
     }

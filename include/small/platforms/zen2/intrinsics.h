@@ -53,8 +53,11 @@ namespace float_detail
 // Initializations
 //****************************************************************************
 
+/// @todo REVIEW: referencing c12 so suppress warning because some test
+///       code does not use it.  Make sure this does not impede performance.
 #define FLOAT_DEF_TILE_C(_W_ob, _C_ob) \
-    __m256 a_reg, b0, b1, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12;
+    __m256 a_reg, b0, b1, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12; \
+    (void) c12;
 
 /// @todo VERIFY this. Args are _W_ob/_C_ob but does not use them
 #if FLOAT_SIMD_EPILOGUE == 1
@@ -102,6 +105,7 @@ namespace float_detail
 //****************************************************************************
 
 #define FLOAT_LOAD_TILE_C(O, _W_ob, C_ob)                  \
+    if constexpr(_W_ob == 6 && C_ob == 16)                               \
     {                                                      \
         c0 = _mm256_load_ps(O + (0 * C_ob));               \
         c1 = _mm256_load_ps(O + (0 * C_ob) + FLOAT_SIMD);  \
@@ -115,8 +119,22 @@ namespace float_detail
         c9 = _mm256_load_ps(O + (4 * C_ob) + FLOAT_SIMD);  \
         c10 = _mm256_load_ps(O + (5 * C_ob));              \
         c11 = _mm256_load_ps(O + (5 * C_ob) + FLOAT_SIMD); \
+    }\
+    else if constexpr(_W_ob == 12 && C_ob==8)\
+    {\
+        c0 = _mm256_load_ps(O + (0 * C_ob));               \
+        c1 = _mm256_load_ps(O + (1 * C_ob));               \
+        c2 = _mm256_load_ps(O + (2 * C_ob));               \
+        c3 = _mm256_load_ps(O + (3 * C_ob));               \
+        c4 = _mm256_load_ps(O + (4 * C_ob));               \
+        c5 = _mm256_load_ps(O + (5 * C_ob));              \
+        c6 = _mm256_load_ps(O + (6 * C_ob));               \
+        c7 = _mm256_load_ps(O + (7 * C_ob));               \
+        c8 = _mm256_load_ps(O + (8 * C_ob));               \
+        c9 = _mm256_load_ps(O + (9 * C_ob));               \
+        c10 = _mm256_load_ps(O + (10 * C_ob));              \
+        c11 = _mm256_load_ps(O + (11 * C_ob)); \
     }
-
 #if FLOAT_SIMD_EPILOGUE == 1
 #define FLOAT_LOAD_END_C(O, _W_ob, _C_ob)                 \
     for (uint32_t kk = 0; kk < _W_ob; kk++)               \
@@ -227,6 +245,7 @@ else
 #endif
 
 #define FLOAT_STORE_TILE_C(O, W_ob, C_ob)                  \
+    if constexpr(W_ob == 6 && C_ob == 16)                               \
     {                                                      \
         _mm256_store_ps(O + (0 * C_ob), c0);               \
         _mm256_store_ps(O + (0 * C_ob) + FLOAT_SIMD, c1);  \
@@ -240,6 +259,21 @@ else
         _mm256_store_ps(O + (4 * C_ob + FLOAT_SIMD), c9);  \
         _mm256_store_ps(O + (5 * C_ob), c10);              \
         _mm256_store_ps(O + (5 * C_ob + FLOAT_SIMD), c11); \
+    }\
+    else if constexpr( W_ob == 12 && C_ob == 8)\
+    {\
+        _mm256_store_ps(O + (0 * C_ob), c0);               \
+        _mm256_store_ps(O + (1 * C_ob), c1);               \
+        _mm256_store_ps(O + (2 * C_ob), c2);               \
+        _mm256_store_ps(O + (3 * C_ob), c3);               \
+        _mm256_store_ps(O + (4 * C_ob), c4);               \
+        _mm256_store_ps(O + (5 * C_ob), c5);              \
+        _mm256_store_ps(O + (6 * C_ob), c6);               \
+        _mm256_store_ps(O + (7 * C_ob), c7);               \
+        _mm256_store_ps(O + (8 * C_ob), c8);               \
+        _mm256_store_ps(O + (9 * C_ob), c9);               \
+        _mm256_store_ps(O + (10 * C_ob), c10);              \
+        _mm256_store_ps(O + (11 * C_ob), c11); \
     }
 
 #if FLOAT_SIMD_EPILOGUE == 1
@@ -298,6 +332,80 @@ else
 // Convolution Computation
 // (Strided GEMM)
 //****************************************************************************
+#if 1 /// @todo REVIEW from ewise_optimization branch
+#define FLOAT_CONV_TILE_C(step, a, b, W_ob, C_ob)       \
+if constexpr(W_ob == 6 && C_ob == 16)                    \
+{                                                        \
+    float const * a_ptr = a;                            \
+    b0 = _mm256_load_ps(b);                             \
+    b1 = _mm256_load_ps(b + FLOAT_SIMD);                \
+    a_reg = _mm256_broadcast_ss(a_ptr);                 \
+    a_ptr += step;                                      \
+    c0 = _mm256_fmadd_ps(a_reg, b0, c0);                \
+    c1 = _mm256_fmadd_ps(a_reg, b1, c1);                \
+    a_reg = _mm256_broadcast_ss(a_ptr);                 \
+    a_ptr += step;                                      \
+    c2 = _mm256_fmadd_ps(a_reg, b0, c2);                \
+    c3 = _mm256_fmadd_ps(a_reg, b1, c3);                \
+    a_reg = _mm256_broadcast_ss(a_ptr);                 \
+    a_ptr += step;                                      \
+    c4 = _mm256_fmadd_ps(a_reg, b0, c4);                \
+    c5 = _mm256_fmadd_ps(a_reg, b1, c5);                \
+    a_reg = _mm256_broadcast_ss(a_ptr);                 \
+    a_ptr += step;                                      \
+    c6 = _mm256_fmadd_ps(a_reg, b0, c6);                \
+    c7 = _mm256_fmadd_ps(a_reg, b1, c7);                \
+    a_reg = _mm256_broadcast_ss(a_ptr);                 \
+    a_ptr += step;                                      \
+    c8 = _mm256_fmadd_ps(a_reg, b0, c8);                \
+    c9 = _mm256_fmadd_ps(a_reg, b1, c9);                \
+    a_reg = _mm256_broadcast_ss(a_ptr);                 \
+    a_ptr += step;                                      \
+    c10 = _mm256_fmadd_ps(a_reg, b0, c10);              \
+    c11 = _mm256_fmadd_ps(a_reg, b1, c11);\
+}\
+else if constexpr(W_ob == 12 && C_ob == 8)\
+{\
+    float const * a_ptr = a;                            \
+    b0 = _mm256_load_ps(b);                             \
+    a_reg = _mm256_broadcast_ss(a_ptr);                 \
+    a_ptr += step;                                      \
+    b1 = _mm256_broadcast_ss(a_ptr);                \
+    a_ptr += step;                                      \
+    c0 = _mm256_fmadd_ps(a_reg, b0, c0);                \
+    c1 = _mm256_fmadd_ps(b1, b0, c1);                \
+    a_reg = _mm256_broadcast_ss(a_ptr);                 \
+    a_ptr += step;                                      \
+    b1 = _mm256_broadcast_ss(a_ptr);                \
+    a_ptr += step;                                      \
+    c2 = _mm256_fmadd_ps(a_reg, b0, c2);                \
+    c3 = _mm256_fmadd_ps(b1, b0, c3);                \
+    a_reg = _mm256_broadcast_ss(a_ptr);                 \
+    a_ptr += step;                                      \
+    b1 = _mm256_broadcast_ss(a_ptr);                \
+    a_ptr += step;                                      \
+    c4 = _mm256_fmadd_ps(a_reg, b0, c4);                \
+    c5 = _mm256_fmadd_ps(b1, b0, c5);                \
+    a_reg = _mm256_broadcast_ss(a_ptr);                 \
+    a_ptr += step;                                      \
+    b1 = _mm256_broadcast_ss(a_ptr);                \
+    a_ptr += step;                                      \
+    c6 = _mm256_fmadd_ps(a_reg, b0, c6);                \
+    c7 = _mm256_fmadd_ps(b1, b0, c7);                \
+    a_reg = _mm256_broadcast_ss(a_ptr);                 \
+    a_ptr += step;                                      \
+    b1 = _mm256_broadcast_ss(a_ptr);                \
+    a_ptr += step;                                      \
+    c8 = _mm256_fmadd_ps(a_reg, b0, c8);                \
+    c9 = _mm256_fmadd_ps(b1, b0, c9);                \
+    a_reg = _mm256_broadcast_ss(a_ptr);                 \
+    a_ptr += step;                                      \
+    b1 = _mm256_broadcast_ss(a_ptr);                \
+    a_ptr += step;                                      \
+    c10 = _mm256_fmadd_ps(a_reg, b0, c10);              \
+    c11 = _mm256_fmadd_ps(b1, b0, c11);\
+}
+#else
 
 #define FLOAT_CONV_TILE_C(step, a, b, W_ob, C_ob)       \
     float const * a_ptr = a;                            \
@@ -326,7 +434,8 @@ else
                                                         \
     c10 = _mm256_fmadd_ps(c12, b0, c10);                \
     c11 = _mm256_fmadd_ps(c12, b1, c11);
-    
+#endif
+
 /// @todo This implementation is different than REF
 #if FLOAT_SIMD_EPILOGUE == 1
 #define FLOAT_CONV_END_C(step, a, b, c_cur, _W_ob, C_ob) \
@@ -838,7 +947,7 @@ for (uint32_t kk = 0; kk < W_last; kk++)             \
     c3 = _mm256_add_ps(c3, c4);                      \
     c2 = _mm256_add_ps(c2, c3);                      \
     c1 = _mm256_add_ps(c1, c2);                      \
-    c0 = _mm256_add_ps(c0, c1);                      
+    c0 = _mm256_add_ps(c0, c1);
 
 #if FLOAT_SIMD_EPILOGUE == 1
 #define FLOAT_ACCUM_END_C(step, a, c_cur, W_last, C_ob) \
@@ -935,7 +1044,7 @@ for (uint32_t kk = 0; kk < W_last; kk++)             \
     c8 = _mm256_add_ps(b0, c8);            \
     c9 = _mm256_add_ps(b0, c9);            \
     c10 = _mm256_add_ps(b0, c10);          \
-    c11 = _mm256_add_ps(b0, c11);           
+    c11 = _mm256_add_ps(b0, c11);
 
 #if FLOAT_SIMD_EPILOGUE == 1
 #define FLOAT_EWISE_ADD_SCALAR_END_C(c_cur, scalar, W_last, C_ob) \
@@ -1453,7 +1562,7 @@ if constexpr(_C_ob == 1 && _C_ob != FLOAT_SIMD_EPILOGUE)\
     c10 = _mm256_div_ps(c10, b0);                 \
     b1 = _mm256_and_ps(c12, c11);                 \
     b1 = _mm256_add_ps(a_reg, b1);                \
-    c11 = _mm256_div_ps(c11, b1);                 
+    c11 = _mm256_div_ps(c11, b1);
 
 
 #define FLOAT_FUSED_SOFTSIGN_END_C(c_cur, W_last, C_ob) \
@@ -1494,7 +1603,7 @@ if constexpr(_C_ob == 1 && _C_ob != FLOAT_SIMD_EPILOGUE)\
     b1 = _mm256_load_ps(a + (5 * step));                                    \
     c10 = _mm256_andnot_ps(c12, b1);                                          \
     a_reg = _mm256_load_ps(a + (5 * step) + FLOAT_SIMD);                                    \
-    c11 = _mm256_andnot_ps(c12, a_reg);                                          
+    c11 = _mm256_andnot_ps(c12, a_reg);
 
 #define FLOAT_ABS_END_C(step, a, c_cur, W_last, C_ob) \
     c_tile_t *c_pixel = c_cur;                                  \
@@ -1537,7 +1646,7 @@ if constexpr(_C_ob == 1 && _C_ob != FLOAT_SIMD_EPILOGUE)\
     a_reg = _mm256_load_ps(a + (5 * step));                                    \
     c10 = _mm256_div_ps(a_reg, c10);                                         \
     c12 = _mm256_load_ps(a + (5 * step) + FLOAT_SIMD);                      \
-    c11 = _mm256_div_ps(c12, c11);                                          
+    c11 = _mm256_div_ps(c12, c11);
 
 #define FLOAT_FUSED_DIV_END_C(step, a, c_cur, W_last, C_ob) \
     c_tile_t *c_pixel = c_cur;                                  \

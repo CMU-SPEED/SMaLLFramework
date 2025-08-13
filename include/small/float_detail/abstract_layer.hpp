@@ -1,6 +1,6 @@
 //****************************************************************************
 // SMaLL, Software for Machine Learning Libraries
-// Copyright 2023 by The SMaLL Contributors, All Rights Reserved.
+// Copyright 2024 by The SMaLL Contributors, All Rights Reserved.
 // SPDX-License-Identifier: BSD-3-Clause
 //
 // For additional details (including references to third party source code and
@@ -275,8 +275,12 @@ void abstract_layer( /// @todo add B (batch size) param?
         channels_end = channels_start + channels_p_thread +
             (1) * (channel_tid < channels_left);
 
-        // for (index_t g = group_tid; g < G / _G_b; g += T_group)
+        // loops over output channels
+#if PARALLEL_DIST == ELEMENTAL
+        for (index_t g = group_tid; g < G / _G_b; g += T_group)
+#else
         for (index_t g = group_start; g < group_end; g++)
+#endif
         {
             ScalarT const *I_group;
             if constexpr (op_type == OP_UPSAMPLE && _stride == std::numeric_limits<dim_t>::max())

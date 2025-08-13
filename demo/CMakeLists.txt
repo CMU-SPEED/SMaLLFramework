@@ -18,11 +18,27 @@ include_directories ( ${CMAKE_SOURCE_DIR}/demo )
 
 # TODO: Remove these from the demo + check_interface doesn't work
 # # TODO: Fix name mismatch between source and object
-# add_library(check_interface.o STATIC check_interface_abstract.cpp)
-# target_compile_definitions(check_interface.o PRIVATE uarch=${CMAKE_UARCH})
+add_library(check_interface.o STATIC check_interface_abstract.cpp)
+target_compile_definitions(check_interface.o PRIVATE uarch=${CMAKE_UARCH})
 
+# Test out CONV for different kernels
+set(LAYER_NAMES CONV DW_CONV MAX_POOL)
+set(KERNEL_W_OPTIONS 5 4)
+foreach(layer_name ${LAYER_NAMES})
+foreach( kernel_w ${KERNEL_W_OPTIONS} )
+  set(demo_name "test_interface_${layer_name}_w${kernel_w}.exe")
+  message("Adding executable: ${demo_name}")
+  add_executable(${demo_name} layer_kernel_test_driver.cpp )
+  target_link_libraries(${demo_name} check_interface.o)
+  target_compile_definitions(${demo_name} PRIVATE LAYER=${layer_name})
+  target_compile_definitions(${demo_name} PRIVATE KERNEL_W_ob=${kernel_w})
+endforeach( kernel_w ${KERNEL_W_OPTIONS} )
+endforeach(layer_name ${LAYER_NAMES})
+
+
+#set(LAYER_NAMES RELU CONV PARTIAL_CONV POOL DW_CONV)
 set(LAYER_NAMES MAX_POOL DW_CONV)
-message("In demo/CMakeLists.txt: ${LAYER_NAMES}")
+message("In demo/CMakeLists.txt (conv_fused_): ${LAYER_NAMES}")
 
 foreach(layer_name ${LAYER_NAMES})
   set(demo_name "conv_fused_${layer_name}.exe")

@@ -64,17 +64,137 @@ void Conv2D(
               << ",img:" << input_height << "x" << input_width
               << ",I,F,O)\n";
 #endif
+    // Use a different kernel if the input width is not a multiple of FLOAT_W_ob
+    // if(((input_width % 5 == 0) || (input_width % 4 == 0)) && (input_width % FLOAT_W_ob != 0))
+    // {
+    //     if(input_width % 5 == 0)
+    //     {
+    //         config_Conv2D<5>(kernel_height, kernel_width, stride, t_pad, b_pad, l_pad, r_pad, output_channels, input_channels, input_height, input_width, input_buf, filter_buf, output_buf);
+    //     }
+    //     else if(input_width % 4 == 0)
+    //     {
+    //         config_Conv2D<4>(kernel_height, kernel_width, stride, t_pad, b_pad, l_pad, r_pad, output_channels, input_channels, input_height, input_width, input_buf, filter_buf, output_buf);
+
+    //     }
+    // }
+    // else{
+
+        /// @todo add an assert for invalid numbers of output channels
+        ///       (layer classes should be responsible for padding filters).
+
+        if (input_channels % FLOAT_C_ib == 0)
+        {
+            if (stride == 1)
+            {
+                float_detail::abstract_layer<
+                    FloatBuffer, 1, FLOAT_C_ob, FLOAT_C_ib,
+                    FLOAT_W_ob, 1, FLOAT_UNROLL, OP_CONV, 2, 1>(
+                    1,               // Output Channel Grouping
+                    output_channels, // Output Channels per group
+                    input_channels,
+                    input_height, input_width,
+                    kernel_height, kernel_width,
+                    t_pad, l_pad, r_pad, b_pad,
+                    &input_buf, &filter_buf, &output_buf);
+            }
+            else if (stride == 2)
+            {
+                float_detail::abstract_layer<
+                    FloatBuffer, 1, FLOAT_C_ob, FLOAT_C_ib,
+                    FLOAT_W_ob, 2, FLOAT_UNROLL, OP_CONV, 2, 1>(
+                    1,               // Output Channel Grouping
+                    output_channels, // Output Channels per group
+                    input_channels,
+                    input_height, input_width,
+                    kernel_height, kernel_width,
+                    t_pad, l_pad, r_pad, b_pad,
+                    &input_buf, &filter_buf, &output_buf);
+            }
+            else
+            {
+                throw std::invalid_argument(
+                    "Conv2D<float> ERROR: stride unsupported.");
+            }
+        }
+
+        // Specific case for the first layer
+        else if ((input_channels == 3) && (input_channels < FLOAT_C_ib))
+        {
+            if (stride == 1)
+            {
+                float_detail::abstract_layer<
+                    FloatBuffer, 1, FLOAT_C_ob, 3,
+                    FLOAT_W_ob, 1, 1, OP_CONV, 2, 1>(
+                    1,               // Output Channel Grouping
+                    output_channels, // Output Channels per group
+                    input_channels,
+                    input_height, input_width,
+                    kernel_height, kernel_width,
+                    t_pad, l_pad, r_pad, b_pad,
+                    &input_buf, &filter_buf, &output_buf);
+            }
+            else if (stride == 2)
+            {
+                float_detail::abstract_layer<
+                    FloatBuffer, 1, FLOAT_C_ob, 3,
+                    FLOAT_W_ob, 2, 1, OP_CONV, 2, 1>( // unroll?
+                    1,                                     // Output Channel Grouping
+                    output_channels,                       // Output Channels per group
+                    input_channels,
+                    input_height, input_width,
+                    kernel_height, kernel_width,
+                    t_pad, l_pad, r_pad, b_pad,
+                    &input_buf, &filter_buf, &output_buf);
+            }
+            else
+            {
+                throw std::invalid_argument(
+                    "Conv2D<float> ERROR: stride unsupported.");
+            }
+        }
+        else
+        {
+            throw std::invalid_argument(
+                "Conv2D<float> ERROR: in_channels unsupported.");
+        }
+
+    // }
+}
+
+
+//Test a different kernel
+
+template <int Kernel_W_ob>
+void config_Conv2D(
+    int kernel_height, int kernel_width, int stride,
+    uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
+    int output_channels, int input_channels,
+    int input_height, int input_width,
+    FloatBuffer const &input_buf,
+    FloatBuffer const &filter_buf,
+    FloatBuffer &output_buf)
+{
+#if defined(RECORD_CALLS)
+    std::cout << "Conv2D<float>(k:"
+              << kernel_height << "x" << kernel_width
+              << ",s:" << stride
+              << ",pad:[" << (int)t_pad << "," << (int)b_pad
+              << "," << (int)l_pad << "," << (int)r_pad
+              << "],ochans:" << output_channels
+              << ",ichans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I,F,O)\n";
+#endif
 
     /// @todo add an assert for invalid numbers of output channels
     ///       (layer classes should be responsible for padding filters).
-
     if (input_channels % FLOAT_C_ib == 0)
     {
         if (stride == 1)
         {
             float_detail::abstract_layer<
                 FloatBuffer, 1, FLOAT_C_ob, FLOAT_C_ib,
-                FLOAT_W_ob, 1, FLOAT_UNROLL, OP_CONV, 2, 1>(
+                Kernel_W_ob, 1, FLOAT_UNROLL, OP_CONV, 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -87,7 +207,7 @@ void Conv2D(
         {
             float_detail::abstract_layer<
                 FloatBuffer, 1, FLOAT_C_ob, FLOAT_C_ib,
-                FLOAT_W_ob, 2, FLOAT_UNROLL, OP_CONV, 2, 1>(
+                Kernel_W_ob, 2, FLOAT_UNROLL, OP_CONV, 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -110,7 +230,7 @@ void Conv2D(
         {
             float_detail::abstract_layer<
                 FloatBuffer, 1, FLOAT_C_ob, 3,
-                FLOAT_W_ob, 1, 1, OP_CONV, 2, 1>(
+                Kernel_W_ob, 1, 1, OP_CONV, 2, 1>(
                 1,               // Output Channel Grouping
                 output_channels, // Output Channels per group
                 input_channels,
@@ -123,9 +243,9 @@ void Conv2D(
         {
             float_detail::abstract_layer<
                 FloatBuffer, 1, FLOAT_C_ob, 3,
-                FLOAT_W_ob, 2, 1, OP_CONV, 2, 1>( // unroll?
-                1,                                     // Output Channel Grouping
-                output_channels,                       // Output Channels per group
+                Kernel_W_ob, 2, 1, OP_CONV, 2, 1>( // unroll?
+                1,                                // Output Channel Grouping
+                output_channels,                  // Output Channels per group
                 input_channels,
                 input_height, input_width,
                 kernel_height, kernel_width,
@@ -220,6 +340,7 @@ void Conv2D(
             "Conv2D<float> ERROR: in_channels unsupported.");
     }
 }
+
 #endif
 
 //============================================================================
@@ -834,6 +955,65 @@ void MaxPool2D(
     }
 }
 
+template <int Kernel_W_ob>
+void config_MaxPool2D(
+    int kernel_height, int kernel_width, int stride,
+    uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
+    int input_channels,
+    int input_height, int input_width,
+    FloatBuffer const &input_buf,
+    FloatBuffer &output_buf)
+{
+#if defined(RECORD_CALLS)
+    std::cout << "config_MaxPool2D<float>(k:"
+              << kernel_height << "x" << kernel_width
+              << ",s:" << stride
+              << ",pad:[" << (int)t_pad << "," << (int)b_pad
+              << "," << (int)l_pad << "," << (int)r_pad
+              << "],chans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I,O)\n";
+#endif
+
+    if (input_channels % FLOAT_C_ib == 0)
+    {
+        if (stride == 1)
+        {
+            float_detail::abstract_layer<
+                FloatBuffer, FLOAT_C_ob, 1, 1, Kernel_W_ob, 1, 1, OP_MAX_POOL, 1, 1>(
+                input_channels, // Output Channel Grouping
+                1,              // Output Channels per group
+                1,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, (FloatBuffer *)nullptr, &output_buf);
+        }
+        else if (stride == 2)
+        {
+            float_detail::abstract_layer<
+                FloatBuffer, FLOAT_C_ob, 1, 1, Kernel_W_ob, 2, 1, OP_MAX_POOL, 1, 1>(
+                input_channels, // Output Channel Grouping
+                1,              // Output Channels per group
+                1,
+                input_height, input_width,
+                kernel_height, kernel_width,
+                t_pad, l_pad, r_pad, b_pad,
+                &input_buf, (FloatBuffer *)nullptr, &output_buf);
+        }
+        else
+        {
+            throw std::invalid_argument(
+                "config_MaxPool2D<float> ERROR: stride unsupported.");
+        }
+    }
+    else
+    {
+        throw std::invalid_argument(
+            "config_MaxPool2D<float> ERROR: in_channels unsupported.");
+    }
+}
+
 #endif
 
 //============================================================================
@@ -1284,10 +1464,96 @@ void GroupConv2D(
               << ",img:" << input_height << "x" << input_width
               << ",I,F,O)\n";
 #endif
+    // if ((input_width % FLOAT_W_ob != 0) && ((input_width % 5 == 0)||(input_width % 4 == 0)))
+    // {
+    //     if(input_width % 5 == 0)
+    //     {
+    //         config_DepthwiseConv2D<5>(kernel_height, kernel_width, stride, t_pad, b_pad, l_pad, r_pad, input_channels, input_height, input_width, input_buf, filter_buf, output_buf);
+    //     }
+    //     else if (input_width % 4 == 0)
+    //     {
+    //         config_DepthwiseConv2D<4>(kernel_height, kernel_width, stride, t_pad, b_pad, l_pad, r_pad, input_channels, input_height, input_width, input_buf, filter_buf, output_buf);
+    //     }
+
+    // }
+    // else
+    // {
+        if (input_channels % FLOAT_C_ib == 0)
+        {
+            if (stride == 1)
+            {
+                float_detail::abstract_layer<
+                    FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_CONV, 1, 1>(
+                    input_channels, // Output Channel Grouping
+                    1,              // Output Channels per group
+                    1,
+                    input_height, input_width,
+                    kernel_height, kernel_width,
+                    t_pad, l_pad, r_pad, b_pad,
+                    &input_buf, &filter_buf, &output_buf);
+            }
+            else if (stride == 2)
+            {
+
+                float_detail::abstract_layer<
+                    FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, OP_CONV, 1, 1>(
+                    input_channels, // Output Channel Grouping
+                    1,              // Output Channels per group
+                    1,
+                    input_height, input_width,
+                    kernel_height, kernel_width,
+                    t_pad, l_pad, r_pad, b_pad,
+                    &input_buf, &filter_buf, &output_buf);
+            }
+            else
+            {
+                throw std::invalid_argument(
+                    "DepthwiseConv2D<float> ERROR: stride unsupported.");
+            }
+        }
+        else
+        {
+            throw std::invalid_argument(
+                "DepthwiseConv2D<float> ERROR: in_channels unsupported.");
+        }
+    // }
+}
+
+template <int Kernel_W_ob>
+void config_DepthwiseConv2D(
+    int kernel_height, int kernel_width, int stride,
+    uint8_t t_pad, uint8_t b_pad, uint8_t l_pad, uint8_t r_pad,
+    int input_channels,
+    int input_height, int input_width,
+    FloatBuffer const &input_buf,
+    FloatBuffer const &filter_buf,
+    FloatBuffer &output_buf)
+{
+#if defined(RECORD_CALLS)
+    std::cout << "DepthwiseConv2D<float>(k:"
+              << kernel_height << "x" << kernel_width
+              << ",s:" << stride
+              << ",pad:[" << (int)t_pad << "," << (int)b_pad
+              << "," << (int)l_pad << "," << (int)r_pad
+              << "],chans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I,F,O)\n";
+#endif
     if (input_channels % FLOAT_C_ib == 0)
     {
         if (stride == 1)
         {
+#if 1 /// @todo REVIEW from ewise_optimization branch
+            float_detail::abstract_layer<
+                FloatBuffer, FLOAT_C_ob, 1, 1, Kernel_W_ob, 1, 1, OP_CONV, 1, 1>(
+                    input_channels, // Output Channel Grouping
+                    1,              // Output Channels per group
+                    1,
+                    input_height, input_width,
+                    kernel_height, kernel_width,
+                    t_pad, l_pad, r_pad, b_pad,
+                    &input_buf, &filter_buf, &output_buf);
+#else
             float_detail::abstract_layer<
                 FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_CONV, 2, 1>(
                     output_groups,  // Output Channel Grouping
@@ -1297,10 +1563,21 @@ void GroupConv2D(
                     kernel_height, kernel_width,
                     t_pad, l_pad, r_pad, b_pad,
                     &input_buf, &filter_buf, &output_buf);
+#endif
         }
         else if (stride == 2)
         {
-
+#if 1 /// @todo REVIEW from ewise_optimization branch
+            float_detail::abstract_layer<
+                FloatBuffer, FLOAT_C_ob, 1, 1, Kernel_W_ob, 2, 1, OP_CONV, 1, 1>(
+                    input_channels, // Output Channel Grouping
+                    1,              // Output Channels per group
+                    1,
+                    input_height, input_width,
+                    kernel_height, kernel_width,
+                    t_pad, l_pad, r_pad, b_pad,
+                    &input_buf, &filter_buf, &output_buf);
+#else
             float_detail::abstract_layer<
                 FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, OP_CONV, 2, 1>(
                     output_groups,  // Output Channel Grouping
@@ -1310,6 +1587,7 @@ void GroupConv2D(
                     kernel_height, kernel_width,
                     t_pad, l_pad, r_pad, b_pad,
                     &input_buf, &filter_buf, &output_buf);
+#endif
         }
         else
         {
@@ -1323,6 +1601,9 @@ void GroupConv2D(
             "GroupConv2D<float> ERROR: in_channels unsupported.");
     }
 }
+
+
+
 #endif
 
 //============================================================================

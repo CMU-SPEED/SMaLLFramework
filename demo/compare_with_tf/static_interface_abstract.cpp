@@ -10,21 +10,24 @@
 // DM23-0126
 //****************************************************************************
 
-#pragma once
+#include <math.h>
+#include <stdint.h>
+#include <stdexcept>
+#include <type_traits>
 
-/// @todo move this include to intrinsics.hpp?
-#include <arm_neon.h>
+#include <params.h>
+#include <intrinsics.h>
 
-#define SMALL_HAS_FLOAT_SUPPORT  1
 
-#define FLOAT_W_ob   6
-#define FLOAT_C_ob   16
-#define FLOAT_SIMD   4
-#define FLOAT_UNROLL 4 //mst be a multiple of FLOAT_SIMD
-#define FLOAT_C_ib   FLOAT_C_ob
+#include <small/op_type.hpp>
 
-// not used for kernels, but used in throughput calculation.
-#define FLOAT_NUM_FMA 2
-#define FLOAT_NUM_MAX 1
-#define FLOAT_NUM_LOAD 2
-#define FLOAT_NUM_STORE 1
+
+// ================== Public API ====================
+#include <small/utils.hpp>
+#include <small/buffers.hpp>
+
+/// @todo Currently only works with FloatBuffer from reference
+
+//****************************************************************************
+
+//The functions needed to be generated will be added by a python script below
