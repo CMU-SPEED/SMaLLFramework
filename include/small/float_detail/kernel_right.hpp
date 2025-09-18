@@ -49,6 +49,7 @@ void inline kernel_right(
     ScalarT const *I,
     ScalarT const *F,
     AccumT *O, // ScalarT -> AccumT
+    AccumT *O_accum = NULL,
     dim_t H_lb = 0,
     dim_t H_ub = 0,
     ScalarT const *F_b = NULL,
@@ -115,7 +116,8 @@ void inline kernel_right(
                                  input_col_stride,
                                  F,
                                  I,
-                                 c_tile);
+                                 c_tile,
+                                 O_accum);
 
         if constexpr(op_type == OP_AVERAGE_POOL)
         {
@@ -139,6 +141,7 @@ void inline kernel_right(
 
     // right padding elements
     AccumT *O_ptr = O + O_w_left * _C_ob; // ScalarT --> AccumT
+    AccumT *O_accum_ptr = O_accum + O_w_left * _C_ob; // ScalarT --> AccumT
     ScalarT const *I_ptr = I + O_w_left * step;
     int W_i_valid = r_valid;
 
@@ -166,6 +169,7 @@ void inline kernel_right(
     }
 
     c_tile_t *c_cur = c_tile;
+    c_tile_t *d_cur = O_accum_ptr;
     // dim_t c_cur = 0;
     for (uint32_t k_p = 0; k_p < r_pad_el; k_p++)
     {
@@ -179,9 +183,11 @@ void inline kernel_right(
                                  input_col_stride,
                                  F,
                                  I_ptr,
-                                 c_cur);
+                                 c_cur,
+                                 d_cur);
 
         c_cur += (_K_b * _G_b) / (FLOAT_SIMD_EPILOGUE);
+        d_cur += (_K_b * _G_b) / (FLOAT_SIMD_EPILOGUE);
         W_i_valid -= _stride;
         I_ptr += _stride * _F_cb * _G_b;
     }

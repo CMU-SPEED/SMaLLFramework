@@ -1909,6 +1909,126 @@ void SoftMax(int channels,
 }
 #endif
 
+
+#if defined(SMALL_HAS_FLOAT_SUPPORT)
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<FloatBuffer, BufferT>::value, bool> = true>
+void CustomizedSoftMax(int channels,
+             int logical_channels,
+             int height, int width,
+             BufferT const &input_buf,
+             BufferT       &output_buf)
+{
+#if defined(RECORD_CALLS)
+    std::cout << "SoftMax<float>(chans/logical:" << channels
+              << "/" << logical_channels
+              << ",img:" << height << "x" << width
+              << ",I,O)\n";
+#endif
+    if ((logical_channels == 0) || (logical_channels > channels))
+    {
+        throw std::invalid_argument(
+            "SoftMax ERROR: invalid logical channels.");
+    }
+
+    if (channels % FLOAT_C_ib == 0)
+    {
+        // SoftMax is a
+        // - point wise exponent
+        // - global ADD (reduction) of the point-wise result
+        // - pointwise multiply (of inverse of sum to the point-wise result)
+
+        // global sum
+        FloatBuffer softmax_norm_buf(channels * height * width);
+        softmax_norm_buf[0] = 0.f;
+
+        // support "odd" logical channels
+        int rem_channels = logical_channels % FLOAT_C_ob;
+        int num_block_channels = logical_channels - rem_channels;
+
+        // std::cerr << "SOFTMAX: chans/logical_chans: "
+        //           << channels << "/" << logical_channels << std::endl;
+        // std::cerr << "SOFTMAX: block_channels/rem_channels: "
+        //           << num_block_channels << "/" << rem_channels << std::endl;
+
+        if (num_block_channels > 0)
+        {
+            float_detail::abstract_layer<
+                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1,
+                OP_SOFTMAX, 0, 1>(
+                    channels, // Output Channel Grouping
+                    1, // Output Channels per group
+                    1,
+                    height, width,
+                    1, 1,
+                    0, 0, 0, 0,
+                    &input_buf, (FloatBuffer *)nullptr, &softmax_norm_buf, &output_buf);
+        }
+
+        // if (rem_channels > 0)
+        // {
+        //     // compute input buffer offset
+        //     size_t offset = num_block_channels*height*width;
+        //     size_t end_idx = logical_channels*height*width;
+
+        //     // std::cerr << "SOFTMAX: rem range: [" << offset << ".."
+        //     //           << end_idx << ")" << std::endl;
+
+        //     for (size_t ix = offset; ix < end_idx; ++ix)
+        //     {
+        //         softmax_norm_buf[0] += output_buf[ix];
+        //     }
+        //     //FloatBuffer rem_buf(1);
+        //     //float_detail::abstract_layer<
+        //     //    FloatBuffer, 1, 1, rem_channels, FLOAT_W_ob, 1, FLOAT_C_ob,
+        //     //    OP_ADD, 3, 1>(
+        //     //        1, // Output Channel Grouping
+        //     //        1, // Output Channels per group
+        //     //        rem_channels,
+        //     //        height, width,
+        //     //        height, width,
+        //     //        0, 0, 0, 0,
+        //     //        &output_buf[offset],  <---- NOT CORRECT
+        //     //        (FloatBuffer *)nullptr, &rem_buf);
+        // }
+
+        // // std::cerr << "sum " << softmax_norm_buf[0] << std::endl;
+
+        // // take the inverse
+        // softmax_norm_buf.data()[0] = 1.0/softmax_norm_buf[0];
+
+        // // element-wise scaling
+        // float_detail::abstract_layer<
+        //     FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1,
+        //     OP_MUL, 0, 1>(
+        //         channels,       // Output Channel Grouping
+        //         1,              // Output Channels per group
+        //         1,
+        //         height, width,
+        //         1, 1,
+        //         0, 0, 0, 0,
+        //         &output_buf, &softmax_norm_buf, &output_buf);
+    }
+    else
+    {
+        throw std::invalid_argument(
+            "SoftMax<float> ERROR: in_channels unsupported.");
+    }
+}
+
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<FloatBuffer, BufferT>::value, bool> = true>
+void CustomizedSoftMax(int channels,
+             int height, int width,
+             BufferT const &input_buf,
+             BufferT       &output_buf)
+{
+    CustomizedSoftMax<BufferT>(channels, channels, height, width,
+                     input_buf, output_buf);
+}
+#endif
 //============================================================================
 // This CANNOT be an inplace operation; i.e., input_buf and output_buf CANNOT
 // refer to the same buffer
@@ -2656,6 +2776,162 @@ void Dense(int output_elements, int input_elements,
         1, 1,
         0, 0, 0, 0,
         &input_buf, &filter_buf, &output_buf);
+}
+#endif
+
+//===========================================================================
+#if defined(SMALL_HAS_FLOAT_SUPPORT)
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<FloatBuffer, BufferT>::value, bool> = true>
+void SlopeReLU(int input_channels,
+              int input_height, int input_width,
+              BufferT const &input_buf,
+              BufferT       &output_buf)
+{
+#if defined(RECORD_CALLS)
+    std::cout << "SlopeReLU<float>(chans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I,O)\n";
+#endif
+
+    if (input_channels % FLOAT_C_ib == 0)
+    {
+        float_detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_SLOPE_RELU, 0, 0>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            1, 1,
+            0, 0, 0, 0,
+            &input_buf, (FloatBuffer *)nullptr, &output_buf);
+    }
+    else
+    {
+        throw std::invalid_argument(
+            "SlopeReLU<float> ERROR: in_channels unsupported.");
+    }
+
+}
+#endif
+
+
+//===========================================================================
+#if defined(SMALL_HAS_FLOAT_SUPPORT)
+
+#pragma GCC push_options
+#pragma GCC optimize("O3","no-schedule-insns","no-schedule-insns2")
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<FloatBuffer, BufferT>::value, bool> = true>
+void FusedSlopeReLU(int input_channels,
+              int input_height, int input_width,
+              BufferT const &input_buf,
+              BufferT       &output_buf)
+{
+#if defined(RECORD_CALLS)
+    std::cout << "FusedSlopeReLU<float>(chans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I,O)\n";
+#endif
+
+    if (input_channels % FLOAT_C_ib == 0)
+    {
+        float_detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_FUSED_SLOPE_RELU, 0, 0>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            1, 1,
+            0, 0, 0, 0,
+            &input_buf, (FloatBuffer *)nullptr, &output_buf);
+    }
+    else
+    {
+        throw std::invalid_argument(
+            "FusedSlopeReLU<float> ERROR: in_channels unsupported.");
+    }
+
+}
+#pragma GCC pop_options
+#endif
+
+//===========================================================================
+#if defined(SMALL_HAS_FLOAT_SUPPORT)
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<FloatBuffer, BufferT>::value, bool> = true>
+void CeLU(int input_channels,
+              int input_height, int input_width,
+              BufferT const &input_buf,
+              BufferT const &alpha_buf,
+              BufferT       &output_buf)
+{
+#if defined(RECORD_CALLS)
+    std::cout << "CeLU<float>(chans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I,O)\n";
+#endif
+
+    if (input_channels % FLOAT_C_ib == 0)
+    {
+        float_detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_CELU, 0, 0>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            1, 1,
+            0, 0, 0, 0,
+            &input_buf, &alpha_buf, &output_buf);
+    }
+    else
+    {
+        throw std::invalid_argument(
+            "CeLU<float> ERROR: in_channels unsupported.");
+    }
+
+}
+#endif
+
+
+//===========================================================================
+#if defined(SMALL_HAS_FLOAT_SUPPORT)
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<FloatBuffer, BufferT>::value, bool> = true>
+void FusedCeLU(int input_channels,
+              int input_height, int input_width,
+              BufferT const &input_buf,
+              BufferT const &alpha_buf,
+              BufferT       &output_buf)
+{
+#if defined(RECORD_CALLS)
+    std::cout << "FusedCeLU<float>(chans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I,O)\n";
+#endif
+
+    if (input_channels % FLOAT_C_ib == 0)
+    {
+        float_detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_FUSED_CELU, 0, 0>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            1, 1,
+            0, 0, 0, 0,
+            &input_buf, &alpha_buf, &output_buf);
+    }
+    else
+    {
+        throw std::invalid_argument(
+            "FusedCeLU<float> ERROR: in_channels unsupported.");
+    }
+
 }
 #endif
 

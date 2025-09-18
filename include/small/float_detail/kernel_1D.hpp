@@ -103,7 +103,7 @@ void inline kernel_1D(
             /// @note using platform C_ob
             ScalarT const *b_cur = b + ii * _UNROLL * FLOAT_C_ob;
             ScalarT const *a_cur = a + ii * _UNROLL;
-            FLOAT_ABSTRACT_OP(step, op_type, op_class, a_cur, b_cur, _O_wb, _C_ob); /// @todo pass _C_ob
+            FLOAT_ABSTRACT_OP(step, op_type, op_class, a_cur, b_cur, O, _O_wb, _C_ob); /// @todo pass _C_ob
         }
     }
 

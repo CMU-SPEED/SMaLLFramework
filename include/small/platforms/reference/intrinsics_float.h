@@ -949,3 +949,72 @@ namespace small
         a_pixel += step;                                        \
         c_pixel += C_ob;                                        \
     }
+
+#define FLOAT_SLOPE_RELU_TILE_C(step, a, W_ob, C_ob) \
+    float *c_pixel = c_tile;                    \
+    float const *a_pixel = a;                   \
+    for (uint32_t kk = 0; kk < W_ob; kk++)      \
+    {                                           \
+        float *c_channel = c_pixel;             \
+        float const *a_channel = a_pixel;       \
+        for (uint32_t jj = 0; jj < C_ob; jj++)  \
+        {                                       \
+            *(c_channel) = (*(c_channel) > 0) ? *(c_channel) : *(a_channel) * *(c_channel);       \
+            std::cout << "c_channel: " << *c_channel << ", a_channel: " << *a_channel << std::endl; \
+            c_channel++;                        \
+            a_channel++;                        \
+        }                                       \
+        a_pixel += step;                        \
+        c_pixel += C_ob;                        \
+    }
+
+#define FLOAT_SLOPE_RELU_END_C(step, a, c_cur, W_last, C_ob) \
+    float const * a_in_channel = a;                     \
+    for(uint32_t u =0 ; u < _UNROLL; u++)               \
+    {                                                   \
+        float *c_pixel = c_cur;                         \
+        float const *a_pixel = a_in_channel;            \
+        for (uint32_t kk = 0; kk < W_last; kk++)        \
+        {                                               \
+            float *c_channel = c_pixel;                 \
+            float const *a_channel = a_pixel;           \
+            for (uint32_t jj = 0; jj < C_ob; jj++)      \
+            {                                           \
+                *(c_channel) = (*(c_channel) > 0) ? *(c_channel) : *(a_channel) * *(c_channel);           \
+                c_channel++;                            \
+                a_channel++;                            \
+            }                                           \
+            a_pixel += step;                            \
+            c_pixel += C_ob;                            \
+        }                                               \
+        a_in_channel++;                                 \
+    }
+
+
+#define FLOAT_CELU_TILE_C(b, W_ob, C_ob)                           \
+    float *c_pixel = c_tile;                                          \
+    float alpha = b[0];                                              \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                            \
+    {                                                                 \
+        float *c_channel = c_pixel;                                   \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                        \
+        {                                                             \
+            *(c_channel) = std::max(0.f, *(c_channel)) + std::min(0.f, alpha * (*(c_channel) / alpha - 1)); \
+            c_channel++;                                              \
+        }                                                             \
+        c_pixel += C_ob;                                              \
+    }
+
+#define FLOAT_CELU_END_C(b, c_cur, W_last, C_ob)                   \
+    float *c_pixel = c_cur;                                           \
+    float alpha = b[0];                                              \
+    for (uint32_t kk = 0; kk < W_last; kk++)                          \
+    {                                                                 \
+        float *c_channel = c_pixel;                                   \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                        \
+        {                                                             \
+            *(c_channel) = std::max(0.f, *(c_channel)) + std::min(0.f, alpha * (*(c_channel) / alpha - 1)); \
+            c_channel++;                                              \
+        }                                                             \
+        c_pixel += C_ob;                                              \
+    }

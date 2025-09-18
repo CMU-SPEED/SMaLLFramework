@@ -46,6 +46,7 @@ void inline kernel_pad(
     ScalarT const *I,
     ScalarT const *F,
     AccumT *O, // ScalarT -> AccumT
+    AccumT *O_accum = NULL, // for fused softmax
     dim_t H_lb = 0,
     dim_t H_ub = 0,
     dim_t W_lb = 0,
@@ -100,7 +101,7 @@ void inline kernel_pad(
                 /// @note using platform C_ob
                 ScalarT const *b_cur = b + ii * _UNROLL * FLOAT_C_ob;
                 ScalarT const *a_cur = a + ii * _UNROLL;
-                FLOAT_ABSTRACT_OP(step, op_type, op_class, a_cur, b_cur, _O_wb, _C_ob);
+                FLOAT_ABSTRACT_OP(step, op_type, op_class, a_cur, b_cur, O, O_accum, _O_wb, _C_ob);
             }
         }
     }

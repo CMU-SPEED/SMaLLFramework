@@ -84,7 +84,7 @@ void fused_abstract_layer_1D(
     ScalarT const *I_buf = I->data(); //__restrict__ ?
 
     ScalarT const *F_buf = nullptr;
-    if constexpr (op_type == OP_CONV || op_type == OP_LEAKY_RELU || op_type == OP_MUL) // if (F != nullptr)
+    if constexpr (op_type == OP_CONV || op_type == OP_LEAKY_RELU || op_type == OP_MUL || op_type == OP_CELU) // if (F != nullptr)
     {
         F_buf = F->data();
     }
