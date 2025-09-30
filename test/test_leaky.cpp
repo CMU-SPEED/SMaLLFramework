@@ -32,7 +32,8 @@ std::string const data_dir("../test/regression_data");
 template <class BufferT>
 BufferT create_leaky_data(size_t num_elements)
 {
-    std::default_random_engine generator;
+    auto seed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
+    std::default_random_engine generator(seed);
     std::normal_distribution<float> distribution{0.f, 1.f};  // what distribution is Torch::Tensor::randn?
 
     BufferT input_dc(num_elements);
@@ -55,7 +56,7 @@ void test_leaky_single_element(void)
     size_t const C_i = 16;
     size_t const H = 1;
     size_t const W = 1;
-    int const negative_slope = 0.01;
+    float const negative_slope = 0.01;
     //size_t const kernel_size = 1;
     //size_t const stride = 1;
     //char const type = 'v';
@@ -87,8 +88,8 @@ void test_leaky_single_element(void)
         TEST_CHECK((input_dc[ix] >= 0) ?
                    (output_dc[ix] == input_dc[ix]) :
                    (output_dc[ix] == negative_slope*input_dc[ix]));
-        //std::cout << ix << ": leaky(" << (int)input_dc[ix] << ")-->"
-        //          << (int)output_dc[ix] << std::endl;
+        // std::cout << ix << ": leaky(" << input_dc[ix] << ")-->"
+        //          << output_dc[ix] << std::endl;
     }
 }
 
@@ -98,7 +99,7 @@ void test_leaky_single_tile(void)
     size_t const C_i = 16;
     size_t const H = 1;
     size_t const W = 6;
-    int const negative_slope = 0.01;
+    float const negative_slope = 0.01;
     //size_t const kernel_size = 1;
     //size_t const stride = 1;
     //char const type = 'v';
@@ -512,11 +513,12 @@ void measure_leaky_performance(void)
 //****************************************************************************
 //****************************************************************************
 TEST_LIST = {
+    // {"leaky_correctness", small::float_detail::test_correctness_FLOAT_FUSED_COND_SCALE_TILE},
     {"leaky_single_element",  test_leaky_single_element},
     {"leaky_single_tile",  test_leaky_single_tile},
     {"leaky_large_tile",  test_leaky_large_tile},
     // {"leaky_regression_data", test_leaky_regression_data},
     // {"leaky_layer_regression_data", test_leaky_layer_regression_data},
-    // {"leaky_performance", measure_leaky_performance},
+    {"leaky_performance", measure_leaky_performance},
     {NULL, NULL}
 };

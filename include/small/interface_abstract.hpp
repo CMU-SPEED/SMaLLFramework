@@ -15,6 +15,7 @@
 #include <math.h>
 #include <stdint.h>
 #include <stdexcept>
+#include <algorithm>
 #include <type_traits>
 
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
@@ -1654,7 +1655,7 @@ template <class BufferT,
 void LeakyReLUActivation(int input_channels,
                          int input_height, int input_width,
                          BufferT const &input_buf,
-                         BufferT const &filter_buf,
+                         BufferT const &filter_buf,  // @todo quantized?
                          BufferT &output_buf)
 {
 #if defined(RECORD_CALLS)
@@ -1771,28 +1772,514 @@ void Dropout(int input_channels,
 //****************************************************************************
 
 //============================================================================
+// This can be an in-place operation; i.e. input_buf and output_buf CAN
+// refer to the same buffer
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
 template <class BufferT,
           std::enable_if_t<
               std::is_same<FloatBuffer, BufferT>::value, bool> = true>
-void SoftMax(int input_channels,
-                          int input_height, int input_width,
-                          BufferT const &input_buf,
-                          BufferT       &output_buf)
+void SoftMax(int channels,
+             int logical_channels,
+             int height, int width,
+             BufferT const &input_buf,
+             BufferT       &output_buf)
 {
 #if defined(RECORD_CALLS)
-    std::cout << "SoftMax<float>(chans:" << input_channels
-                << ",img:" << input_height << "x" << input_width
-                << ",I,O)\n";
+    std::cout << "SoftMax<float>(chans/logical:" << channels
+              << "/" << logical_channels
+              << ",img:" << height << "x" << width
+              << ",I,O)\n";
+#endif
+    if ((logical_channels == 0) || (logical_channels > channels))
+    {
+        throw std::invalid_argument(
+            "SoftMax ERROR: invalid logical channels.");
+    }
+
+    if (channels % FLOAT_C_ib == 0)
+    {
+        // SoftMax is a
+        // - point wise exponent
+        // - global ADD (reduction) of the point-wise result
+        // - pointwise multiply (of inverse of sum to the point-wise result)
+
+        // point-wise exponent
+        float_detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1,
+            OP_EXP, 0, 1>(
+                channels, // Output Channel Grouping
+                1,              // Output Channels per group
+                1,
+                height, width,
+                1, 1,
+                0, 0, 0, 0,
+                &input_buf, (FloatBuffer *)nullptr, &output_buf);
+
+        // global sum
+        FloatBuffer softmax_norm_buf(1);
+        softmax_norm_buf[0] = 0.f;
+
+        // support "odd" logical channels
+        int rem_channels = logical_channels % FLOAT_C_ob;
+        int num_block_channels = logical_channels - rem_channels;
+
+        // std::cerr << "SOFTMAX: chans/logical_chans: "
+        //           << channels << "/" << logical_channels << std::endl;
+        // std::cerr << "SOFTMAX: block_channels/rem_channels: "
+        //           << num_block_channels << "/" << rem_channels << std::endl;
+
+        if (num_block_channels > 0)
+        {
+            float_detail::abstract_layer<
+                FloatBuffer, 1, 1, FLOAT_C_ob, FLOAT_W_ob, 1, FLOAT_C_ob,
+                OP_ADD, 3, 1>(
+                    1, // Output Channel Grouping
+                    1, // Output Channels per group
+                    num_block_channels,
+                    height, width,
+                    height, width,
+                    0, 0, 0, 0,
+                    &output_buf, (FloatBuffer *)nullptr, &softmax_norm_buf);
+        }
+
+        if (rem_channels > 0)
+        {
+            // compute input buffer offset
+            size_t offset = num_block_channels*height*width;
+            size_t end_idx = logical_channels*height*width;
+
+            // std::cerr << "SOFTMAX: rem range: [" << offset << ".."
+            //           << end_idx << ")" << std::endl;
+
+            for (size_t ix = offset; ix < end_idx; ++ix)
+            {
+                softmax_norm_buf[0] += output_buf[ix];
+            }
+            //FloatBuffer rem_buf(1);
+            //float_detail::abstract_layer<
+            //    FloatBuffer, 1, 1, rem_channels, FLOAT_W_ob, 1, FLOAT_C_ob,
+            //    OP_ADD, 3, 1>(
+            //        1, // Output Channel Grouping
+            //        1, // Output Channels per group
+            //        rem_channels,
+            //        height, width,
+            //        height, width,
+            //        0, 0, 0, 0,
+            //        &output_buf[offset],  <---- NOT CORRECT
+            //        (FloatBuffer *)nullptr, &rem_buf);
+        }
+
+        // std::cerr << "sum " << softmax_norm_buf[0] << std::endl;
+
+        // take the inverse
+        softmax_norm_buf.data()[0] = 1.0/softmax_norm_buf[0];
+
+        // element-wise scaling
+        float_detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1,
+            OP_MUL, 0, 1>(
+                channels,       // Output Channel Grouping
+                1,              // Output Channels per group
+                1,
+                height, width,
+                1, 1,
+                0, 0, 0, 0,
+                &output_buf, &softmax_norm_buf, &output_buf);
+    }
+    else
+    {
+        throw std::invalid_argument(
+            "SoftMax<float> ERROR: in_channels unsupported.");
+    }
+}
+
+//****************************************************************************
+// For calls where logical_channels and storage channels are the same
+// For backward compatibility
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<FloatBuffer, BufferT>::value, bool> = true>
+void SoftMax(int channels,
+             int height, int width,
+             BufferT const &input_buf,
+             BufferT       &output_buf)
+{
+    SoftMax<BufferT>(channels, channels, height, width,
+                     input_buf, output_buf);
+}
+#endif
+
+//============================================================================
+// This CANNOT be an inplace operation; i.e., input_buf and output_buf CANNOT
+// refer to the same buffer
+#if defined(SMALL_HAS_FLOAT_SUPPORT)
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<FloatBuffer, BufferT>::value, bool> = true>
+void LogSoftMax(int channels,
+                int logical_channels,
+                int height, int width,
+                BufferT const &input_buf,
+                BufferT       &output_buf)
+{
+    /// @todo Assert that input_buf and output_buf do not refer to same memory
+#if defined(RECORD_CALLS)
+    std::cout << "LogSoftMax<float>(chans/logical:" << channels
+              << "/" << logical_channels
+              << ",img:" << height << "x" << width
+              << ",I,O)\n";
+#endif
+    if ((logical_channels == 0) || (logical_channels > channels))
+    {
+        throw std::invalid_argument(
+            "LogSoftMax ERROR: invalid logical channels.");
+    }
+
+    if (channels % FLOAT_C_ob == 0)
+    {
+        // LogSoftMax is a
+        // - point-wise ADD of input to a
+        // - global ADD of a
+        // - point-wise exp
+
+        // for (size_t ix = 0; ix < channels*width*height; ++ix)
+        // {
+        //     std::cerr << "pre " << ix << ": " << input_buf[ix] << std::endl;
+        // }
+
+        // point-wise exponent
+        float_detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1,
+            OP_EXP, 0, 1>(
+                channels, // Output Channel Grouping
+                1,              // Output Channels per group
+                1,
+                height, width,
+                1, 1,
+                0, 0, 0, 0,
+                &input_buf, (FloatBuffer *)nullptr, &output_buf);
+
+        // for (size_t ix = 0; ix < channels*width*height; ++ix)
+        // {
+        //     std::cerr << "exp " << ix << ": " << output_buf[ix] << std::endl;
+        // }
+
+        // global sum
+        FloatBuffer softmax_norm_buf(1);
+        softmax_norm_buf[0] = 0.f;
+
+        // support "odd" logical channels
+        int rem_channels = logical_channels % FLOAT_C_ob;
+        int num_block_channels = logical_channels - rem_channels;
+
+        // std::cerr << "LOGSOFTMAX: chans/logical_chans: "
+        //           << channels << "/" << logical_channels << std::endl;
+        // std::cerr << "LOGSOFTMAX: block_channels/rem_channels: "
+        //           << num_block_channels << "/" << rem_channels << std::endl;
+
+        if (num_block_channels > 0)
+        {
+            float_detail::abstract_layer<
+                FloatBuffer, 1, 1, FLOAT_C_ob, FLOAT_W_ob, 1, FLOAT_C_ob,
+                OP_ADD, 3, 1>(
+                    1, // Output Channel Grouping
+                    1, // Output Channels per group
+                    num_block_channels,
+                    height, width,
+                    height, width,
+                    0, 0, 0, 0,
+                    &output_buf, (FloatBuffer *)nullptr, &softmax_norm_buf);
+        }
+
+        if (rem_channels > 0)
+        {
+            // compute input buffer offset
+            size_t offset = num_block_channels*height*width;
+            size_t end_idx = logical_channels*height*width;
+
+            // std::cerr << "LOGSOFTMAX: rem range: [" << offset << ".."
+            //           << end_idx << ")" << std::endl;
+
+            for (size_t ix = offset; ix < end_idx; ++ix)
+            {
+                softmax_norm_buf[0] += output_buf[ix];
+            }
+            //FloatBuffer rem_buf(1);
+            //float_detail::abstract_layer<
+            //    FloatBuffer, 1, 1, rem_channels, FLOAT_W_ob, 1, FLOAT_C_ob,
+            //    OP_ADD, 3, 1>(
+            //        1, // Output Channel Grouping
+            //        1, // Output Channels per group
+            //        rem_channels,
+            //        height, width,
+            //        height, width,
+            //        0, 0, 0, 0,
+            //        &output_buf[offset],  <---- NOT CORRECT
+            //        (FloatBuffer *)nullptr, &rem_buf);
+        }
+
+        // std::cerr << "sum " << softmax_norm_buf[0] << std::endl;
+
+        // take the log(1.0/sum) = -log(sum)
+        softmax_norm_buf[0] = -std::log(softmax_norm_buf[0]);
+        // std::cerr << "-log " << softmax_norm_buf[0] << std::endl;
+
+        // element-wise shift (addition)
+        float_detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1,
+            OP_EWISE_ADD_SCALAR, 0, 0>(
+                channels,       // Output Channel Grouping
+                1,              // Output Channels per group
+                1,
+                height, width,
+                1, 1,
+                0, 0, 0, 0,
+                &input_buf, &softmax_norm_buf, &output_buf);
+
+        // for (size_t ix = 0; ix < channels*width*height; ++ix)
+        // {
+        //     std::cerr << "add " << ix << ": " << output_buf[ix] << std::endl;
+        // }
+    }
+    else
+    {
+        throw std::invalid_argument(
+            "LogSoftMax<float> ERROR: number of channels unsupported.");
+    }
+}
+
+//****************************************************************************
+// For calls where logical_channels and storage channels are the same
+// For backward compatibility
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<FloatBuffer, BufferT>::value, bool> = true>
+void LogSoftMax(int channels,
+                int height, int width,
+                BufferT const &input_buf,
+                BufferT       &output_buf)
+{
+    LogSoftMax<BufferT>(channels, channels, height, width,
+                        input_buf, output_buf);
+}
+#endif
+
+//============================================================================
+// This CANNOT be an inplace operation; i.e., input_buf and output_buf CANNOT
+// refer to the same buffer
+//
+// An alternate implementation that computes the max value first
+#if defined(SMALL_HAS_FLOAT_SUPPORT)
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<FloatBuffer, BufferT>::value, bool> = true>
+void LogSoftMax2(int channels,
+                 int logical_channels,
+                 int height, int width,
+                 BufferT const &input_buf,
+                 BufferT       &output_buf)
+{
+    /// @todo Assert that input_buf and output_buf do not refer to same memory
+#if defined(RECORD_CALLS)
+    std::cout << "LogSoftMax<float>(chans/logical:" << channels
+              << "/" << logical_channels
+              << ",img:" << height << "x" << width
+              << ",I,O)\n";
+#endif
+    if ((logical_channels == 0) || (logical_channels > channels))
+    {
+        throw std::invalid_argument(
+            "LogSoftMax ERROR: invalid logical channels.");
+    }
+
+    if (channels % FLOAT_C_ob == 0)
+    {
+        // def log_softmax(x):
+        //    c = x.max()
+        //    logsumexp = np.log(np.exp(x - c).sum())
+        //    return x - c - logsumexp
+
+        // Step 1: compute the max value
+        /// @todo replace with an abstract_layer call to comput global max
+        float max_val{
+            *std::max_element(&input_buf[0],
+                              &input_buf[logical_channels*height*width])};
+        // std::cerr << "max: " << max_val << std::endl;
+
+        // Step 2: broadcast/subtract max from all input values
+        /// @todo replace with an abstract_layer call adding -max to all elts.
+        for (ssize_t ix = 0; ix < channels*width*height; ++ix)
+        {
+            output_buf[ix] = input_buf[ix] - max_val;
+            // std::cerr << "pre-max " << ix << ": " << output_buf[ix] << std::endl;
+        }
+
+        // Step 3: point-wise exponent of output_buf, store in output buf
+        float_detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1,
+            OP_EXP, 0, 1>(
+                channels, // Output Channel Grouping
+                1,              // Output Channels per group
+                1,
+                height, width,
+                1, 1,
+                0, 0, 0, 0,
+                &output_buf, (FloatBuffer *)nullptr, &output_buf);
+
+        // for (size_t ix = 0; ix < channels*width*height; ++ix)
+        // {
+        //     std::cerr << "exp " << ix << ": " << output_buf[ix] << std::endl;
+        // }
+
+        // global sum (reduction)
+        FloatBuffer softmax_norm_buf(1);
+
+        // support "odd" logical channels
+        int rem_channels = logical_channels % FLOAT_C_ob;
+        int num_block_channels = logical_channels - rem_channels;
+
+        // std::cerr << "LOGSOFTMAX: chans/logical_chans: "
+        //           << channels << "/" << logical_channels << std::endl;
+        // std::cerr << "LOGSOFTMAX: block_channels/rem_channels: "
+        //           << num_block_channels << "/" << rem_channels << std::endl;
+
+        if (num_block_channels > 0)
+        {
+            float_detail::abstract_layer<
+                FloatBuffer, 1, 1, FLOAT_C_ob, FLOAT_W_ob, 1, FLOAT_C_ob,
+                OP_ADD, 3, 1>(
+                    1, // Output Channel Grouping
+                    1, // Output Channels per group
+                    num_block_channels,
+                    height, width,
+                    height, width,
+                    0, 0, 0, 0,
+                    &output_buf, (FloatBuffer *)nullptr, &softmax_norm_buf);
+        }
+
+        if (rem_channels > 0)
+        {
+            // compute input buffer offset
+            size_t offset = num_block_channels*height*width;
+            size_t end_idx = logical_channels*height*width;
+
+            // std::cerr << "LOGSOFTMAX: rem range: [" << offset << ".."
+            //           << end_idx << ")" << std::endl;
+
+            for (size_t ix = offset; ix < end_idx; ++ix)
+            {
+                softmax_norm_buf[0] += output_buf[ix];
+            }
+            //FloatBuffer rem_buf(1);
+            //float_detail::abstract_layer<
+            //    FloatBuffer, 1, 1, rem_channels, FLOAT_W_ob, 1, FLOAT_C_ob,
+            //    OP_ADD, 3, 1>(
+            //        1, // Output Channel Grouping
+            //        1, // Output Channels per group
+            //        rem_channels,
+            //        height, width,
+            //        height, width,
+            //        0, 0, 0, 0,
+            //        &output_buf[offset],  <---- NOT CORRECT
+            //        (FloatBuffer *)nullptr, &rem_buf);
+        }
+
+        // std::cerr << "sum " << softmax_norm_buf[0] << std::endl;
+
+        // take the log(1.0/sum) = -log(sum)
+        if (softmax_norm_buf[0] != 0.f)
+        {
+            softmax_norm_buf[0] = -max_val - std::log(softmax_norm_buf[0]);
+        }
+        else
+        {
+            throw std::invalid_argument(
+                "LogSoftMax<float> ERROR: cannot compute log(0.0).");
+        }
+        // std::cerr << "-max-log " << softmax_norm_buf[0] << std::endl;
+
+        // element-wise shift (addition)
+        float_detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1,
+            OP_EWISE_ADD_SCALAR, 0, 0>(
+                channels,       // Output Channel Grouping
+                1,              // Output Channels per group
+                1,
+                height, width,
+                1, 1,
+                0, 0, 0, 0,
+                &input_buf, &softmax_norm_buf, &output_buf);
+
+        // for (size_t ix = 0; ix < channels*width*height; ++ix)
+        // {
+        //     std::cerr << "add " << ix << ": " << output_buf[ix] << std::endl;
+        // }
+    }
+    else
+    {
+        throw std::invalid_argument(
+            "LogSoftMax<float> ERROR: number of channels unsupported.");
+    }
+}
+#endif
+
+//===========================================================================
+#if defined(SMALL_HAS_FLOAT_SUPPORT)
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<FloatBuffer, BufferT>::value, bool> = true>
+void SoftSign(int input_channels,
+              int input_height, int input_width,
+              BufferT const &input_buf,
+              BufferT       &output_buf)
+{
+#if defined(RECORD_CALLS)
+    std::cout << "SoftSign<float>(chans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I,O)\n";
 #endif
 
     if (input_channels % FLOAT_C_ib == 0)
     {
-        // SoftMax is a point wise exponent + global ADD + pointwise multiply
-
-        // point-wise exponent
         float_detail::abstract_layer<
-            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_EXP, 0, 1>(
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_SOFTSIGN, 0, 1>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            1, 1,
+            0, 0, 0, 0,
+            &input_buf, (FloatBuffer *)nullptr, &output_buf);
+    }
+    else
+    {
+        throw std::invalid_argument(
+            "SoftSign<float> ERROR: in_channels unsupported.");
+    }
+
+}
+#endif
+
+//===========================================================================
+#if defined(SMALL_HAS_FLOAT_SUPPORT)
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<FloatBuffer, BufferT>::value, bool> = true>
+void SoftSign_3Pass(int input_channels,
+              int input_height, int input_width,
+              BufferT const &input_buf,
+              BufferT       &output_buf)
+{
+#if defined(RECORD_CALLS)
+    std::cout << "SoftSign<float>(chans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I,O)\n";
+#endif
+
+    if (input_channels % FLOAT_C_ib == 0)
+    {
+        float_detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_ABS, 0, 1>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
@@ -1801,35 +2288,34 @@ void SoftMax(int input_channels,
             0, 0, 0, 0,
             &input_buf, (FloatBuffer *)nullptr, &output_buf);
 
-        // global sum
-        FloatBuffer softmax_norm_buf(1);
+        FloatBuffer scalar_buf(1);
+        scalar_buf.data()[0] = 1.0f;
         float_detail::abstract_layer<
-            FloatBuffer, 1, 1, FLOAT_C_ob, FLOAT_W_ob, 1, FLOAT_C_ob, OP_ADD, 3, 1>(
-            1, // Output Channel Grouping
-            1, // Output Channels per group
-            input_channels,
-            input_height, input_width,
-            input_height, input_width,
-            0, 0, 0, 0,
-            &output_buf, (FloatBuffer *)nullptr, &softmax_norm_buf);
-
-        // element-wise scaling
-        softmax_norm_buf.data()[0] = 1.0/softmax_norm_buf.data()[0];
-        float_detail::abstract_layer<
-            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_MUL, 0, 1>(
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_EWISE_ADD_SCALAR, 0, 0>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
             input_height, input_width,
             1, 1,
             0, 0, 0, 0,
-            &output_buf, &softmax_norm_buf, &output_buf);
+            &output_buf, &scalar_buf, &output_buf);
+
+        float_detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_DIV, 0, 0>(
+            input_channels, // Output Channel Grouping
+            1,              // Output Channels per group
+            1,
+            input_height, input_width,
+            1, 1,
+            0, 0, 0, 0,
+            &input_buf, (FloatBuffer *)nullptr, &output_buf);
     }
     else
     {
         throw std::invalid_argument(
-            "SoftMax<float> ERROR: in_channels unsupported.");
+            "SoftSign<float> ERROR: in_channels unsupported.");
     }
+
 }
 #endif
 
@@ -1843,10 +2329,10 @@ template <class BufferT,
           std::enable_if_t<
               std::is_same<FloatBuffer, BufferT>::value, bool> = true>
 void UpSample2D(int scale_factor,
-                             int input_channels,
-                             int input_height, int input_width,
-                             BufferT const &input_buf,
-                             BufferT &output_buf)
+                int input_channels,
+                int input_height, int input_width,
+                BufferT const &input_buf,
+                BufferT &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "UpSample2D<float>(chans:" << input_channels
@@ -1876,13 +2362,13 @@ void UpSample2D(int scale_factor,
         else
         {
             throw std::invalid_argument(
-                "Upsample<float> ERROR: in_channels unsupported.");
+                "UpSample2D<float> ERROR: in_channels unsupported.");
         }
     }
     else
     {
         throw std::invalid_argument(
-            "Upsample<float> ERROR: scale factor unsupported (only 1 or 2).");
+            "UpSample2D<float> ERROR: scale factor unsupported (only 1 or 2).");
     }
 }
 #endif
@@ -1928,13 +2414,13 @@ void UpSample2D(int scale_factor,
         else
         {
         throw std::invalid_argument(
-            "Upsample<quint8> ERROR: in_channels unsupported.");
+            "UpSample2D<quint8> ERROR: in_channels unsupported.");
         }
     }
     else
     {
         throw std::invalid_argument(
-            "Upsample<quint8> ERROR: scale factor unsupported (only 1 or 2).");
+            "UpSample2D<quint8> ERROR: scale factor unsupported (only 1 or 2).");
     }
 }
 #endif
@@ -1948,8 +2434,8 @@ template <class BufferT,
           std::enable_if_t<
               std::is_same<FloatBuffer, BufferT>::value, bool> = true>
 void Accum(int input_channels,
-                        int input_height, int input_width,
-                        BufferT const &input_buf,
+           int input_height, int input_width,
+           BufferT const &input_buf,
            BufferT &output_buf)
 {
 #if defined(RECORD_CALLS)
@@ -1990,9 +2476,9 @@ template <class BufferT,
           std::enable_if_t<
               std::is_same<FloatBuffer, BufferT>::value, bool> = true>
 void Bias(int num_channels,
-                       int output_height, int output_width,
-                       BufferT const &input_buf,
-                       BufferT &output_buf)
+          int output_height, int output_width,
+          BufferT const &input_buf,
+          BufferT &output_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "Bias<float>(chans:" << num_channels
@@ -2104,7 +2590,9 @@ void Concat(uint32_t input0_channels,
 
 //****************************************************************************
 //****************************************************************************
-
+// Dense layer
+// Assumes that input height and width are 1, all input elements are in C_i
+// This may require a flatten/reshape of the input tensor before calling
 //============================================================================
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
 template <class BufferT,
@@ -2119,15 +2607,29 @@ void Dense(int output_elements, int input_elements,
     std::cout << "Dense<float>(out x in:" << output_elements
               << "x" << input_elements << "I,F,O)\n";
 #endif
+    // float_detail::abstract_layer<
+    //     FloatBuffer, 1, FLOAT_C_ob, FLOAT_C_ib,
+    //     FLOAT_W_ob, 1, 1, OP_CONV, 1, 1>(  // todo: compare to Conv2D call
+    //     output_elements,   // Output Channel Grouping
+    //     1,                 // Output Channels per group
+    //     1,                 // input channels
+    //     1, input_elements, // input height, width
+    //     1, 1,              // kernel W, H
+    //     0, 0, 0, 0,        // padding
+    //     &input_buf, &filter_buf, &output_buf);
+
+
     float_detail::abstract_layer<
-        FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_CONV, 1, 1>(
-        output_elements, // Output Channel Grouping
-        1,               // Output Channels per group
-        1,
-        1, input_elements,
-        1, 1,
-        0, 0, 0, 0,
-        &input_buf, &filter_buf, &output_buf);
+    FloatBuffer, 1, FLOAT_C_ob, FLOAT_C_ib,
+    FLOAT_W_ob, 1, FLOAT_UNROLL, OP_CONV, 2, 1>(
+    1,               // Output Channel Grouping
+    output_elements, // Output Channels per group
+    input_elements,
+    1, 1,
+    1, 1,
+    0,0,0,0,
+    &input_buf, &filter_buf, &output_buf);
+
 }
 #endif
 
@@ -2157,4 +2659,4 @@ void Dense(int output_elements, int input_elements,
 }
 #endif
 
-} // small
+} // namespace: small

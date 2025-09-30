@@ -20,6 +20,16 @@
 using Buffer = small::FloatBuffer;
 
 //****************************************************************************
+void test_shape_type(void)
+{
+    small::shape_type dim4{1UL, 3UL, 640UL, 640UL};
+    small::shape_type dim5{1UL, 3UL, 640UL, 640UL, 3UL};
+
+    TEST_ASSERT(dim4 == dim5);
+    TEST_ASSERT(dim4[4] == dim5[4]);
+}
+
+//****************************************************************************
 void test_capacity_ctor(void)
 {
     small::Tensor<Buffer> tensor(42);
@@ -27,7 +37,6 @@ void test_capacity_ctor(void)
     TEST_CHECK(tensor.capacity() == 42);
     TEST_CHECK(tensor.size() == 42);
     TEST_CHECK(tensor.buffer().data() != nullptr);
-    TEST_CHECK(tensor.shape().size() == 4);
     TEST_CHECK(tensor.shape() == small::shape_type({42, 1, 1, 1}));
 }
 

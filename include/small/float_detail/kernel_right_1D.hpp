@@ -45,7 +45,7 @@ void inline kernel_right_1D(
     dim_t input_col_stride,
     dim_t O_w_left,
     dim_t r_pad_el,
-    dim_t r_pad,
+    dim_t r_valid,
     ScalarT const *I,
     ScalarT const *F,
     AccumT *O, // ScalarT -> AccumT
@@ -58,7 +58,8 @@ void inline kernel_right_1D(
     constexpr dim_t _C_ib = _G_b * _F_cb;
     constexpr dim_t step = _stride * _C_ib;
     //const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
-    FLOAT_DEF_END_C(_O_wb, _C_ob);
+    size_t _O_wb_required = (_O_wb > r_pad_el)? (_O_wb): (r_pad_el);
+    FLOAT_DEF_END_C(_O_wb_required, _C_ob);
 #if DEBUG
     printf("O_W_left %d r_pad_el %d\n", O_w_left, r_pad_el);
 #endif
@@ -68,7 +69,7 @@ void inline kernel_right_1D(
         {
             FLOAT_ZERO_END_C(O_w_left, _C_ob);
 
-            if ((op_type == OP_MUL) || (op_type == OP_MAX_POOL)) // && H_lb == 0 && H_ub == 0))
+            if ((op_type == OP_MUL) || (op_type == OP_EWISE_ADD_SCALAR)|| (op_type == OP_MAX_POOL)) // && H_lb == 0 && H_ub == 0))
             {
                 FLOAT_LOAD_END_C_strided(I, step, O_w_left, _C_ob);
             }
@@ -130,7 +131,7 @@ void inline kernel_right_1D(
     // right padding elements
     AccumT *O_ptr = O + O_w_left * _C_ob; // ScalarT --> AccumT
     ScalarT const *I_ptr = I + O_w_left * step;
-    int W_i_valid = F_w - 1;
+    int W_i_valid = r_valid;
 
     if (first)
     {
@@ -140,7 +141,7 @@ void inline kernel_right_1D(
 
         //@note padding should always be 'v' for pointwise operations,
         //      so this code path should not be used
-        if (op_type == OP_MUL)
+        if constexpr(op_type == OP_MUL || op_type == OP_EWISE_ADD_SCALAR)
         {
             FLOAT_LOAD_END_C_strided(I_ptr, step, r_pad_el, _C_ob);
         }

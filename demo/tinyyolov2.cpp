@@ -676,6 +676,9 @@ void inference(uint32_t C_i,
     {
         my_timer.start();
 
+        // HACK: swap the buffers back so that inter_1_dc is largest.
+        inter_0_dc.swap(inter_1_dc);
+
         auto &output_tmp =
         model_inference(ds_blocks,
                         layer_num_total, layer_params,

@@ -53,6 +53,7 @@ void Conv1D(
     BufferT const &filter_buf,
     BufferT &output_buf)
 {
+
 #if defined(RECORD_CALLS)
     std::cout << "Conv1D<float>(k:"
               << kernel_width
@@ -71,6 +72,7 @@ void Conv1D(
     {
         if (stride == 1)
         {
+
             float_detail::abstract_layer_1D<
                 FloatBuffer, 1, FLOAT_C_ob, FLOAT_C_ib,
                 FLOAT_W_ob, 1, FLOAT_UNROLL, OP_CONV, 2, 1>(
@@ -980,68 +982,70 @@ void AveragePool1D(
 
 //****************************************************************************
 //****************************************************************************
-// #if defined(SMALL_HAS_FLOAT_SUPPORT)
-// template <class BufferT,
-//           std::enable_if_t<
-//               std::is_same<FloatBuffer, BufferT>::value, bool> = true>
-// void DepthwiseConv1D(
-//     int kernel_width, int stride,
-//     uint8_t l_pad, uint8_t r_pad,
-//     int input_channels,
-//     int batch_size, int input_width,
-//     BufferT const &input_buf,
-//     BufferT const &filter_buf,
-//     BufferT &output_buf)
-// {
-// #if defined(RECORD_CALLS)
-//     std::cout << "DepthwiseConv1D<float>(k:"
-//               << kernel_width
-//               << ",s:" << stride
-//               << ",pad:[" << (int)l_pad << "," << (int)r_pad
-//               << "],chans:" << input_channels
-//               << ",img:" << batch_size << "x" << input_width
-//               << ",I,F,O)\n";
-// #endif
-//     if (input_channels % FLOAT_C_ib == 0)
-//     {
-//         if (stride == 1)
-//         {
-//             float_detail::abstract_layer_1D<
-//                 FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_CONV, 1, 1>(
-//                 input_channels, // Output Channel Grouping
-//                 1,              // Output Channels per group
-//                 1,
-//                 batch_size, input_width,
-//                 kernel_width,
-//                 l_pad, r_pad,
-//                 &input_buf, &filter_buf, &output_buf);
-//         }
-//         else if (stride == 2)
-//         {
 
-//             float_detail::abstract_layer_1D<
-//                 FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, OP_CONV, 1, 1>(
-//                 input_channels, // Output Channel Grouping
-//                 1,              // Output Channels per group
-//                 1,
-//                 batch_size, input_width,
-//                 kernel_width,
-//                 l_pad, r_pad,
-//                 &input_buf, &filter_buf, &output_buf);
-//         }
-//         else
-//         {
-//             throw std::invalid_argument(
-//                 "DepthwiseConv1D<float> ERROR: stride unsupported.");
-//         }
-//     }
-//     else
-//     {
-//         throw std::invalid_argument(
-//             "DepthwiseConv1D<float> ERROR: in_channels unsupported.");
-//     }
-// }
-// #endif
+//============================================================================
+#if defined(SMALL_HAS_FLOAT_SUPPORT)
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<FloatBuffer, BufferT>::value, bool> = true>
+void DepthwiseConv1D(
+    int kernel_width, int stride,
+    uint8_t l_pad, uint8_t r_pad,
+    int input_channels,
+    int batch_size, int input_width,
+    BufferT const &input_buf,
+    BufferT const &filter_buf,
+    BufferT &output_buf)
+{
+#if defined(RECORD_CALLS)
+    std::cout << "DepthwiseConv1D<float>(k:"
+              << kernel_width
+              << ",s:" << stride
+              << ",pad:[" << (int)l_pad << "," << (int)r_pad
+              << "],chans:" << input_channels
+              << ",img:" << batch_size << "x" << input_width
+              << ",I,F,O)\n";
+#endif
+    if (input_channels % FLOAT_C_ib == 0)
+    {
+        if (stride == 1)
+        {
+            float_detail::abstract_layer_1D<
+                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_CONV, 1, 1>(
+                input_channels, // Output Channel Grouping
+                1,              // Output Channels per group
+                1,
+                batch_size, input_width,
+                kernel_width,
+                l_pad, r_pad,
+                &input_buf, &filter_buf, &output_buf);
+        }
+        else if (stride == 2)
+        {
+
+            float_detail::abstract_layer_1D<
+                FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 2, 1, OP_CONV, 1, 1>(
+                input_channels, // Output Channel Grouping
+                1,              // Output Channels per group
+                1,
+                batch_size, input_width,
+                kernel_width,
+                l_pad, r_pad,
+                &input_buf, &filter_buf, &output_buf);
+        }
+        else
+        {
+            throw std::invalid_argument(
+                "DepthwiseConv1D<float> ERROR: stride unsupported.");
+        }
+    }
+    else
+    {
+        throw std::invalid_argument(
+            "DepthwiseConv1D<float> ERROR: in_channels unsupported.");
+    }
+}
+#endif
 
 // //============================================================================
 // #if defined(SMALL_HAS_QUINT8_SUPPORT)
@@ -1110,70 +1114,70 @@ void AveragePool1D(
 // //****************************************************************************
 // //****************************************************************************
 
-// //============================================================================
-// #if defined(SMALL_HAS_FLOAT_SUPPORT)
-// template <class BufferT,
-//           std::enable_if_t<
-//               std::is_same<FloatBuffer, BufferT>::value, bool> = true>
-// void PartialDepthwiseConv1D(
-//     int kernel_width, int stride,
-//     uint8_t l_pad, uint8_t r_pad,
-//     int input_channels,
-//     int batch_size, int input_width,
-//     BufferT const &input_buf,
-//     BufferT const &filter_buf,
-//     BufferT       &output_buf)
-// {
-// #if defined(RECORD_CALLS)
-//     std::cout << "PartialDepthwiseConv1D<float>(k:"
-//               << kernel_width
-//               << ",s:" << stride
-//               << ",pad:[" << (int)l_pad << "," << (int)r_pad
-//               << "],chans:" << input_channels
-//               << ",img:" << batch_size << "x" << input_width
-//               << ",I,F,O)\n";
-// #endif
-//     if (input_channels % FLOAT_C_ib == 0)
-//     {
-//         if (stride == 1)
-//         {
-//             float_detail::abstract_layer_1D<
-//                 FloatBuffer, FLOAT_C_ob, 1, 1,
-//                 FLOAT_W_ob, 1, 1, OP_CONV, 1, 0>(
-//                     input_channels, // Output Channel Grouping
-//                     1,              // Output Channels per group
-//                     1,
-//                     batch_size, input_width,
-//                     kernel_width,
-//                     l_pad, r_pad,
-//                     &input_buf, &filter_buf, &output_buf);
-//         }
-//         else if (stride == 2)
-//         {
-//             float_detail::abstract_layer_1D<
-//                 FloatBuffer, FLOAT_C_ob, 1, 1,
-//                 FLOAT_W_ob, 2, 1, OP_CONV, 1, 0>(
-//                     input_channels, // Output Channel Grouping
-//                     1,              // Output Channels per group
-//                     1,
-//                     batch_size, input_width,
-//                     kernel_width,
-//                     l_pad, r_pad,
-//                     &input_buf, &filter_buf, &output_buf);
-//         }
-//         else
-//         {
-//             throw std::invalid_argument(
-//                 "PartialDepthwiseConv1D<float> ERROR: stride unsupported.");
-//         }
-//     }
-//     else
-//     {
-//         throw std::invalid_argument(
-//             "PartialDepthwiseConv1D<float> ERROR: in_channels unsupported.");
-//     }
-// }
-// #endif
+//============================================================================
+#if defined(SMALL_HAS_FLOAT_SUPPORT)
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<FloatBuffer, BufferT>::value, bool> = true>
+void PartialDepthwiseConv1D(
+    int kernel_width, int stride,
+    uint8_t l_pad, uint8_t r_pad,
+    int input_channels,
+    int batch_size, int input_width,
+    BufferT const &input_buf,
+    BufferT const &filter_buf,
+    BufferT       &output_buf)
+{
+#if defined(RECORD_CALLS)
+    std::cout << "PartialDepthwiseConv1D<float>(k:"
+              << kernel_width
+              << ",s:" << stride
+              << ",pad:[" << (int)l_pad << "," << (int)r_pad
+              << "],chans:" << input_channels
+              << ",img:" << batch_size << "x" << input_width
+              << ",I,F,O)\n";
+#endif
+    if (input_channels % FLOAT_C_ib == 0)
+    {
+        if (stride == 1)
+        {
+            float_detail::abstract_layer_1D<
+                FloatBuffer, FLOAT_C_ob, 1, 1,
+                FLOAT_W_ob, 1, 1, OP_CONV, 1, 0>(
+                    input_channels, // Output Channel Grouping
+                    1,              // Output Channels per group
+                    1,
+                    batch_size, input_width,
+                    kernel_width,
+                    l_pad, r_pad,
+                    &input_buf, &filter_buf, &output_buf);
+        }
+        else if (stride == 2)
+        {
+            float_detail::abstract_layer_1D<
+                FloatBuffer, FLOAT_C_ob, 1, 1,
+                FLOAT_W_ob, 2, 1, OP_CONV, 1, 0>(
+                    input_channels, // Output Channel Grouping
+                    1,              // Output Channels per group
+                    1,
+                    batch_size, input_width,
+                    kernel_width,
+                    l_pad, r_pad,
+                    &input_buf, &filter_buf, &output_buf);
+        }
+        else
+        {
+            throw std::invalid_argument(
+                "PartialDepthwiseConv1D<float> ERROR: stride unsupported.");
+        }
+    }
+    else
+    {
+        throw std::invalid_argument(
+            "PartialDepthwiseConv1D<float> ERROR: in_channels unsupported.");
+    }
+}
+#endif
 
 // //============================================================================
 // #if defined(SMALL_HAS_QUINT8_SUPPORT)
@@ -1645,13 +1649,13 @@ void UpSample1D(int scale_factor,
         else
         {
             throw std::invalid_argument(
-                "Upsample<float> ERROR: in_channels unsupported.");
+                "UpSample1D<float> ERROR: in_channels unsupported.");
         }
     }
     else
     {
         throw std::invalid_argument(
-            "Upsample<float> ERROR: scale factor unsupported (only 1 or 2).");
+            "UpSample1D<float> ERROR: scale factor unsupported (only 1 or 2).");
     }
 }
 #endif
@@ -1697,13 +1701,13 @@ void UpSample1D(int scale_factor,
         else
         {
         throw std::invalid_argument(
-            "Upsample<quint8> ERROR: in_channels unsupported.");
+            "UpSample1D<quint8> ERROR: in_channels unsupported.");
         }
     }
     else
     {
         throw std::invalid_argument(
-            "Upsample<quint8> ERROR: scale factor unsupported (only 1 or 2).");
+            "UpSample1D<quint8> ERROR: scale factor unsupported (only 1 or 2).");
     }
 }
 #endif

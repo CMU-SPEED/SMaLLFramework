@@ -65,19 +65,26 @@ void inline kernel(
     if (first)
     {
         FLOAT_ZERO_TILE_C(_O_wb, _C_ob);
-        if (op_type == OP_MAX_POOL || op_type == OP_MUL)
+        if constexpr(op_type == OP_MAX_POOL || op_type == OP_MUL || op_type == OP_EWISE_ADD_SCALAR)
         {
             /// @note using platform C_ob
             FLOAT_LOAD_TILE_C_strided(I, step, _O_wb, FLOAT_C_ob);
         }
-        else if (op_type == OP_UPSAMPLE)
+        else if constexpr(op_type == OP_UPSAMPLE)
         {
             FLOAT_LOAD_TILE_C_upsample(I, _stride, _C_ib, _O_wb, _C_ob);
         }
     }
     else
     {
-        FLOAT_LOAD_TILE_C(O, _O_wb, _C_ob);
+        if constexpr(op_type == OP_EWISE_ADD_SCALAR) 
+        {
+            FLOAT_LOAD_TILE_C_strided(I, step, _O_wb, FLOAT_C_ob);
+        }
+        else 
+        {
+            FLOAT_LOAD_TILE_C(O, _O_wb, _C_ob);
+        }
         if constexpr (op_type == OP_UPSAMPLE)
         {
             FLOAT_ACCUM_TILE_C_upsample(I, _stride, _C_ib, _O_wb, _C_ob);

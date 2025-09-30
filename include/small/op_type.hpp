@@ -27,6 +27,10 @@ enum OpType
     OP_MUL = 6,
     OP_UPSAMPLE = 7,      // 'u'
     OP_EXP = 8,
+    OP_EWISE_ADD_SCALAR = 9,
+    OP_SOFTSIGN = 10,
+    OP_ABS = 11,
+    OP_DIV = 12, // c_i = a_i / c_i
     OP_NONE = -1
 };
 
