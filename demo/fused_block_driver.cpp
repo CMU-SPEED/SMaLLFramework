@@ -899,6 +899,7 @@ int main(int argc, char **argv)
 
     // Full Fused block
     memset(out_intermediate_unfused_dc.data(), 0.0, out_intermediate_unfused_buffer_size * sizeof(float));
+    memset(output_dc.data(), 0.0, out_buffer_size * sizeof(float));
     // printf("C_i %d, C_o_conv %d, C_o %d, kernel_size_conv %d, kernel_size %d, stride_conv %d, stride %d, t_pad_conv %d, t_pad %d, b_pad_conv %d, b_pad %d, l_pad_conv %d, l_pad %d, r_pad_conv %d, r_pad %d \n", C_i, C_o_conv, C_o_conv, conv_kernel_size, kernel_size, conv_stride, stride, t_pad_conv, t_pad, b_pad_conv, b_pad, l_pad_conv, l_pad, r_pad_conv, r_pad);
     fused_small_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
                                           conv_kernel_size,
