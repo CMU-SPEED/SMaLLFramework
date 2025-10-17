@@ -38,13 +38,13 @@ void test_correctness_FLOAT_FUSED_COND_SCALE_TILE(void)
 
 
     //==================================================
-    FLOAT_DEF_TILE_C(FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_DEF_TILE_C;
 
-    FLOAT_LOAD_TILE_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_LOAD_TILE_C(output_buf.data());
 
-    FLOAT_FUSED_COND_SCALE_TILE_C(negative_buf, FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_FUSED_COND_SCALE_TILE_C(negative_buf);
 
-    FLOAT_STORE_TILE_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_STORE_TILE_C(output_buf.data());
     //==================================================
 
     for (dim_t ii = 0; ii < FLOAT_W_ob; ++ii)
@@ -82,14 +82,14 @@ void test_correctness_FLOAT_FUSED_COND_SCALE_END(void)
     //==================================================
     FLOAT_DEF_END_C(FLOAT_W_ob, FLOAT_C_ob);
     c_tile_t *c_cur = c_tile;
-    FLOAT_LOAD_END_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_LOAD_END_C(output_buf.data(), FLOAT_W_ob - 1, FLOAT_C_ob);
 
-    FLOAT_FUSED_COND_SCALE_END_C(negative_buf, c_cur, FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_FUSED_COND_SCALE_END_C(negative_buf, c_cur, FLOAT_W_ob - 1, FLOAT_C_ob);
 
-    FLOAT_STORE_END_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_STORE_END_C(output_buf.data(), FLOAT_W_ob - 1, FLOAT_C_ob);
     //==================================================
 
-    for (dim_t ii = 0; ii < FLOAT_W_ob; ++ii)
+    for (dim_t ii = 0; ii < FLOAT_W_ob - 1; ++ii)
     {
         for (dim_t jj = 0; jj < FLOAT_C_ob; ++jj)
         {
