@@ -48,14 +48,14 @@ void test_correctness_FLOAT_SOFTSIGN_TILE(void)
     constexpr dim_t step = FLOAT_C_ob * _stride;
 
     //==================================================
-    FLOAT_DEF_TILE_C(FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_DEF_TILE_C;
 
-    FLOAT_ZERO_TILE_C(FLOAT_W_ob, FLOAT_C_ob);
-    // FLOAT_LOAD_TILE_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_ZERO_TILE_C;
+    // FLOAT_LOAD_TILE_C(output_buf.data());
 
-    FLOAT_SOFTSIGN_TILE_C(step, a_cur, FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_SOFTSIGN_TILE_C(step, a_cur);
 
-    FLOAT_STORE_TILE_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_STORE_TILE_C(output_buf.data());
     //==================================================
 
     for (dim_t ii = 0; ii < FLOAT_W_ob; ++ii)
@@ -95,17 +95,17 @@ void test_correctness_individual_FLOAT_SOFTSIGN_TILE(void)
     FLOAT_DEF_TILE_C(FLOAT_W_ob, FLOAT_C_ob);
 
     FLOAT_ZERO_TILE_C(FLOAT_W_ob, FLOAT_C_ob);
-    // FLOAT_LOAD_TILE_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
+    // FLOAT_LOAD_TILE_C(output_buf.data());
     {
-    FLOAT_ABS_TILE_C(step, a_cur, FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_ABS_TILE_C(step, a_cur);
     }
     {
-    FLOAT_EWISE_ADD_SCALAR_TILE_C(scalar, FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_EWISE_ADD_SCALAR_TILE_C(scalar);
     }
     {
-    FLOAT_FUSED_DIV_TILE_C(step, a_cur, FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_FUSED_DIV_TILE_C(step, a_cur);
     }
-    FLOAT_STORE_TILE_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_STORE_TILE_C(output_buf.data());
     //==================================================
 
     for (dim_t ii = 0; ii < FLOAT_W_ob; ++ii)
@@ -139,11 +139,11 @@ void test_correctness_FLOAT_FUSED_SOFTSIGN_TILE(void)
     //==================================================
     FLOAT_DEF_TILE_C(FLOAT_W_ob, FLOAT_C_ob);
 
-    FLOAT_LOAD_TILE_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_LOAD_TILE_C(output_buf.data());
 
     FLOAT_FUSED_SOFTSIGN_TILE_C(FLOAT_W_ob, FLOAT_C_ob);
 
-    FLOAT_STORE_TILE_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_STORE_TILE_C(output_buf.data());
     //==================================================
 
     for (dim_t ii = 0; ii < FLOAT_W_ob; ++ii)
@@ -201,7 +201,7 @@ void test_correctness_FLOAT_FUSED_SOFTSIGN_TILE(void)
     
 #define SOFTSIGN_CALL(iteration) \
     asm volatile("iteration" #iteration ":" ::: "memory");\
-    FLOAT_SOFTSIGN_TILE_C(step, a_cur, FLOAT_W_ob, FLOAT_C_ob); \
+    FLOAT_SOFTSIGN_TILE_C(step, a_cur); \
     result_accumulator = _mm256_add_ps(result_accumulator,  \
             _mm256_add_ps(_mm256_add_ps(c0, c1), _mm256_add_ps(c2, c3))); \
     result_accumulator = _mm256_add_ps(result_accumulator,  \
@@ -212,9 +212,9 @@ void test_correctness_FLOAT_FUSED_SOFTSIGN_TILE(void)
 
 #define INDIVIDUAL_SOFTSIGN_CALL(iteration) \
     asm volatile("iteration" #iteration ":" ::: "memory");\
-    {FLOAT_ABS_TILE_C(step, a_cur, FLOAT_W_ob, FLOAT_C_ob);} \
-    {const float scalar = 1.0f; FLOAT_EWISE_ADD_SCALAR_TILE_C(scalar, FLOAT_W_ob, FLOAT_C_ob);} \
-    {FLOAT_FUSED_DIV_TILE_C(step, a_cur, FLOAT_W_ob, FLOAT_C_ob);} \
+    {FLOAT_ABS_TILE_C(step, a_cur);} \
+    {const float scalar = 1.0f; FLOAT_EWISE_ADD_SCALAR_TILE_C(scalar);} \
+    {FLOAT_FUSED_DIV_TILE_C(step, a_cur);} \
     result_accumulator = _mm256_add_ps(result_accumulator,  \
             _mm256_add_ps(_mm256_add_ps(c0, c1), _mm256_add_ps(c2, c3))); \
     result_accumulator = _mm256_add_ps(result_accumulator,  \
@@ -275,7 +275,7 @@ void test_performance_FLOAT_SOFTSIGN_TILE(void)
     std::cout << "Max Ave time: " << max_t << " ns." << std::endl;
     std::cout << "Peak: " << (FLOAT_W_ob * FLOAT_C_ob / (min_t / 10000 * cpu_freq)) << std::endl;
     // a cross platform way to move results to the output buffer
-    FLOAT_STORE_TILE_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_STORE_TILE_C(output_buf.data());
     // _mm256_storeu_ps(output_buf.data(), result_accumulator);
     // std::cout << output_buf.data()[0] << std::endl;
 
