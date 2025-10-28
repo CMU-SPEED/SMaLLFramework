@@ -54,7 +54,7 @@ void inline kernel(
     ScalarT const *F_b = NULL,
     ScalarT const *F_a = NULL)
 {
-    constexpr dim_t _C_ob = _G_b * _K_b;
+    //constexpr dim_t _C_ob = _G_b * _K_b;
     constexpr dim_t _C_ib = _G_b * _F_cb;
     constexpr dim_t step = _stride * _C_ib;
 
@@ -77,11 +77,11 @@ void inline kernel(
     }
     else
     {
-        if constexpr(op_type == OP_EWISE_ADD_SCALAR) 
+        if constexpr(op_type == OP_EWISE_ADD_SCALAR)
         {
             FLOAT_LOAD_TILE_C_strided(I, step);
         }
-        else 
+        else
         {
             FLOAT_LOAD_TILE_C(O);
         }

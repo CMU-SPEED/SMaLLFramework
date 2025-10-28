@@ -75,7 +75,7 @@ void inline kernel_right_1D(
             }
             else if (op_type == OP_UPSAMPLE)
             {
-                FLOAT_LOAD_END_C_upsample(I, _stride, _C_ib, O_w_left, _C_ob);
+                FLOAT_LOAD_END_C_upsample(I, _stride, O_w_left, _C_ob);
             }
         }
         else

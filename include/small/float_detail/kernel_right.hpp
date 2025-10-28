@@ -58,7 +58,7 @@ void inline kernel_right(
     constexpr dim_t _C_ib = _G_b * _F_cb;
     constexpr dim_t step = _stride * _C_ib;
     const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
-    
+
     size_t _O_wb_required = (_O_wb > r_pad_el)? (_O_wb): (r_pad_el);
     FLOAT_DEF_END_C(_O_wb_required, _C_ob);
 #if DEBUG
@@ -77,7 +77,7 @@ void inline kernel_right(
             }
             else if (op_type == OP_UPSAMPLE)
             {
-                FLOAT_LOAD_END_C_upsample(I, _stride, _C_ib, O_w_left, _C_ob);
+                FLOAT_LOAD_END_C_upsample(I, _stride, O_w_left, _C_ob);
             }
         }
         else
@@ -87,11 +87,11 @@ void inline kernel_right(
             {
                 FLOAT_ZERO_END_C(O_w_left, _C_ob);
             }
-            if constexpr(op_type == OP_EWISE_ADD_SCALAR) 
+            if constexpr(op_type == OP_EWISE_ADD_SCALAR)
             {
                 FLOAT_LOAD_END_C_strided(I, step, O_w_left, _C_ob);
             }
-            else 
+            else
             {
                 FLOAT_LOAD_END_C(O, O_w_left, _C_ob);
             }
