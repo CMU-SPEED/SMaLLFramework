@@ -1117,35 +1117,47 @@ AND (TODO)
 //****************************************************************************
 // Accumulate upsampling
 //****************************************************************************
-///XXX;
-/**
- * @brief Macro to accumulate a tile of an input I, onto the full tile O
- *
- * @param W_ob The height of the tile.
- * @param C_ob The number of channels in the tile.
- * @param stride The stride in between rows of I, positive rational between 0 and 1
- * form : O (output) -> W_ob x C_ob matrix, I (input) -> W_ob x C_ob matrix
- * layout: O is in registers, I and W are row-major, Rows of I need not be contiguous
- * O[i][j] = I[i*stride][j] + O[i][j] for i in [0, W_ob), for j in [0, C_ob)
- * implemented as
-  * O[i][j] = I[i/stride][j] + O[i][j] for i in [0, W_ob), for j in [0, C_ob)
- */
 
-#define FLOAT_ACCUM_TILE_C_upsample(I, stride)     \
-    for (uint32_t kk = 0; kk < FLOAT_W_ob; kk++)                            \
+/**
+ * @brief Accumulate a tile of an input I, repeating rows factor times, into
+ *        the full tile
+ *
+ * @param[in] I       The input buffer containing FLOAT_W_ob//factor contiguous
+ *                    rows of FLOAT_C_ob values each.
+ * @param[in] factor  The repeat factor of rows of I, positive integer
+ *
+ * foreach i in [0, FLOAT_W_ob), j in [0, FLOAT_C_ob)
+ *    c_tile[i][j] += I[i/factor][j]
+ */
+#define FLOAT_ACCUM_TILE_C_upsample(I, factor)                         \
+    for (uint32_t kk = 0; kk < FLOAT_W_ob; kk++)                       \
     {                                                                  \
-        for (uint32_t jj = 0; jj < FLOAT_C_ob; jj++)                         \
+        for (uint32_t jj = 0; jj < FLOAT_C_ob; jj++)                   \
         {                                                              \
-            c_tile[kk * FLOAT_C_ob + jj] += I[(kk / stride) * (FLOAT_C_ob) + jj]; \
+            c_tile[kk * FLOAT_C_ob + jj] += I[(kk / factor) * (FLOAT_C_ob) + jj]; \
         }                                                              \
     }
 
-#define FLOAT_ACCUM_END_C_upsample(I, stride, _C_ib, _W_ob, C_ob)      \
+
+/**
+ * @brief Accumulate a tile of an input I, repeating rows factor times, into
+ *        the end tile
+ *
+ * @param[in] I       The input buffer containing FLOAT_W_ob//factor contiguous
+ *                    rows of FLOAT_C_ob values each.
+ * @param[in] factor  The repeat factor of rows of I, positive integer
+ * @param[in] W_ob    The number of rows in the end tile.
+ * @param[in] C_ob    The number of channels in each row of the end tile.
+ *
+ * foreach i in [0, W_ob), j in [0, C_ob)
+ *    c_tile[i][j] += I[i/factor][j]
+ */
+#define FLOAT_ACCUM_END_C_upsample(I, factor, _C_ib, _W_ob, C_ob)      \
     for (uint32_t kk = 0; kk < _W_ob; kk++)                            \
     {                                                                  \
         for (uint32_t jj = 0; jj < C_ob; jj++)                         \
         {                                                              \
-            c_tile[kk * C_ob + jj] += I[(kk / stride) * (C_ob) + jj]; \
+            c_tile[kk * C_ob + jj] += I[(kk / factor) * (C_ob) + jj];  \
         }                                                              \
     }
 
@@ -1155,10 +1167,20 @@ AND (TODO)
 
 
 /**
- * @brief Macro to accumulate all elements of the full tile O
+ * @brief Accumulate all elements along the channel dimension of the full tile
+ *        into the first element of each row.
  *
- * @param O_w_left The height of the tile.
- * @param C_ob The number of channels in the tile.
+ * @param[in] O_w_left  The number of rows to accumulate across.
+ * @param[in] C_ob      The number of channels elements in each row of the
+ *                      full tile to accumulate?.
+ *
+ * foreach i in [0, O_w_left)
+ *    for j in [1, FLOAT_C_ob)
+ *       c_tile[i][0] += c_tile[i][j]
+ *
+ * @todo This takes C_ob but uses FLOAT_C_ob in one place.
+ * @todo the implementation seems wrong
+ *
  * form : O (output) -> 1 x 1 matrix, O(input) -> 1 x C_ob matrix
  * layout: O is in registers
  * O[0] = O[0] + O[j] for j in [1,C_ob)
@@ -1169,7 +1191,6 @@ AND (TODO)
 #define FLOAT_REDUCE_CHANNEL_END_C(O_w_left, C_ob)                      \
     if constexpr (C_ob == 1 && C_ob != FLOAT_SIMD_EPILOGUE)             \
     {                                                                   \
-        float c_tile_array[FLOAT_C_ob];                                 \
         for (uint32_t kk = 0; kk < O_w_left; kk++)                      \
         {                                                               \
             float *c_channel_v = c_tile + kk * (FLOAT_C_ob);            \
@@ -1182,9 +1203,10 @@ AND (TODO)
     }
 
 //****************************************************************************
-// Reduce kernels??
+// Reduce kernels
 //****************************************************************************
 
+/// @todo
 #define FLOAT_REDUCE_div_C(O, d, W_ob_g, C_ob)          \
     {                                                   \
         c_tile_t *c_pixel = c_tile;                     \
@@ -1210,6 +1232,7 @@ AND (TODO)
         }                                               \
     }
 
+/// @todo
 #define FLOAT_REDUCE_C(O, W_ob_g, C_ob)                 \
     {                                                   \
         c_tile_t *c_pixel = c_tile;                     \
@@ -1229,7 +1252,8 @@ AND (TODO)
         }                                               \
     }
 
-#define FLOAT_REDUCE_C_last(O, W_ob, C_ob)            \
+/// @todo
+#define FLOAT_REDUCE_C_last(O, W_ob, C_ob)              \
     {                                                   \
         c_tile_t *c_pixel = c_tile;                     \
         c_tile_t *O_channel = O;                        \
@@ -1249,37 +1273,56 @@ AND (TODO)
     }
 
 //****************************************************************************
-// Softmax  (Ewise exponentiation)
+// Ewise exponentiation (Softmax)
 //****************************************************************************
 
 /**
- * @brief Macro to compute a tile of exponentiated values in I
- * @param W_ob The height of the tile.
- * @param C_ob The number of channels in the tile.
- * @param stride The stride in between rows of I, positive integer
- * form : O (output) -> W_ob x C_ob matrix, I (input) -> W_ob x C_ob matrix
- * layout: O is in registers, I and W are row-major, Rows of I need not be contiguous
- * O[i][j] = e ^(I[i*stride][j]) for i in [0, W_ob), for j in [0, C_ob)
-*/
-
-#define FLOAT_EXP_TILE_C(step, a)                           \
+ * @brief Compute the exponentiated value of each element in strided rows of I
+ *        and store in full tile.
+ *
+ * @param[in]  step  The offset corresponding to the stride between non-
+ *                   contiguous rows in I, a positive integer, where
+ *                   step = stride*FLOAT_C_ib
+ * @param[in]  I     The input containining FLOAT_W_ob*stride contiguous rows
+ *                   of FLOAT_C_ob elements each
+ *
+ * foreach  i in [0, FLOAT_W_ob), j in [0, FLOAT_C_ob)
+ *    c_tile[i][j] = exp(I[i*stride][j])
+ */
+#define FLOAT_EXP_TILE_C(step, I)                                       \
     c_tile_t *c_pixel = c_tile;                                         \
-    c_tile_t const *a_pixel = a;                                        \
-    for (uint32_t kk = 0; kk < FLOAT_W_ob; kk++)                              \
+    c_tile_t const *I_pixel = I;                                        \
+    for (uint32_t kk = 0; kk < FLOAT_W_ob; kk++)                        \
     {                                                                   \
         c_tile_t *c_channel = c_pixel;                                  \
-        c_tile_t const *a_channel = a_pixel;                            \
-        for (uint32_t jj = 0; jj < FLOAT_C_ob; jj++)                          \
+        c_tile_t const *I_channel = I_pixel;                            \
+        for (uint32_t jj = 0; jj < FLOAT_C_ob; jj++)                    \
         {                                                               \
-            *(c_channel) = std::exp(*a_channel);                        \
+            *(c_channel) = std::exp(*I_channel);                        \
             c_channel++;                                                \
-            a_channel++;                                                \
+            I_channel++;                                                \
         }                                                               \
-        a_pixel += step;                                                \
-        c_pixel += FLOAT_C_ob;                                                \
+        I_pixel += step;                                                \
+        c_pixel += FLOAT_C_ob;                                          \
     }
 
-#define FLOAT_EXP_END_C(step, a, c_cur, W_ob, C_ob) \
+/**
+ * @brief Compute the exponentiated value of each element in strided rows of I
+ *        and store in end tile.
+ *
+ * @param[in]  step  The offset corresponding to the stride between non-
+ *                   contiguous rows in I, a positive integer, where
+ *                   step = stride*FLOAT_C_ib
+ * @param[in]  I     The input containining W_ob*stride contiguous rows
+ *                   of C_ob elements each
+ * @param[out] c_cur An offset pointer into the end tile (where to start)
+ * @param[in]  W_ob  The number of rows in the end tile.
+ * @param[in]  C_ob  The number of channels in each row of the end tile.
+ *
+ * foreach  i in [0, W_ob), j in [0, C_ob)
+ *    c_cur[i][j] = exp(I[i*stride][j])
+ */
+#define FLOAT_EXP_END_C(step, I, c_cur, W_ob, C_ob) \
     c_tile_t *c_pixel = c_cur;                        \
     c_tile_t const *a_pixel = a;                      \
     for (uint32_t kk = 0; kk < W_ob; kk++)          \
@@ -1298,30 +1341,39 @@ AND (TODO)
 
 
 /**
- * @brief Macro to compute a tile of exponentiated values in the full tile O
- * @param W_ob The height of the tile.
- * @param C_ob The number of channels in the tile.
- * @param stride The stride in between rows of I, positive integer
- * form : O (output, input) -> W_ob x C_ob matrix
- * layout: O is in registers
- * O[i][j] = e ^(O[i][j]) for i in [0, W_ob), for j in [0, C_ob)
-*/
-#define FLOAT_FUSED_EXP_TILE_C       \
-    c_tile_t *c_pixel = c_tile;                  \
-    for (uint32_t kk = 0; kk < FLOAT_W_ob; kk++)       \
-    {                                            \
-        c_tile_t *c_channel = c_pixel;           \
-        for (uint32_t jj = 0; jj < FLOAT_C_ob; jj++)   \
-        {                                        \
-            *(c_channel) = std::exp(*c_channel); \
-            c_channel++;                         \
-        }                                        \
-        c_pixel += FLOAT_C_ob;                         \
+ * @brief Compute the exponentiated value of each element in-place in the
+ *        full tile.
+ *
+ * foreach  i in [0, FLOAT_W_ob), j in [0, FLOAT_C_ob)
+ *    c_tile[i][j] = exp(c_tile[i][j])
+ */
+#define FLOAT_FUSED_EXP_TILE_C                          \
+    c_tile_t *c_pixel = c_tile;                         \
+    for (uint32_t kk = 0; kk < FLOAT_W_ob; kk++)        \
+    {                                                   \
+        c_tile_t *c_channel = c_pixel;                  \
+        for (uint32_t jj = 0; jj < FLOAT_C_ob; jj++)    \
+        {                                               \
+            *(c_channel) = std::exp(*c_channel);        \
+            c_channel++;                                \
+        }                                               \
+        c_pixel += FLOAT_C_ob;                          \
     }
 
-#define FLOAT_FUSED_EXP_END_C(c_cur, W_ob, C_ob) \
+/**
+ * @brief Compute the exponentiated value of each element in-place in the
+ *        end tile.
+ *
+ * @param[out] c_cur An offset pointer into the end tile (where to start)
+ * @param[in]  W_ob  The number of rows in the end tile.
+ * @param[in]  C_ob  The number of channels in each row of the end tile.
+ *
+ * foreach  i in [0, W_ob), j in [0, C_ob)
+ *    c_cur[i][j] = exp(c_cur[i][j])
+ */
+#define FLOAT_FUSED_EXP_END_C(c_cur, W_ob, C_ob)   \
     c_tile_t *c_pixel = c_cur;                     \
-    for (uint32_t kk = 0; kk < W_ob; kk++)       \
+    for (uint32_t kk = 0; kk < W_ob; kk++)         \
     {                                              \
         c_tile_t *c_channel = c_pixel;             \
         for (uint32_t jj = 0; jj < C_ob; jj++)     \
@@ -1336,56 +1388,103 @@ AND (TODO)
 // Ewise logarithm
 //****************************************************************************
 
-#define FLOAT_LOG_TILE_C(step, a)                           \
+/**
+ * @brief Compute the logarithm of each element in strided rows of I
+ *        and store in full tile.
+ *
+ * @param[in]  step  The offset corresponding to the stride between non-
+ *                   contiguous rows in I, a positive integer, where
+ *                   step = stride*FLOAT_C_ib
+ * @param[in]  I     The input containining FLOAT_W_ob*stride contiguous rows
+ *                   of FLOAT_C_ob elements each
+ *
+ * foreach  i in [0, FLOAT_W_ob), j in [0, FLOAT_C_ob)
+ *    c_tile[i][j] = log(I[i*stride][j])
+ */
+#define FLOAT_LOG_TILE_C(step, I)                                       \
     c_tile_t *c_pixel = c_tile;                                         \
-    c_tile_t const *a_pixel = a;                                        \
-    for (uint32_t kk = 0; kk < FLOAT_W_ob; kk++)                              \
+    c_tile_t const *I_pixel = I;                                        \
+    for (uint32_t kk = 0; kk < FLOAT_W_ob; kk++)                        \
     {                                                                   \
         c_tile_t *c_channel = c_pixel;                                  \
-        c_tile_t const *a_channel = a_pixel;                            \
-        for (uint32_t jj = 0; jj < FLOAT_C_ob; jj++)                          \
+        c_tile_t const *I_channel = I_pixel;                            \
+        for (uint32_t jj = 0; jj < FLOAT_C_ob; jj++)                    \
         {                                                               \
-            *(c_channel) = std::log(*a_channel);                        \
+            *(c_channel) = std::log(*I_channel);                        \
             c_channel++;                                                \
-            a_channel++;                                                \
+            I_channel++;                                                \
         }                                                               \
-        a_pixel += step;                                                \
-        c_pixel += FLOAT_C_ob;                                                \
+        I_pixel += step;                                                \
+        c_pixel += FLOAT_C_ob;                                          \
     }
 
-#define FLOAT_LOG_END_C(step, a, c_cur, W_ob, C_ob) \
+/**
+ * @brief Compute the logarithm of each element in strided rows of I
+ *        and store in end tile.
+ *
+ * @param[in]  step  The offset corresponding to the stride between non-
+ *                   contiguous rows in I, a positive integer, where
+ *                   step = stride*FLOAT_C_ib
+ * @param[in]  I     The input containining W_ob*stride contiguous rows
+ *                   of C_ob elements each
+ * @param[out] c_cur An offset pointer into the end tile (where to start)
+ * @param[in]  W_ob  The number of rows in the end tile.
+ * @param[in]  C_ob  The number of channels in each row of the end tile.
+ *
+ * foreach  i in [0, W_ob), j in [0, C_ob)
+ *    c_cur[i][j] = log(I[i*stride][j])
+ */
+#define FLOAT_LOG_END_C(step, I, c_cur, W_ob, C_ob)   \
     c_tile_t *c_pixel = c_cur;                        \
-    c_tile_t const *a_pixel = a;                      \
-    for (uint32_t kk = 0; kk < W_ob; kk++)          \
+    c_tile_t const *I_pixel = I;                      \
+    for (uint32_t kk = 0; kk < W_ob; kk++)            \
     {                                                 \
         c_tile_t *c_channel = c_pixel;                \
-        c_tile_t const *a_channel = a_pixel;          \
+        c_tile_t const *I_channel = I_pixel;          \
         for (uint32_t jj = 0; jj < C_ob; jj++)        \
         {                                             \
-            *(c_channel) = std::log(*a_channel);      \
+            *(c_channel) = std::log(*I_channel);      \
             c_channel++;                              \
-            a_channel++;                              \
+            I_channel++;                              \
         }                                             \
-        a_pixel += step;                              \
+        I_pixel += step;                              \
         c_pixel += C_ob;                              \
     }
 
-#define FLOAT_FUSED_LOG_TILE_C      \
-    c_tile_t *c_pixel = c_tile;                  \
+/**
+ * @brief Compute the logarithm of each element in-place in the
+ *        full tile.
+ *
+ * foreach  i in [0, FLOAT_W_ob), j in [0, FLOAT_C_ob)
+ *    c_tile[i][j] = log(c_tile[i][j])
+ */
+#define FLOAT_FUSED_LOG_TILE_C                         \
+    c_tile_t *c_pixel = c_tile;                        \
     for (uint32_t kk = 0; kk < FLOAT_W_ob; kk++)       \
-    {                                            \
-        c_tile_t *c_channel = c_pixel;           \
+    {                                                  \
+        c_tile_t *c_channel = c_pixel;                 \
         for (uint32_t jj = 0; jj < FLOAT_C_ob; jj++)   \
-        {                                        \
-            *(c_channel) = std::log(*c_channel); \
-            c_channel++;                         \
-        }                                        \
+        {                                              \
+            *(c_channel) = std::log(*c_channel);       \
+            c_channel++;                               \
+        }                                              \
         c_pixel += FLOAT_C_ob;                         \
     }
 
-#define FLOAT_FUSED_LOG_END_C(c_cur, W_ob, C_ob) \
+/**
+ * @brief Compute the logarithm of each element in-place in the
+ *        end tile.
+ *
+ * @param[out] c_cur An offset pointer into the end tile (where to start)
+ * @param[in]  W_ob  The number of rows in the end tile.
+ * @param[in]  C_ob  The number of channels in each row of the end tile.
+ *
+ * foreach  i in [0, W_ob), j in [0, C_ob)
+ *    c_cur[i][j] = log(c_cur[i][j])
+ */
+#define FLOAT_FUSED_LOG_END_C(c_cur, W_ob, C_ob)   \
     c_tile_t *c_pixel = c_cur;                     \
-    for (uint32_t kk = 0; kk < W_ob; kk++)       \
+    for (uint32_t kk = 0; kk < W_ob; kk++)         \
     {                                              \
         c_tile_t *c_channel = c_pixel;             \
         for (uint32_t jj = 0; jj < C_ob; jj++)     \
@@ -1397,133 +1496,231 @@ AND (TODO)
     }
 
 //****************************************************************************
-// Softsign (Single-elementwise activation)
+// Ewise Softsign
 //****************************************************************************
 
-#define FLOAT_SOFTSIGN_TILE_C(step, a)                       \
+/**
+ * @brief Compute the softsign value of each element in strided rows of I
+ *        and store in full tile.
+ *
+ * @param[in]  step  The offset corresponding to the stride between non-
+ *                   contiguous rows in I, a positive integer, where
+ *                   step = stride*FLOAT_C_ib
+ * @param[in]  I     The input containining W_ob*stride contiguous rows of
+ *                   C_ob elements each
+ *
+ * foreach  i in [0, FLOAT_W_ob), j in [0, FLOAT_C_ob)
+ *    c_tile[i][j] = I[i*stride][j] / (1.0 + | I[i*stride][j] |)
+ */
+#define FLOAT_SOFTSIGN_TILE_C(step, I)                                  \
     c_tile_t *c_pixel = c_tile;                                         \
-    c_tile_t const *a_pixel = a;                                        \
-    for (uint32_t kk = 0; kk < FLOAT_W_ob; kk++)                              \
+    c_tile_t const *I_pixel = I;                                        \
+    for (uint32_t kk = 0; kk < FLOAT_W_ob; kk++)                        \
     {                                                                   \
         c_tile_t *c_channel = c_pixel;                                  \
-        c_tile_t const *a_channel = a_pixel;                            \
-        for (uint32_t jj = 0; jj < FLOAT_C_ob; jj++)                          \
+        c_tile_t const *I_channel = I_pixel;                            \
+        for (uint32_t jj = 0; jj < FLOAT_C_ob; jj++)                    \
         {                                                               \
-            *(c_channel) = *(a_channel) / (1.0f + std::abs(*a_channel)); \
+            *(c_channel) = *(I_channel)/(1.0f + std::abs(*I_channel));  \
             c_channel++;                                                \
-            a_channel++;                                                \
+            I_channel++;                                                \
         }                                                               \
-        a_pixel += step;                                                \
-        c_pixel += FLOAT_C_ob;                                                \
+        I_pixel += step;                                                \
+        c_pixel += FLOAT_C_ob;                                          \
     }
 
-#define FLOAT_SOFTSIGN_END_C(step, a, c_cur, W_ob, C_ob) \
+/**
+ * @brief Compute the softsign value of each element in strided rows of I
+ *        and store in end tile.
+ *
+ * @param[in]  step  The offset corresponding to the stride between non-
+ *                   contiguous rows in I, a positive integer, where
+ *                   step = stride*FLOAT_C_ib
+ * @param[in]  I     The input containining W_ob*stride contiguous rows
+ *                   of C_ob elements each
+ * @param[out] c_cur An offset pointer into the end tile (where to start)
+ * @param[in]  W_ob  The number of rows in the end tile.
+ * @param[in]  C_ob  The number of channels in each row of the end tile.
+ *
+ * foreach  i in [0, W_ob), j in [0, C_ob)
+ *    c_cur[i][j] = I[i*stride][j] / (1.0 + | I[i*stride][j] |)
+ */
+#define FLOAT_SOFTSIGN_END_C(step, I, c_cur, W_ob, C_ob)                \
+    c_tile_t *c_pixel = c_cur;                                          \
+    c_tile_t const *I_pixel = I;                                        \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                              \
+    {                                                                   \
+        c_tile_t *c_channel = c_pixel;                                  \
+        c_tile_t const *I_channel = I_pixel;                            \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                          \
+        {                                                               \
+            *(c_channel) = *(I_channel) / (1.0f + std::abs(*I_channel)); \
+            c_channel++;                                                \
+            I_channel++;                                                \
+        }                                                               \
+        I_pixel += step;                                                \
+        c_pixel += C_ob;                                                \
+    }
+
+/**
+ * @brief Compute the softsign value of each element in-place in the
+ *        full tile.
+ *
+ * foreach  i in [0, FLOAT_W_ob), j in [0, FLOAT_C_ob)
+ *    c_tile[i][j] = c_tile[i*stride][j] / (1.0 + | c_tile[i*stride][j] |)
+ */
+#define FLOAT_FUSED_SOFTSIGN_TILE_C                                     \
+    c_tile_t *c_pixel = c_tile;                                         \
+    for (uint32_t kk = 0; kk < FLOAT_W_ob; kk++)                        \
+    {                                                                   \
+        c_tile_t *c_channel = c_pixel;                                  \
+        for (uint32_t jj = 0; jj < FLOAT_C_ob; jj++)                    \
+        {                                                               \
+            *(c_channel) = *(c_channel) / (1.0f + std::abs(*(c_channel))); \
+            c_channel++;                                                \
+        }                                                               \
+        c_pixel += FLOAT_C_ob;                                          \
+    }
+
+/**
+ * @brief Compute the softsign value of each element in-place in the
+ *        end tile.
+ *
+ * @param[out] c_cur An offset pointer into the end tile (where to start)
+ * @param[in]  W_ob  The number of rows in the end tile.
+ * @param[in]  C_ob  The number of channels in each row of the end tile.
+ *
+ * foreach  i in [0, W_ob), j in [0, C_ob)
+ *    c_cur[i][j] = c_cur[i*stride][j] / (1.0 + | c_cur[i*stride][j] |)
+ */
+#define FLOAT_FUSED_SOFTSIGN_END_C(c_cur, W_ob, C_ob)                   \
+    c_tile_t *c_pixel = c_cur;                                          \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                              \
+    {                                                                   \
+        c_tile_t *c_channel = c_pixel;                                  \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                          \
+        {                                                               \
+            *(c_channel) = *(c_channel) / (1.0f + std::abs(*(c_channel))); \
+            c_channel++;                                                \
+        }                                                               \
+        c_pixel += C_ob;                                                \
+    }
+
+//****************************************************************************
+// Ewise abs
+//****************************************************************************
+
+/**
+ * @brief Compute the absolute value of each element in strided rows of I
+ *        and store in full tile.
+ *
+ * @param[in]  step  The offset corresponding to the stride between non-
+ *                   contiguous rows in I, a positive integer, where
+ *                   step = stride*FLOAT_C_ib
+ * @param[in]  I     The input containining FLOAT_W_ob*stride contiguous rows
+ *                   of FLOAT_C_ob elements each
+ *
+ * foreach  i in [0, FLOAT_W_ob), j in [0, FLOAT_C_ob)
+ *    c_tile[i][j] = abs(I[i*stride][j])
+ */
+#define FLOAT_ABS_TILE_C(step, I)                                       \
+    c_tile_t *c_pixel = c_tile;                                         \
+    c_tile_t const *I_pixel = I;                                        \
+    for (uint32_t kk = 0; kk < FLOAT_W_ob; kk++)                        \
+    {                                                                   \
+        c_tile_t *c_channel = c_pixel;                                  \
+        c_tile_t const *I_channel = I_pixel;                            \
+        for (uint32_t jj = 0; jj < FLOAT_C_ob; jj++)                    \
+        {                                                               \
+            *(c_channel) = std::abs(*I_channel);                        \
+            c_channel++;                                                \
+            I_channel++;                                                \
+        }                                                               \
+        I_pixel += step;                                                \
+        c_pixel += FLOAT_C_ob;                                          \
+    }
+
+/**
+ * @brief Compute the absolute value of each element in strided rows of I
+ *        and store in end tile.
+ *
+ * @param[in]  step  The offset corresponding to the stride between non-
+ *                   contiguous rows in I, a positive integer, where
+ *                   step = stride*FLOAT_C_ib
+ * @param[in]  I     The input containining W_ob*stride contiguous rows
+ *                   of C_ob elements each
+ * @param[out] c_cur An offset pointer into the end tile (where to start)
+ * @param[in]  W_ob  The number of rows in the end tile.
+ * @param[in]  C_ob  The number of channels in each row of the end tile.
+ *
+ * foreach  i in [0, W_ob), j in [0, C_ob)
+ *    c_cur[i][j] = abs(I[i*stride][j])
+ */
+#define FLOAT_ABS_END_C(step, I, c_cur, W_ob, C_ob)             \
     c_tile_t *c_pixel = c_cur;                                  \
-    c_tile_t const *a_pixel = a;                                \
-    for (uint32_t kk = 0; kk < W_ob; kk++)                    \
+    c_tile_t const *I_pixel = I;                                \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                      \
     {                                                           \
         c_tile_t *c_channel = c_pixel;                          \
-        c_tile_t const *a_channel = a_pixel;                    \
+        c_tile_t const *I_channel = I_pixel;                    \
         for (uint32_t jj = 0; jj < C_ob; jj++)                  \
         {                                                       \
-            *(c_channel) = *(a_channel) / (1.0f + std::abs(*a_channel)); \
+            *(c_channel) = std::abs(*I_channel);                \
             c_channel++;                                        \
-            a_channel++;                                        \
+            I_channel++;                                        \
         }                                                       \
-        a_pixel += step;                                        \
+        I_pixel += step;                                        \
         c_pixel += C_ob;                                        \
     }
 
-#define FLOAT_FUSED_SOFTSIGN_TILE_C       \
-    c_tile_t *c_pixel = c_tile;                  \
-    for (uint32_t kk = 0; kk < FLOAT_W_ob; kk++)       \
-    {                                            \
-        c_tile_t *c_channel = c_pixel;           \
-        for (uint32_t jj = 0; jj < FLOAT_C_ob; jj++)   \
-        {                                        \
-            *(c_channel) = *(c_channel) / (1.0f + std::abs(*(c_channel))); \
-            c_channel++;                         \
-        }                                        \
-        c_pixel += FLOAT_C_ob;                         \
-    }
-
-#define FLOAT_FUSED_SOFTSIGN_END_C(c_cur, W_ob, C_ob) \
-    c_tile_t *c_pixel = c_cur;                     \
-    for (uint32_t kk = 0; kk < W_ob; kk++)       \
-    {                                              \
-        c_tile_t *c_channel = c_pixel;             \
-        for (uint32_t jj = 0; jj < C_ob; jj++)     \
-        {                                          \
-            *(c_channel) = *(c_channel) / (1.0f + std::abs(*(c_channel))); \
-            c_channel++;                           \
-        }                                          \
-        c_pixel += C_ob;                           \
-    }
-
-#define FLOAT_ABS_TILE_C(step, a)                       \
+/**
+ * @brief Compute the absolute value of each element in-place in the
+ *        full tile.
+ *
+ * foreach  i in [0, FLOAT_W_ob), j in [0, FLOAT_C_ob)
+ *    c_tile[i][j] = abs(c_tile[i][j])
+ */
+#define FLOAT_FUSED_DIV_TILE_C(step, I)                                 \
     c_tile_t *c_pixel = c_tile;                                         \
-    c_tile_t const *a_pixel = a;                                        \
-    for (uint32_t kk = 0; kk < FLOAT_W_ob; kk++)                              \
+    c_tile_t const *I_pixel = I;                                        \
+    for (uint32_t kk = 0; kk < FLOAT_W_ob; kk++)                        \
     {                                                                   \
         c_tile_t *c_channel = c_pixel;                                  \
-        c_tile_t const *a_channel = a_pixel;                            \
-        for (uint32_t jj = 0; jj < FLOAT_C_ob; jj++)                          \
+        c_tile_t const *I_channel = I_pixel;                            \
+        for (uint32_t jj = 0; jj < FLOAT_C_ob; jj++)                    \
         {                                                               \
-            *(c_channel) = std::abs(*a_channel);                        \
+            *(c_channel) = *(I_channel) / *(c_channel);                 \
             c_channel++;                                                \
-            a_channel++;                                                \
+            I_channel++;                                                \
         }                                                               \
-        a_pixel += step;                                                \
-        c_pixel += FLOAT_C_ob;                                                \
+        I_pixel += step;                                                \
+        c_pixel += FLOAT_C_ob;                                          \
     }
 
-#define FLOAT_ABS_END_C(step, a, c_cur, W_ob, C_ob) \
+/**
+ * @brief Compute the absolute value of each element in-place in the
+ *        end tile.
+ *
+ * @param[out] c_cur An offset pointer into the end tile (where to start)
+ * @param[in]  W_ob  The number of rows in the end tile.
+ * @param[in]  C_ob  The number of channels in each row of the end tile.
+ *
+ * foreach  i in [0, W_ob), j in [0, C_ob)
+ *    c_cur[i][j] = abs(c_cur[i][j])
+ */
+#define FLOAT_FUSED_DIV_END_C(step, I, c_cur, W_ob, C_ob)       \
     c_tile_t *c_pixel = c_cur;                                  \
-    c_tile_t const *a_pixel = a;                                \
-    for (uint32_t kk = 0; kk < W_ob; kk++)                    \
+    c_tile_t const *I_pixel = I;                                \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                      \
     {                                                           \
         c_tile_t *c_channel = c_pixel;                          \
-        c_tile_t const *a_channel = a_pixel;                    \
+        c_tile_t const *I_channel = I_pixel;                    \
         for (uint32_t jj = 0; jj < C_ob; jj++)                  \
         {                                                       \
-            *(c_channel) = std::abs(*a_channel);                \
+            *(c_channel) = *(I_channel) / *(c_channel);         \
             c_channel++;                                        \
-            a_channel++;                                        \
+            I_channel++;                                        \
         }                                                       \
-        a_pixel += step;                                        \
-        c_pixel += C_ob;                                        \
-    }
-
-#define FLOAT_FUSED_DIV_TILE_C(step, a) \
-    c_tile_t *c_pixel = c_tile;                                         \
-    c_tile_t const *a_pixel = a;                                        \
-    for (uint32_t kk = 0; kk < FLOAT_W_ob; kk++)                              \
-    {                                                                   \
-        c_tile_t *c_channel = c_pixel;                                  \
-        c_tile_t const *a_channel = a_pixel;                            \
-        for (uint32_t jj = 0; jj < FLOAT_C_ob; jj++)                          \
-        {                                                               \
-            *(c_channel) = *(a_channel) / *(c_channel);                 \
-            c_channel++;                                                \
-            a_channel++;                                                \
-        }                                                               \
-        a_pixel += step;                                                \
-        c_pixel += FLOAT_C_ob;                                                \
-    }
-
-#define FLOAT_FUSED_DIV_END_C(step, a, c_cur, W_ob, C_ob) \
-    c_tile_t *c_pixel = c_cur;                                  \
-    c_tile_t const *a_pixel = a;                                \
-    for (uint32_t kk = 0; kk < W_ob; kk++)                    \
-    {                                                           \
-        c_tile_t *c_channel = c_pixel;                          \
-        c_tile_t const *a_channel = a_pixel;                    \
-        for (uint32_t jj = 0; jj < C_ob; jj++)                  \
-        {                                                       \
-            *(c_channel) = *(a_channel) / *(c_channel);         \
-            c_channel++;                                        \
-            a_channel++;                                        \
-        }                                                       \
-        a_pixel += step;                                        \
+        I_pixel += step;                                        \
         c_pixel += C_ob;                                        \
     }
