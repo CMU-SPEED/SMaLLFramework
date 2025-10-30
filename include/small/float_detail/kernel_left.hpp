@@ -79,7 +79,7 @@ void inline kernel_left(
 
     if constexpr(fused_single_element_before == OP_UPSAMPLE)
     {
-        FLOAT_ACCUM_END_C_upsample(F_b, _stride_before, _C_ib, l_pad_el, _C_ob);
+        FLOAT_ACCUM_END_C_upsample(F_b, _stride_before, l_pad_el, _C_ob);
     }
 
     c_tile_t *c_cur = c_tile;

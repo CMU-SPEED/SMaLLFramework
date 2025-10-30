@@ -24,12 +24,7 @@ namespace small
 {
     namespace float_detail
     {
-
-        /// @todo both pairs of typedefs should not be needed.
-        typedef small::FloatBuffer::value_type dtype;
-
         typedef small::FloatBuffer::value_type c_tile_t;
-
     }
 }
 
@@ -237,7 +232,7 @@ namespace small
  * @param[in] step  The offset corresponding to number of elements between
  *                  the beginnings successive strided (non-contiguous)
  *                  rows in I to load. It is a positive integer, where
- *                  step = stride*FLOAT_C_ib
+ *                  step = stride*_C_ib
  *
  * foreach i in [0, FLOAT_W_ob), j in [0, FLOAT_C_ob)
  *    c_tile[i][j] = I[i*stride][j]
@@ -258,7 +253,7 @@ namespace small
  *                  C_ob elements each
  * @param[in] step  The offset corresponding to the stride between non-
  *                  contiguous rows in I to load, a positive integer, where
- *                  step = stride*FLOAT_C_ib
+ *                  step = stride*_C_ib
  * @param[in] W_ob  The number of rows in the end tile.
  * @param[in] C_ob  The number of channels in each row of the end tile.
  *
@@ -427,7 +422,7 @@ namespace small
  */
 
 //****************************************************************************
-// Convolution
+// Convolution Computation (Strided GEMM)
 //****************************************************************************
 
 /**
@@ -437,13 +432,14 @@ namespace small
  *
  * @param[in]  step  The offset corresponding to the stride between
  *                   non-contiguous rows of I, a positive integer
- *                   where step = stride*FLOAT_C_ib
+ *                   where step = stride*_C_ib
  * @param[in]  I     FLOAT_W_ob x UNROLL non-contiguous, row-major,
  *                   tile of inputs
  * @param[in]  W     UNROLL x FLOAT_C_ob row-major tile of weights
  *
- * foreach i in [0, FLOAT_W_ob), j in [0, FLOAT_C_ob), k in [0, UNROLL)
- *    c_tile[i][j] += I[i*stride][k] * W[k][j]
+ * for k in [0, UNROLL)
+ *    foreach i in [0, FLOAT_W_ob), j in [0, FLOAT_C_ob)
+ *       c_tile[i][j] += I[i*stride][k] * W[k][j]
  *
  * @todo: UNROLL is 1 for this platform, so it was removed. Add back?
  */
@@ -464,7 +460,6 @@ namespace small
         c_pixel += FLOAT_C_ob;                                \
     }
 
-/// @todo confirm indexing change on W
 /**
  * @brief Compute a Rank-UNROLL outer product of an input tensor (I) and
  *        a weight buffer (W), and accumulate into an the end tile with
@@ -479,8 +474,9 @@ namespace small
  * @param[in]  W_ob  The number of rows in the end tile.
  * @param[in]  C_ob  The number of channels in each row of the end tile.
  *
- * foreach i in [0, W_ob), j in [0, C_ob), k in [0, UNROLL)
- *    c_cur[i][j] += I[i*stride][k] * W[k][j]
+ * for k in [0, UNROLL)
+ *    foreach i in [0, W_ob), j in [0, C_ob)
+ *       c_cur[i][j] += I[i*stride][k] * W[k][j]
  *
  * @todo: UNROLL is 1 for this platform, so it was removed. Add back?
  */
@@ -522,15 +518,15 @@ namespace small
  * @param[in]  W_ob   The number of rows in the end tile.
  * @param[in]  C_ob   The number of channels in each row of the end tile.
  *
- * foreach i in [0, W_ob), j in [0, C_ob), k in [0, UNROLL)
- *    c_cur[i][j] += I[i*stride][k] * W[k][j]
+ * for k in [0, UNROLL)
+ *    foreach i in [0, W_ob), j in [0, C_ob),
+ *       c_cur[i][j] += I[i*stride][k] * W[k][j]
  *
  * or
+ * for k in [0, UNROLL)
+ *    foreach i in [0, W_ob), j in [0, C_ob),
+ *       c_cur[i][j] += I[i/stride][k] * W[k][j]
  *
- * foreach i in [0, W_ob), j in [0, C_ob), k in [0, UNROLL)
- *    c_cur[i][j] += I[i/stride][k] * W[k][j]
- *
- * @todo: UNROLL is 1 for this platform, so it was removed. Add back?
  */
 
 
@@ -545,7 +541,7 @@ namespace small
  *
  * @param[in]  step  The offset corresponding to the stride between
  *                   non-contiguous rows of I; a positive integer where
- *                   step = stride*FLOAT_C_ib
+ *                   step = stride*_C_ib
  * @param[in]  I     stride*FLOAT_W_ob x FLOAT_C_ob, contiguous row-major tile
  *                   of inputs
  *
@@ -575,7 +571,7 @@ namespace small
  *
  * @param[in]  step   The offset corresponding to the stride between
  *                    non-contiguous rows of I; a positive integer where
- *                    step = stride*FLOAT_C_ib
+ *                    step = stride*_C_ib
  * @param[in]  I      stride*W_ob x C_ob, contiguous row-major tile of inputs
  * @param[out] c_cur  An offset pointer into end tile where computation begins
  * @param[in]  W_ob   The number of rows in the end tile.
@@ -633,11 +629,9 @@ AND (TODO)
  * @param[in] I      Input 1 x C_ob matrix (vector)
  * @param[in] W_ob   The number of rows in the end tile.
  * @param[in] C_ob   The number of channels in each row of the end tile.
- * @param[in] stride @todo no stride here
  *
  * foreach i in [0, W_ob), j in [0, C_ob)
  *    c_tile[i][j] = max(I[0][C_ob], c_tile[i][j])
- *    c_tile[i][j] = max(I[0][j], c_tile[i][j])  @todo check this
  *
  */
 
@@ -652,7 +646,7 @@ AND (TODO)
  *
  * @param[in] step The offset corresponding to the stride between
  *                 non-contiguous rows of I; a positive integer where
- *                 step = stride*FLOAT_C_ib
+ *                 step = stride*_C_ib
  * @param[in] I    stride*FLOAT_W_ob x FLOAT_C_ob contiguous row-major tile
  *                 of inputs.
  * @param[in] W    1 x FLOAT_C_ob row-major tile of weights
@@ -688,7 +682,7 @@ AND (TODO)
  *
  * @param[in]  step  The offset corresponding to the stride between
  *                   non-contiguous rows of I, a positive integer where
- *                   step = stride*FLOAT_C_ib
+ *                   step = stride*_C_ib
  * @param[in]  I     stride*W_ob x C_ob contiguous, row-major tile of inputs
  * @param[in]  W     1 x C_ob row-major tile of weights
  * @param[out] c_cur Offset pointer into end tile where computation begins
@@ -727,7 +721,7 @@ AND (TODO)
  * @param[in] stride  The stride in between rows of I, positive integer
  * @param[in] step    The offset corresponding to the stride between
  *                    non-contiguous rows of I, a positive integer where
- *                    step = stride*FLOAT_C_ib
+ *                    step = stride*_C_ib
  * @param[in] I       stride*W_ob x C_ob contiguous, row-major tile of inputs
  * @param[in] W_ob    The number of rows in the end tile.
  * @param[in] C_ob    The number of channels in each row the end tile.
@@ -776,8 +770,6 @@ AND (TODO)
  *
  * foreach i in [0, W_ob), j in [0, C_ob)
  *    c_tile[i][j] = max(0.0, c_tile[i][j])
- *
- * @todo revisit name (replace FUSED with INPLACE?)
  */
 #define FLOAT_FUSED_RELU_END_C(c_cur, W_ob, C_ob)                     \
     float *c_pixel = c_cur;                                           \
@@ -803,7 +795,7 @@ AND (TODO)
  *
  * @param[in]  step  The offset corresponding to the stride between
  *                   non-contiguous rows of I, a positive integer where
- *                   step = stride*FLOAT_C_ib
+ *                   step = stride*_C_ib
  * @param[in]  I     stride*FLOAT_W_ob x UNROLL non-contiguous,
  *                   row-major, tile of inputs
  * @param[in]  W     1x1 array (scalar) holding the scale factor for
@@ -840,7 +832,7 @@ AND (TODO)
  *
  * @param[in]  step   The offset corresponding to the stride between
  *                    non-contiguous rows of I, a positive integer where
- *                    step = stride*FLOAT_C_ib
+ *                    step = stride*_C_ib
  * @param[in]  I      stride*W_ob x UNROLL contiguous, row-major,
  *                    tile of inputs
  * @param[in]  W      1x1 array (scalar) holding the scale factor for
@@ -936,18 +928,21 @@ AND (TODO)
 //****************************************************************************
 // Accumulation kernels
 //****************************************************************************
+
 /**
  * @brief Accumulate a tile of an input I, into the full tile.
  *        Tiles are FLOAT_W_ob x FLOAT_C_ob. Access of rows of I are strided.
  *
  * @param[in]  step  The offset corresponding to the stride between
  *                   non-contiguous rows of I, a positive integer where
- *                   step = stride*FLOAT_C_ib
+ *                   step = stride*_C_ib
  * @param[in]  I     stride*FLOAT_W_ob x FLOAT_C_ob contiguous, row major
  *                   tile of inputs.
  *
  * foreach i in [0, FLOAT_W_ob), j in [0, FLOAT_C_ob)
  *    c_tile[i][j] += I[i*stride][j]
+ *
+ * @todo Add _UNROLL loop?
  */
 #define FLOAT_ACCUM_TILE_C(step, I)                     \
     float *c_pixel = c_tile;                            \
@@ -972,7 +967,7 @@ AND (TODO)
  *
  * @param[in]  step   The offset corresponding to the stride between
  *                    non-contiguous rows of I, a positive integer where
- *                    step = stride*FLOAT_C_ib
+ *                    step = stride*_C_ib
  * @param[in]  I      stride*FLOAT_W_ob x FLOAT_C_ob contiguous, row major
  *                    tile of inputs
  * @param[out] c_cur  Offset into end tile where computation begins
@@ -980,7 +975,6 @@ AND (TODO)
  * @param[in]  C_ob   The number of channels in each row of the end tile.
  *
  * @todo _UNROLL not passed in.
- * @todo Why does this have an _UNROLL loop and not the other?
  *
  * foreach i in [0, W_ob), for j in [0, C_ob)
  *    c_tile[i][j] += I[i*stride][j]
@@ -1020,8 +1014,7 @@ AND (TODO)
  * foreach i in [0, FLOAT_W_ob), j in [0, FLOAT_C_ob)
  *    c_tile[i][j] *= scale
  *
- * @todo why is this not FUSED/IN_PLACE?
- * @todo this is not DIV. It is MUL
+ * @todo Rename FLOAT_INPLACE_MUL_SCALAR_TILE_C
  */
 #define FLOAT_DIV_TILE_C(scale)                         \
     float *c_pixel = c_tile;                            \
@@ -1047,8 +1040,7 @@ AND (TODO)
  * foreach i in [0, W_ob), j in [0, C_ob)
  *    c_tile[i][j] *= scale
  *
- * @todo why is this not FUSED/IN_PLACE?
- * @todo this is not DIV. It is MUL, EWISE_MUL_SCALAR?
+ * @todo Rename FLOAT_INPLACE_MUL_SCALAR_END_C
  */
 #define FLOAT_DIV_END_C(c_cur, scale, W_ob, C_ob)     \
     float *c_pixel = c_cur;                           \
@@ -1063,6 +1055,10 @@ AND (TODO)
         c_pixel += C_ob;                              \
     }
 
+//****************************************************************************
+// Broadcast Addition kernels
+//****************************************************************************
+
 /**
  * @brief Add a constant scalar to every element of the full tile.
  *        The full tile is FLOAT_W_ob x FLOAT_C_ob.
@@ -1072,7 +1068,7 @@ AND (TODO)
  * foreach i in [0, FLOAT_W_ob), j in [0, FLOAT_C_ob)
  *    c_tile[i][j] += scalar
  *
- * @todo why is this not FUSED/IN_PLACE?
+ * @todo Rename FLOAT_INPLACE_ADD_SCALAR_TILE_C
  */
 #define FLOAT_EWISE_ADD_SCALAR_TILE_C(scalar)           \
     float *c_pixel = c_tile;                            \
@@ -1099,7 +1095,7 @@ AND (TODO)
  * foreach i in [0, W_ob), j in [0, C_ob)
  *    c_tile[i][j] += scalar
  *
- * @todo why is this not FUSED/IN_PLACE?
+ * @todo Rename FLOAT_INPLACE_ADD_SCALAR_END_C
  */
 #define FLOAT_EWISE_ADD_SCALAR_END_C(c_cur, scalar, W_ob, C_ob) \
     float *c_pixel = c_cur;                                     \
@@ -1152,8 +1148,8 @@ AND (TODO)
  * foreach i in [0, W_ob), j in [0, C_ob)
  *    c_tile[i][j] += I[i/factor][j]
  */
-#define FLOAT_ACCUM_END_C_upsample(I, factor, _C_ib, _W_ob, C_ob)      \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)                            \
+#define FLOAT_ACCUM_END_C_upsample(I, factor, W_ob, C_ob)              \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                             \
     {                                                                  \
         for (uint32_t jj = 0; jj < C_ob; jj++)                         \
         {                                                              \
@@ -1165,29 +1161,22 @@ AND (TODO)
 // Accumulate channel dimension
 //****************************************************************************
 
-
 /**
+ * @todo Consider adding more documentation about how FLOAT_SIMD_EPILOGUE
+ *       affects this kernel.
+ *
  * @brief Accumulate all elements along the channel dimension of the full tile
- *        into the first element of each row.
+ *        into the first element of each row. Clear the rest.
  *
  * @param[in] O_w_left  The number of rows to accumulate across.
- * @param[in] C_ob      The number of channels elements in each row of the
- *                      full tile to accumulate?.
+ * @param[in] C_ob      The number of channels elements in the result of
+ *                      each row of the full tile.
  *
  * foreach i in [0, O_w_left)
  *    for j in [1, FLOAT_C_ob)
  *       c_tile[i][0] += c_tile[i][j]
- *
- * @todo This takes C_ob but uses FLOAT_C_ob in one place.
- * @todo the implementation seems wrong
- *
- * form : O (output) -> 1 x 1 matrix, O(input) -> 1 x C_ob matrix
- * layout: O is in registers
- * O[0] = O[0] + O[j] for j in [1,C_ob)
- * and
- * O[j] = 0 for j in [1,C_ob)
+ *       c_tile[i][j]  = 0.0
  */
-
 #define FLOAT_REDUCE_CHANNEL_END_C(O_w_left, C_ob)                      \
     if constexpr (C_ob == 1 && C_ob != FLOAT_SIMD_EPILOGUE)             \
     {                                                                   \
@@ -1203,76 +1192,6 @@ AND (TODO)
     }
 
 //****************************************************************************
-// Reduce kernels
-//****************************************************************************
-
-/// @todo
-#define FLOAT_REDUCE_div_C(O, d, W_ob_g, C_ob)          \
-    {                                                   \
-        c_tile_t *c_pixel = c_tile;                     \
-        c_tile_t *O_channel = O;                        \
-        c_tile_t *c_channel = c_pixel;                  \
-        for (uint32_t mm = 0; mm < W_ob_g; mm++)        \
-        {                                               \
-            c_tile_t *O_channel = O;                    \
-            c_tile_t *c_channel = c_pixel;              \
-            for (uint32_t kk = 0; kk < C_ob; kk++)      \
-            {                                           \
-                *O_channel += *c_channel;               \
-                O_channel++;                            \
-                c_channel++;                            \
-            }                                           \
-            c_pixel += C_ob;                            \
-        }                                               \
-        O_channel = O;                                  \
-        for (uint32_t kk = 0; kk < C_ob; kk++)          \
-        {                                               \
-            *O_channel *= d;                            \
-            O_channel++;                                \
-        }                                               \
-    }
-
-/// @todo
-#define FLOAT_REDUCE_C(O, W_ob_g, C_ob)                 \
-    {                                                   \
-        c_tile_t *c_pixel = c_tile;                     \
-        c_tile_t *O_channel = O;                        \
-        c_tile_t *c_channel = c_pixel;                  \
-        for (uint32_t mm = 0; mm < W_ob_g; mm++)        \
-        {                                               \
-            c_tile_t *O_channel = O;                    \
-            c_tile_t *c_channel = c_pixel;              \
-            for (uint32_t kk = 0; kk < C_ob; kk++)      \
-            {                                           \
-                *O_channel += *c_channel;               \
-                O_channel++;                            \
-                c_channel++;                            \
-            }                                           \
-            c_pixel += C_ob;                            \
-        }                                               \
-    }
-
-/// @todo
-#define FLOAT_REDUCE_C_last(O, W_ob, C_ob)              \
-    {                                                   \
-        c_tile_t *c_pixel = c_tile;                     \
-        c_tile_t *O_channel = O;                        \
-        c_tile_t *c_channel = c_pixel;                  \
-        for (uint32_t mm = 0; mm < W_ob_g; mm++)        \
-        {                                               \
-            c_tile_t *O_channel = O;                    \
-            c_tile_t *c_channel = c_pixel;              \
-            for (uint32_t kk = 0; kk < C_ob; kk++)      \
-            {                                           \
-                *O_channel += *c_channel;               \
-                O_channel++;                            \
-                c_channel++;                            \
-            }                                           \
-            c_pixel += C_ob;                            \
-        }                                               \
-    }
-
-//****************************************************************************
 // Ewise exponentiation (Softmax)
 //****************************************************************************
 
@@ -1282,7 +1201,7 @@ AND (TODO)
  *
  * @param[in]  step  The offset corresponding to the stride between non-
  *                   contiguous rows in I, a positive integer, where
- *                   step = stride*FLOAT_C_ib
+ *                   step = stride*_C_ib
  * @param[in]  I     The input containining FLOAT_W_ob*stride contiguous rows
  *                   of FLOAT_C_ob elements each
  *
@@ -1312,7 +1231,7 @@ AND (TODO)
  *
  * @param[in]  step  The offset corresponding to the stride between non-
  *                   contiguous rows in I, a positive integer, where
- *                   step = stride*FLOAT_C_ib
+ *                   step = stride*_C_ib
  * @param[in]  I     The input containining W_ob*stride contiguous rows
  *                   of C_ob elements each
  * @param[out] c_cur An offset pointer into the end tile (where to start)
@@ -1322,20 +1241,20 @@ AND (TODO)
  * foreach  i in [0, W_ob), j in [0, C_ob)
  *    c_cur[i][j] = exp(I[i*stride][j])
  */
-#define FLOAT_EXP_END_C(step, I, c_cur, W_ob, C_ob) \
+#define FLOAT_EXP_END_C(step, I, c_cur, W_ob, C_ob)   \
     c_tile_t *c_pixel = c_cur;                        \
-    c_tile_t const *a_pixel = a;                      \
-    for (uint32_t kk = 0; kk < W_ob; kk++)          \
+    c_tile_t const *I_pixel = I;                      \
+    for (uint32_t kk = 0; kk < W_ob; kk++)            \
     {                                                 \
         c_tile_t *c_channel = c_pixel;                \
-        c_tile_t const *a_channel = a_pixel;          \
+        c_tile_t const *I_channel = I_pixel;          \
         for (uint32_t jj = 0; jj < C_ob; jj++)        \
         {                                             \
-            *(c_channel) = std::exp(*a_channel);      \
+            *(c_channel) = std::exp(*I_channel);      \
             c_channel++;                              \
-            a_channel++;                              \
+            I_channel++;                              \
         }                                             \
-        a_pixel += step;                              \
+        I_pixel += step;                              \
         c_pixel += C_ob;                              \
     }
 
@@ -1394,7 +1313,7 @@ AND (TODO)
  *
  * @param[in]  step  The offset corresponding to the stride between non-
  *                   contiguous rows in I, a positive integer, where
- *                   step = stride*FLOAT_C_ib
+ *                   step = stride*_C_ib
  * @param[in]  I     The input containining FLOAT_W_ob*stride contiguous rows
  *                   of FLOAT_C_ob elements each
  *
@@ -1424,7 +1343,7 @@ AND (TODO)
  *
  * @param[in]  step  The offset corresponding to the stride between non-
  *                   contiguous rows in I, a positive integer, where
- *                   step = stride*FLOAT_C_ib
+ *                   step = stride*_C_ib
  * @param[in]  I     The input containining W_ob*stride contiguous rows
  *                   of C_ob elements each
  * @param[out] c_cur An offset pointer into the end tile (where to start)
@@ -1505,7 +1424,7 @@ AND (TODO)
  *
  * @param[in]  step  The offset corresponding to the stride between non-
  *                   contiguous rows in I, a positive integer, where
- *                   step = stride*FLOAT_C_ib
+ *                   step = stride*_C_ib
  * @param[in]  I     The input containining W_ob*stride contiguous rows of
  *                   C_ob elements each
  *
@@ -1535,7 +1454,7 @@ AND (TODO)
  *
  * @param[in]  step  The offset corresponding to the stride between non-
  *                   contiguous rows in I, a positive integer, where
- *                   step = stride*FLOAT_C_ib
+ *                   step = stride*_C_ib
  * @param[in]  I     The input containining W_ob*stride contiguous rows
  *                   of C_ob elements each
  * @param[out] c_cur An offset pointer into the end tile (where to start)
@@ -1616,7 +1535,7 @@ AND (TODO)
  *
  * @param[in]  step  The offset corresponding to the stride between non-
  *                   contiguous rows in I, a positive integer, where
- *                   step = stride*FLOAT_C_ib
+ *                   step = stride*_C_ib
  * @param[in]  I     The input containining FLOAT_W_ob*stride contiguous rows
  *                   of FLOAT_C_ob elements each
  *
@@ -1646,7 +1565,7 @@ AND (TODO)
  *
  * @param[in]  step  The offset corresponding to the stride between non-
  *                   contiguous rows in I, a positive integer, where
- *                   step = stride*FLOAT_C_ib
+ *                   step = stride*_C_ib
  * @param[in]  I     The input containining W_ob*stride contiguous rows
  *                   of C_ob elements each
  * @param[out] c_cur An offset pointer into the end tile (where to start)
@@ -1673,12 +1592,16 @@ AND (TODO)
         c_pixel += C_ob;                                        \
     }
 
+//****************************************************************************
+// Ewise div
+//****************************************************************************
+
 /**
  * @brief Compute the absolute value of each element in-place in the
  *        full tile.
  *
  * foreach  i in [0, FLOAT_W_ob), j in [0, FLOAT_C_ob)
- *    c_tile[i][j] = abs(c_tile[i][j])
+ *    c_tile[i][j] = I[i][j]/(c_tile[i][j])
  */
 #define FLOAT_FUSED_DIV_TILE_C(step, I)                                 \
     c_tile_t *c_pixel = c_tile;                                         \
