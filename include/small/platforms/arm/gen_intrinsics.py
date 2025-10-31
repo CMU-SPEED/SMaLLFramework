@@ -20,36 +20,36 @@ NUM_FMA = 2
 NUM_MAX = 1
 NUM_LOAD = 2
 NUM_STORE = 1
-with open('params.h', 'w') as f:
+with open('params-gen-new.h', 'w') as f:
     f.write(
         '''
-#define W_ob {W_ob}
-#define C_ob {C_ob}
-#define SIMD {SIMD}
-#define UNROLL {UNROLL}
-#define C_ib C_ob
+#define FLOAT_W_ob   {W_ob}
+#define FLOAT_C_ob   {C_ob}
+#define FLOAT_SIMD   {SIMD}
+#define FLOAT_UNROLL {UNROLL}
+#define FLOAT_C_ib   FLOAT_C_ob
 
 // not used for kernels, but used in throughput calculation.
-#define NUM_FMA {NUM_FMA}
-#define NUM_MAX {NUM_MAX}
-#define NUM_LOAD {NUM_LOAD}
-#define NUM_STORE {NUM_STORE}
+#define FLOAT_NUM_FMA {NUM_FMA}
+#define FLOAT_NUM_MAX {NUM_MAX}
+#define FLOAT_NUM_LOAD {NUM_LOAD}
+#define FLOAT_NUM_STORE {NUM_STORE}
         '''.format(**locals())
     )
 
 def redefine(name):
     return ['#ifdef {n}\n#undef {n}\n#endif\n'.format(n=name)]
 
-with open('intrinsics-gen.h', 'w') as f:
+with open('intrinsics-gen-new.h', 'w') as f:
     s = []
     s += ['#include <arm_neon.h>']
 
     # define tile
     # names of variables
-    s += redefine('DEF_TILE_C')
-    s += ['#define DEF_TILE_C(W_ob, C_ob)\\']
+    s += redefine('FLOAT_DEF_TILE_C')
+    s += ['#define FLOAT_DEF_TILE_C\\']
     c_tile = [["c_{}_{}".format(kk, jj) for jj in range(C_ob//SIMD)] for kk in range(W_ob)]
-    s += ['float c_tile[W_ob * C_ob];\\']
+    s += ['/*float c_tile[FLOAT_W_ob * FLOAT_C_ob];*/\\']
     for kk in range(W_ob):
         for jj in range(C_ob//SIMD):
             s += ['float32x4_t {};\\'.format(c_tile[kk][jj])]
@@ -57,35 +57,35 @@ with open('intrinsics-gen.h', 'w') as f:
 
 
     # zero tile
-    s += redefine('ZERO_TILE_C')
-    s += ['#define ZERO_TILE_C(W_ob, C_ob)\\']
+    s += redefine('FLOAT_ZERO_TILE_C')
+    s += ['#define FLOAT_ZERO_TILE_C\\']
     for kk in range(W_ob):
         for jj in range(C_ob//SIMD):
             s += ['{} = vdupq_n_f32(0);\\'.format(c_tile[kk][jj])]
     s += ['']
 
     # load tile
-    s += redefine('LOAD_TILE_C')
-    s += ['#define LOAD_TILE_C(O, W_ob, C_ob)\\']
+    s += redefine('FLOAT_LOAD_TILE_C')
+    s += ['#define FLOAT_LOAD_TILE_C(I)\\']
     for kk in range(W_ob):
         for jj in range(C_ob//SIMD):
-            s += ['{c} = vld1q_f32(O + {k} * C_ob + {j} * SIMD);\\'.format(c=c_tile[kk][jj], k=kk, j=jj)]
+            s += ['{c} = vld1q_f32(I + {k} * FLOAT_C_ob + {j} * FLOAT_SIMD);\\'.format(c=c_tile[kk][jj], k=kk, j=jj)]
     s += ['']
 
     # load tile strided
-    s += redefine('LOAD_TILE_C_strided')
-    s += ['#define LOAD_TILE_C_strided(O, step, W_ob, C_ob)\\']
+    s += redefine('FLOAT_LOAD_TILE_C_strided')
+    s += ['#define FLOAT_LOAD_TILE_C_strided(I, step)\\']
     for kk in range(W_ob):
         for jj in range(C_ob//SIMD):
-            s += ['{c} = vld1q_f32(O + {k} * step + {j} * SIMD);\\'.format(c=c_tile[kk][jj], k=kk, j=jj)]
+            s += ['{c} = vld1q_f32(I + {k} * step + {j} * FLOAT_SIMD);\\'.format(c=c_tile[kk][jj], k=kk, j=jj)]
     s += ['']
 
     # store tile
-    s += redefine('STORE_TILE_C')
-    s += ['#define STORE_TILE_C(O, W_ob, C_ob)\\']
+    s += redefine('FLOAT_STORE_TILE_C')
+    s += ['#define FLOAT_STORE_TILE_C(O)\\']
     for kk in range(W_ob):
         for jj in range(C_ob//SIMD):
-            s += ['vst1q_f32(O + {k} * C_ob + {j} * SIMD, {c});\\'.format(c=c_tile[kk][jj], k=kk, j=jj)]
+            s += ['vst1q_f32(O + {k} * FLOAT_C_ob + {j} * FLOAT_SIMD, {c});\\'.format(c=c_tile[kk][jj], k=kk, j=jj)]
     s += ['']
 
     # convolution
@@ -141,27 +141,27 @@ with open('intrinsics-gen.h', 'w') as f:
     #
 
     # max pooling / relu
-    s += redefine('MAX_TILE_C')
-    s += ['#define MAX_TILE_C(step, a, W_ob, C_ob)\\']
+    s += redefine('FLOAT_MAX_TILE_C')
+    s += ['#define FLOAT_MAX_TILE_C(step, I)\\']
     # compute
     s += ['float32x4_t av; \\']
     for kk in range(W_ob):
         for jj in range(C_ob//SIMD):
-            s += ['av = vld1q_f32(a + {k} * step + {j} * SIMD);\\'.format(k=kk, j=jj)]
+            s += ['av = vld1q_f32(I + {k} * step + {j} * FLOAT_SIMD);\\'.format(k=kk, j=jj)]
             s += ['{c} = vmaxq_f32({c}, av);\\'.format(c=c_tile[kk][jj], k=kk, j=jj)]
     s += ['']
 
     # depthwise
-    s += redefine('DW_TILE_C')
-    s += ['#define DW_TILE_C(step, a, b, W_ob, C_ob)\\']
+    s += redefine('FLOAT_DW_TILE_C')
+    s += ['#define FLOAT_DW_TILE_C(step, I, W)\\']
     s += ['float32x4_t av; \\']
     # load B
     for jj in range(C_ob//SIMD):
-        s += ['float32x4_t b_{j} = vld1q_f32(b + {j}*SIMD);\\'.format(j=jj)]
+        s += ['float32x4_t b_{j} = vld1q_f32(W + {j}*FLOAT_SIMD);\\'.format(j=jj)]
     # compute
     for kk in range(W_ob):
         for jj in range(C_ob//SIMD):
-            s += ['av = vld1q_f32(a + {k} * step + {j} * SIMD);\\'.format(k=kk, j=jj)]
+            s += ['av = vld1q_f32(I + {k} * step + {j} * FLOAT_SIMD);\\'.format(k=kk, j=jj)]
             s += ['{c} = vfmaq_f32({c}, av, b_{j});\\'.format(c=c_tile[kk][jj], j=jj)]
     s += ['']
 

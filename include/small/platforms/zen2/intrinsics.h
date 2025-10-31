@@ -861,7 +861,7 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
 
 
 /// @todo This is not in reference
-#define FLOAT_FUSED_ACCUM_TILE_C(W_ob, C_ob)         \
+#define FLOAT_FUSED_ACCUM_TILE_C                     \
     c10 = _mm256_add_ps(c10, c11);                   \
     c9 = _mm256_add_ps(c9, c10);                     \
     c8 = _mm256_add_ps(c8, c9);                      \
@@ -996,23 +996,22 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
 
 
 #if FLOAT_SIMD_EPILOGUE == 1
-#define FLOAT_ACCUM_END_C_upsample(I, stride, W_ob, C_ob)              \
-    /*printf("stride: %u\n", stride);*/                                \
+#define FLOAT_ACCUM_END_C_upsample(I, factor, W_ob, C_ob)              \
     for (uint32_t kk = 0; kk < W_ob; kk++)                             \
     {                                                                  \
         for (uint32_t jj = 0; jj < C_ob; jj++)                         \
         {                                                              \
-            c_tile[kk * C_ob + jj] += I[(kk / stride) * (C_ob) + jj];  \
+            c_tile[kk * C_ob + jj] += I[(kk / factor) * (C_ob) + jj];  \
         }                                                              \
     }
 #elif FLOAT_SIMD_EPILOGUE == 8
-#define FLOAT_ACCUM_END_C_upsample(I, stride, W_ob, C_ob)               \
+#define FLOAT_ACCUM_END_C_upsample(I, factor, W_ob, C_ob)               \
     __m256 *c_pixel = c_tile;                                           \
     for (uint32_t kk = 0; kk < W_ob; kk++)                              \
     {                                                                   \
-        a_0 = _mm256_load_ps(I + ((kk / stride) * (C_ob)));             \
+        a_0 = _mm256_load_ps(I + ((kk / factor) * (C_ob)));             \
         c_pixel[0] = _mm256_add_ps(a_0, c_pixel[0]);                    \
-        a_1 = _mm256_load_ps(I + ((kk / stride) * (C_ob) + FLOAT_SIMD));\
+        a_1 = _mm256_load_ps(I + ((kk / factor) * (C_ob) + FLOAT_SIMD));\
         c_pixel[1] = _mm256_add_ps(a_1, c_pixel[1]);                    \
         c_pixel += (C_ob/FLOAT_SIMD);                                   \
     }
