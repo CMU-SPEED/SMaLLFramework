@@ -28,9 +28,7 @@ namespace small
 {
     namespace float_detail
     {
-        // typedef small::FloatBuffer::value_type c_tile_t;
 #if FLOAT_SIMD_EPILOGUE == 1
-        // typedef float c_tile_t;
         typedef small::FloatBuffer::value_type  c_tile_t;
 #else
         typedef __m256 c_tile_t;
@@ -41,8 +39,9 @@ namespace small
 /// @todo Remove a_i, b_i's from DEF_END/TILE_C and move as needed to kernels
 ///       and rename to I_i and W_i.
 
+
 //****************************************************************************
-// Initializations
+// Definitions
 //****************************************************************************
 
 #define FLOAT_DEF_TILE_C                                                \
@@ -57,6 +56,10 @@ namespace small
     __m256 a_0, a_1, a_2, a_3, b_0, b_1;                \
     __m256 c_tile[W_ob * FLOAT_C_ob/FLOAT_SIMD];
 #endif
+
+//****************************************************************************
+// Initializations
+//****************************************************************************
 
 #define FLOAT_ZERO_TILE_C                 \
         c0 = _mm256_setzero_ps();         \
@@ -89,6 +92,8 @@ namespace small
         c_tile[kk * C_ob + 1] = _mm256_setzero_ps(); \
     }
 #endif
+
+
 //****************************************************************************
 // Loads
 //****************************************************************************
@@ -126,6 +131,8 @@ namespace small
         c_tile[kk * C_ob + 1] = _mm256_load_ps(I + kk * C_ob + FLOAT_SIMD); \
     }
 #endif
+/// @todo missing a #else
+
 //****************************************************************************
 // Pooling Loads
 //****************************************************************************
@@ -163,6 +170,7 @@ namespace small
         c_tile[kk * C_ob + 1] = _mm256_load_ps(I + kk * step + FLOAT_SIMD); \
     }
 #endif
+
 //****************************************************************************
 // Upsampling loads (stride < 1, factor = 1/stride)
 //****************************************************************************
@@ -199,6 +207,7 @@ namespace small
         c_tile[kk * C_ob + 1] = _mm256_load_ps(I + (kk/factor) * (C_ob) + FLOAT_SIMD); \
     }
 #endif
+
 
 //****************************************************************************
 // Stores
