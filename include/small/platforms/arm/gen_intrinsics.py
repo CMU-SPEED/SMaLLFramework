@@ -42,68 +42,75 @@ def redefine(name):
 
 with open('intrinsics-gen-new.h', 'w') as f:
     s = []
+    s += ['//****************************************************************************']
+    s += ['// SMaLL, Software for Machine Learning Libraries']
+    s += ['// Copyright 2023 by The SMaLL Contributors, All Rights Reserved.']
+    s += ['// SPDX-License-Identifier: BSD-3-Clause']
+    s += ['//****************************************************************************']
+    s += ['']
     s += ['#include <arm_neon.h>']
+    s += ['']
 
     # define tile
     # names of variables
     s += redefine('FLOAT_DEF_TILE_C')
-    s += ['#define FLOAT_DEF_TILE_C\\']
+    s += ['#define FLOAT_DEF_TILE_C \\']
     c_tile = [["c_{}_{}".format(kk, jj) for jj in range(C_ob//SIMD)] for kk in range(W_ob)]
-    s += ['/*float c_tile[FLOAT_W_ob * FLOAT_C_ob];*/\\']
+    s += ['    /*float c_tile[FLOAT_W_ob * FLOAT_C_ob];*/ \\']
     for kk in range(W_ob):
         for jj in range(C_ob//SIMD):
-            s += ['float32x4_t {};\\'.format(c_tile[kk][jj])]
+            s += ['    float32x4_t {}; \\'.format(c_tile[kk][jj])]
     s += ['']
 
 
     # zero tile
     s += redefine('FLOAT_ZERO_TILE_C')
-    s += ['#define FLOAT_ZERO_TILE_C\\']
+    s += ['#define FLOAT_ZERO_TILE_C \\']
     for kk in range(W_ob):
         for jj in range(C_ob//SIMD):
-            s += ['{} = vdupq_n_f32(0);\\'.format(c_tile[kk][jj])]
+            s += ['    {} = vdupq_n_f32(0); \\'.format(c_tile[kk][jj])]
     s += ['']
 
     # load tile
     s += redefine('FLOAT_LOAD_TILE_C')
-    s += ['#define FLOAT_LOAD_TILE_C(I)\\']
+    s += ['#define FLOAT_LOAD_TILE_C(I) \\']
     for kk in range(W_ob):
         for jj in range(C_ob//SIMD):
-            s += ['{c} = vld1q_f32(I + {k} * FLOAT_C_ob + {j} * FLOAT_SIMD);\\'.format(c=c_tile[kk][jj], k=kk, j=jj)]
+            s += ['    {c} = vld1q_f32(I + {k} * FLOAT_C_ob + {j} * FLOAT_SIMD); \\'.format(c=c_tile[kk][jj], k=kk, j=jj)]
     s += ['']
 
     # load tile strided
     s += redefine('FLOAT_LOAD_TILE_C_strided')
-    s += ['#define FLOAT_LOAD_TILE_C_strided(I, step)\\']
+    s += ['#define FLOAT_LOAD_TILE_C_strided(I, step) \\']
     for kk in range(W_ob):
         for jj in range(C_ob//SIMD):
-            s += ['{c} = vld1q_f32(I + {k} * step + {j} * FLOAT_SIMD);\\'.format(c=c_tile[kk][jj], k=kk, j=jj)]
+            s += ['    {c} = vld1q_f32(I + {k} * step + {j} * FLOAT_SIMD); \\'.format(c=c_tile[kk][jj], k=kk, j=jj)]
     s += ['']
 
     # store tile
     s += redefine('FLOAT_STORE_TILE_C')
-    s += ['#define FLOAT_STORE_TILE_C(O)\\']
+    s += ['#define FLOAT_STORE_TILE_C(O) \\']
     for kk in range(W_ob):
         for jj in range(C_ob//SIMD):
-            s += ['vst1q_f32(O + {k} * FLOAT_C_ob + {j} * FLOAT_SIMD, {c});\\'.format(c=c_tile[kk][jj], k=kk, j=jj)]
+            s += ['    vst1q_f32(O + {k} * FLOAT_C_ob + {j} * FLOAT_SIMD, {c}); \\'.format(c=c_tile[kk][jj], k=kk, j=jj)]
     s += ['']
 
     # convolution
-    s += redefine('CONV_TILE_C')
-    s += ['#define CONV_TILE_C(step, a, b, W_ob, C_ob)\\']
-    s += ['float *aa = a;\\']
-    s += ['float *bb = b;\\']
+    s += redefine('FLOAT_CONV_TILE_C')
+    s += ['#define FLOAT_CONV_TILE_C(step, I, W) \\']
+    s += ['    /*float *aa = I;*/ \\']
+    s += ['    float *bb = W; \\']
     # define a
     for kk in range(W_ob):
-        s += ['float32x4_t a_{kk};\\'.format(kk=kk)]
+        s += ['    float32x4_t a_{kk}; \\'.format(kk=kk)]
     # define b [half as many]
     for jj in range(C_ob1//SIMD):
-        s += ['float32x4_t b_{jj};\\'.format(jj=jj)]
+        s += ['    float32x4_t b_{jj}; \\'.format(jj=jj)]
 
     for i in range(UNROLL//SIMD):
         # load a SIMD width of a
         # for kk in range(W_ob):
-        #     s += ['a_{kk} = vld1q_f32(a + {kk} * step + {i} * SIMD);\\'.format(kk=kk, i=i)]
+        #     s += ['    a_{kk} = vld1q_f32(I + {kk} * step + {i} * FLOAT_SIMD); \\'.format(kk=kk, i=i)]
 
         for j in range(C_ob2):
 
@@ -111,30 +118,30 @@ with open('intrinsics-gen-new.h', 'w') as f:
             for ii in range(SIMD):
                 # load B
                 # for jj in range(C_ob1//SIMD):
-                #     # s += ['b_{jj} = vld1q_f32(b + ({i} * SIMD + {ii})*C_ob + ({j} * {C_ob1} + {jj})*SIMD);\\'.format(i=i, ii=ii, j=j, C_ob1=C_ob1//SIMD, jj=jj)]
-                #     s += ['b_{jj} = vld1q_f32(bb + {ii}*C_ob + ({j} * {C_ob1} + {jj})*SIMD);\\'.format(ii=ii, j=j, C_ob1=C_ob1//SIMD, jj=jj)]
+                #     # s += ['    b_{jj} = vld1q_f32(W + ({i} * SIMD + {ii})*C_ob + ({j} * {C_ob1} + {jj})*SIMD); \\'.format(i=i, ii=ii, j=j, C_ob1=C_ob1//SIMD, jj=jj)]
+                #     s += ['    b_{jj} = vld1q_f32(bb + {ii}*FLOAT_C_ob + ({j} * {C_ob1} + {jj})*FLOAT_SIMD); \\'.format(ii=ii, j=j, C_ob1=C_ob1//SIMD, jj=jj)]
 
                 # compute
                 for kk in range(W_ob):
                     if j == 0: # load a just before use
-                        s += ['a_{kk} = vld1q_f32(a + {kk} * step + {i} * SIMD);\\'.format(kk=kk, i=i)]
+                        s += ['    a_{kk} = vld1q_dup_f32(I + {kk} * step + {i} * FLOAT_SIMD); \\'.format(kk=kk, i=i)]
 
                     for jj in range(C_ob1//SIMD):
 
                         if kk == 0: # load b just before use
-                            # s += ['b_{jj} = vld1q_f32(b + ({i} * SIMD + {ii})*C_ob + ({j} * {C_ob1} + {jj})*SIMD);\\'.format(i=i, ii=ii, j=j, C_ob1=C_ob1//SIMD, jj=jj)]
-                            s += ['b_{jj} = vld1q_f32(bb + {ii}*C_ob + ({j} * {C_ob1} + {jj})*SIMD);\\'.format(ii=ii, j=j, C_ob1=C_ob1//SIMD, jj=jj)]
+                            # s += ['    b_{jj} = vld1q_f32(b + ({i} * SIMD + {ii})*FLOAT_C_ob + ({j} * {C_ob1} + {jj})*SIMD); \\'.format(i=i, ii=ii, j=j, C_ob1=C_ob1//SIMD, jj=jj)]
+                            s += ['    b_{jj} = vld1q_f32(bb + {ii}*FLOAT_C_ob + ({j} * {C_ob1} + {jj})*FLOAT_SIMD); \\'.format(ii=ii, j=j, C_ob1=C_ob1//SIMD, jj=jj)]
 
-                        # s += ['{c} = vfmaq_laneq_f32({c}, b_{jj}, a_{kk}, {ii});\\'.format(c=c_tile[kk][j * (C_ob1//SIMD) + jj], kk=kk, jj=jj, ii=ii)]
-                        # s += ['__asm__ volatile("fmla %[c].4s, %[b].4s, %[a].s[{ii}]\\n\\t" : [c] "+w"({c}) : [b] "w"(b_{jj}), [a] "w"(a_{kk}));'.format(
-                        s += ['__asm__ volatile ("fmla %0.4s, %1.4s, %2.s[{ii}]" : "+w"({c}) : "w"(b_{jj}), "w"(a_{kk}));\\'.format(
-                        # s += ['__asm__ ("fmla %0.4s, %1.4s, %2.s[{ii}]" : "+w"({c}) : "w"(b_{jj}), "w"(a_{kk}));\\'.format(
+                        # s += ['    {c} = vfmaq_laneq_f32({c}, b_{jj}, a_{kk}, {ii}); \\'.format(c=c_tile[kk][j * (C_ob1//SIMD) + jj], kk=kk, jj=jj, ii=ii)]
+                        # s += ['    __asm__ volatile("fmla %[c].4s, %[b].4s, %[a].s[{ii}]\\n\\t" : [c] "+w"({c}) : [b] "w"(b_{jj}), [a] "w"(a_{kk}));'.format(
+                        s += ['    __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[{ii}]" : "+w"({c}) : "w"(b_{jj}), "w"(a_{kk})); \\'.format(
+                        # s += ['    __asm__ ("fmla %0.4s, %1.4s, %2.s[{ii}]" : "+w"({c}) : "w"(b_{jj}), "w"(a_{kk})); \\'.format(
                             c=c_tile[kk][j * (C_ob1//SIMD) + jj], kk=kk, jj=jj, ii=ii
                         )]
 
-                        # s += ['{c} = fma_reg_broadcast({c}, b_{jj}, a_{kk}, {ii});\\'.format(c=c_tile[kk][j * (C_ob1//SIMD) + jj], kk=kk, jj=jj, ii=ii)]
-        s += ['bb += {};\\'.format(SIMD * C_ob)]
-        # s += ['aa += \\']
+                        # s += ['    {c} = fma_reg_broadcast({c}, b_{jj}, a_{kk}, {ii}); \\'.format(c=c_tile[kk][j * (C_ob1//SIMD) + jj], kk=kk, jj=jj, ii=ii)]
+        s += ['    bb += {}; \\'.format(SIMD * C_ob)]
+        # s += ['    aa += \\']
 
     s += ['']
 
@@ -142,27 +149,27 @@ with open('intrinsics-gen-new.h', 'w') as f:
 
     # max pooling / relu
     s += redefine('FLOAT_MAX_TILE_C')
-    s += ['#define FLOAT_MAX_TILE_C(step, I)\\']
+    s += ['#define FLOAT_MAX_TILE_C(step, I) \\']
     # compute
-    s += ['float32x4_t av; \\']
+    s += ['   float32x4_t av; \\']
     for kk in range(W_ob):
         for jj in range(C_ob//SIMD):
-            s += ['av = vld1q_f32(I + {k} * step + {j} * FLOAT_SIMD);\\'.format(k=kk, j=jj)]
-            s += ['{c} = vmaxq_f32({c}, av);\\'.format(c=c_tile[kk][jj], k=kk, j=jj)]
+            s += ['    av = vld1q_f32(I + {k} * step + {j} * FLOAT_SIMD); \\'.format(k=kk, j=jj)]
+            s += ['    {c} = vmaxq_f32({c}, av); \\'.format(c=c_tile[kk][jj], k=kk, j=jj)]
     s += ['']
 
     # depthwise
     s += redefine('FLOAT_DW_TILE_C')
-    s += ['#define FLOAT_DW_TILE_C(step, I, W)\\']
-    s += ['float32x4_t av; \\']
+    s += ['#define FLOAT_DW_TILE_C(step, I, W) \\']
+    s += ['   float32x4_t av; \\']
     # load B
     for jj in range(C_ob//SIMD):
-        s += ['float32x4_t b_{j} = vld1q_f32(W + {j}*FLOAT_SIMD);\\'.format(j=jj)]
+        s += ['    float32x4_t b_{j} = vld1q_f32(W + {j}*FLOAT_SIMD); \\'.format(j=jj)]
     # compute
     for kk in range(W_ob):
         for jj in range(C_ob//SIMD):
-            s += ['av = vld1q_f32(I + {k} * step + {j} * FLOAT_SIMD);\\'.format(k=kk, j=jj)]
-            s += ['{c} = vfmaq_f32({c}, av, b_{j});\\'.format(c=c_tile[kk][jj], j=jj)]
+            s += ['    av = vld1q_f32(I + {k} * step + {j} * FLOAT_SIMD); \\'.format(k=kk, j=jj)]
+            s += ['    {c} = vfmaq_f32({c}, av, b_{j}); \\'.format(c=c_tile[kk][jj], j=jj)]
     s += ['']
 
 
