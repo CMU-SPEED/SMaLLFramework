@@ -246,9 +246,9 @@ void test_performance_FLOAT_SOFTSIGN_TILE(void)
     constexpr dim_t step = FLOAT_C_ob * _stride;
 
     //==================================================
-    FLOAT_DEF_TILE_C(FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_DEF_TILE_C;
 
-    FLOAT_ZERO_TILE_C(FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_ZERO_TILE_C;
 
 
     double tx(0.);
