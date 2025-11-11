@@ -518,7 +518,7 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
 // Same kernel as Pooling, set to zero to start.
 
 // When Fused, compare with a register of zeros
-#define FLOAT_FUSED_RELU_TILE_C             \
+#define FLOAT_INPLACE_RELU_TILE_C           \
     a_reg = _mm256_setzero_ps();            \
     c0 = _mm256_max_ps(c0, a_reg);          \
     c1 = _mm256_max_ps(c1, a_reg);          \
@@ -534,7 +534,7 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
     c11 = _mm256_max_ps(c11, a_reg);
 
 #if FLOAT_SIMD_EPILOGUE == 1
-#define FLOAT_FUSED_RELU_END_C(c_cur, W_ob, C_ob)                     \
+#define FLOAT_INPLACE_RELU_END_C(c_cur, W_ob, C_ob)                   \
     float *c_pixel = c_cur;                                           \
     for (uint32_t kk = 0; kk < W_ob; kk++)                            \
     {                                                                 \
@@ -547,7 +547,7 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
         c_pixel += C_ob;                                              \
     }
 #elif FLOAT_SIMD_EPILOGUE == 8
-#define FLOAT_FUSED_RELU_END_C(c_cur, W_ob, C_ob)       \
+#define FLOAT_INPLACE_RELU_END_C(c_cur, W_ob, C_ob)     \
     a_0 = _mm256_setzero_ps();                          \
     for (uint32_t kk = 0; kk < W_ob; kk++)              \
     {                                                   \
@@ -687,7 +687,7 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
     }
 #endif
 
-#define FLOAT_FUSED_COND_SCALE_TILE_C(W)             \
+#define FLOAT_INPLACE_COND_SCALE_TILE_C(W)           \
     c12 = _mm256_broadcast_ss(W); /*scale*/          \
     b0 = _mm256_setzero_ps();                        \
     /**/                                             \
@@ -759,21 +759,21 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
 
 
 #if FLOAT_SIMD_EPILOGUE == 1
-#define FLOAT_FUSED_COND_SCALE_END_C(W, c_cur, W_ob, C_ob)                                 \
-    float *c_pixel = c_cur;                                                                \
-    float scale = W[0];                                                                    \
-    for (uint32_t kk = 0; kk < W_ob; kk++)                                                 \
-    {                                                                                      \
-        float *c_channel = c_pixel;                                                        \
-        for (uint32_t jj = 0; jj < C_ob; jj++)                                             \
-        {                                                                                  \
+#define FLOAT_INPLACE_COND_SCALE_END_C(W, c_cur, W_ob, C_ob)            \
+    float *c_pixel = c_cur;                                             \
+    float scale = W[0];                                                 \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                              \
+    {                                                                   \
+        float *c_channel = c_pixel;                                     \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                          \
+        {                                                               \
             *(c_channel) = (0.0 > *(c_channel)) ? (*(c_channel) * (scale)) : *(c_channel); \
-            c_channel++;                                                                   \
-        }                                                                                  \
-        c_pixel += C_ob;                                                                   \
+            c_channel++;                                                \
+        }                                                               \
+        c_pixel += C_ob;                                                \
     }
 #elif FLOAT_SIMD_EPILOGUE == 8
-#define FLOAT_FUSED_COND_SCALE_END_C(W, c_cur, W_ob, C_ob)          \
+#define FLOAT_INPLACE_COND_SCALE_END_C(W, c_cur, W_ob, C_ob)        \
     b_0 = _mm256_broadcast_ss(W);                                   \
     b_1 = _mm256_setzero_ps();                                      \
     __m256 *c_pixel = c_cur;                                        \
@@ -861,7 +861,7 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
 
 
 /// @todo This is not in reference
-#define FLOAT_FUSED_ACCUM_TILE_C                     \
+#define FLOAT_INPLACE_ACCUM_TILE_C                   \
     c10 = _mm256_add_ps(c10, c11);                   \
     c9 = _mm256_add_ps(c9, c10);                     \
     c8 = _mm256_add_ps(c8, c9);                      \
@@ -879,7 +879,7 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
 // Broadcast multiplication kernels
 //****************************************************************************
 
-#define FLOAT_DIV_TILE_C(scale)            \
+#define FLOAT_INPLACE_MUL_SCALAR_TILE_C(scale)  \
     b0 = _mm256_broadcast_ss(&scale);      \
     c0 = _mm256_mul_ps(b0, c0);            \
     c1 = _mm256_mul_ps(b0, c1);            \
@@ -895,7 +895,7 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
     c11 = _mm256_mul_ps(b0, c11);
 
 #if FLOAT_SIMD_EPILOGUE == 1
-#define FLOAT_DIV_END_C(c_cur, scale, W_ob, C_ob)  \
+#define FLOAT_INPLACE_MUL_SCALAR_END_C(c_cur, scale, W_ob, C_ob)  \
     float *c_pixel = c_cur;                        \
     for (uint32_t kk = 0; kk < W_ob; kk++)         \
     {                                              \
@@ -908,7 +908,7 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
         c_pixel += C_ob;                           \
     }
 #elif FLOAT_SIMD_EPILOGUE == 8
-#define FLOAT_DIV_END_C(c_cur, scale, W_ob, C_ob)    \
+#define FLOAT_INPLACE_MUL_SCALAR_END_C(c_cur, scale, W_ob, C_ob)    \
     b_0 = _mm256_broadcast_ss(&scale);               \
     __m256 *c_pixel = c_cur;                         \
     for (uint32_t kk = 0; kk < W_ob; kk++)           \
@@ -923,7 +923,7 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
 // Broadcast Addition kernels
 //****************************************************************************
 
-#define FLOAT_EWISE_ADD_SCALAR_TILE_C(scalar) \
+#define FLOAT_INPLACE_ADD_SCALAR_TILE_C(scalar) \
     b0 = _mm256_broadcast_ss(&scalar);        \
     c0 = _mm256_add_ps(b0, c0);               \
     c1 = _mm256_add_ps(b0, c1);               \
@@ -940,7 +940,7 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
 
 
 #if FLOAT_SIMD_EPILOGUE == 1
-#define FLOAT_EWISE_ADD_SCALAR_END_C(c_cur, scalar, W_ob, C_ob) \
+#define FLOAT_INPLACE_ADD_SCALAR_END_C(c_cur, scalar, W_ob, C_ob) \
     float *c_pixel = c_cur;                                     \
     for (uint32_t kk = 0; kk < W_ob; kk++)                      \
     {                                                           \
@@ -953,7 +953,7 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
         c_pixel += C_ob;                                        \
     }
 #elif FLOAT_SIMD_EPILOGUE == 8
-#define FLOAT_EWISE_ADD_SCALAR_END_C(c_cur, scalar, W_ob, C_ob) \
+#define FLOAT_INPLACE_ADD_SCALAR_END_C(c_cur, scalar, W_ob, C_ob) \
     b_0 = _mm256_broadcast_ss(&scalar);                         \
     __m256 *c_pixel = c_cur;                                    \
     for (uint32_t kk = 0; kk < W_ob; kk++)                      \
@@ -1143,7 +1143,7 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
         c_pixel += C_ob;                              \
     }
 
-#define FLOAT_FUSED_EXP_TILE_C                                       \
+#define FLOAT_INPLACE_EXP_TILE_C                                     \
     c_tile_t c_tile[FLOAT_W_ob * FLOAT_C_ob];                        \
     _mm256_storeu_ps(c_tile + 0 * FLOAT_C_ob + 0 * FLOAT_SIMD, c0);  \
     _mm256_storeu_ps(c_tile + 0 * FLOAT_C_ob + 1 * FLOAT_SIMD, c1);  \
@@ -1181,7 +1181,7 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
     c10 = _mm256_loadu_ps(c_tile + 5 * FLOAT_C_ob + 0 * FLOAT_SIMD); \
     c11 = _mm256_loadu_ps(c_tile + 5 * FLOAT_C_ob + 1 * FLOAT_SIMD);
 
-#define FLOAT_FUSED_EXP_END_C(c_cur, W_ob, C_ob)   \
+#define FLOAT_INPLACE_EXP_END_C(c_cur, W_ob, C_ob) \
     c_tile_t *c_pixel = c_cur;                     \
     for (uint32_t kk = 0; kk < W_ob; kk++)         \
     {                                              \
@@ -1247,7 +1247,7 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
         c_pixel += C_ob;                              \
     }
 
-#define FLOAT_FUSED_LOG_TILE_C                                       \
+#define FLOAT_INPLACE_LOG_TILE_C                                     \
     c_tile_t c_tile[FLOAT_W_ob * FLOAT_C_ob];                        \
     _mm256_storeu_ps(c_tile + 0 * FLOAT_C_ob + 0 * FLOAT_SIMD, c0);  \
     _mm256_storeu_ps(c_tile + 0 * FLOAT_C_ob + 1 * FLOAT_SIMD, c1);  \
@@ -1285,7 +1285,7 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
     c10 = _mm256_loadu_ps(c_tile + 5 * FLOAT_C_ob + 0 * FLOAT_SIMD); \
     c11 = _mm256_loadu_ps(c_tile + 5 * FLOAT_C_ob + 1 * FLOAT_SIMD);
 
-#define FLOAT_FUSED_LOG_END_C(c_cur, W_ob, C_ob)   \
+#define FLOAT_INPLACE_LOG_END_C(c_cur, W_ob, C_ob) \
     c_tile_t *c_pixel = c_cur;                     \
     for (uint32_t kk = 0; kk < W_ob; kk++)         \
     {                                              \
@@ -1372,7 +1372,7 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
         c_pixel += C_ob;                                        \
     }
 
-#define FLOAT_FUSED_SOFTSIGN_TILE_C               \
+#define FLOAT_INPLACE_SOFTSIGN_TILE_C             \
     c12 = _mm256_castsi256_ps(_mm256_set1_epi32(0x7fffffff));  \
     a_reg = _mm256_set1_ps(1.0f);                 \
     b0 = _mm256_and_ps(c12, c0);                  \
@@ -1413,7 +1413,7 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
     c11 = _mm256_div_ps(c11, b1);
 
 
-#define FLOAT_FUSED_SOFTSIGN_END_C(c_cur, W_ob, C_ob) \
+#define FLOAT_INPLACE_SOFTSIGN_END_C(c_cur, W_ob, C_ob) \
     c_tile_t *c_pixel = c_cur;                        \
     for (uint32_t kk = 0; kk < W_ob; kk++)            \
     {                                                 \
@@ -1478,7 +1478,7 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
 // Ewise div
 //****************************************************************************
 
-#define FLOAT_FUSED_DIV_TILE_C(step, I)                                 \
+#define FLOAT_INPLACE_DIV_TILE_C(step, I)                               \
     b0 = _mm256_load_ps(I + (0 * step));                                \
     c0 = _mm256_div_ps(b0, c0);                                         \
     b1 = _mm256_load_ps(I + (0 * step) + FLOAT_SIMD);                   \
@@ -1504,7 +1504,7 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
     c12 = _mm256_load_ps(I + (5 * step) + FLOAT_SIMD);                  \
     c11 = _mm256_div_ps(c12, c11);
 
-#define FLOAT_FUSED_DIV_END_C(step, I, c_cur, W_ob, C_ob)       \
+#define FLOAT_INPLACE_DIV_END_C(step, I, c_cur, W_ob, C_ob)     \
     c_tile_t *c_pixel = c_cur;                                  \
     c_tile_t const *I_pixel = I;                                \
     for (uint32_t kk = 0; kk < W_ob; kk++)                      \

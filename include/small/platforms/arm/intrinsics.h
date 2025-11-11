@@ -491,9 +491,9 @@ namespace small
 // Same kernel as Pooling, set to zero to start.
 /// @todo in intrinsics_gen.h?
 
-//#define FLOAT_FUSED_RELU_TILE_C
+//#define FLOAT_INPLACE_RELU_TILE_C
 
-//#define FLOAT_FUSED_RELU_END_C
+//#define FLOAT_INPLACE_RELU_END_C
 
 //****************************************************************************
 // Leaky ReLU activation
@@ -577,7 +577,7 @@ namespace small
     }
 #endif
 
-#define FLOAT_FUSED_COND_SCALE_SIMD_C(c_x_x, mask, Wv, Iv)              \
+#define FLOAT_INPLACE_COND_SCALE_SIMD_C(c_x_x, mask, Wv, Iv)            \
     Iv = vmovq_n_f32(0.0f);                                             \
     mask = vcltq_f32(c_x_x, Iv);                                        \
     Iv = vmulq_f32(c_x_x, Wv);                                          \
@@ -585,42 +585,42 @@ namespace small
     Iv = (float32x4_t) vandq_s32((int32x4_t)(Iv), (int32x4_t)(mask));   \
     c_x_x = vaddq_f32(Iv, c_x_x);
 
-#define FLOAT_FUSED_COND_SCALE_TILE_C(W)                                \
+#define FLOAT_INPLACE_COND_SCALE_TILE_C(W)                              \
     float32x4_t Wv = vld1q_dup_f32(W);                                  \
     float32x4_t Iv;                                                     \
     uint32x4_t mask;                                                    \
-    FLOAT_FUSED_COND_SCALE_SIMD_C(c_0_0, mask, Wv, Iv);                 \
-    FLOAT_FUSED_COND_SCALE_SIMD_C(c_0_1, mask, Wv, Iv);                 \
-    FLOAT_FUSED_COND_SCALE_SIMD_C(c_0_2, mask, Wv, Iv);                 \
-    FLOAT_FUSED_COND_SCALE_SIMD_C(c_0_3, mask, Wv, Iv);                 \
+    FLOAT_INPLACE_COND_SCALE_SIMD_C(c_0_0, mask, Wv, Iv);               \
+    FLOAT_INPLACE_COND_SCALE_SIMD_C(c_0_1, mask, Wv, Iv);               \
+    FLOAT_INPLACE_COND_SCALE_SIMD_C(c_0_2, mask, Wv, Iv);               \
+    FLOAT_INPLACE_COND_SCALE_SIMD_C(c_0_3, mask, Wv, Iv);               \
     /**/                                                                \
-    FLOAT_FUSED_COND_SCALE_SIMD_C(c_1_0, mask, Wv, Iv);                 \
-    FLOAT_FUSED_COND_SCALE_SIMD_C(c_1_1, mask, Wv, Iv);                 \
-    FLOAT_FUSED_COND_SCALE_SIMD_C(c_1_2, mask, Wv, Iv);                 \
-    FLOAT_FUSED_COND_SCALE_SIMD_C(c_1_3, mask, Wv, Iv);                 \
+    FLOAT_INPLACE_COND_SCALE_SIMD_C(c_1_0, mask, Wv, Iv);               \
+    FLOAT_INPLACE_COND_SCALE_SIMD_C(c_1_1, mask, Wv, Iv);               \
+    FLOAT_INPLACE_COND_SCALE_SIMD_C(c_1_2, mask, Wv, Iv);               \
+    FLOAT_INPLACE_COND_SCALE_SIMD_C(c_1_3, mask, Wv, Iv);               \
     /**/                                                                \
-    FLOAT_FUSED_COND_SCALE_SIMD_C(c_2_0, mask, Wv, Iv);                 \
-    FLOAT_FUSED_COND_SCALE_SIMD_C(c_2_1, mask, Wv, Iv);                 \
-    FLOAT_FUSED_COND_SCALE_SIMD_C(c_2_2, mask, Wv, Iv);                 \
-    FLOAT_FUSED_COND_SCALE_SIMD_C(c_2_3, mask, Wv, Iv);                 \
+    FLOAT_INPLACE_COND_SCALE_SIMD_C(c_2_0, mask, Wv, Iv);               \
+    FLOAT_INPLACE_COND_SCALE_SIMD_C(c_2_1, mask, Wv, Iv);               \
+    FLOAT_INPLACE_COND_SCALE_SIMD_C(c_2_2, mask, Wv, Iv);               \
+    FLOAT_INPLACE_COND_SCALE_SIMD_C(c_2_3, mask, Wv, Iv);               \
     /**/                                                                \
-    FLOAT_FUSED_COND_SCALE_SIMD_C(c_3_0, mask, Wv, Iv);                 \
-    FLOAT_FUSED_COND_SCALE_SIMD_C(c_3_1, mask, Wv, Iv);                 \
-    FLOAT_FUSED_COND_SCALE_SIMD_C(c_3_2, mask, Wv, Iv);                 \
-    FLOAT_FUSED_COND_SCALE_SIMD_C(c_3_3, mask, Wv, Iv);                 \
+    FLOAT_INPLACE_COND_SCALE_SIMD_C(c_3_0, mask, Wv, Iv);               \
+    FLOAT_INPLACE_COND_SCALE_SIMD_C(c_3_1, mask, Wv, Iv);               \
+    FLOAT_INPLACE_COND_SCALE_SIMD_C(c_3_2, mask, Wv, Iv);               \
+    FLOAT_INPLACE_COND_SCALE_SIMD_C(c_3_3, mask, Wv, Iv);               \
     /**/                                                                \
-    FLOAT_FUSED_COND_SCALE_SIMD_C(c_4_0, mask, Wv, Iv);                 \
-    FLOAT_FUSED_COND_SCALE_SIMD_C(c_4_1, mask, Wv, Iv);                 \
-    FLOAT_FUSED_COND_SCALE_SIMD_C(c_4_2, mask, Wv, Iv);                 \
-    FLOAT_FUSED_COND_SCALE_SIMD_C(c_4_3, mask, Wv, Iv);                 \
+    FLOAT_INPLACE_COND_SCALE_SIMD_C(c_4_0, mask, Wv, Iv);               \
+    FLOAT_INPLACE_COND_SCALE_SIMD_C(c_4_1, mask, Wv, Iv);               \
+    FLOAT_INPLACE_COND_SCALE_SIMD_C(c_4_2, mask, Wv, Iv);               \
+    FLOAT_INPLACE_COND_SCALE_SIMD_C(c_4_3, mask, Wv, Iv);               \
     /**/                                                                \
-    FLOAT_FUSED_COND_SCALE_SIMD_C(c_5_0, mask, Wv, Iv);                 \
-    FLOAT_FUSED_COND_SCALE_SIMD_C(c_5_1, mask, Wv, Iv);                 \
-    FLOAT_FUSED_COND_SCALE_SIMD_C(c_5_2, mask, Wv, Iv);                 \
-    FLOAT_FUSED_COND_SCALE_SIMD_C(c_5_3, mask, Wv, Iv);
+    FLOAT_INPLACE_COND_SCALE_SIMD_C(c_5_0, mask, Wv, Iv);               \
+    FLOAT_INPLACE_COND_SCALE_SIMD_C(c_5_1, mask, Wv, Iv);               \
+    FLOAT_INPLACE_COND_SCALE_SIMD_C(c_5_2, mask, Wv, Iv);               \
+    FLOAT_INPLACE_COND_SCALE_SIMD_C(c_5_3, mask, Wv, Iv);
 
 #if FLOAT_SIMD_EPILOGUE == 1
-#define FLOAT_FUSED_COND_SCALE_END_C(W, c_cur, W_ob, C_ob)              \
+#define FLOAT_INPLACE_COND_SCALE_END_C(W, c_cur, W_ob, C_ob)            \
     c_tile_t *c_pixel = c_cur;                                          \
     c_tile_t scale = S[0];                                              \
     for (uint32_t kk = 0; kk < W_ob; kk++)                              \
@@ -636,7 +636,7 @@ namespace small
 
 #else
 
-#define FLOAT_FUSED_COND_SCALE_END_C(W, c_cur, W_ob, C_ob)              \
+#define FLOAT_INPLACE_COND_SCALE_END_C(W, c_cur, W_ob, C_ob)            \
     float32x4_t Wv = vld1q_dup_f32(W);                                  \
     float32x4_t Iv;                                                     \
     uint32x4_t mask;                                                    \
@@ -645,7 +645,7 @@ namespace small
         for (uint32_t jj = 0; jj < C_ob / FLOAT_SIMD; jj++)             \
         {                                                               \
             float32x4_t cv = c_cur[kk * (C_ob / FLOAT_SIMD) + jj];      \
-            FLOAT_FUSED_COND_SCALE_SIMD_C(cv, mask, Wv, Iv);            \
+            FLOAT_INPLACE_COND_SCALE_SIMD_C(cv, mask, Wv, Iv);          \
             c_cur[kk * (C_ob / FLOAT_SIMD) + jj] = cv;                  \
         }                                                               \
     }
@@ -736,7 +736,7 @@ namespace small
 // Broadcast multiplication kernels
 //****************************************************************************
 
-#define FLOAT_DIV_TILE_C(scale)                         \
+#define FLOAT_INPLACE_MUL_SCALAR_TILE_C(scale)          \
     float32x4_t Iv;                                     \
     Iv = vld1q_dup_f32(&scale);                         \
     c_0_0 = vmulq_f32(c_0_0, Iv);                       \
@@ -765,7 +765,7 @@ namespace small
     c_5_3 = vmulq_f32(c_5_3, Iv);
 
 #if FLOAT_SIMD_EPILOGUE == 1
-#define FLOAT_DIV_END_C(c_cur, scale, W_ob, C_ob) \
+#define FLOAT_INPLACE_MUL_SCALAR_END_C(c_cur, scale, W_ob, C_ob) \
     float *c_pixel = c_cur;                       \
     for (uint32_t kk = 0; kk < W_ob; kk++)        \
     {                                             \
@@ -778,7 +778,7 @@ namespace small
         c_pixel += C_ob;                          \
     }
 #else
-#define FLOAT_DIV_END_C(c_cur, scale, W_ob, C_ob)                  \
+#define FLOAT_INPLACE_MUL_SCALAR_END_C(c_cur, scale, W_ob, C_ob)   \
     float32x4_t Iv;                                                \
     Iv = vld1q_dup_f32(&scale);                                    \
     float32x4_t *c_pixel = c_cur;                                  \
@@ -796,7 +796,7 @@ namespace small
 // Broadcast addition kernels
 //****************************************************************************
 
-#define FLOAT_EWISE_ADD_SCALAR_TILE_C(scalar)           \
+#define FLOAT_INPLACE_ADD_SCALAR_TILE_C(scalar)         \
     float32x4_t Iv;                                     \
     Iv = vld1q_dup_f32(&scalar);                        \
     c_0_0 = vaddq_f32(c_0_0, Iv);                       \
@@ -825,7 +825,7 @@ namespace small
     c_5_3 = vaddq_f32(c_5_3, Iv);
 
 #if FLOAT_SIMD_EPILOGUE == 1
-#define FLOAT_EWISE_ADD_SCALAR_END_C(c_cur, scalar, W_ob, C_ob) \
+#define FLOAT_INPLACE_ADD_SCALAR_END_C(c_cur, scalar, W_ob, C_ob) \
     float *c_pixel = c_cur;                                     \
     for (uint32_t kk = 0; kk < W_ob; kk++)                      \
     {                                                           \
@@ -838,7 +838,7 @@ namespace small
         c_pixel += C_ob;                                        \
     }
 #else
-#define FLOAT_EWISE_ADD_SCALAR_END_C(c_cur, scalar, W_ob, C_ob)    \
+#define FLOAT_INPLACE_ADD_SCALAR_END_C(c_cur, scalar, W_ob, C_ob)  \
     float32x4_t Iv;                                                \
     Iv = vld1q_dup_f32(&scalar);                                   \
     float32x4_t *c_pixel = c_cur;                                  \
@@ -1109,8 +1109,8 @@ namespace small
 
 #endif
 
-/// @todo Missing FLOAT_FUSED_EXP_TILE_C
-/// @todo Missing FLOAT_FUSED_EXP_END_C
+/// @todo Missing FLOAT_INPLACE_EXP_TILE_C
+/// @todo Missing FLOAT_INPLACE_EXP_END_C
 
 //****************************************************************************
 // Ewise logarithm
@@ -1195,43 +1195,43 @@ namespace small
     }
 #endif
 
-#define FLOAT_FUSED_SOFTSIGN_SIMD_C(c_x_x, Iv)    \
+#define FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_x_x, Iv)  \
     Iv = c_x_x;                                   \
     c_x_x = vabsq_f32(Iv);                        \
     c_x_x = vaddq_f32(c_x_x, vdupq_n_f32(1.0f));  \
     c_x_x = vdivq_f32(Iv, c_x_x);
 
-#define FLOAT_FUSED_SOFTSIGN_TILE_C               \
-    float32x4_t Iv;                               \
-    FLOAT_FUSED_SOFTSIGN_SIMD_C(c_0_0, Iv);       \
-    FLOAT_FUSED_SOFTSIGN_SIMD_C(c_0_1, Iv);       \
-    FLOAT_FUSED_SOFTSIGN_SIMD_C(c_0_2, Iv);       \
-    FLOAT_FUSED_SOFTSIGN_SIMD_C(c_0_3, Iv);       \
-    /**/                                          \
-    FLOAT_FUSED_SOFTSIGN_SIMD_C(c_1_0, Iv);       \
-    FLOAT_FUSED_SOFTSIGN_SIMD_C(c_1_1, Iv);       \
-    FLOAT_FUSED_SOFTSIGN_SIMD_C(c_1_2, Iv);       \
-    FLOAT_FUSED_SOFTSIGN_SIMD_C(c_1_3, Iv);       \
-    /**/                                          \
-    FLOAT_FUSED_SOFTSIGN_SIMD_C(c_2_0, Iv);       \
-    FLOAT_FUSED_SOFTSIGN_SIMD_C(c_2_1, Iv);       \
-    FLOAT_FUSED_SOFTSIGN_SIMD_C(c_2_2, Iv);       \
-    FLOAT_FUSED_SOFTSIGN_SIMD_C(c_2_3, Iv);       \
-    /**/                                          \
-    FLOAT_FUSED_SOFTSIGN_SIMD_C(c_3_0, Iv);       \
-    FLOAT_FUSED_SOFTSIGN_SIMD_C(c_3_1, Iv);       \
-    FLOAT_FUSED_SOFTSIGN_SIMD_C(c_3_2, Iv);       \
-    FLOAT_FUSED_SOFTSIGN_SIMD_C(c_3_3, Iv);       \
-    /**/                                          \
-    FLOAT_FUSED_SOFTSIGN_SIMD_C(c_4_0, Iv);       \
-    FLOAT_FUSED_SOFTSIGN_SIMD_C(c_4_1, Iv);       \
-    FLOAT_FUSED_SOFTSIGN_SIMD_C(c_4_2, Iv);       \
-    FLOAT_FUSED_SOFTSIGN_SIMD_C(c_4_3, Iv);       \
-    /**/                                          \
-    FLOAT_FUSED_SOFTSIGN_SIMD_C(c_5_0, Iv);       \
-    FLOAT_FUSED_SOFTSIGN_SIMD_C(c_5_1, Iv);       \
-    FLOAT_FUSED_SOFTSIGN_SIMD_C(c_5_2, Iv);       \
-    FLOAT_FUSED_SOFTSIGN_SIMD_C(c_5_3, Iv);
+#define FLOAT_INPLACE_SOFTSIGN_TILE_C               \
+    float32x4_t Iv;                                 \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_0_0, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_0_1, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_0_2, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_0_3, Iv);       \
+    /**/                                            \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_1_0, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_1_1, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_1_2, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_1_3, Iv);       \
+    /**/                                            \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_2_0, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_2_1, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_2_2, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_2_3, Iv);       \
+    /**/                                            \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_3_0, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_3_1, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_3_2, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_3_3, Iv);       \
+    /**/                                            \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_4_0, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_4_1, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_4_2, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_4_3, Iv);       \
+    /**/                                            \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_5_0, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_5_1, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_5_2, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_5_3, Iv);
 
 #if FLOAT_SIMD_EPILOGUE == 1
 #define FLOAT_SOFTSIGN_END_C(c_cur, W_ob, C_ob)      \
@@ -1249,14 +1249,14 @@ namespace small
 
 #else
 
-#define FLOAT_FUSED_SOFTSIGN_END_C(c_cur, W_ob, C_ob)                 \
+#define FLOAT_INPLACE_SOFTSIGN_END_C(c_cur, W_ob, C_ob)               \
     float32x4_t Iv;                                                   \
     for (uint32_t kk = 0; kk < W_ob; kk++)                            \
     {                                                                 \
         for (uint32_t jj = 0; jj < C_ob / FLOAT_SIMD; jj++)           \
         {                                                             \
             float32x4_t cv = c_cur[kk * (C_ob / FLOAT_SIMD) + jj];    \
-            FLOAT_FUSED_SOFTSIGN_SIMD_C(cv, Iv, a, kk, jj);           \
+            FLOAT_INPLACE_SOFTSIGN_SIMD_C(cv, Iv, a, kk, jj);         \
             c_cur[kk * (C_ob / FLOAT_SIMD) + jj] = cv;                \
         }                                                             \
     }
@@ -1346,7 +1346,7 @@ namespace small
 // Ewise div
 //****************************************************************************
 
-#define FLOAT_FUSED_DIV_TILE_C(step, I)                 \
+#define FLOAT_INPLACE_DIV_TILE_C(step, I)               \
     float32x4_t Iv;                                     \
     Iv = vld1q_f32(I + 0 * step + 0 * FLOAT_SIMD);      \
     c_0_0 = vdivq_f32(Iv, c_0_0);                       \
@@ -1398,7 +1398,7 @@ namespace small
     c_5_3 = vdivq_f32(Iv, c_5_3);
 
 #if FLOAT_SIMD_EPILOGUE == 1
-#define FLOAT_FUSED_DIV_END_C(step, I, c_cur, W_ob, C_ob)  \
+#define FLOAT_INPLACE_DIV_END_C(step, I, c_cur, W_ob, C_ob)\
     for (uint32_t kk = 0; kk < W_ob; kk++)                 \
     {                                                      \
         for (uint32_t jj = 0; jj < C_ob; jj++)             \
@@ -1409,7 +1409,7 @@ namespace small
 
 #else
 
-#define FLOAT_FUSED_DIV_END_C(step, I, c_cur, W_ob, C_ob)               \
+#define FLOAT_INPLACE_DIV_END_C(step, I, c_cur, W_ob, C_ob)             \
     for (uint32_t kk = 0; kk < W_ob; kk++)                              \
     {                                                                   \
         for (uint32_t jj = 0; jj < FLOAT_C_ob / FLOAT_SIMD; jj++)       \

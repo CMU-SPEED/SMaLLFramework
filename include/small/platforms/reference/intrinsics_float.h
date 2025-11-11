@@ -32,7 +32,6 @@ namespace small
 /// @todo Rename c_tile to f_tile in FULL macros
 /// @todo Rename c_tile to e_tile in END macros
 /// @todo Replace the 'i' index in pseudocode in docs to 'k' to match kk in code
-/// @todo revisit 'FUSED' names: replace FUSED with INPLACE?
 
 // The macros in this file are intended to be used in a shared scope.
 //****************************************************************************
@@ -742,7 +741,7 @@ AND (TODO)
 //****************************************************************************
 
 // Same kernel as Pooling, set to zero to start.
-// When Fused (in-place), compare with a register of zeros
+// When in-place, compare with a register of zeros
 
 /**
  * @brief Compute a ReLU by performing the maximum of the full tile,
@@ -752,7 +751,7 @@ AND (TODO)
  *    c_tile[i][j] = max(0.0, c_tile[i][j])
  *
  */
-#define FLOAT_FUSED_RELU_TILE_C                                       \
+#define FLOAT_INPLACE_RELU_TILE_C                                     \
     float *c_pixel = c_tile;                                          \
     for (uint32_t kk = 0; kk < FLOAT_W_ob; kk++)                      \
     {                                                                 \
@@ -776,7 +775,7 @@ AND (TODO)
  * foreach i in [0, W_ob), j in [0, C_ob)
  *    c_tile[i][j] = max(0.0, c_tile[i][j])
  */
-#define FLOAT_FUSED_RELU_END_C(c_cur, W_ob, C_ob)                     \
+#define FLOAT_INPLACE_RELU_END_C(c_cur, W_ob, C_ob)                   \
     float *c_pixel = c_cur;                                           \
     for (uint32_t kk = 0; kk < W_ob; kk++)                            \
     {                                                                 \
@@ -885,9 +884,8 @@ AND (TODO)
  *    c_tile[i][j] = c_tile[i][j]           if c_tile[i][j] >  0.0
  *    c_tile[i][j] = c_tile[i][j]*W[0][0]   if c_tile[i][j] <= 0.0
  *
- * @note "FUSED" means in-place in c_tile
  */
-#define FLOAT_FUSED_COND_SCALE_TILE_C(W)                                \
+#define FLOAT_INPLACE_COND_SCALE_TILE_C(W)                              \
     float *c_pixel = c_tile;                                            \
     float scale = W[0];                                                 \
     for (uint32_t kk = 0; kk < FLOAT_W_ob; kk++)                        \
@@ -916,7 +914,7 @@ AND (TODO)
  *    c_tile[i][j] = O[i][j]           if c_tile[i][j] >  0.0
  *    c_tile[i][j] = O[i][j]*W[0][0]   if c_tile[i][j] <= 0.0
  */
-#define FLOAT_FUSED_COND_SCALE_END_C(W, c_cur, W_ob, C_ob)              \
+#define FLOAT_INPLACE_COND_SCALE_END_C(W, c_cur, W_ob, C_ob)            \
     float *c_pixel = c_cur;                                             \
     float scale = W[0];                                                 \
     for (uint32_t kk = 0; kk < W_ob; kk++)                              \
@@ -1018,10 +1016,8 @@ AND (TODO)
  *
  * foreach i in [0, FLOAT_W_ob), j in [0, FLOAT_C_ob)
  *    c_tile[i][j] *= scale
- *
- * @todo Rename FLOAT_INPLACE_MUL_SCALAR_TILE_C
  */
-#define FLOAT_DIV_TILE_C(scale)                         \
+#define FLOAT_INPLACE_MUL_SCALAR_TILE_C(scale)          \
     float *c_pixel = c_tile;                            \
     for (uint32_t kk = 0; kk < FLOAT_W_ob; kk++)        \
     {                                                   \
@@ -1044,10 +1040,8 @@ AND (TODO)
  *
  * foreach i in [0, W_ob), j in [0, C_ob)
  *    c_tile[i][j] *= scale
- *
- * @todo Rename FLOAT_INPLACE_MUL_SCALAR_END_C
  */
-#define FLOAT_DIV_END_C(c_cur, scale, W_ob, C_ob)     \
+#define FLOAT_INPLACE_MUL_SCALAR_END_C(c_cur, scale, W_ob, C_ob)     \
     float *c_pixel = c_cur;                           \
     for (uint32_t kk = 0; kk < W_ob; kk++)            \
     {                                                 \
@@ -1072,10 +1066,8 @@ AND (TODO)
  *
  * foreach i in [0, FLOAT_W_ob), j in [0, FLOAT_C_ob)
  *    c_tile[i][j] += scalar
- *
- * @todo Rename FLOAT_INPLACE_ADD_SCALAR_TILE_C
  */
-#define FLOAT_EWISE_ADD_SCALAR_TILE_C(scalar)           \
+#define FLOAT_INPLACE_ADD_SCALAR_TILE_C(scalar)         \
     float *c_pixel = c_tile;                            \
     for (uint32_t kk = 0; kk < FLOAT_W_ob; kk++)        \
     {                                                   \
@@ -1099,10 +1091,8 @@ AND (TODO)
  *
  * foreach i in [0, W_ob), j in [0, C_ob)
  *    c_tile[i][j] += scalar
- *
- * @todo Rename FLOAT_INPLACE_ADD_SCALAR_END_C
  */
-#define FLOAT_EWISE_ADD_SCALAR_END_C(c_cur, scalar, W_ob, C_ob) \
+#define FLOAT_INPLACE_ADD_SCALAR_END_C(c_cur, scalar, W_ob, C_ob) \
     float *c_pixel = c_cur;                                     \
     for (uint32_t kk = 0; kk < W_ob; kk++)                      \
     {                                                           \
@@ -1271,7 +1261,7 @@ AND (TODO)
  * foreach  i in [0, FLOAT_W_ob), j in [0, FLOAT_C_ob)
  *    c_tile[i][j] = exp(c_tile[i][j])
  */
-#define FLOAT_FUSED_EXP_TILE_C                          \
+#define FLOAT_INPLACE_EXP_TILE_C                        \
     c_tile_t *c_pixel = c_tile;                         \
     for (uint32_t kk = 0; kk < FLOAT_W_ob; kk++)        \
     {                                                   \
@@ -1295,7 +1285,7 @@ AND (TODO)
  * foreach  i in [0, W_ob), j in [0, C_ob)
  *    c_cur[i][j] = exp(c_cur[i][j])
  */
-#define FLOAT_FUSED_EXP_END_C(c_cur, W_ob, C_ob)   \
+#define FLOAT_INPLACE_EXP_END_C(c_cur, W_ob, C_ob) \
     c_tile_t *c_pixel = c_cur;                     \
     for (uint32_t kk = 0; kk < W_ob; kk++)         \
     {                                              \
@@ -1382,7 +1372,7 @@ AND (TODO)
  * foreach  i in [0, FLOAT_W_ob), j in [0, FLOAT_C_ob)
  *    c_tile[i][j] = log(c_tile[i][j])
  */
-#define FLOAT_FUSED_LOG_TILE_C                         \
+#define FLOAT_INPLACE_LOG_TILE_C                       \
     c_tile_t *c_pixel = c_tile;                        \
     for (uint32_t kk = 0; kk < FLOAT_W_ob; kk++)       \
     {                                                  \
@@ -1406,7 +1396,7 @@ AND (TODO)
  * foreach  i in [0, W_ob), j in [0, C_ob)
  *    c_cur[i][j] = log(c_cur[i][j])
  */
-#define FLOAT_FUSED_LOG_END_C(c_cur, W_ob, C_ob)   \
+#define FLOAT_INPLACE_LOG_END_C(c_cur, W_ob, C_ob) \
     c_tile_t *c_pixel = c_cur;                     \
     for (uint32_t kk = 0; kk < W_ob; kk++)         \
     {                                              \
@@ -1493,7 +1483,7 @@ AND (TODO)
  * foreach  i in [0, FLOAT_W_ob), j in [0, FLOAT_C_ob)
  *    c_tile[i][j] = c_tile[i*stride][j] / (1.0 + | c_tile[i*stride][j] |)
  */
-#define FLOAT_FUSED_SOFTSIGN_TILE_C                                     \
+#define FLOAT_INPLACE_SOFTSIGN_TILE_C                                   \
     c_tile_t *c_pixel = c_tile;                                         \
     for (uint32_t kk = 0; kk < FLOAT_W_ob; kk++)                        \
     {                                                                   \
@@ -1517,7 +1507,7 @@ AND (TODO)
  * foreach  i in [0, W_ob), j in [0, C_ob)
  *    c_cur[i][j] = c_cur[i*stride][j] / (1.0 + | c_cur[i*stride][j] |)
  */
-#define FLOAT_FUSED_SOFTSIGN_END_C(c_cur, W_ob, C_ob)                   \
+#define FLOAT_INPLACE_SOFTSIGN_END_C(c_cur, W_ob, C_ob)                 \
     c_tile_t *c_pixel = c_cur;                                          \
     for (uint32_t kk = 0; kk < W_ob; kk++)                              \
     {                                                                   \
@@ -1608,7 +1598,7 @@ AND (TODO)
  * foreach  i in [0, FLOAT_W_ob), j in [0, FLOAT_C_ob)
  *    c_tile[i][j] = I[i][j]/(c_tile[i][j])
  */
-#define FLOAT_FUSED_DIV_TILE_C(step, I)                                 \
+#define FLOAT_INPLACE_DIV_TILE_C(step, I)                               \
     c_tile_t *c_pixel = c_tile;                                         \
     c_tile_t const *I_pixel = I;                                        \
     for (uint32_t kk = 0; kk < FLOAT_W_ob; kk++)                        \
@@ -1636,7 +1626,7 @@ AND (TODO)
  * foreach  i in [0, W_ob), j in [0, C_ob)
  *    c_cur[i][j] = abs(c_cur[i][j])
  */
-#define FLOAT_FUSED_DIV_END_C(step, I, c_cur, W_ob, C_ob)       \
+#define FLOAT_INPLACE_DIV_END_C(step, I, c_cur, W_ob, C_ob)     \
     c_tile_t *c_pixel = c_cur;                                  \
     c_tile_t const *I_pixel = I;                                \
     for (uint32_t kk = 0; kk < W_ob; kk++)                      \

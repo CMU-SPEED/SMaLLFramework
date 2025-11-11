@@ -108,7 +108,7 @@ void inline kernel_pad(
     if (op_type == OP_AVERAGE_POOL)
     {
         float norm = 1.0 / (1.0 * F_h * F_w);
-        FLOAT_DIV_TILE_C(norm);
+        FLOAT_INPLACE_MUL_SCALAR_TILE_C(norm);
     }
 
     FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_TILE(step, fused_single_element_after,

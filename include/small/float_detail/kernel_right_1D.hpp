@@ -69,7 +69,7 @@ void inline kernel_right_1D(
         {
             FLOAT_ZERO_END_C(O_w_left, _C_ob);
 
-            if ((op_type == OP_MUL) || (op_type == OP_EWISE_ADD_SCALAR)|| (op_type == OP_MAX_POOL)) // && H_lb == 0 && H_ub == 0))
+            if ((op_type == OP_MUL) || (op_type == OP_INPLACE_ADD_SCALAR)|| (op_type == OP_MAX_POOL)) // && H_lb == 0 && H_ub == 0))
             {
                 FLOAT_LOAD_END_C_strided(I, step, O_w_left, _C_ob);
             }
@@ -111,7 +111,7 @@ void inline kernel_right_1D(
         if constexpr (op_type == OP_AVERAGE_POOL)
         {
             float norm = 1.0 / (1.0 * F_w);
-            FLOAT_DIV_END_C(c_tile, norm, O_w_left, _C_ob);
+            FLOAT_INPLACE_MUL_SCALAR_END_C(c_tile, norm, O_w_left, _C_ob);
         }
         if constexpr (op_type == OP_ADD && op_class == 3 && _C_ob == 1)
         {
@@ -141,7 +141,7 @@ void inline kernel_right_1D(
 
         //@note padding should always be 'v' for pointwise operations,
         //      so this code path should not be used
-        if constexpr(op_type == OP_MUL || op_type == OP_EWISE_ADD_SCALAR)
+        if constexpr(op_type == OP_MUL || op_type == OP_INPLACE_ADD_SCALAR)
         {
             FLOAT_LOAD_END_C_strided(I_ptr, step, r_pad_el, _C_ob);
         }
@@ -180,7 +180,7 @@ void inline kernel_right_1D(
     if (op_type == OP_AVERAGE_POOL)
     {
         float norm = 1.0 / (1.0 * F_w);
-        FLOAT_DIV_END_C(c_tile, norm, r_pad_el, _C_ob);
+        FLOAT_INPLACE_MUL_SCALAR_END_C(c_tile, norm, r_pad_el, _C_ob);
     }
 
     dim_t step_after = _stride_after * _C_ib;

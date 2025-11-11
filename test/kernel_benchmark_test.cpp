@@ -41,40 +41,40 @@
 typedef small::FloatBuffer::value_type dtype;
 typedef small::FloatBuffer::value_type c_tile_t;
 
-#define FLOAT_ABSTRACT_OP(op_type, op_class, step, a_cur, b_cur) \
+#define FLOAT_ABSTRACT_OP(op_type, op_class, step, a_cur, b_cur)         \
     if constexpr (op_type == small::OP_CONV)                             \
     {                                                                    \
         if constexpr (op_class == 1)                                     \
         {                                                                \
-            FLOAT_DW_TILE_C(step, a_cur, b_cur);           \
+            FLOAT_DW_TILE_C(step, a_cur, b_cur);                         \
         }                                                                \
         else if constexpr (op_class == 2)                                \
         {                                                                \
-            FLOAT_CONV_TILE_C(step, a_cur, b_cur);         \
+            FLOAT_CONV_TILE_C(step, a_cur, b_cur);                       \
         }                                                                \
     }                                                                    \
     else if constexpr (op_type == small::OP_RELU ||                      \
                        op_type == small::OP_MAX_POOL)                    \
     {                                                                    \
-        FLOAT_MAX_TILE_C(step, a_cur);                     \
+        FLOAT_MAX_TILE_C(step, a_cur);                                   \
     }                                                                    \
     else if constexpr (op_type == small::OP_LEAKY_RELU)                  \
     {                                                                    \
-        FLOAT_COND_SCALE_TILE_C(step, a_cur, b_cur);       \
+        FLOAT_COND_SCALE_TILE_C(step, a_cur, b_cur);                     \
     }                                                                    \
     else if constexpr (op_type == small::OP_ADD ||                       \
                        op_type == small::OP_AVERAGE_POOL)                \
     {                                                                    \
-        FLOAT_ACCUM_TILE_C(step, a_cur);                   \
+        FLOAT_ACCUM_TILE_C(step, a_cur);                                 \
     }                                                                    \
     else if constexpr (op_type == small::OP_MUL)                         \
     {                                                                    \
         float drop_out_rate = b_cur[0];                                  \
-        FLOAT_DIV_TILE_C(drop_out_rate)                    \
+        FLOAT_INPLACE_MUL_SCALAR_TILE_C(drop_out_rate);                  \
     }                                                                    \
     else if constexpr (op_type == small::OP_EXP)                         \
     {                                                                    \
-        FLOAT_EXP_TILE_C(step, a_cur)                      \
+        FLOAT_EXP_TILE_C(step, a_cur);                                   \
     }
 
 

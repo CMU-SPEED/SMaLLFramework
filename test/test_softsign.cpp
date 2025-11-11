@@ -100,10 +100,10 @@ void test_correctness_individual_FLOAT_SOFTSIGN_TILE(void)
         FLOAT_ABS_TILE_C(step, a_cur);
     }
     {
-        FLOAT_EWISE_ADD_SCALAR_TILE_C(scalar);
+        FLOAT_INPLACE_ADD_SCALAR_TILE_C(scalar);
     }
     {
-        FLOAT_FUSED_DIV_TILE_C(step, a_cur);
+        FLOAT_INPLACE_DIV_TILE_C(step, a_cur);
     }
     FLOAT_STORE_TILE_C(output_buf.data());
     //==================================================
@@ -120,7 +120,7 @@ void test_correctness_individual_FLOAT_SOFTSIGN_TILE(void)
 #endif
 }
 
-void test_correctness_FLOAT_FUSED_SOFTSIGN_TILE(void)
+void test_correctness_FLOAT_INPLACE_SOFTSIGN_TILE(void)
 {
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
     using BufferT = FloatBuffer;
@@ -141,7 +141,7 @@ void test_correctness_FLOAT_FUSED_SOFTSIGN_TILE(void)
 
     FLOAT_LOAD_TILE_C(output_buf.data());
 
-    FLOAT_FUSED_SOFTSIGN_TILE_C;
+    FLOAT_INPLACE_SOFTSIGN_TILE_C;
 
     FLOAT_STORE_TILE_C(output_buf.data());
     //==================================================
@@ -213,8 +213,8 @@ void test_correctness_FLOAT_FUSED_SOFTSIGN_TILE(void)
 #define INDIVIDUAL_SOFTSIGN_CALL(iteration) \
     asm volatile("iteration" #iteration ":" ::: "memory");\
     {FLOAT_ABS_TILE_C(step, a_cur);} \
-    {const float scalar = 1.0f; FLOAT_EWISE_ADD_SCALAR_TILE_C(scalar);} \
-    {FLOAT_FUSED_DIV_TILE_C(step, a_cur);} \
+    {const float scalar = 1.0f; FLOAT_INPLACE_ADD_SCALAR_TILE_C(scalar);} \
+    {FLOAT_INPLACE_DIV_TILE_C(step, a_cur);} \
     result_accumulator = _mm256_add_ps(result_accumulator,  \
             _mm256_add_ps(_mm256_add_ps(c0, c1), _mm256_add_ps(c2, c3))); \
     result_accumulator = _mm256_add_ps(result_accumulator,  \
@@ -587,8 +587,8 @@ TEST_LIST = {
      small::float_detail::test_correctness_FLOAT_SOFTSIGN_TILE},
     {"correctness individual FLOAT_SOFTSIGN_TILE",
      small::float_detail::test_correctness_individual_FLOAT_SOFTSIGN_TILE},
-    {"correctness FLOAT_FUSED_SOFTSIGN_TILE",
-     small::float_detail::test_correctness_FLOAT_FUSED_SOFTSIGN_TILE},
+    {"correctness FLOAT_INPLACE_SOFTSIGN_TILE",
+     small::float_detail::test_correctness_FLOAT_INPLACE_SOFTSIGN_TILE},
     // {"performance FLOAT_SOFTSIGN_TILE",
     //  small::float_detail::test_performance_FLOAT_SOFTSIGN_TILE},
     {"softsign single element",

@@ -65,7 +65,7 @@ void inline kernel(
     if (first)
     {
         FLOAT_ZERO_TILE_C;
-        if constexpr(op_type == OP_MAX_POOL || op_type == OP_MUL || op_type == OP_EWISE_ADD_SCALAR)
+        if constexpr(op_type == OP_MAX_POOL || op_type == OP_MUL || op_type == OP_INPLACE_ADD_SCALAR)
         {
             /// @note using platform C_ob
             FLOAT_LOAD_TILE_C_strided(I, step);
@@ -77,7 +77,7 @@ void inline kernel(
     }
     else
     {
-        if constexpr(op_type == OP_EWISE_ADD_SCALAR)
+        if constexpr(op_type == OP_INPLACE_ADD_SCALAR)
         {
             FLOAT_LOAD_TILE_C_strided(I, step);
         }
@@ -123,7 +123,7 @@ void inline kernel(
     if (op_type == OP_AVERAGE_POOL)
     {
         float norm = 1.0 / (1.0 * F_h * F_w);
-        FLOAT_DIV_TILE_C(norm);
+        FLOAT_INPLACE_MUL_SCALAR_TILE_C(norm);
     }
 
     FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_TILE(step, fused_single_element_after,

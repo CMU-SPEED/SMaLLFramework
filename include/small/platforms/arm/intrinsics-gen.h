@@ -469,7 +469,7 @@
 // Assumptions: input is already in c_tile, can be overwritten
 
 // When Fused, compare with a register of zeros
-#define FLOAT_FUSED_RELU_TILE_C                 \
+#define FLOAT_INPLACE_RELU_TILE_C               \
     float32x4_t av = vdupq_n_f32(0);            \
     c_0_0 = vmaxq_f32(c_0_0, av);               \
     c_0_1 = vmaxq_f32(c_0_1, av);               \
@@ -497,7 +497,7 @@
     c_5_3 = vmaxq_f32(c_5_3, av);
 
 #if FLOAT_SIMD_EPILOGUE == 1
-#define FLOAT_FUSED_RELU_END_C(c_cur, W_ob, C_ob)                       \
+#define FLOAT_INPLACE_RELU_END_C(c_cur, W_ob, C_ob)                     \
     float *c_pixel = c_cur;                                             \
     for (uint32_t kk = 0; kk < W_ob; kk++)                              \
     {                                                                   \
@@ -510,7 +510,7 @@
         c_pixel += C_ob;                                                \
     }
 #elif FLOAT_SIMD_EPILOGUE == 4
-#define FLOAT_FUSED_RELU_END_C(c_cur, W_ob, C_ob)                       \
+#define FLOAT_INPLACE_RELU_END_C(c_cur, W_ob, C_ob)                     \
     float32x4_t av = vdupq_n_f32(0);                                    \
     for (uint32_t kk = 0; kk < W_ob; kk++)                              \
     {                                                                   \
@@ -522,7 +522,7 @@
 #endif
 
 
-#define FLOAT_FUSED_EXP_TILE_C                                          \
+#define FLOAT_INPLACE_EXP_TILE_C                                        \
     float c_tile_scalar[FLOAT_W_ob * FLOAT_C_ob];                       \
     vst1q_f32(c_tile_scalar + 0 * FLOAT_C_ob + 0 * FLOAT_SIMD, c_0_0);  \
     vst1q_f32(c_tile_scalar + 0 * FLOAT_C_ob + 1 * FLOAT_SIMD, c_0_1);  \
@@ -585,7 +585,7 @@
     c_5_3 = vld1q_f32(c_tile_scalar + 5 * FLOAT_C_ob + 3 * FLOAT_SIMD);
 
 #if FLOAT_SIMD_EPILOGUE == 1
-#define FLOAT_FUSED_EXP_END_C(c_cur, W_ob, C_ob)        \
+#define FLOAT_INPLACE_EXP_END_C(c_cur, W_ob, C_ob)      \
     c_tile_t *c_pixel = c_cur;                          \
     for (uint32_t kk = 0; kk < W_ob; kk++)              \
     {                                                   \
@@ -598,7 +598,7 @@
         c_pixel += C_ob;                                \
     }
 #else
-#define FLOAT_FUSED_EXP_END_C(c_cur, W_ob, C_ob)                        \
+#define FLOAT_INPLACE_EXP_END_C(c_cur, W_ob, C_ob)                      \
     float c_tile_scalar[FLOAT_W_ob * FLOAT_C_ob];                       \
     for(uint32_t kk = 0; kk < W_ob; kk++)                               \
     {                                                                   \

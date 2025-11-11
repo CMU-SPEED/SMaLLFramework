@@ -108,7 +108,7 @@ void inline kernel_left_1D(
     if (op_type == OP_AVERAGE_POOL)
     {
         float norm = 1.0 / (1.0 * F_w);
-        FLOAT_DIV_END_C(c_tile, norm, l_pad_el, _C_ob);
+        FLOAT_INPLACE_MUL_SCALAR_END_C(c_tile, norm, l_pad_el, _C_ob);
     }
 
     dim_t step_after = _stride_after * _C_ib;

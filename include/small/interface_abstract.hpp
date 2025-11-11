@@ -2027,7 +2027,7 @@ void LogSoftMax(int channels,
         // element-wise shift (addition)
         float_detail::abstract_layer<
             FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1,
-            OP_EWISE_ADD_SCALAR, 0, 0>(
+            OP_INPLACE_ADD_SCALAR, 0, 0>(
                 channels,       // Output Channel Grouping
                 1,              // Output Channels per group
                 1,
@@ -2201,7 +2201,7 @@ void LogSoftMax2(int channels,
         // element-wise shift (addition)
         float_detail::abstract_layer<
             FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1,
-            OP_EWISE_ADD_SCALAR, 0, 0>(
+            OP_INPLACE_ADD_SCALAR, 0, 0>(
                 channels,       // Output Channel Grouping
                 1,              // Output Channels per group
                 1,
@@ -2291,7 +2291,7 @@ void SoftSign_3Pass(int input_channels,
         FloatBuffer scalar_buf(1);
         scalar_buf.data()[0] = 1.0f;
         float_detail::abstract_layer<
-            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_EWISE_ADD_SCALAR, 0, 0>(
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_INPLACE_ADD_SCALAR, 0, 0>(
             input_channels, // Output Channel Grouping
             1,              // Output Channels per group
             1,
