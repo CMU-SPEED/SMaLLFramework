@@ -1255,9 +1255,59 @@ namespace small
 // Same kernel as Pooling, set to zero to start.
 /// @todo in intrinsics_gen.h?
 
-//#define FLOAT_INPLACE_RELU_TILE_C
+#define FLOAT_INPLACE_RELU_TILE_C               \
+    float32x4_t av = vdupq_n_f32(0);            \
+    c_0_0 = vmaxq_f32(c_0_0, av);               \
+    c_0_1 = vmaxq_f32(c_0_1, av);               \
+    c_0_2 = vmaxq_f32(c_0_2, av);               \
+    c_0_3 = vmaxq_f32(c_0_3, av);               \
+    c_1_0 = vmaxq_f32(c_1_0, av);               \
+    c_1_1 = vmaxq_f32(c_1_1, av);               \
+    c_1_2 = vmaxq_f32(c_1_2, av);               \
+    c_1_3 = vmaxq_f32(c_1_3, av);               \
+    c_2_0 = vmaxq_f32(c_2_0, av);               \
+    c_2_1 = vmaxq_f32(c_2_1, av);               \
+    c_2_2 = vmaxq_f32(c_2_2, av);               \
+    c_2_3 = vmaxq_f32(c_2_3, av);               \
+    c_3_0 = vmaxq_f32(c_3_0, av);               \
+    c_3_1 = vmaxq_f32(c_3_1, av);               \
+    c_3_2 = vmaxq_f32(c_3_2, av);               \
+    c_3_3 = vmaxq_f32(c_3_3, av);               \
+    c_4_0 = vmaxq_f32(c_4_0, av);               \
+    c_4_1 = vmaxq_f32(c_4_1, av);               \
+    c_4_2 = vmaxq_f32(c_4_2, av);               \
+    c_4_3 = vmaxq_f32(c_4_3, av);               \
+    c_5_0 = vmaxq_f32(c_5_0, av);               \
+    c_5_1 = vmaxq_f32(c_5_1, av);               \
+    c_5_2 = vmaxq_f32(c_5_2, av);               \
+    c_5_3 = vmaxq_f32(c_5_3, av);
 
-//#define FLOAT_INPLACE_RELU_END_C
+
+#if FLOAT_SIMD_EPILOGUE == 1
+#define FLOAT_INPLACE_RELU_END_C(c_cur, W_ob, C_ob)                     \
+    float *c_pixel = c_cur;                                             \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                              \
+    {                                                                   \
+        float *c_channel = c_pixel;                                     \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                          \
+        {                                                               \
+            *(c_channel) = (0.0 > *(c_channel)) ? 0.0 : *(c_channel);   \
+            c_channel++;                                                \
+        }                                                               \
+        c_pixel += C_ob;                                                \
+    }
+#elif FLOAT_SIMD_EPILOGUE == 4
+#define FLOAT_INPLACE_RELU_END_C(c_cur, W_ob, C_ob)                     \
+    float32x4_t av = vdupq_n_f32(0);                                    \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                              \
+    {                                                                   \
+        c_cur[kk * C_ob / FLOAT_SIMD + 0] = vmaxq_f32(c_cur[kk * C_ob / FLOAT_SIMD + 0], av); \
+        c_cur[kk * C_ob / FLOAT_SIMD + 1] = vmaxq_f32(c_cur[kk * C_ob / FLOAT_SIMD + 1], av); \
+        c_cur[kk * C_ob / FLOAT_SIMD + 2] = vmaxq_f32(c_cur[kk * C_ob / FLOAT_SIMD + 2], av); \
+        c_cur[kk * C_ob / FLOAT_SIMD + 3] = vmaxq_f32(c_cur[kk * C_ob / FLOAT_SIMD + 3], av); \
+    }
+#endif
+
 
 //****************************************************************************
 // Leaky ReLU activation
@@ -1873,8 +1923,107 @@ namespace small
 
 #endif
 
-/// @todo Missing FLOAT_INPLACE_EXP_TILE_C
-/// @todo Missing FLOAT_INPLACE_EXP_END_C
+
+#define FLOAT_INPLACE_EXP_TILE_C                                        \
+    float c_tile_scalar[FLOAT_W_ob * FLOAT_C_ob];                       \
+    vst1q_f32(c_tile_scalar + 0 * FLOAT_C_ob + 0 * FLOAT_SIMD, c_0_0);  \
+    vst1q_f32(c_tile_scalar + 0 * FLOAT_C_ob + 1 * FLOAT_SIMD, c_0_1);  \
+    vst1q_f32(c_tile_scalar + 0 * FLOAT_C_ob + 2 * FLOAT_SIMD, c_0_2);  \
+    vst1q_f32(c_tile_scalar + 0 * FLOAT_C_ob + 3 * FLOAT_SIMD, c_0_3);  \
+    vst1q_f32(c_tile_scalar + 1 * FLOAT_C_ob + 0 * FLOAT_SIMD, c_1_0);  \
+    vst1q_f32(c_tile_scalar + 1 * FLOAT_C_ob + 1 * FLOAT_SIMD, c_1_1);  \
+    vst1q_f32(c_tile_scalar + 1 * FLOAT_C_ob + 2 * FLOAT_SIMD, c_1_2);  \
+    vst1q_f32(c_tile_scalar + 1 * FLOAT_C_ob + 3 * FLOAT_SIMD, c_1_3);  \
+    vst1q_f32(c_tile_scalar + 2 * FLOAT_C_ob + 0 * FLOAT_SIMD, c_2_0);  \
+    vst1q_f32(c_tile_scalar + 2 * FLOAT_C_ob + 1 * FLOAT_SIMD, c_2_1);  \
+    vst1q_f32(c_tile_scalar + 2 * FLOAT_C_ob + 2 * FLOAT_SIMD, c_2_2);  \
+    vst1q_f32(c_tile_scalar + 2 * FLOAT_C_ob + 3 * FLOAT_SIMD, c_2_3);  \
+    vst1q_f32(c_tile_scalar + 3 * FLOAT_C_ob + 0 * FLOAT_SIMD, c_3_0);  \
+    vst1q_f32(c_tile_scalar + 3 * FLOAT_C_ob + 1 * FLOAT_SIMD, c_3_1);  \
+    vst1q_f32(c_tile_scalar + 3 * FLOAT_C_ob + 2 * FLOAT_SIMD, c_3_2);  \
+    vst1q_f32(c_tile_scalar + 3 * FLOAT_C_ob + 3 * FLOAT_SIMD, c_3_3);  \
+    vst1q_f32(c_tile_scalar + 4 * FLOAT_C_ob + 0 * FLOAT_SIMD, c_4_0);  \
+    vst1q_f32(c_tile_scalar + 4 * FLOAT_C_ob + 1 * FLOAT_SIMD, c_4_1);  \
+    vst1q_f32(c_tile_scalar + 4 * FLOAT_C_ob + 2 * FLOAT_SIMD, c_4_2);  \
+    vst1q_f32(c_tile_scalar + 4 * FLOAT_C_ob + 3 * FLOAT_SIMD, c_4_3);  \
+    vst1q_f32(c_tile_scalar + 5 * FLOAT_C_ob + 0 * FLOAT_SIMD, c_5_0);  \
+    vst1q_f32(c_tile_scalar + 5 * FLOAT_C_ob + 1 * FLOAT_SIMD, c_5_1);  \
+    vst1q_f32(c_tile_scalar + 5 * FLOAT_C_ob + 2 * FLOAT_SIMD, c_5_2);  \
+    vst1q_f32(c_tile_scalar + 5 * FLOAT_C_ob + 3 * FLOAT_SIMD, c_5_3);  \
+    float *c_pixel = c_tile_scalar;                                     \
+    for (uint32_t kk = 0; kk < FLOAT_W_ob; kk++)                        \
+    {                                                                   \
+        float *c_channel = c_pixel;                                     \
+        for (uint32_t jj = 0; jj < FLOAT_C_ob; jj++)                    \
+        {                                                               \
+            *(c_channel) = std::exp(*c_channel);                        \
+            c_channel++;                                                \
+        }                                                               \
+        c_pixel += FLOAT_C_ob;                                          \
+    }                                                                   \
+    c_0_0 = vld1q_f32(c_tile_scalar + 0 * FLOAT_C_ob + 0 * FLOAT_SIMD); \
+    c_0_1 = vld1q_f32(c_tile_scalar + 0 * FLOAT_C_ob + 1 * FLOAT_SIMD); \
+    c_0_2 = vld1q_f32(c_tile_scalar + 0 * FLOAT_C_ob + 2 * FLOAT_SIMD); \
+    c_0_3 = vld1q_f32(c_tile_scalar + 0 * FLOAT_C_ob + 3 * FLOAT_SIMD); \
+    c_1_0 = vld1q_f32(c_tile_scalar + 1 * FLOAT_C_ob + 0 * FLOAT_SIMD); \
+    c_1_1 = vld1q_f32(c_tile_scalar + 1 * FLOAT_C_ob + 1 * FLOAT_SIMD); \
+    c_1_2 = vld1q_f32(c_tile_scalar + 1 * FLOAT_C_ob + 2 * FLOAT_SIMD); \
+    c_1_3 = vld1q_f32(c_tile_scalar + 1 * FLOAT_C_ob + 3 * FLOAT_SIMD); \
+    c_2_0 = vld1q_f32(c_tile_scalar + 2 * FLOAT_C_ob + 0 * FLOAT_SIMD); \
+    c_2_1 = vld1q_f32(c_tile_scalar + 2 * FLOAT_C_ob + 1 * FLOAT_SIMD); \
+    c_2_2 = vld1q_f32(c_tile_scalar + 2 * FLOAT_C_ob + 2 * FLOAT_SIMD); \
+    c_2_3 = vld1q_f32(c_tile_scalar + 2 * FLOAT_C_ob + 3 * FLOAT_SIMD); \
+    c_3_0 = vld1q_f32(c_tile_scalar + 3 * FLOAT_C_ob + 0 * FLOAT_SIMD); \
+    c_3_1 = vld1q_f32(c_tile_scalar + 3 * FLOAT_C_ob + 1 * FLOAT_SIMD); \
+    c_3_2 = vld1q_f32(c_tile_scalar + 3 * FLOAT_C_ob + 2 * FLOAT_SIMD); \
+    c_3_3 = vld1q_f32(c_tile_scalar + 3 * FLOAT_C_ob + 3 * FLOAT_SIMD); \
+    c_4_0 = vld1q_f32(c_tile_scalar + 4 * FLOAT_C_ob + 0 * FLOAT_SIMD); \
+    c_4_1 = vld1q_f32(c_tile_scalar + 4 * FLOAT_C_ob + 1 * FLOAT_SIMD); \
+    c_4_2 = vld1q_f32(c_tile_scalar + 4 * FLOAT_C_ob + 2 * FLOAT_SIMD); \
+    c_4_3 = vld1q_f32(c_tile_scalar + 4 * FLOAT_C_ob + 3 * FLOAT_SIMD); \
+    c_5_0 = vld1q_f32(c_tile_scalar + 5 * FLOAT_C_ob + 0 * FLOAT_SIMD); \
+    c_5_1 = vld1q_f32(c_tile_scalar + 5 * FLOAT_C_ob + 1 * FLOAT_SIMD); \
+    c_5_2 = vld1q_f32(c_tile_scalar + 5 * FLOAT_C_ob + 2 * FLOAT_SIMD); \
+    c_5_3 = vld1q_f32(c_tile_scalar + 5 * FLOAT_C_ob + 3 * FLOAT_SIMD);
+
+#if FLOAT_SIMD_EPILOGUE == 1
+#define FLOAT_INPLACE_EXP_END_C(c_cur, W_ob, C_ob)      \
+    c_tile_t *c_pixel = c_cur;                          \
+    for (uint32_t kk = 0; kk < W_ob; kk++)              \
+    {                                                   \
+        c_tile_t *c_channel = c_pixel;                  \
+        for (uint32_t jj = 0; jj < C_ob; jj++)          \
+        {                                               \
+            *(c_channel) = std::exp(*c_channel);        \
+            c_channel++;                                \
+        }                                               \
+        c_pixel += C_ob;                                \
+    }
+#else
+#define FLOAT_INPLACE_EXP_END_C(c_cur, W_ob, C_ob)                      \
+    float c_tile_scalar[FLOAT_W_ob * FLOAT_C_ob];                       \
+    for(uint32_t kk = 0; kk < W_ob; kk++)                               \
+    {                                                                   \
+        for(uint32_t jj = 0; jj < C_ob/FLOAT_SIMD; jj++)                \
+            vst1q_f32(c_tile_scalar[kk*(C_ob) + jj*FLOAT_SIMD], c_cur[kk*(C_ob/FLOAT_SIMD) + jj]); \
+    }                                                                   \
+    float *c_pixel = c_tile_scalar;                                     \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                              \
+    {                                                                   \
+        float *c_channel = c_pixel;                                     \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                          \
+        {                                                               \
+            *(c_channel) = std::exp(*c_channel);                        \
+            c_channel++;                                                \
+        }                                                               \
+        c_cur[kk * (C_ob / FLOAT_SIMD) + 0] = vld1q_f32(c_pixel + 0 * FLOAT_SIMD); \
+        c_cur[kk * (C_ob / FLOAT_SIMD) + 1] = vld1q_f32(c_pixel + 1 * FLOAT_SIMD); \
+        c_cur[kk * (C_ob / FLOAT_SIMD) + 2] = vld1q_f32(c_pixel + 2 * FLOAT_SIMD); \
+        c_cur[kk * (C_ob / FLOAT_SIMD) + 3] = vld1q_f32(c_pixel + 3 * FLOAT_SIMD); \
+        c_pixel += C_ob;                                                \
+    }
+
+#endif
 
 //****************************************************************************
 // Ewise logarithm
@@ -1882,6 +2031,9 @@ namespace small
 
 /// @todo Missing FLOAT_LOG_TILE_C
 /// @todo Missing FLOAT_LOG_END_C
+
+/// @todo missing FLOAT_INPLACE_LOG_TILE_C
+/// @todo missing FLOAT_INPLACE_LOG_END_C(c_cur, W_ob, C_ob)
 
 
 //****************************************************************************
