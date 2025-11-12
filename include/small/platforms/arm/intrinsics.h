@@ -443,558 +443,128 @@ namespace small
         float32x4_t a_5;                                                \
         float32x4_t b_0;                                                \
         float32x4_t b_1;                                                \
-        float32x4_t b_2;                                                \
-        float32x4_t b_3;                                                \
         a_0 = vld1q_f32(I + 0 * step + 0 * FLOAT_SIMD);                 \
         b_0 = vld1q_f32(bb + 0*FLOAT_C_ob + (0 * 4 + 0)*FLOAT_SIMD);    \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_0_0) : "w"(b_0), "w"(a_0)); \
         b_1 = vld1q_f32(bb + 0*FLOAT_C_ob + (0 * 4 + 1)*FLOAT_SIMD);    \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_0_1) : "w"(b_1), "w"(a_0)); \
-        b_2 = vld1q_f32(bb + 0*FLOAT_C_ob + (0 * 4 + 2)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_0_2) : "w"(b_2), "w"(a_0)); \
-        b_3 = vld1q_f32(bb + 0*FLOAT_C_ob + (0 * 4 + 3)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_0_3) : "w"(b_3), "w"(a_0)); \
         a_1 = vld1q_f32(I + 1 * step + 0 * FLOAT_SIMD);                 \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_1_0) : "w"(b_0), "w"(a_1)); \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_1_1) : "w"(b_1), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_1_2) : "w"(b_2), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_1_3) : "w"(b_3), "w"(a_1)); \
         a_2 = vld1q_f32(I + 2 * step + 0 * FLOAT_SIMD);                 \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_2_0) : "w"(b_0), "w"(a_2)); \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_2_1) : "w"(b_1), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_2_2) : "w"(b_2), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_2_3) : "w"(b_3), "w"(a_2)); \
         a_3 = vld1q_f32(I + 3 * step + 0 * FLOAT_SIMD);                 \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_3_0) : "w"(b_0), "w"(a_3)); \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_3_1) : "w"(b_1), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_3_2) : "w"(b_2), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_3_3) : "w"(b_3), "w"(a_3)); \
         a_4 = vld1q_f32(I + 4 * step + 0 * FLOAT_SIMD);                 \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_4_0) : "w"(b_0), "w"(a_4)); \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_4_1) : "w"(b_1), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_4_2) : "w"(b_2), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_4_3) : "w"(b_3), "w"(a_4)); \
         a_5 = vld1q_f32(I + 5 * step + 0 * FLOAT_SIMD);                 \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_5_0) : "w"(b_0), "w"(a_5)); \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_5_1) : "w"(b_1), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_5_2) : "w"(b_2), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_5_3) : "w"(b_3), "w"(a_5)); \
-        a_0 = vld1q_f32(I + 0 * step + 0 * FLOAT_SIMD);                 \
+        b_0 = vld1q_f32(bb + 0*FLOAT_C_ob + (0 * 4 + 2)*FLOAT_SIMD);    \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_0_2) : "w"(b_0), "w"(a_0)); \
+        b_1 = vld1q_f32(bb + 0*FLOAT_C_ob + (0 * 4 + 3)*FLOAT_SIMD);    \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_0_3) : "w"(b_1), "w"(a_0)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_1_2) : "w"(b_0), "w"(a_1)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_1_3) : "w"(b_1), "w"(a_1)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_2_2) : "w"(b_0), "w"(a_2)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_2_3) : "w"(b_1), "w"(a_2)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_3_2) : "w"(b_0), "w"(a_3)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_3_3) : "w"(b_1), "w"(a_3)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_4_2) : "w"(b_0), "w"(a_4)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_4_3) : "w"(b_1), "w"(a_4)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_5_2) : "w"(b_0), "w"(a_5)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_5_3) : "w"(b_1), "w"(a_5)); \
+                                                                        \
         b_0 = vld1q_f32(bb + 1*FLOAT_C_ob + (0 * 4 + 0)*FLOAT_SIMD);    \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_0_0) : "w"(b_0), "w"(a_0)); \
         b_1 = vld1q_f32(bb + 1*FLOAT_C_ob + (0 * 4 + 1)*FLOAT_SIMD);    \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_0_1) : "w"(b_1), "w"(a_0)); \
-        b_2 = vld1q_f32(bb + 1*FLOAT_C_ob + (0 * 4 + 2)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_0_2) : "w"(b_2), "w"(a_0)); \
-        b_3 = vld1q_f32(bb + 1*FLOAT_C_ob + (0 * 4 + 3)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_0_3) : "w"(b_3), "w"(a_0)); \
-        a_1 = vld1q_f32(I + 1 * step + 0 * FLOAT_SIMD);                 \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_1_0) : "w"(b_0), "w"(a_1)); \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_1_1) : "w"(b_1), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_1_2) : "w"(b_2), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_1_3) : "w"(b_3), "w"(a_1)); \
-        a_2 = vld1q_f32(I + 2 * step + 0 * FLOAT_SIMD);                 \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_2_0) : "w"(b_0), "w"(a_2)); \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_2_1) : "w"(b_1), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_2_2) : "w"(b_2), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_2_3) : "w"(b_3), "w"(a_2)); \
-        a_3 = vld1q_f32(I + 3 * step + 0 * FLOAT_SIMD);                 \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_3_0) : "w"(b_0), "w"(a_3)); \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_3_1) : "w"(b_1), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_3_2) : "w"(b_2), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_3_3) : "w"(b_3), "w"(a_3)); \
-        a_4 = vld1q_f32(I + 4 * step + 0 * FLOAT_SIMD);                 \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_4_0) : "w"(b_0), "w"(a_4)); \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_4_1) : "w"(b_1), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_4_2) : "w"(b_2), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_4_3) : "w"(b_3), "w"(a_4)); \
-        a_5 = vld1q_f32(I + 5 * step + 0 * FLOAT_SIMD);                 \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_5_0) : "w"(b_0), "w"(a_5)); \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_5_1) : "w"(b_1), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_5_2) : "w"(b_2), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_5_3) : "w"(b_3), "w"(a_5)); \
-        a_0 = vld1q_f32(I + 0 * step + 0 * FLOAT_SIMD);                 \
+        b_0 = vld1q_f32(bb + 1*FLOAT_C_ob + (0 * 4 + 2)*FLOAT_SIMD);    \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_0_2) : "w"(b_0), "w"(a_0)); \
+        b_1 = vld1q_f32(bb + 1*FLOAT_C_ob + (0 * 4 + 3)*FLOAT_SIMD);    \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_0_3) : "w"(b_1), "w"(a_0)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_1_2) : "w"(b_0), "w"(a_1)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_1_3) : "w"(b_1), "w"(a_1)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_2_2) : "w"(b_0), "w"(a_2)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_2_3) : "w"(b_1), "w"(a_2)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_3_2) : "w"(b_0), "w"(a_3)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_3_3) : "w"(b_1), "w"(a_3)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_4_2) : "w"(b_0), "w"(a_4)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_4_3) : "w"(b_1), "w"(a_4)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_5_2) : "w"(b_0), "w"(a_5)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_5_3) : "w"(b_1), "w"(a_5)); \
+                                                                        \
         b_0 = vld1q_f32(bb + 2*FLOAT_C_ob + (0 * 4 + 0)*FLOAT_SIMD);    \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_0_0) : "w"(b_0), "w"(a_0)); \
         b_1 = vld1q_f32(bb + 2*FLOAT_C_ob + (0 * 4 + 1)*FLOAT_SIMD);    \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_0_1) : "w"(b_1), "w"(a_0)); \
-        b_2 = vld1q_f32(bb + 2*FLOAT_C_ob + (0 * 4 + 2)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_0_2) : "w"(b_2), "w"(a_0)); \
-        b_3 = vld1q_f32(bb + 2*FLOAT_C_ob + (0 * 4 + 3)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_0_3) : "w"(b_3), "w"(a_0)); \
-        a_1 = vld1q_f32(I + 1 * step + 0 * FLOAT_SIMD);                 \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_1_0) : "w"(b_0), "w"(a_1)); \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_1_1) : "w"(b_1), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_1_2) : "w"(b_2), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_1_3) : "w"(b_3), "w"(a_1)); \
-        a_2 = vld1q_f32(I + 2 * step + 0 * FLOAT_SIMD);                 \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_2_0) : "w"(b_0), "w"(a_2)); \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_2_1) : "w"(b_1), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_2_2) : "w"(b_2), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_2_3) : "w"(b_3), "w"(a_2)); \
-        a_3 = vld1q_f32(I + 3 * step + 0 * FLOAT_SIMD);                 \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_3_0) : "w"(b_0), "w"(a_3)); \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_3_1) : "w"(b_1), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_3_2) : "w"(b_2), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_3_3) : "w"(b_3), "w"(a_3)); \
-        a_4 = vld1q_f32(I + 4 * step + 0 * FLOAT_SIMD);                 \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_4_0) : "w"(b_0), "w"(a_4)); \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_4_1) : "w"(b_1), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_4_2) : "w"(b_2), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_4_3) : "w"(b_3), "w"(a_4)); \
-        a_5 = vld1q_f32(I + 5 * step + 0 * FLOAT_SIMD);                 \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_5_0) : "w"(b_0), "w"(a_5)); \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_5_1) : "w"(b_1), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_5_2) : "w"(b_2), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_5_3) : "w"(b_3), "w"(a_5)); \
-        a_0 = vld1q_f32(I + 0 * step + 0 * FLOAT_SIMD);                 \
+        b_0 = vld1q_f32(bb + 2*FLOAT_C_ob + (0 * 4 + 2)*FLOAT_SIMD);    \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_0_2) : "w"(b_0), "w"(a_0)); \
+        b_1 = vld1q_f32(bb + 2*FLOAT_C_ob + (0 * 4 + 3)*FLOAT_SIMD);    \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_0_3) : "w"(b_1), "w"(a_0)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_1_2) : "w"(b_0), "w"(a_1)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_1_3) : "w"(b_1), "w"(a_1)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_2_2) : "w"(b_0), "w"(a_2)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_2_3) : "w"(b_1), "w"(a_2)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_3_2) : "w"(b_0), "w"(a_3)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_3_3) : "w"(b_1), "w"(a_3)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_4_2) : "w"(b_0), "w"(a_4)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_4_3) : "w"(b_1), "w"(a_4)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_5_2) : "w"(b_0), "w"(a_5)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_5_3) : "w"(b_1), "w"(a_5)); \
+                                                                        \
         b_0 = vld1q_f32(bb + 3*FLOAT_C_ob + (0 * 4 + 0)*FLOAT_SIMD);    \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_0_0) : "w"(b_0), "w"(a_0)); \
         b_1 = vld1q_f32(bb + 3*FLOAT_C_ob + (0 * 4 + 1)*FLOAT_SIMD);    \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_0_1) : "w"(b_1), "w"(a_0)); \
-        b_2 = vld1q_f32(bb + 3*FLOAT_C_ob + (0 * 4 + 2)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_0_2) : "w"(b_2), "w"(a_0)); \
-        b_3 = vld1q_f32(bb + 3*FLOAT_C_ob + (0 * 4 + 3)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_0_3) : "w"(b_3), "w"(a_0)); \
-        a_1 = vld1q_f32(I + 1 * step + 0 * FLOAT_SIMD);                 \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_1_0) : "w"(b_0), "w"(a_1)); \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_1_1) : "w"(b_1), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_1_2) : "w"(b_2), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_1_3) : "w"(b_3), "w"(a_1)); \
-        a_2 = vld1q_f32(I + 2 * step + 0 * FLOAT_SIMD);                 \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_2_0) : "w"(b_0), "w"(a_2)); \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_2_1) : "w"(b_1), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_2_2) : "w"(b_2), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_2_3) : "w"(b_3), "w"(a_2)); \
-        a_3 = vld1q_f32(I + 3 * step + 0 * FLOAT_SIMD);                 \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_3_0) : "w"(b_0), "w"(a_3)); \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_3_1) : "w"(b_1), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_3_2) : "w"(b_2), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_3_3) : "w"(b_3), "w"(a_3)); \
-        a_4 = vld1q_f32(I + 4 * step + 0 * FLOAT_SIMD);                 \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_4_0) : "w"(b_0), "w"(a_4)); \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_4_1) : "w"(b_1), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_4_2) : "w"(b_2), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_4_3) : "w"(b_3), "w"(a_4)); \
-        a_5 = vld1q_f32(I + 5 * step + 0 * FLOAT_SIMD);                 \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_5_0) : "w"(b_0), "w"(a_5)); \
         __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_5_1) : "w"(b_1), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_5_2) : "w"(b_2), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_5_3) : "w"(b_3), "w"(a_5)); \
-        bb += 64;                                                       \
-        a_0 = vld1q_f32(I + 0 * step + 1 * FLOAT_SIMD);                 \
-        b_0 = vld1q_f32(bb + 0*FLOAT_C_ob + (0 * 4 + 0)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_0_0) : "w"(b_0), "w"(a_0)); \
-        b_1 = vld1q_f32(bb + 0*FLOAT_C_ob + (0 * 4 + 1)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_0_1) : "w"(b_1), "w"(a_0)); \
-        b_2 = vld1q_f32(bb + 0*FLOAT_C_ob + (0 * 4 + 2)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_0_2) : "w"(b_2), "w"(a_0)); \
-        b_3 = vld1q_f32(bb + 0*FLOAT_C_ob + (0 * 4 + 3)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_0_3) : "w"(b_3), "w"(a_0)); \
-        a_1 = vld1q_f32(I + 1 * step + 1 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_1_0) : "w"(b_0), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_1_1) : "w"(b_1), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_1_2) : "w"(b_2), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_1_3) : "w"(b_3), "w"(a_1)); \
-        a_2 = vld1q_f32(I + 2 * step + 1 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_2_0) : "w"(b_0), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_2_1) : "w"(b_1), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_2_2) : "w"(b_2), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_2_3) : "w"(b_3), "w"(a_2)); \
-        a_3 = vld1q_f32(I + 3 * step + 1 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_3_0) : "w"(b_0), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_3_1) : "w"(b_1), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_3_2) : "w"(b_2), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_3_3) : "w"(b_3), "w"(a_3)); \
-        a_4 = vld1q_f32(I + 4 * step + 1 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_4_0) : "w"(b_0), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_4_1) : "w"(b_1), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_4_2) : "w"(b_2), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_4_3) : "w"(b_3), "w"(a_4)); \
-        a_5 = vld1q_f32(I + 5 * step + 1 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_5_0) : "w"(b_0), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_5_1) : "w"(b_1), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_5_2) : "w"(b_2), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_5_3) : "w"(b_3), "w"(a_5)); \
-        a_0 = vld1q_f32(I + 0 * step + 1 * FLOAT_SIMD);                 \
-        b_0 = vld1q_f32(bb + 1*FLOAT_C_ob + (0 * 4 + 0)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_0_0) : "w"(b_0), "w"(a_0)); \
-        b_1 = vld1q_f32(bb + 1*FLOAT_C_ob + (0 * 4 + 1)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_0_1) : "w"(b_1), "w"(a_0)); \
-        b_2 = vld1q_f32(bb + 1*FLOAT_C_ob + (0 * 4 + 2)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_0_2) : "w"(b_2), "w"(a_0)); \
-        b_3 = vld1q_f32(bb + 1*FLOAT_C_ob + (0 * 4 + 3)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_0_3) : "w"(b_3), "w"(a_0)); \
-        a_1 = vld1q_f32(I + 1 * step + 1 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_1_0) : "w"(b_0), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_1_1) : "w"(b_1), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_1_2) : "w"(b_2), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_1_3) : "w"(b_3), "w"(a_1)); \
-        a_2 = vld1q_f32(I + 2 * step + 1 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_2_0) : "w"(b_0), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_2_1) : "w"(b_1), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_2_2) : "w"(b_2), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_2_3) : "w"(b_3), "w"(a_2)); \
-        a_3 = vld1q_f32(I + 3 * step + 1 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_3_0) : "w"(b_0), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_3_1) : "w"(b_1), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_3_2) : "w"(b_2), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_3_3) : "w"(b_3), "w"(a_3)); \
-        a_4 = vld1q_f32(I + 4 * step + 1 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_4_0) : "w"(b_0), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_4_1) : "w"(b_1), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_4_2) : "w"(b_2), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_4_3) : "w"(b_3), "w"(a_4)); \
-        a_5 = vld1q_f32(I + 5 * step + 1 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_5_0) : "w"(b_0), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_5_1) : "w"(b_1), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_5_2) : "w"(b_2), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_5_3) : "w"(b_3), "w"(a_5)); \
-        a_0 = vld1q_f32(I + 0 * step + 1 * FLOAT_SIMD);                 \
-        b_0 = vld1q_f32(bb + 2*FLOAT_C_ob + (0 * 4 + 0)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_0_0) : "w"(b_0), "w"(a_0)); \
-        b_1 = vld1q_f32(bb + 2*FLOAT_C_ob + (0 * 4 + 1)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_0_1) : "w"(b_1), "w"(a_0)); \
-        b_2 = vld1q_f32(bb + 2*FLOAT_C_ob + (0 * 4 + 2)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_0_2) : "w"(b_2), "w"(a_0)); \
-        b_3 = vld1q_f32(bb + 2*FLOAT_C_ob + (0 * 4 + 3)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_0_3) : "w"(b_3), "w"(a_0)); \
-        a_1 = vld1q_f32(I + 1 * step + 1 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_1_0) : "w"(b_0), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_1_1) : "w"(b_1), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_1_2) : "w"(b_2), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_1_3) : "w"(b_3), "w"(a_1)); \
-        a_2 = vld1q_f32(I + 2 * step + 1 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_2_0) : "w"(b_0), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_2_1) : "w"(b_1), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_2_2) : "w"(b_2), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_2_3) : "w"(b_3), "w"(a_2)); \
-        a_3 = vld1q_f32(I + 3 * step + 1 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_3_0) : "w"(b_0), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_3_1) : "w"(b_1), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_3_2) : "w"(b_2), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_3_3) : "w"(b_3), "w"(a_3)); \
-        a_4 = vld1q_f32(I + 4 * step + 1 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_4_0) : "w"(b_0), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_4_1) : "w"(b_1), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_4_2) : "w"(b_2), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_4_3) : "w"(b_3), "w"(a_4)); \
-        a_5 = vld1q_f32(I + 5 * step + 1 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_5_0) : "w"(b_0), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_5_1) : "w"(b_1), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_5_2) : "w"(b_2), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_5_3) : "w"(b_3), "w"(a_5)); \
-        a_0 = vld1q_f32(I + 0 * step + 1 * FLOAT_SIMD);                 \
-        b_0 = vld1q_f32(bb + 3*FLOAT_C_ob + (0 * 4 + 0)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_0_0) : "w"(b_0), "w"(a_0)); \
-        b_1 = vld1q_f32(bb + 3*FLOAT_C_ob + (0 * 4 + 1)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_0_1) : "w"(b_1), "w"(a_0)); \
-        b_2 = vld1q_f32(bb + 3*FLOAT_C_ob + (0 * 4 + 2)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_0_2) : "w"(b_2), "w"(a_0)); \
-        b_3 = vld1q_f32(bb + 3*FLOAT_C_ob + (0 * 4 + 3)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_0_3) : "w"(b_3), "w"(a_0)); \
-        a_1 = vld1q_f32(I + 1 * step + 1 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_1_0) : "w"(b_0), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_1_1) : "w"(b_1), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_1_2) : "w"(b_2), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_1_3) : "w"(b_3), "w"(a_1)); \
-        a_2 = vld1q_f32(I + 2 * step + 1 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_2_0) : "w"(b_0), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_2_1) : "w"(b_1), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_2_2) : "w"(b_2), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_2_3) : "w"(b_3), "w"(a_2)); \
-        a_3 = vld1q_f32(I + 3 * step + 1 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_3_0) : "w"(b_0), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_3_1) : "w"(b_1), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_3_2) : "w"(b_2), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_3_3) : "w"(b_3), "w"(a_3)); \
-        a_4 = vld1q_f32(I + 4 * step + 1 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_4_0) : "w"(b_0), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_4_1) : "w"(b_1), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_4_2) : "w"(b_2), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_4_3) : "w"(b_3), "w"(a_4)); \
-        a_5 = vld1q_f32(I + 5 * step + 1 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_5_0) : "w"(b_0), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_5_1) : "w"(b_1), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_5_2) : "w"(b_2), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_5_3) : "w"(b_3), "w"(a_5)); \
-        bb += 64;                                                       \
-        a_0 = vld1q_f32(I + 0 * step + 2 * FLOAT_SIMD);                 \
-        b_0 = vld1q_f32(bb + 0*FLOAT_C_ob + (0 * 4 + 0)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_0_0) : "w"(b_0), "w"(a_0)); \
-        b_1 = vld1q_f32(bb + 0*FLOAT_C_ob + (0 * 4 + 1)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_0_1) : "w"(b_1), "w"(a_0)); \
-        b_2 = vld1q_f32(bb + 0*FLOAT_C_ob + (0 * 4 + 2)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_0_2) : "w"(b_2), "w"(a_0)); \
-        b_3 = vld1q_f32(bb + 0*FLOAT_C_ob + (0 * 4 + 3)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_0_3) : "w"(b_3), "w"(a_0)); \
-        a_1 = vld1q_f32(I + 1 * step + 2 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_1_0) : "w"(b_0), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_1_1) : "w"(b_1), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_1_2) : "w"(b_2), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_1_3) : "w"(b_3), "w"(a_1)); \
-        a_2 = vld1q_f32(I + 2 * step + 2 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_2_0) : "w"(b_0), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_2_1) : "w"(b_1), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_2_2) : "w"(b_2), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_2_3) : "w"(b_3), "w"(a_2)); \
-        a_3 = vld1q_f32(I + 3 * step + 2 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_3_0) : "w"(b_0), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_3_1) : "w"(b_1), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_3_2) : "w"(b_2), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_3_3) : "w"(b_3), "w"(a_3)); \
-        a_4 = vld1q_f32(I + 4 * step + 2 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_4_0) : "w"(b_0), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_4_1) : "w"(b_1), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_4_2) : "w"(b_2), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_4_3) : "w"(b_3), "w"(a_4)); \
-        a_5 = vld1q_f32(I + 5 * step + 2 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_5_0) : "w"(b_0), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_5_1) : "w"(b_1), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_5_2) : "w"(b_2), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_5_3) : "w"(b_3), "w"(a_5)); \
-        a_0 = vld1q_f32(I + 0 * step + 2 * FLOAT_SIMD);                 \
-        b_0 = vld1q_f32(bb + 1*FLOAT_C_ob + (0 * 4 + 0)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_0_0) : "w"(b_0), "w"(a_0)); \
-        b_1 = vld1q_f32(bb + 1*FLOAT_C_ob + (0 * 4 + 1)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_0_1) : "w"(b_1), "w"(a_0)); \
-        b_2 = vld1q_f32(bb + 1*FLOAT_C_ob + (0 * 4 + 2)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_0_2) : "w"(b_2), "w"(a_0)); \
-        b_3 = vld1q_f32(bb + 1*FLOAT_C_ob + (0 * 4 + 3)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_0_3) : "w"(b_3), "w"(a_0)); \
-        a_1 = vld1q_f32(I + 1 * step + 2 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_1_0) : "w"(b_0), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_1_1) : "w"(b_1), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_1_2) : "w"(b_2), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_1_3) : "w"(b_3), "w"(a_1)); \
-        a_2 = vld1q_f32(I + 2 * step + 2 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_2_0) : "w"(b_0), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_2_1) : "w"(b_1), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_2_2) : "w"(b_2), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_2_3) : "w"(b_3), "w"(a_2)); \
-        a_3 = vld1q_f32(I + 3 * step + 2 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_3_0) : "w"(b_0), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_3_1) : "w"(b_1), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_3_2) : "w"(b_2), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_3_3) : "w"(b_3), "w"(a_3)); \
-        a_4 = vld1q_f32(I + 4 * step + 2 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_4_0) : "w"(b_0), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_4_1) : "w"(b_1), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_4_2) : "w"(b_2), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_4_3) : "w"(b_3), "w"(a_4)); \
-        a_5 = vld1q_f32(I + 5 * step + 2 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_5_0) : "w"(b_0), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_5_1) : "w"(b_1), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_5_2) : "w"(b_2), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_5_3) : "w"(b_3), "w"(a_5)); \
-        a_0 = vld1q_f32(I + 0 * step + 2 * FLOAT_SIMD);                 \
-        b_0 = vld1q_f32(bb + 2*FLOAT_C_ob + (0 * 4 + 0)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_0_0) : "w"(b_0), "w"(a_0)); \
-        b_1 = vld1q_f32(bb + 2*FLOAT_C_ob + (0 * 4 + 1)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_0_1) : "w"(b_1), "w"(a_0)); \
-        b_2 = vld1q_f32(bb + 2*FLOAT_C_ob + (0 * 4 + 2)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_0_2) : "w"(b_2), "w"(a_0)); \
-        b_3 = vld1q_f32(bb + 2*FLOAT_C_ob + (0 * 4 + 3)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_0_3) : "w"(b_3), "w"(a_0)); \
-        a_1 = vld1q_f32(I + 1 * step + 2 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_1_0) : "w"(b_0), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_1_1) : "w"(b_1), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_1_2) : "w"(b_2), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_1_3) : "w"(b_3), "w"(a_1)); \
-        a_2 = vld1q_f32(I + 2 * step + 2 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_2_0) : "w"(b_0), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_2_1) : "w"(b_1), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_2_2) : "w"(b_2), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_2_3) : "w"(b_3), "w"(a_2)); \
-        a_3 = vld1q_f32(I + 3 * step + 2 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_3_0) : "w"(b_0), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_3_1) : "w"(b_1), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_3_2) : "w"(b_2), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_3_3) : "w"(b_3), "w"(a_3)); \
-        a_4 = vld1q_f32(I + 4 * step + 2 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_4_0) : "w"(b_0), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_4_1) : "w"(b_1), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_4_2) : "w"(b_2), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_4_3) : "w"(b_3), "w"(a_4)); \
-        a_5 = vld1q_f32(I + 5 * step + 2 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_5_0) : "w"(b_0), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_5_1) : "w"(b_1), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_5_2) : "w"(b_2), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_5_3) : "w"(b_3), "w"(a_5)); \
-        a_0 = vld1q_f32(I + 0 * step + 2 * FLOAT_SIMD);                 \
-        b_0 = vld1q_f32(bb + 3*FLOAT_C_ob + (0 * 4 + 0)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_0_0) : "w"(b_0), "w"(a_0)); \
-        b_1 = vld1q_f32(bb + 3*FLOAT_C_ob + (0 * 4 + 1)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_0_1) : "w"(b_1), "w"(a_0)); \
-        b_2 = vld1q_f32(bb + 3*FLOAT_C_ob + (0 * 4 + 2)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_0_2) : "w"(b_2), "w"(a_0)); \
-        b_3 = vld1q_f32(bb + 3*FLOAT_C_ob + (0 * 4 + 3)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_0_3) : "w"(b_3), "w"(a_0)); \
-        a_1 = vld1q_f32(I + 1 * step + 2 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_1_0) : "w"(b_0), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_1_1) : "w"(b_1), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_1_2) : "w"(b_2), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_1_3) : "w"(b_3), "w"(a_1)); \
-        a_2 = vld1q_f32(I + 2 * step + 2 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_2_0) : "w"(b_0), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_2_1) : "w"(b_1), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_2_2) : "w"(b_2), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_2_3) : "w"(b_3), "w"(a_2)); \
-        a_3 = vld1q_f32(I + 3 * step + 2 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_3_0) : "w"(b_0), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_3_1) : "w"(b_1), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_3_2) : "w"(b_2), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_3_3) : "w"(b_3), "w"(a_3)); \
-        a_4 = vld1q_f32(I + 4 * step + 2 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_4_0) : "w"(b_0), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_4_1) : "w"(b_1), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_4_2) : "w"(b_2), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_4_3) : "w"(b_3), "w"(a_4)); \
-        a_5 = vld1q_f32(I + 5 * step + 2 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_5_0) : "w"(b_0), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_5_1) : "w"(b_1), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_5_2) : "w"(b_2), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_5_3) : "w"(b_3), "w"(a_5)); \
-        bb += 64;                                                       \
-        a_0 = vld1q_f32(I + 0 * step + 3 * FLOAT_SIMD);                 \
-        b_0 = vld1q_f32(bb + 0*FLOAT_C_ob + (0 * 4 + 0)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_0_0) : "w"(b_0), "w"(a_0)); \
-        b_1 = vld1q_f32(bb + 0*FLOAT_C_ob + (0 * 4 + 1)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_0_1) : "w"(b_1), "w"(a_0)); \
-        b_2 = vld1q_f32(bb + 0*FLOAT_C_ob + (0 * 4 + 2)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_0_2) : "w"(b_2), "w"(a_0)); \
-        b_3 = vld1q_f32(bb + 0*FLOAT_C_ob + (0 * 4 + 3)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_0_3) : "w"(b_3), "w"(a_0)); \
-        a_1 = vld1q_f32(I + 1 * step + 3 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_1_0) : "w"(b_0), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_1_1) : "w"(b_1), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_1_2) : "w"(b_2), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_1_3) : "w"(b_3), "w"(a_1)); \
-        a_2 = vld1q_f32(I + 2 * step + 3 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_2_0) : "w"(b_0), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_2_1) : "w"(b_1), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_2_2) : "w"(b_2), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_2_3) : "w"(b_3), "w"(a_2)); \
-        a_3 = vld1q_f32(I + 3 * step + 3 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_3_0) : "w"(b_0), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_3_1) : "w"(b_1), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_3_2) : "w"(b_2), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_3_3) : "w"(b_3), "w"(a_3)); \
-        a_4 = vld1q_f32(I + 4 * step + 3 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_4_0) : "w"(b_0), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_4_1) : "w"(b_1), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_4_2) : "w"(b_2), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_4_3) : "w"(b_3), "w"(a_4)); \
-        a_5 = vld1q_f32(I + 5 * step + 3 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_5_0) : "w"(b_0), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_5_1) : "w"(b_1), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_5_2) : "w"(b_2), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[0]" : "+w"(c_5_3) : "w"(b_3), "w"(a_5)); \
-        a_0 = vld1q_f32(I + 0 * step + 3 * FLOAT_SIMD);                 \
-        b_0 = vld1q_f32(bb + 1*FLOAT_C_ob + (0 * 4 + 0)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_0_0) : "w"(b_0), "w"(a_0)); \
-        b_1 = vld1q_f32(bb + 1*FLOAT_C_ob + (0 * 4 + 1)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_0_1) : "w"(b_1), "w"(a_0)); \
-        b_2 = vld1q_f32(bb + 1*FLOAT_C_ob + (0 * 4 + 2)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_0_2) : "w"(b_2), "w"(a_0)); \
-        b_3 = vld1q_f32(bb + 1*FLOAT_C_ob + (0 * 4 + 3)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_0_3) : "w"(b_3), "w"(a_0)); \
-        a_1 = vld1q_f32(I + 1 * step + 3 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_1_0) : "w"(b_0), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_1_1) : "w"(b_1), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_1_2) : "w"(b_2), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_1_3) : "w"(b_3), "w"(a_1)); \
-        a_2 = vld1q_f32(I + 2 * step + 3 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_2_0) : "w"(b_0), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_2_1) : "w"(b_1), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_2_2) : "w"(b_2), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_2_3) : "w"(b_3), "w"(a_2)); \
-        a_3 = vld1q_f32(I + 3 * step + 3 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_3_0) : "w"(b_0), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_3_1) : "w"(b_1), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_3_2) : "w"(b_2), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_3_3) : "w"(b_3), "w"(a_3)); \
-        a_4 = vld1q_f32(I + 4 * step + 3 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_4_0) : "w"(b_0), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_4_1) : "w"(b_1), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_4_2) : "w"(b_2), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_4_3) : "w"(b_3), "w"(a_4)); \
-        a_5 = vld1q_f32(I + 5 * step + 3 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_5_0) : "w"(b_0), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_5_1) : "w"(b_1), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_5_2) : "w"(b_2), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[1]" : "+w"(c_5_3) : "w"(b_3), "w"(a_5)); \
-        a_0 = vld1q_f32(I + 0 * step + 3 * FLOAT_SIMD);                 \
-        b_0 = vld1q_f32(bb + 2*FLOAT_C_ob + (0 * 4 + 0)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_0_0) : "w"(b_0), "w"(a_0)); \
-        b_1 = vld1q_f32(bb + 2*FLOAT_C_ob + (0 * 4 + 1)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_0_1) : "w"(b_1), "w"(a_0)); \
-        b_2 = vld1q_f32(bb + 2*FLOAT_C_ob + (0 * 4 + 2)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_0_2) : "w"(b_2), "w"(a_0)); \
-        b_3 = vld1q_f32(bb + 2*FLOAT_C_ob + (0 * 4 + 3)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_0_3) : "w"(b_3), "w"(a_0)); \
-        a_1 = vld1q_f32(I + 1 * step + 3 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_1_0) : "w"(b_0), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_1_1) : "w"(b_1), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_1_2) : "w"(b_2), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_1_3) : "w"(b_3), "w"(a_1)); \
-        a_2 = vld1q_f32(I + 2 * step + 3 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_2_0) : "w"(b_0), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_2_1) : "w"(b_1), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_2_2) : "w"(b_2), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_2_3) : "w"(b_3), "w"(a_2)); \
-        a_3 = vld1q_f32(I + 3 * step + 3 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_3_0) : "w"(b_0), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_3_1) : "w"(b_1), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_3_2) : "w"(b_2), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_3_3) : "w"(b_3), "w"(a_3)); \
-        a_4 = vld1q_f32(I + 4 * step + 3 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_4_0) : "w"(b_0), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_4_1) : "w"(b_1), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_4_2) : "w"(b_2), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_4_3) : "w"(b_3), "w"(a_4)); \
-        a_5 = vld1q_f32(I + 5 * step + 3 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_5_0) : "w"(b_0), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_5_1) : "w"(b_1), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_5_2) : "w"(b_2), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[2]" : "+w"(c_5_3) : "w"(b_3), "w"(a_5)); \
-        a_0 = vld1q_f32(I + 0 * step + 3 * FLOAT_SIMD);                 \
-        b_0 = vld1q_f32(bb + 3*FLOAT_C_ob + (0 * 4 + 0)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_0_0) : "w"(b_0), "w"(a_0)); \
-        b_1 = vld1q_f32(bb + 3*FLOAT_C_ob + (0 * 4 + 1)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_0_1) : "w"(b_1), "w"(a_0)); \
-        b_2 = vld1q_f32(bb + 3*FLOAT_C_ob + (0 * 4 + 2)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_0_2) : "w"(b_2), "w"(a_0)); \
-        b_3 = vld1q_f32(bb + 3*FLOAT_C_ob + (0 * 4 + 3)*FLOAT_SIMD);    \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_0_3) : "w"(b_3), "w"(a_0)); \
-        a_1 = vld1q_f32(I + 1 * step + 3 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_1_0) : "w"(b_0), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_1_1) : "w"(b_1), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_1_2) : "w"(b_2), "w"(a_1)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_1_3) : "w"(b_3), "w"(a_1)); \
-        a_2 = vld1q_f32(I + 2 * step + 3 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_2_0) : "w"(b_0), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_2_1) : "w"(b_1), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_2_2) : "w"(b_2), "w"(a_2)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_2_3) : "w"(b_3), "w"(a_2)); \
-        a_3 = vld1q_f32(I + 3 * step + 3 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_3_0) : "w"(b_0), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_3_1) : "w"(b_1), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_3_2) : "w"(b_2), "w"(a_3)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_3_3) : "w"(b_3), "w"(a_3)); \
-        a_4 = vld1q_f32(I + 4 * step + 3 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_4_0) : "w"(b_0), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_4_1) : "w"(b_1), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_4_2) : "w"(b_2), "w"(a_4)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_4_3) : "w"(b_3), "w"(a_4)); \
-        a_5 = vld1q_f32(I + 5 * step + 3 * FLOAT_SIMD);                 \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_5_0) : "w"(b_0), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_5_1) : "w"(b_1), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_5_2) : "w"(b_2), "w"(a_5)); \
-        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_5_3) : "w"(b_3), "w"(a_5)); \
-        bb += 64;                                                       \
+        b_0 = vld1q_f32(bb + 3*FLOAT_C_ob + (0 * 4 + 2)*FLOAT_SIMD);    \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_0_2) : "w"(b_0), "w"(a_0)); \
+        b_1 = vld1q_f32(bb + 3*FLOAT_C_ob + (0 * 4 + 3)*FLOAT_SIMD);    \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_0_3) : "w"(b_1), "w"(a_0)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_1_2) : "w"(b_0), "w"(a_1)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_1_3) : "w"(b_1), "w"(a_1)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_2_2) : "w"(b_0), "w"(a_2)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_2_3) : "w"(b_1), "w"(a_2)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_3_2) : "w"(b_0), "w"(a_3)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_3_3) : "w"(b_1), "w"(a_3)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_4_2) : "w"(b_0), "w"(a_4)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_4_3) : "w"(b_1), "w"(a_4)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_5_2) : "w"(b_0), "w"(a_5)); \
+        __asm__ volatile ("fmla %0.4s, %1.4s, %2.s[3]" : "+w"(c_5_3) : "w"(b_1), "w"(a_5)); \
     }
-
 
 #if FLOAT_SIMD_EPILOGUE == 1
 #define FLOAT_CONV_END_C(step, I, W, c_cur, W_ob, C_ob)                 \
@@ -2407,7 +1977,7 @@ namespace small
         }                                               \
     }
 
-#define FLOAT_REDUCE_C_last(O, W_ob, C_ob)            \
+#define FLOAT_REDUCE_C_last(O, W_ob, C_ob)              \
     {                                                   \
         float *c_pixel = c_tile;                        \
         float *O_channel = O;                           \
@@ -2425,5 +1995,3 @@ namespace small
             c_pixel += C_ob;                            \
         }                                               \
     }
-
-
