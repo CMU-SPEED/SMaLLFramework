@@ -53,33 +53,33 @@ void inline kernel_pad(
     ScalarT const *F_b = NULL,
     ScalarT const *F_a = NULL)
 {
-    constexpr dim_t _C_ob = _G_b * _K_b;
+    //constexpr dim_t _C_ob = _G_b * _K_b;
     constexpr dim_t _C_ib = _G_b * _F_cb;
     constexpr dim_t step = _stride * _C_ib;
 
     const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
     // const dim_t W_UPPER = ((!W_ub) * (F_w)) + (W_ub);
 
-    FLOAT_DEF_TILE_C(_O_wb, _C_ob);
+    FLOAT_DEF_TILE_C;
     if (first)
     {
-        FLOAT_ZERO_TILE_C(_O_wb, _C_ob);
+        FLOAT_ZERO_TILE_C;
 
         //@note padding should always be 'v' for pointwise operations,
         //      so this code path should not be used
         if (op_type == OP_MUL)
         {
-            FLOAT_LOAD_TILE_C_strided(I, step, _O_wb, _C_ob);
+            FLOAT_LOAD_TILE_C_strided(I, step);
         }
     }
     else
     {
-        FLOAT_LOAD_TILE_C(O, _O_wb, _C_ob);
+        FLOAT_LOAD_TILE_C(O);
     }
 
     if constexpr (fused_single_element_before == OP_UPSAMPLE)
     {
-        FLOAT_ACCUM_TILE_C_upsample(F_b, _stride_before, _C_ib, _O_wb, _C_ob);
+        FLOAT_ACCUM_TILE_C_upsample(F_b, _stride_before);
     }
 
     for (uint32_t n = H_lb; n < H_UPPER; n++)
@@ -100,7 +100,7 @@ void inline kernel_pad(
                 /// @note using platform C_ob
                 ScalarT const *b_cur = b + ii * _UNROLL * FLOAT_C_ob;
                 ScalarT const *a_cur = a + ii * _UNROLL;
-                FLOAT_ABSTRACT_OP(step, op_type, op_class, a_cur, b_cur, _O_wb, _C_ob);
+                FLOAT_ABSTRACT_OP(step, op_type, op_class, a_cur, b_cur);
             }
         }
     }
@@ -108,13 +108,13 @@ void inline kernel_pad(
     if (op_type == OP_AVERAGE_POOL)
     {
         float norm = 1.0 / (1.0 * F_h * F_w);
-        FLOAT_DIV_TILE_C(norm, _O_wb, _C_ob);
+        FLOAT_INPLACE_MUL_SCALAR_TILE_C(norm);
     }
 
     FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_TILE(step, fused_single_element_after,
-                                          0, F_a, _O_wb, _C_ob);
+                                          0, F_a);
 
-    FLOAT_STORE_TILE_C(O, _O_wb, _C_ob);
+    FLOAT_STORE_TILE_C(O);
 }
 
 } // ns float_detail
