@@ -45,7 +45,7 @@ void inline kernel_bottom(
     dim_t F_w,
     dim_t input_col_stride,
     dim_t b_pad_el,
-    dim_t b_pad,
+    dim_t b_valid,
     dim_t W_full_index,
     dim_t l_pad_el,
     dim_t l_pad,
@@ -63,7 +63,7 @@ void inline kernel_bottom(
     ScalarT const *I_ptr = I;
     AccumT *O_ptr = O; // ScalarT -> AccumT
 
-    int H_i_valid = F_h - 1;
+    int H_i_valid = b_valid;
 
     for (uint32_t j_p = 0; j_p < b_pad_el; j_p++)
     {
@@ -86,8 +86,8 @@ void inline kernel_bottom(
                         F_b,
                         F_a);
 
-        ScalarT const *I_row_full = I + W_full_index * (_F_cb * _G_b);
-        AccumT *O_row_full = O + l_pad_el * (_G_b * _K_b); // ScalarT -> AccumT
+        ScalarT const *I_row_full = I_ptr + W_full_index * (_F_cb * _G_b);
+        AccumT *O_row_full = O_ptr + l_pad_el * (_G_b * _K_b); // ScalarT -> AccumT
         // Steady State with microkernel
         for (index_t l = 0; l < O_w_full; l += _O_wb)
         {
@@ -142,7 +142,7 @@ void inline kernel_bottom(
         O_ptr += O_w_w_pad * _K_b * _G_b;
 
         H_i_valid -= _stride;
-        I_ptr += _stride * _F_cb * _G_b;
+        I_ptr += _stride * input_col_stride;
     }
 }
 

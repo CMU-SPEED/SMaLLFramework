@@ -192,6 +192,7 @@ uint32_t convert_tensor2dc(ScalarT               const *flat_t,
     }
     else if (type == FILTER_CONV || type == FILTER_DW || type == FILTER_FC)
     {
+        assert((C_o % _C_ob) == 0);
         // filter
         ip_block = _C_ib;
         op_block = _C_ob;
@@ -607,6 +608,42 @@ bool equals(uint32_t numel,
 }
 
 //****************************************************************************
+// create a 1D padded buffer
+// source and destination buffers are assumed to be packed into SMaLL layout
+template <class BufferT, size_t _C_ob>
+void pad_1D(BufferT const &input_dc, size_t C_i, size_t B, size_t W,
+            uint8_t left_pad, uint8_t right_pad,
+            BufferT &padded_input_dc)
+{
+    size_t padded_W = W + left_pad + right_pad;
+    //size_t padded_size = C_i * B * padded_W * _C_ob;
+
+    // Copy the input data into the padded buffer
+
+    for (size_t i = 0; i < C_i/_C_ob; i++)
+    {
+        for (size_t b = 0; b < B; b++)
+        {
+            for (size_t j = 0; j < W; j++)
+            {
+                for (size_t ii = 0; ii < _C_ob; ii++)
+                {
+                    padded_input_dc[i*(B*(padded_W)*_C_ob) +
+                                       b*(padded_W)*_C_ob +
+                                    (j + left_pad) *_C_ob + ii ] =
+                        input_dc[i*(B*W*_C_ob) +
+                                  b*(W)*_C_ob +
+                                      j*_C_ob + ii];
+
+                }
+            }
+
+        }
+    }
+
+}
+
+//****************************************************************************
 // create a 2D padded buffer
 // source and destination buffers are assumed to be packed into SMaLL layout
 template <class BufferT, size_t _C_ob>
@@ -639,7 +676,6 @@ void pad_2D(BufferT const &input_dc, size_t C_i, size_t H, size_t W,
         }
     }
 }
-
 
 
 } // namespace small

@@ -53,7 +53,7 @@ void inline kernel_top(
     dim_t O_w_full,
     dim_t O_w_left,
     dim_t r_pad_el,
-    dim_t r_pad,
+    dim_t r_valid,
     ScalarT const *I,
     ScalarT const *F,
     AccumT *O,
@@ -63,10 +63,12 @@ void inline kernel_top(
     ScalarT const *I_ptr = I;
     AccumT *O_ptr = O; // ScalarT --> AccumT
 
+    //Index of the first valid element in the window (top left corner)
     int H_i_valid = t_pad;
 
     for (uint32_t j_p = 0; j_p < t_pad_el; j_p++)
     {
+
         // Prologue with left padding
         kernel_left<ScalarT, AccumT,
                     _G_b, _K_b, _F_cb, _O_wb, _stride,
@@ -87,7 +89,7 @@ void inline kernel_top(
                         F_a);
 
         ScalarT const *I_row_full = I + W_full_index * (_F_cb * _G_b);
-        AccumT *O_row_full = O + l_pad_el * (_G_b * _K_b); // ScalarT --> AccumT
+        AccumT *O_row_full = O_ptr + l_pad_el * (_G_b * _K_b); // ScalarT --> AccumT
 
         // Steady State with microkernel
         for (index_t l = 0; l < O_w_full; l += _O_wb)
@@ -133,7 +135,7 @@ void inline kernel_top(
                          input_col_stride,
                          O_w_left,
                          r_pad_el,
-                         r_pad,
+                         r_valid,
                          I_col_left,
                          F_col_left,
                          O_col_left,
@@ -143,7 +145,9 @@ void inline kernel_top(
                          F_a);
 
         O_ptr += O_w_w_pad * _K_b * _G_b;
-        H_i_valid += _stride;
+
+        //more elements in the window are
+        H_i_valid -= _stride;
         // I_ptr += _stride * _F_cb * _G_b;
     }
 }

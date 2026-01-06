@@ -45,7 +45,7 @@ void inline kernel_right(
     dim_t input_col_stride,
     dim_t O_w_left,
     dim_t r_pad_el,
-    dim_t r_pad,
+    dim_t r_valid,
     ScalarT const *I,
     ScalarT const *F,
     AccumT *O, // ScalarT -> AccumT
@@ -58,23 +58,26 @@ void inline kernel_right(
     constexpr dim_t _C_ib = _G_b * _F_cb;
     constexpr dim_t step = _stride * _C_ib;
     const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
-    FLOAT_DEF_END_C(_O_wb, _C_ob);
+
+    size_t _O_wb_required = (_O_wb > r_pad_el)? (_O_wb): (r_pad_el);
+    FLOAT_DEF_END_C(_O_wb_required, _C_ob);
 #if DEBUG
     printf("O_W_left %d r_pad_el %d\n", O_w_left, r_pad_el);
 #endif
     if (O_w_left)
     {
+
         if (first)
         {
             FLOAT_ZERO_END_C(O_w_left, _C_ob);
 
-            if ( (op_type == OP_MUL)|| (op_type == OP_EWISE_ADD_SCALAR) || (op_type == OP_MAX_POOL && H_lb == 0 && H_ub == 0))
+            if ( (op_type == OP_MUL)|| (op_type == OP_INPLACE_ADD_SCALAR) || (op_type == OP_MAX_POOL && H_lb == 0 && H_ub == 0))
             {
                 FLOAT_LOAD_END_C_strided(I, step, O_w_left, _C_ob);
             }
             else if (op_type == OP_UPSAMPLE)
             {
-                FLOAT_LOAD_END_C_upsample(I, _stride, _C_ib, O_w_left, _C_ob);
+                FLOAT_LOAD_END_C_upsample(I, _stride, O_w_left, _C_ob);
             }
         }
         else
@@ -84,23 +87,23 @@ void inline kernel_right(
             {
                 FLOAT_ZERO_END_C(O_w_left, _C_ob);
             }
-            if constexpr(op_type == OP_EWISE_ADD_SCALAR) 
+            if constexpr(op_type == OP_INPLACE_ADD_SCALAR)
             {
                 FLOAT_LOAD_END_C_strided(I, step, O_w_left, _C_ob);
             }
-            else 
+            else
             {
                 FLOAT_LOAD_END_C(O, O_w_left, _C_ob);
             }
             if constexpr (op_type == OP_UPSAMPLE)
             {
-                FLOAT_ACCUM_END_C_upsample(I, _stride, _C_ib, O_w_left, _C_ob);
+                FLOAT_ACCUM_END_C_upsample(I, _stride, O_w_left, _C_ob);
             }
         }
 
         if constexpr (fused_single_element_before == OP_UPSAMPLE)
         {
-            FLOAT_ACCUM_END_C_upsample(F_b, _stride_before, _C_ib, O_w_left, _C_ob);
+            FLOAT_ACCUM_END_C_upsample(F_b, _stride_before, O_w_left, _C_ob);
         }
         compute_with_padding<ScalarT, AccumT,
                              _G_b, _K_b, _F_cb, _O_wb, _stride,
@@ -117,7 +120,7 @@ void inline kernel_right(
         if constexpr(op_type == OP_AVERAGE_POOL)
         {
             float norm = 1.0 / (1.0 * F_h * F_w);
-            FLOAT_DIV_END_C(c_tile, norm, O_w_left, _C_ob);
+            FLOAT_INPLACE_MUL_SCALAR_END_C(c_tile, norm, O_w_left, _C_ob);
         }
         if constexpr(op_type == OP_ADD && op_class == 3 && _C_ob == 1)
         {
@@ -137,7 +140,7 @@ void inline kernel_right(
     // right padding elements
     AccumT *O_ptr = O + O_w_left * _C_ob; // ScalarT --> AccumT
     ScalarT const *I_ptr = I + O_w_left * step;
-    int W_i_valid = F_w - 1;
+    int W_i_valid = r_valid;
 
     if (first)
     {
@@ -147,7 +150,7 @@ void inline kernel_right(
 
         //@note padding should always be 'v' for pointwise operations,
         //      so this code path should not be used
-        if (op_type == OP_MUL || op_type == OP_EWISE_ADD_SCALAR)
+        if (op_type == OP_MUL || op_type == OP_INPLACE_ADD_SCALAR)
         {
             FLOAT_LOAD_END_C_strided(I_ptr, step, r_pad_el, _C_ob);
         }
@@ -159,7 +162,7 @@ void inline kernel_right(
 
     if constexpr (fused_single_element_before == OP_UPSAMPLE)
     {
-        FLOAT_ACCUM_END_C_upsample(F_b, _stride_before, _C_ib, r_pad_el, _C_ob);
+        FLOAT_ACCUM_END_C_upsample(F_b, _stride_before, r_pad_el, _C_ob);
     }
 
     c_tile_t *c_cur = c_tile;
@@ -186,7 +189,7 @@ void inline kernel_right(
     if (op_type == OP_AVERAGE_POOL)
     {
         float norm = 1.0 / (1.0 * F_h * F_w);
-        FLOAT_DIV_END_C(c_tile, norm, r_pad_el, _C_ob);
+        FLOAT_INPLACE_MUL_SCALAR_END_C(c_tile, norm, r_pad_el, _C_ob);
     }
 
     dim_t step_after = _stride_after * _C_ib;

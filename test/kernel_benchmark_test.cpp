@@ -41,40 +41,40 @@
 typedef small::FloatBuffer::value_type dtype;
 typedef small::FloatBuffer::value_type c_tile_t;
 
-#define FLOAT_ABSTRACT_OP(op_type, op_class, step, a_cur, b_cur, _O_wb, _C_ob) \
+#define FLOAT_ABSTRACT_OP(op_type, op_class, step, a_cur, b_cur)         \
     if constexpr (op_type == small::OP_CONV)                             \
     {                                                                    \
         if constexpr (op_class == 1)                                     \
         {                                                                \
-            FLOAT_DW_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob);           \
+            FLOAT_DW_TILE_C(step, a_cur, b_cur);                         \
         }                                                                \
         else if constexpr (op_class == 2)                                \
         {                                                                \
-            FLOAT_CONV_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob);         \
+            FLOAT_CONV_TILE_C(step, a_cur, b_cur);                       \
         }                                                                \
     }                                                                    \
     else if constexpr (op_type == small::OP_RELU ||                      \
                        op_type == small::OP_MAX_POOL)                    \
     {                                                                    \
-        FLOAT_MAX_TILE_C(step, a_cur, _O_wb, _C_ob);                     \
+        FLOAT_MAX_TILE_C(step, a_cur);                                   \
     }                                                                    \
     else if constexpr (op_type == small::OP_LEAKY_RELU)                  \
     {                                                                    \
-        FLOAT_COND_SCALE_TILE_C(step, a_cur, b_cur, _O_wb, _C_ob);       \
+        FLOAT_COND_SCALE_TILE_C(step, a_cur, b_cur);                     \
     }                                                                    \
     else if constexpr (op_type == small::OP_ADD ||                       \
                        op_type == small::OP_AVERAGE_POOL)                \
     {                                                                    \
-        FLOAT_ACCUM_TILE_C(step, a_cur, _O_wb, _C_ob);                   \
+        FLOAT_ACCUM_TILE_C(step, a_cur);                                 \
     }                                                                    \
     else if constexpr (op_type == small::OP_MUL)                         \
     {                                                                    \
         float drop_out_rate = b_cur[0];                                  \
-        FLOAT_DIV_TILE_C(drop_out_rate, _O_wb, _C_ob)                    \
+        FLOAT_INPLACE_MUL_SCALAR_TILE_C(drop_out_rate);                  \
     }                                                                    \
     else if constexpr (op_type == small::OP_EXP)                         \
     {                                                                    \
-        FLOAT_EXP_TILE_C(step, a_cur, _O_wb, _C_ob)                      \
+        FLOAT_EXP_TILE_C(step, a_cur);                                   \
     }
 
 
@@ -95,18 +95,18 @@ void kernel_benchmark(
     const float* I, const float* W, float* O)
 {
     int32_t constexpr step = C_ob * stride;
-    FLOAT_DEF_TILE_C(W_ob, C_ob);
-    FLOAT_LOAD_TILE_C(O, W_ob, C_ob);
+    FLOAT_DEF_TILE_C;
+    FLOAT_LOAD_TILE_C(O);
     float const *a_cur = I;
     float const *b_cur = W;
 #pragma GCC unroll 16
     for(int p = 0; p < k; p+= G_b*_UNROLL)
     {
-        FLOAT_ABSTRACT_OP(OP_TYPE, OP_CLASS, step, a_cur, b_cur, W_ob, C_ob);
+        FLOAT_ABSTRACT_OP(OP_TYPE, OP_CLASS, step, a_cur, b_cur);
         b_cur+=n*G_b*_UNROLL;
         a_cur += G_b*_UNROLL;
     }
-    FLOAT_STORE_TILE_C(O,W_ob, C_ob);
+    FLOAT_STORE_TILE_C(O);
 }
 
 

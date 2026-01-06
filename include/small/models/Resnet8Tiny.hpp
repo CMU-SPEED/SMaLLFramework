@@ -15,10 +15,10 @@
 #include <vector>
 #include <small.h>
 #include <small/Model.hpp>
-#include<small/PartialConv2DLayer.hpp>
-#include<small/Conv2DLayer.hpp>
-#include<small/MaxPool2DLayer.hpp>
-#include<small/ReLULayer.hpp>
+#include <small/PartialConv2DLayer.hpp>
+#include <small/Conv2DLayer.hpp>
+#include <small/MaxPool2DLayer.hpp>
+#include <small/ReLULayer.hpp>
 
 /* From https://github.com/mlcommons/tiny/blob/master/benchmark/training/image_classification/keras_model.py
 
@@ -243,8 +243,8 @@ public:
 
     // Assume one input layer with a single shape for now
     Resnet8Tiny(shape_type            const &input_shape,
-                    std::vector<BufferT*> const &filters,
-                    bool                         filters_are_packed = false)
+                std::vector<BufferT*> const &filters,
+                bool                         filters_are_packed = false)
         : Model<BufferT>(input_shape),
           m_buffer_0(nullptr),
           m_buffer_1(nullptr),

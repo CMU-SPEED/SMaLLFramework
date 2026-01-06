@@ -35,7 +35,8 @@ public:
 #if defined(DEBUG_LAYERS)
         std::cerr << "UpSample2D(batches:" << m_input_shape[BATCH]
                   << ",scale:" << scale_factor
-                  << ",chans:" << m_input_shape[CHANNEL]
+                  << ",ichans/lchans:" << m_input_shape[CHANNEL]
+                  << "/" << m_input_shape[L_CHAN]
                   << ",img:" << m_input_shape[HEIGHT]
                   << "x" << m_input_shape[WIDTH]
                   << std::endl;
@@ -47,6 +48,13 @@ public:
                 "UpSample2DLayer ERROR: unsupported scale factor.");
         }
 
+        if ((scale_factor == 2) &&
+            ((m_input_shape[CHANNEL] % BufferT::C_ib) != 0))
+        {
+            throw std::invalid_argument(
+                "UpSample1DLayer ERROR: invalid number of channels.");
+        }
+
         /// @todo is there a clean way to make these const members, or
         ///       will image size get moved to compute_output() and all of
         ///       this moves to compute_output()?
@@ -55,7 +63,8 @@ public:
             {m_input_shape[BATCH],
              m_input_shape[CHANNEL],
              m_input_shape[HEIGHT]*scale_factor,
-             m_input_shape[WIDTH]*scale_factor});
+             m_input_shape[WIDTH]*scale_factor,
+             m_input_shape[L_CHAN]});
     }
 
     virtual ~UpSample2DLayer() {}

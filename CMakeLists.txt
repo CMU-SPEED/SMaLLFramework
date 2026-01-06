@@ -52,10 +52,10 @@ set(CMAKE_C_COMPILER gcc) #<--- Specify C compiler
 
 # Set up build types
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopenmp -g -O1 -fsanitize=address -fpermissive")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DSRC_DIR=${CMAKE_SOURCE_DIR} -fopenmp -g -O1 -fsanitize=address -fpermissive")
 # Release is setup to be default
 else()
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -fopenmp -O3 -fpermissive")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DSRC_DIR=${CMAKE_SOURCE_DIR} -fopenmp -O3 -fpermissive")
 endif()
 
 # Set up microarchitecture
@@ -77,7 +77,7 @@ elseif(CMAKE_UARCH STREQUAL "ZEN2")
 #   include_directories ( ${CMAKE_PLATFORM_DIR}/arm )
 
 elseif(CMAKE_UARCH STREQUAL "ARM-A72")
-  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -lrt") #-march=armv8.2-a -lrt")
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -lrt -march=armv8.2-a -lrt")
   message("Microarchitecture target: ARM-A72")
   include_directories ( ${CMAKE_PLATFORM_DIR}/arm_a72 )
 

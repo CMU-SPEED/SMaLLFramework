@@ -58,7 +58,9 @@ void inline kernel_left_1D(
     // constexpr dim_t step = _stride * _C_ib;
 
     //const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
-    FLOAT_DEF_END_C(_O_wb, _C_ob);
+
+    size_t _O_wb_required = (_O_wb > l_pad_el)? (_O_wb): (l_pad_el);
+    FLOAT_DEF_END_C(_O_wb_required, _C_ob);
 
     // left padding elements
     AccumT *O_ptr = O; // ScalarT -> AccumT
@@ -77,7 +79,7 @@ void inline kernel_left_1D(
 
     if constexpr (fused_single_element_before == OP_UPSAMPLE)
     {
-        FLOAT_ACCUM_END_C_upsample(F_b, _stride_before, _C_ib, l_pad_el, _C_ob);
+        FLOAT_ACCUM_END_C_upsample(F_b, _stride_before, l_pad_el, _C_ob);
     }
 
     c_tile_t *c_cur = c_tile;
@@ -106,7 +108,7 @@ void inline kernel_left_1D(
     if (op_type == OP_AVERAGE_POOL)
     {
         float norm = 1.0 / (1.0 * F_w);
-        FLOAT_DIV_END_C(c_tile, norm, l_pad_el, _C_ob);
+        FLOAT_INPLACE_MUL_SCALAR_END_C(c_tile, norm, l_pad_el, _C_ob);
     }
 
     dim_t step_after = _stride_after * _C_ib;

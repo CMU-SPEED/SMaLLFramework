@@ -20,10 +20,16 @@
 
 namespace small
 {
-
-// Currently only for Conv2DLayer
+/**
+ * "In-place activation functions that can used in DenseLayer,
+ * Conv2D/Conv1DLayer, DepthwiseConv2DLayer, and PartialConv2DLayer
+ *
+ * @note LogSoftMax CANNOT be added here (it's not in-place)
+ *
+ * @todo Consider removing activations from within other layer classes
+ */
 enum ActivationType {
-    NONE    = 0,  // aka LINEAR
+    NONE    = 0,  // aka LINEAR/Identity
     RELU    = 1,
     LEAKY   = 2,
     SOFTMAX = 3
@@ -37,16 +43,23 @@ public:
     Layer() {}
 
     Layer(shape_type const &output_shape)
-    {
-        set_output_shape(output_shape);
-    }
-
+        : m_output_shape(output_shape) { }
 
     virtual ~Layer() {}
 
     inline size_t output_size() const
     {
-        return m_output_size;
+        return m_output_shape.size();
+    }
+
+    inline size_t logical_output_size() const
+    {
+        return m_output_shape.logical_size();
+    }
+
+    uint32_t logical_output_channels() const
+    {
+        return m_output_shape[L_CHAN];
     }
 
     inline shape_type const &output_shape() const
@@ -65,12 +78,9 @@ protected:
     inline void set_output_shape(shape_type const &output_shape)
     {
         m_output_shape = output_shape;
-        m_output_size = (output_shape[0]*output_shape[1]*
-                         output_shape[2]*output_shape[3]);
     }
 
-    shape_type m_output_shape;
-    size_t     m_output_size;
+    shape_type     m_output_shape;
 };
 
 }
