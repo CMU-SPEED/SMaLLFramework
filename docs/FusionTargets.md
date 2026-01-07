@@ -1,7 +1,7 @@
 # Fusion Targets and their layer Equivalents
 
 ## General Pattern for fused operations
-![Fused operator Pattern](Images/Input%20Elements%20Required.png)
+![Fused operator Pattern](Images/Fusion%Recipe.jpg)
 
 
 ## Fusion Targets
