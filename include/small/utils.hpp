@@ -207,7 +207,7 @@ inline dim_t output_dim_new(dim_t input_dim, dim_t stride, dim_t kernel_dim)
 inline size_t compute_output_dim(size_t input_dim,
                                  size_t kernel_dim,
                                  size_t stride,
-                                 small::PaddingEnum padding) //char   padding)
+                                 small::PaddingEnum padding)
 {
     if ((padding == small::PADDING_V) && (input_dim >= kernel_dim))
     {
