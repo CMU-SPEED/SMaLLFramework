@@ -69,7 +69,9 @@ void abstract_layer( /// @todo add B (batch size) param?
 
     BufferT const */*__restrict__*/ I, // Data
     BufferT const *__restrict__ F,
-    BufferT */*__restrict__*/ O)
+    BufferT */*__restrict__*/ O,
+    BufferT */*__restrict__*/ O_accum = nullptr // for fused softmax
+)
 {
     using ScalarT = typename BufferT::value_type;
     using AccumT = typename BufferT::accum_type;
@@ -78,13 +80,17 @@ void abstract_layer( /// @todo add B (batch size) param?
     ScalarT const *I_buf = I->data(); //__restrict__ ?
 
     ScalarT const *F_buf = nullptr;
-    if constexpr (op_type == OP_CONV || op_type == OP_LEAKY_RELU || op_type == OP_MUL || op_type == OP_INPLACE_ADD_SCALAR) // if (F != nullptr)
+    if constexpr (op_type == OP_CONV || op_type == OP_LEAKY_RELU || op_type == OP_MUL || op_type == OP_INPLACE_ADD_SCALAR || op_type == OP_CELU || op_type == OP_FUSED_CELU) // if (F != nullptr)
     {
         F_buf = F->data();
     }
 
     ScalarT *O_buf = O->data(); //__restrict__ ?
-
+    ScalarT *O_accum_buf = nullptr;
+    if constexpr (op_type == OP_FUSED_SOFTMAX || op_type == OP_SOFTMAX) // if (O_accum != nullptr)
+    {
+        O_accum_buf = O_accum->data();
+    }
 #if DEBUG == 1
     if (op_type == OP_CONV)
     {
@@ -194,11 +200,9 @@ void abstract_layer( /// @todo add B (batch size) param?
     const dim_t O_w_full = (O_w / _O_wb) * _O_wb;
     const dim_t O_w_left = O_w - O_w_full;
     const dim_t O_hxO_w = O_h_w_pad * O_w_w_pad;
-
     // When the number of channels is not a multiple of blocking size
     // const dim_t K_full = (K / _K_b) * _K_b;
     // const dim_t K_left = K - K_full;
-
 #if DEBUG == 1
     printf("\t\t I_h %d I_w %d F_C %d G %d \n", I_h, I_w, F_c, G);
     printf("\t\t O_h_pad: %d O_w_w_pad %d \n", O_h_w_pad, O_w_w_pad);
@@ -288,10 +292,15 @@ void abstract_layer( /// @todo add B (batch size) param?
                 I_group = I_buf + g * (F_c * I_h * I_w * _G_b);
             }
             ScalarT *O_group = O_buf + g * (K * O_hxO_w * _G_b);
+            ScalarT *O_accum_group = nullptr;
+            if constexpr (op_type == OP_FUSED_SOFTMAX || op_type == OP_SOFTMAX)
+            {
+                O_accum_group = O_accum_buf + g * (K * O_hxO_w * _G_b);
+            }
             // if leaky relu, the weight pointer does not change with the group id
 
             ScalarT const *F_group;
-            if constexpr ((op_type == OP_LEAKY_RELU) || (op_type == OP_MUL) || (op_type == OP_INPLACE_ADD_SCALAR))
+            if constexpr ((op_type == OP_LEAKY_RELU) || (op_type == OP_MUL) || (op_type == OP_INPLACE_ADD_SCALAR) || op_type == OP_CELU || op_type == OP_FUSED_CELU)
             {
                 F_group = F_buf;
             }
@@ -313,6 +322,11 @@ void abstract_layer( /// @todo add B (batch size) param?
                     F_group + k * (F_c * F_h * F_w * _G_b * _K_b);
                 ScalarT       *O_channel_block_output =
                     O_group + k * (O_hxO_w * _G_b * _K_b);
+                ScalarT       *O_accum_channel_block_output = nullptr;
+                if constexpr (op_type == OP_FUSED_SOFTMAX || op_type == OP_SOFTMAX)
+                {
+                    O_accum_channel_block_output = O_accum_group + k * (O_hxO_w * _G_b * _K_b);
+                }
 
                 //************************************************************
                 // Loop over input channel reduction
@@ -326,6 +340,11 @@ void abstract_layer( /// @todo add B (batch size) param?
                         F_channel_block_output + i * (F_h * F_w * _F_cb * _G_b * _K_b);
                     ScalarT       *O_channel_block_input =
                         O_channel_block_output + 0;
+                    ScalarT       *O_accum_channel_block_input = nullptr;
+                    if constexpr (op_type == OP_FUSED_SOFTMAX || op_type == OP_SOFTMAX)
+                    {
+                        O_accum_channel_block_input = O_accum_channel_block_output + 0;
+                    }
 
                     // Loops over spatial dimensions of output
 
@@ -333,6 +352,7 @@ void abstract_layer( /// @todo add B (batch size) param?
                     ScalarT const *I_row_top = I_channel_block_input;
                     ScalarT const *F_row_top = F_channel_block_input + 0;
                     AccumT        *O_row_top = O_channel_block_input;  // ScalarT --> AccumT
+                    AccumT        *O_accum_row_top = O_accum_channel_block_input;
                     kernel_top<ScalarT, AccumT,
                                _G_b, _K_b, _F_cb, _O_wb, _stride,
                                _UNROLL, op_type, op_class>(
@@ -352,13 +372,18 @@ void abstract_layer( /// @todo add B (batch size) param?
                                    r_valid,
                                    I_row_top,
                                    F_row_top,
-                                   O_row_top);
+                                   O_row_top,
+                                   O_accum_row_top);
 
                     ScalarT const *I_row_full =
                         I_row_top + H_full_index * I_w * (_F_cb * _G_b);
                     AccumT        *O_row_full =
                         O_row_top + t_pad_el * O_w_w_pad * (_G_b * _K_b); // ScalarT --> AccumT
-
+                    AccumT        *O_accum_row_full = nullptr;
+                    if constexpr (op_type == OP_FUSED_SOFTMAX || op_type == OP_SOFTMAX)
+                    {
+                        O_accum_row_full = O_accum_row_top + t_pad_el * O_w_w_pad * (_G_b * _K_b); // ScalarT --> AccumT
+                    }
                     // Steady State over rows
                     for (index_t j = height_tid; j < O_h; j += T_height)
                     {
@@ -376,6 +401,12 @@ void abstract_layer( /// @todo add B (batch size) param?
                         ScalarT const *F_row = F_channel_block_input + 0;
                         AccumT        *O_row =
                             O_row_full + j * (O_w_w_pad * _G_b * _K_b); // ScalarT --> AccumT
+
+                        AccumT        *O_accum_row = nullptr;
+                        if constexpr (op_type == OP_FUSED_SOFTMAX || op_type == OP_SOFTMAX)
+                        {
+                            O_accum_row = O_accum_row_full + j * (O_w_w_pad * _G_b * _K_b); // ScalarT --> AccumT
+                        }
                         // Prologue with left padding
                         kernel_left<ScalarT, AccumT,
                                     _G_b, _K_b, _F_cb, _O_wb, _stride,
@@ -389,12 +420,18 @@ void abstract_layer( /// @todo add B (batch size) param?
                                         I_row,
                                         F_row,
                                         O_row,
+                                        O_accum_row,
                                         0,
                                         0);
 
                         ScalarT const *I_col_full =
                             I_row + W_full_index * (_F_cb * _G_b);
                         AccumT        *O_col_full = O_row + l_pad_el * (_G_b * _K_b); // ScalarT --> AccumT
+                        AccumT        *O_accum_col_full = nullptr;
+                        if constexpr (op_type == OP_FUSED_SOFTMAX || op_type == OP_SOFTMAX)
+                        {
+                            O_accum_col_full = O_accum_row + l_pad_el * (_G_b * _K_b); // ScalarT --> AccumT
+                        }
                         // Steady State with microkernel
                         for (index_t l = 0; l < O_w_full; l += _O_wb)
                         {
@@ -411,6 +448,11 @@ void abstract_layer( /// @todo add B (batch size) param?
                             }
                             ScalarT const *F_col = F_row + 0;
                             AccumT        *O_col = O_col_full + l * (_G_b * _K_b); // ScalarT --> AccumT
+                            AccumT        *O_accum_col = nullptr;
+                            if constexpr (op_type == OP_FUSED_SOFTMAX || op_type == OP_SOFTMAX)
+                            {
+                                O_accum_col = O_accum_col_full + l * (_G_b * _K_b); // ScalarT --> AccumT
+                            }
 
                             kernel<ScalarT, AccumT,
                                    _G_b, _K_b, _F_cb, _O_wb, _stride,
@@ -422,6 +464,7 @@ void abstract_layer( /// @todo add B (batch size) param?
                                        I_col,
                                        F_col,
                                        O_col,
+                                       O_accum_col,
                                        0,
                                        0,
                                        0,
@@ -447,7 +490,11 @@ void abstract_layer( /// @todo add B (batch size) param?
 
                         ScalarT const *F_col_left = F_row + 0;
                         AccumT        *O_col_left = O_col_full + O_w_full * (_G_b * _K_b); // ScalarT --> AccumT
-
+                        AccumT        *O_accum_col_left = nullptr;
+                        if constexpr (op_type == OP_FUSED_SOFTMAX || op_type == OP_SOFTMAX)
+                        {
+                            O_accum_col_left = O_accum_col_full + O_w_full * (_G_b * _K_b); // ScalarT --> AccumT
+                        }
 #if DEBUG
                         printf(" calling right\n");
 #endif
@@ -464,6 +511,7 @@ void abstract_layer( /// @todo add B (batch size) param?
                                          I_col_left,
                                          F_col_left,
                                          O_col_left,
+                                         O_accum_col_left,
                                          0,
                                          0);
                     }
@@ -483,6 +531,11 @@ void abstract_layer( /// @todo add B (batch size) param?
                     }
                     ScalarT const *F_row_bot = F_channel_block_input + 0;
                     AccumT *O_row_bot = O_row_full + O_h * (O_w_w_pad * _G_b * _K_b); // ScalarT --> AccumT
+                    AccumT *O_accum_row_bot = nullptr;
+                    if constexpr (op_type == OP_FUSED_SOFTMAX || op_type == OP_SOFTMAX)
+                    {
+                        O_accum_row_bot = O_accum_row_full + O_h * (O_w_w_pad * _G_b * _K_b); // ScalarT --> AccumT
+                    }
 
                     kernel_bottom<ScalarT, AccumT,
                                   _G_b, _K_b, _F_cb, _O_wb, _stride,
@@ -503,7 +556,8 @@ void abstract_layer( /// @todo add B (batch size) param?
                                       r_valid,
                                       I_row_bot,
                                       F_row_bot,
-                                      O_row_bot);
+                                      O_row_bot,
+                                      O_accum_row_bot);
                 }
             }
         }

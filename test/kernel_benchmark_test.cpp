@@ -102,7 +102,7 @@ void kernel_benchmark(
 #pragma GCC unroll 16
     for(int p = 0; p < k; p+= G_b*_UNROLL)
     {
-        FLOAT_ABSTRACT_OP(OP_TYPE, OP_CLASS, step, a_cur, b_cur);
+        FLOAT_ABSTRACT_OP(OP_TYPE, OP_CLASS, step, a_cur, b_cur,O);
         b_cur+=n*G_b*_UNROLL;
         a_cur += G_b*_UNROLL;
     }

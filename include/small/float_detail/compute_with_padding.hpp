@@ -42,7 +42,8 @@ void inline compute_with_padding(dim_t H_lb, dim_t H_ub,
                                  dim_t input_col_stride,
                                  ScalarT const *F,
                                  ScalarT const *I,
-                                 c_tile_t *c_cur) /// @todo need to deal with type
+                                 c_tile_t *c_cur,
+                                 AccumT *O_accum = NULL) /// @todo need to deal with type
 {
     constexpr dim_t _C_ob = _G_b * _K_b;
     constexpr dim_t _C_ib = _G_b * _F_cb;
@@ -67,7 +68,7 @@ void inline compute_with_padding(dim_t H_lb, dim_t H_ub,
                 /// @note using platform C_ob
                 ScalarT const *b_cur = b + ii * _UNROLL * FLOAT_C_ob;
                 ScalarT const *a_cur = a + ii * _UNROLL;
-                FLOAT_ABSTRACT_OP_END(step, op_type, op_class, a_cur, b_cur, c_cur, W_elements, _C_ob);
+                FLOAT_ABSTRACT_OP_END(step, op_type, op_class, a_cur, b_cur, c_cur, O_accum, W_elements, _C_ob);
             }
         }
     }

@@ -48,6 +48,7 @@ void inline kernel_left(
     ScalarT const *I,
     ScalarT const *F,
     AccumT *O, // ScalarT -> AccumT
+    AccumT *O_accum = NULL, // for fused softmax
     dim_t H_lb = 0,
     dim_t H_ub = 0,
     ScalarT const * F_b = NULL,
@@ -64,6 +65,7 @@ void inline kernel_left(
 
     // left padding elements
     AccumT *O_ptr = O; // ScalarT -> AccumT
+    AccumT *O_accum_ptr = O_accum;
     ScalarT const *I_ptr = I;
 
     int W_i_valid = l_pad;
@@ -83,6 +85,7 @@ void inline kernel_left(
     }
 
     c_tile_t *c_cur = c_tile;
+    c_tile_t *d_cur = O_accum_ptr; 
     // dim_t c_cur = 0;
     for (uint32_t k_p = 0; k_p < l_pad_el; k_p++)
     {
@@ -96,9 +99,11 @@ void inline kernel_left(
                                  input_col_stride,
                                  F,
                                  I_ptr,
-                                 c_cur);
+                                 c_cur,
+                                 d_cur);
 
         c_cur += (_K_b * _G_b) / (FLOAT_SIMD_EPILOGUE);
+        d_cur += (_K_b * _G_b) / (FLOAT_SIMD_EPILOGUE);
         // c_cur += 1;
         W_i_valid -= _stride;
         // I_ptr += ()*(_stride * _F_cb * _G_b);
@@ -117,6 +122,10 @@ void inline kernel_left(
 
     FLOAT_STORE_END_C(O_ptr, l_pad_el, _C_ob);
     O_ptr += _G_b * _K_b;
+    if constexpr (op_type == OP_FUSED_SOFTMAX || op_type == OP_SOFTMAX)
+    {
+        O_accum += _G_b * _K_b;
+    }
 }
 
 } // ns float_detail

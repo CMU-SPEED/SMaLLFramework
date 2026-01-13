@@ -57,6 +57,7 @@ void inline kernel_bottom(
     ScalarT const *I,
     ScalarT const *F,
     AccumT *O,
+    AccumT *O_accum = NULL, // for fused softmax
     ScalarT const * F_b = NULL,
     ScalarT const * F_a = NULL) // ScalarT -> AccumT
 {
@@ -81,6 +82,7 @@ void inline kernel_bottom(
                         I_ptr,
                         F,
                         O_ptr,
+                        O_accum,
                         0,
                         H_i_valid,
                         F_b,
@@ -88,12 +90,17 @@ void inline kernel_bottom(
 
         ScalarT const *I_row_full = I_ptr + W_full_index * (_F_cb * _G_b);
         AccumT *O_row_full = O_ptr + l_pad_el * (_G_b * _K_b); // ScalarT -> AccumT
+        AccumT *O_accum_row_full = nullptr;
+        if (op_type == OP_FUSED_SOFTMAX || op_type == OP_SOFTMAX) {
+            O_accum_row_full = O_accum + l_pad_el * (_G_b * _K_b); // ScalarT -> AccumT
+        }
         // Steady State with microkernel
         for (index_t l = 0; l < O_w_full; l += _O_wb)
         {
             ScalarT const *I_col = I_row_full + (l * _stride) * (_F_cb * _G_b);
             ScalarT const *F_col = F + 0;
             AccumT *O_col = O_row_full + l * (_G_b * _K_b); // ScalarT -> AccumT
+            AccumT *O_accum_col = O_accum_row_full + l * (_G_b * _K_b); // ScalarT -> AccumT
 
             kernel_pad<ScalarT, AccumT,
                        _G_b, _K_b, _F_cb, _O_wb, _stride,
@@ -106,6 +113,7 @@ void inline kernel_bottom(
                            I_col,
                            F_col,
                            O_col,
+                           O_accum_col,
                            0,
                            H_i_valid,
                            0,  /// @todo This was added, W_lb. Is it right?
@@ -119,7 +127,11 @@ void inline kernel_bottom(
             I_row_full + (O_w_full * _stride) * (_F_cb * _G_b);
         ScalarT const *F_col_left = F + 0;
         AccumT *O_col_left = O_row_full + O_w_full * (_G_b * _K_b); // ScalarT -> AccumT
-
+        AccumT *O_accum_col_left = nullptr; 
+        if (op_type == OP_FUSED_SOFTMAX || op_type == OP_SOFTMAX) 
+        {
+            O_accum_col_left = O_accum_row_full + O_w_full * (_G_b * _K_b); // ScalarT -> AccumT
+        }
         kernel_right<ScalarT, AccumT,
                      _G_b, _K_b, _F_cb, _O_wb, _stride,
                      _UNROLL, op_type, op_class, fused_single_element_before,
@@ -134,13 +146,17 @@ void inline kernel_bottom(
                          I_col_left,
                          F_col_left,
                          O_col_left,
+                         O_accum_col_left,
                          0,          /// @todo confirm this, H_lb
                          H_i_valid,
                          F_b,
                          F_a); /// @todo confirm this, H_ub
 
         O_ptr += O_w_w_pad * _K_b * _G_b;
-
+        if constexpr (op_type == OP_FUSED_SOFTMAX || op_type == OP_SOFTMAX)
+        {
+            O_accum += O_w_w_pad * _K_b * _G_b;
+        }
         H_i_valid -= _stride;
         I_ptr += _stride * input_col_stride;
     }

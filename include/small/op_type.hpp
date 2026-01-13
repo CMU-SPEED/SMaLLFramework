@@ -31,6 +31,12 @@ enum OpType
     OP_SOFTSIGN = 10,
     OP_ABS = 11,
     OP_DIV = 12, // c_i = a_i / c_i
+    OP_SLOPE_RELU = 13,
+    OP_CELU = 14,
+    OP_FUSED_SLOPE_RELU = 15, 
+    OP_FUSED_CELU = 16,
+    OP_SOFTMAX = 17,
+    OP_FUSED_SOFTMAX = 18,
     OP_NONE = -1
 };
 
