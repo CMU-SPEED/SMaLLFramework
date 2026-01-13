@@ -1102,104 +1102,72 @@ if constexpr(_C_ob == 1 && _C_ob != FLOAT_SIMD_EPILOGUE)\
     }
 #endif
 //****************************************************************************
-// FMA unused?
+// FMA 
 //****************************************************************************
+// assuming one input is already in c_tile
+// will be over-written
+// Implements C = A*C + B (with rank promotion)
+#define FLOAT_FMA_TILE_C_A_SCALAR_B_SCALAR(a, b, W_ob, C_ob)\
+{\
+        __m256 a_v = _mm256_broadcast_ss(a);\
+        __m256 b_v = _mm256_broadcast_ss(b);\
+        c0 = _mm256_fmadd_ps(a_v, c0, b_v);\
+        c1 = _mm256_fmadd_ps(a_v, c1, b_v);\
+        c2 = _mm256_fmadd_ps(a_v, c2, b_v);\
+        c3 = _mm256_fmadd_ps(a_v, c3, b_v);\
+        c4 = _mm256_fmadd_ps(a_v, c4, b_v);\
+        c5 = _mm256_fmadd_ps(a_v, c5, b_v);\
+        c6 = _mm256_fmadd_ps(a_v, c6, b_v);\
+        c7 = _mm256_fmadd_ps(a_v, c7, b_v);\
+        c8 = _mm256_fmadd_ps(a_v, c8, b_v);\
+        c9 = _mm256_fmadd_ps(a_v, c9, b_v);\
+        c10 = _mm256_fmadd_ps(a_v, c10, b_v);\
+        c11 = _mm256_fmadd_ps(a_v, c11, b_v);\
+}
 
-// Pointer to C defined in the outer scope
-#define FLOAT_FMA_TILE_C(step, a, b, p_cur, W_ob, C_ob)   \
-    b0 = _mm256_load_ps(b + (p_cur * C_ob));              \
-    b1 = _mm256_load_ps(b + (p_cur * C_ob + FLOAT_SIMD)); \
-    a_reg = _mm256_broadcast_ss(a + (p_cur));             \
-    p_cur += step;                                        \
-    c0 = _mm256_fmadd_ps(a_reg, b0, c0);                  \
-    c1 = _mm256_fmadd_ps(a_reg, b1, c1);                  \
-    a_reg = _mm256_broadcast_ss(a + (p_cur));             \
-    p_cur += step;                                        \
-    c2 = _mm256_fmadd_ps(a_reg, b0, c2);                  \
-    c3 = _mm256_fmadd_ps(a_reg, b1, c3);                  \
-    a_reg = _mm256_broadcast_ss(a + (p_cur));             \
-    p_cur += step;                                        \
-    c4 = _mm256_fmadd_ps(a_reg, b0, c4);                  \
-    c5 = _mm256_fmadd_ps(a_reg, b1, c5);                  \
-    a_reg = _mm256_broadcast_ss(a + (p_cur));             \
-    p_cur += step;                                        \
-    c6 = _mm256_fmadd_ps(a_reg, b0, c6);                  \
-    c7 = _mm256_fmadd_ps(a_reg, b1, c7);                  \
-    a_reg = _mm256_broadcast_ss(a + (p_cur));             \
-    p_cur += step;                                        \
-    c8 = _mm256_fmadd_ps(a_reg, b0, c8);                  \
-    c9 = _mm256_fmadd_ps(a_reg, b1, c9);                  \
-    a_reg = _mm256_broadcast_ss(a + (p_cur));             \
-    p_cur += step;                                        \
-    c10 = _mm256_fmadd_ps(a_reg, b0, c10);                \
-    c11 = _mm256_fmadd_ps(a_reg, b1, c11);
+// Implements C = A*C + B (with rank promotion)
+#define FLOAT_FMA_TILE_C_A_MATRIX_B_SCALAR(step, a, b, W_ob, C_ob)\
+{\
+    __m256 b_v = _mm256_broadcast_ss(b);\
+    float * a_row_ptr = a;\
+    __m256 a_0, a_1;\
+    a_0 = _mm256_load_ps(a_row_ptr + 0 * FLOAT_SIMD);\
+    c0 = _mm256_fmadd_ps(a_0, c0, b_v); a_1 = _mm256_load_ps(a_row_ptr + 0*(C_ob) + 1 * FLOAT_SIMD);\
+    c1 = _mm256_fmadd_ps(a_1, c1, b_v); a_0 = _mm256_load_ps(a_row_ptr + 1*(C_ob) + 0 * FLOAT_SIMD);\
+    c2 = _mm256_fmadd_ps(a_0, c2, b_v); a_1 = _mm256_load_ps(a_row_ptr + 1*(C_ob) + 1 * FLOAT_SIMD);\
+    c3 = _mm256_fmadd_ps(a_1, c3, b_v); a_0 = _mm256_load_ps(a_row_ptr + 2*(C_ob) + 0 * FLOAT_SIMD);\
+    c4 = _mm256_fmadd_ps(a_0, c4, b_v); a_1 = _mm256_load_ps(a_row_ptr + 2*(C_ob) + 1 * FLOAT_SIMD);\
+    c5 = _mm256_fmadd_ps(a_1, c5, b_v); a_0 = _mm256_load_ps(a_row_ptr + 3*(C_ob) + 0 * FLOAT_SIMD);\
+    c6 = _mm256_fmadd_ps(a_0, c6, b_v); a_1 = _mm256_load_ps(a_row_ptr + 3*(C_ob) + 1 * FLOAT_SIMD);\
+    c7 = _mm256_fmadd_ps(a_1, c7, b_v); a_0 = _mm256_load_ps(a_row_ptr + 4*(C_ob) + 0 * FLOAT_SIMD);\
+    c8 = _mm256_fmadd_ps(a_0, c8, b_v); a_1 = _mm256_load_ps(a_row_ptr + 4*(C_ob) + 1 * FLOAT_SIMD);\
+    c9 = _mm256_fmadd_ps(a_1, c9, b_v); a_0 = _mm256_load_ps(a_row_ptr + 5*(C_ob) + 0 * FLOAT_SIMD);\
+    c10 = _mm256_fmadd_ps(a_0, c10, b_v); a_1 = _mm256_load_ps(a_row_ptr + 5*(C_ob) + 1 * FLOAT_SIMD);\
+    c11 = _mm256_fmadd_ps(a_1, c11, b_v);\
+}
 
-#define FLOAT_FMA_END_C(step, a, b, p_cur, W_ob, C_ob, W_last) \
-    float *c_pixel;                                            \
-    float const *a_channel = a + p_cur;                        \
-    for (uint32_t kk = 0; kk < W_last; kk++)                   \
-    {                                                          \
-        float a_val = *(a_channel);                            \
-        c_pixel = c_tile + kk * C_ob;                          \
-        for (uint32_t jj = 0; jj < C_ob; jj++)                 \
-        {                                                      \
-            float b_val = *(b + p_cur * C_ob + jj);            \
-            *(c_pixel + jj) += a_val * b_val;                  \
-        }                                                      \
-        a_channel += step;                                     \
-    }
+
 
 //****************************************************************************
 // Softmax  (Ewise exponentiation)
 //****************************************************************************
-// This SIMD implementation does not seem to work.
-// #define FLOAT_EXP_TILE_C(step, a, W_ob, C_ob)
-// a_reg = _mm256_load_ps(a + 0 * FLOAT_SIMD);
-// c12 = _mm256_load_ps(a + 1 * FLOAT_SIMD);
-// a += step;
-// b0 = _mm256_load_ps(a + 0 * FLOAT_SIMD);
-// b1 = _mm256_load_ps(a + 1 * FLOAT_SIMD);
-// a += step;
-// c0 = exp256_ps(a_reg);
-// a_reg = _mm256_load_ps(a + 0 * FLOAT_SIMD);
-// c1 = exp256_ps(c12);
-// c12 = _mm256_load_ps(a + 1 * FLOAT_SIMD);
-// a += step;
-// c2 = exp256_ps(b0);
-// b0 = _mm256_load_ps(a + 0 * FLOAT_SIMD);
-// c3 = exp256_ps(b1);
-// b1 = _mm256_load_ps(a + 1 * FLOAT_SIMD);
-// a += step;
-// c4 = exp256_ps(a_reg);
-// a_reg = _mm256_load_ps(a + 0 * FLOAT_SIMD);
-// c5 = exp256_ps(c12);
-// c12 = _mm256_load_ps(a + 1 * FLOAT_SIMD);
-// a += step;
-// c6 = exp256_ps(b0);
-// b0 = _mm256_load_ps(a + 0 * FLOAT_SIMD);
-// c7 = exp256_ps(b1);
-// b1 = _mm256_load_ps(a + 1 * FLOAT_SIMD);
-// c8 = exp256_ps(a_reg);
-// c9 = exp256_ps(c12);
-// c10 = exp256_ps(b0);
-// c11 = exp256_ps(b1);
 
 #define FLOAT_EXP_TILE_C(step, a, W_ob, C_ob)                  \
-    c_tile_t c_tile[FLOAT_W_ob * FLOAT_C_ob];                  \
-    c_tile_t *c_pixel = c_tile;                                \
+    c_tile_t ctile[FLOAT_W_ob * FLOAT_C_ob];                  \
+    c_tile_t *cpixel = ctile;                                \
     c_tile_t const *a_pixel = a;                               \
     for (uint32_t kk = 0; kk < W_ob; kk++)                     \
     {                                                          \
-        c_tile_t *c_channel = c_pixel;                         \
+        c_tile_t *cchannel = cpixel;                         \
         c_tile_t const *a_channel = a_pixel;                   \
         for (uint32_t jj = 0; jj < C_ob; jj++)                 \
         {                                                      \
-            *(c_channel) = std::exp(*a_channel);               \
-            c_channel++;                                       \
+            *(cchannel) = std::exp(*a_channel);               \
+            cchannel++;                                       \
             a_channel++;                                       \
         }                                                      \
         a_pixel += step;                                       \
-        c_pixel += C_ob;                                       \
+        cpixel += C_ob;                                       \
     }                                                          \
     c0 = _mm256_loadu_ps(c_tile + 0 * C_ob + 0 * FLOAT_SIMD);  \
     c1 = _mm256_loadu_ps(c_tile + 0 * C_ob + 1 * FLOAT_SIMD);  \
@@ -1282,7 +1250,28 @@ if constexpr(_C_ob == 1 && _C_ob != FLOAT_SIMD_EPILOGUE)\
         c_pixel += C_ob;                           \
     }
 
-//****************************************************************************
+
+
+
+
+
+    // a: array to be exponentiated in-place
+// b: lookup table of reciprocal factorials (upto 4!)
+#define FLOAT_INPLACE_EXP_TILE_C(step, a, b, W_ob, C_ob)\
+    auto a_scalar = 0;\
+    FLOAT_FMA_TILE_C_A_SCALAR_B_SCALAR(b+0, b+1, FLOAT_W_ob, FLOAT_C_ob);\
+    FLOAT_FMA_TILE_C_A_MATRIX_B_SCALAR(step, a, b+2, FLOAT_W_ob, FLOAT_C_ob);\
+    FLOAT_FMA_TILE_C_A_MATRIX_B_SCALAR(step, a, b+3, FLOAT_W_ob, FLOAT_C_ob);\
+    FLOAT_FMA_TILE_C_A_MATRIX_B_SCALAR(step, a, b+4, FLOAT_W_ob, FLOAT_C_ob);\
+    FLOAT_FMA_TILE_C_A_MATRIX_B_SCALAR(step, a, b+4, FLOAT_W_ob, FLOAT_C_ob);
+
+
+
+
+
+
+
+    //****************************************************************************
 // LogSoftmax  (Ewise logarithm)
 //      (implementation copied from softmax, exponential above)
 //****************************************************************************
@@ -1523,7 +1512,8 @@ if constexpr(_C_ob == 1 && _C_ob != FLOAT_SIMD_EPILOGUE)\
         c_pixel += C_ob;                           \
     }
 
-#define FLOAT_ABS_TILE_C(step, a, W_ob, C_ob) \
+
+    #define FLOAT_ABS_TILE_C(step, a, W_ob, C_ob) \
     c12 = _mm256_set1_ps(-0.0f); \
     b0 = _mm256_load_ps(a + (0 * step));                                    \
     c0 = _mm256_andnot_ps(c12, b0);                                    \
@@ -2237,8 +2227,11 @@ if constexpr(_C_ob == 1 && _C_ob != FLOAT_SIMD_EPILOGUE)\
     }                                                           
 
 #define FLOAT_FUSED_CELU_TILE_C(step, a, b, c, W_ob, C_ob) \
+    float recip_fact_table[] = {0.008333333333, 0.0416667, 0.16667, 0.5, 1.0};\
     FLOAT_DIV_SCALAR_TILE_C(b, W_ob, C_ob); \
-    FLOAT_FUSED_EXP_TILE_C(W_ob, C_ob); \
+    FLOAT_STORE_TILE_C(c_tile, W_ob, C_ob); \
+    FLOAT_INPLACE_EXP_TILE_C(step, c_tile, recip_fact_table, W_ob, C_ob); \
+    /*FLOAT_FUSED_EXP_TILE_C(W_ob, C_ob);*/ \
     FLOAT_SUB_ONE_TILE_C(W_ob, C_ob); \
     FLOAT_MUL_SCALAR_TILE_C(b, W_ob, C_ob); \
     FLOAT_MIN_SCALAR_TILE_C(W_ob, C_ob); \

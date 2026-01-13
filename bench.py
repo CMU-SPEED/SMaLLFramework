@@ -14,6 +14,8 @@ import time
 import csv
 import numpy as np
 import torch
+import sys
+
 
 try:
     import onnxruntime as ort
@@ -384,19 +386,20 @@ def bench_onnx_convtranspose(params, num_runs):
         write_csv_row("ConvTranspose2d", "ONNX", C_i, H, W, kernel_size, stride, padding, C_o, 1, num_runs, min_t, max_t, avg)
 
 if __name__ == "__main__":
+    test_to_run = sys.argv[1] if len(sys.argv) > 1 else "all"
     try:
-        # PyTorch benches
-        # bench_pytorch_prelu(params, num_runs)
-        # bench_pytorch_celu(params, num_runs)
-        bench_pytorch_softmax(params, num_runs, dim=1)
-        # bench_pytorch_convtranspose(params, num_runs)
+        if test_to_run == "all":
+            bench_pytorch_prelu(params, num_runs)
+            bench_pytorch_celu(params, num_runs)
+            bench_pytorch_softmax(params, num_runs, dim=1)
+            bench_pytorch_convtranspose(params, num_runs)
 
         # ONNX benches
         if ORT_AVAILABLE:
-            # bench_onnx_prelu(params, num_runs)
-            # bench_onnx_celu(params, num_runs)
+            bench_onnx_prelu(params, num_runs)
+            bench_onnx_celu(params, num_runs)
             bench_onnx_softmax(params, num_runs, dim=1)
-            # bench_onnx_convtranspose(params, num_runs)
+            bench_onnx_convtranspose(params, num_runs)
         else:
             print("\nonnxruntime not available -> skipped ONNX benchmarks. Install with `pip install onnxruntime` to enable them.")
     finally:

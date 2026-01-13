@@ -93,7 +93,7 @@ bool run_softmax_config(LayerParams const &params)
     }
 
     // Compute layer
-    small::CustomizedSoftMax(params.C_i, params.H, params.W,
+    small::SoftMax(params.C_i, params.H, params.W,
                    packed_input_dc, packed_output_dc);
 
     // Check answer
@@ -101,7 +101,7 @@ bool run_softmax_config(LayerParams const &params)
     for (size_t ix = 0; ix < packed_output_dc_answers.size(); ++ix)
     {
         //if (packed_output_dc[ix] != packed_output_dc_answers[ix])
-        // printf("%f %f\n", packed_output_dc[ix], packed_output_dc_answers[ix]);
+        printf("%f %f %f\n", packed_input_dc[ix], packed_output_dc[ix], packed_output_dc_answers[ix]);
         if (!almost_equal(packed_output_dc[ix], packed_output_dc_answers[ix]))
         {
             passing = false;

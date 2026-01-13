@@ -14,3 +14,6 @@ seq_torch_*
 .vscode/
 Results/
 benchmark/regression_data
+*.data
+*.onnx
+*.csv
