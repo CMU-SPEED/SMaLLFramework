@@ -538,9 +538,8 @@ void Dense(int output_elements, int input_elements,
 //****************************************************************************
 
 #include <small/interface_abstract.hpp>
-// #include <small/interface_abstract_1D.hpp>
+#include <small/interface_abstract_1D.hpp>
 
 /// @todo create a fused_interface.hpp someday and have it include the other 2
-// #include <small/fused_interface.hpp>
-// #include <small/interface_abstract_fused.hpp>
-// #include <small/interface_abstract_1D_fused.hpp>
+#include <small/interface_abstract_fused.hpp>
+#include <small/interface_abstract_1D_fused.hpp>

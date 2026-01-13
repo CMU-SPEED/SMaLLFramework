@@ -47,6 +47,7 @@ void inline kernel_1D(
     ScalarT const *I,
     ScalarT const *F,
     AccumT *O, // ScalarT -> AccumT
+    AccumT *O_accum = NULL, // for fused softmax
     //dim_t H_lb = 0,
     //dim_t H_ub = 0,
     dim_t W_lb = 0,
@@ -57,7 +58,7 @@ void inline kernel_1D(
     //constexpr dim_t _C_ob = _G_b * _K_b;
     constexpr dim_t _C_ib = _G_b * _F_cb;
     constexpr dim_t step = _stride * _C_ib;
-
+    AccumT *O_accum_ptr = O_accum;
     // const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
     // const dim_t W_UPPER = ((!W_ub) * (F_w)) + (W_ub);
 
@@ -103,7 +104,7 @@ void inline kernel_1D(
             /// @note using platform C_ob
             ScalarT const *b_cur = b + ii * _UNROLL * FLOAT_C_ob;
             ScalarT const *a_cur = a + ii * _UNROLL;
-            FLOAT_ABSTRACT_OP(step, op_type, op_class, a_cur, b_cur, O); /// @todo pass _C_ob
+            FLOAT_ABSTRACT_OP(step, op_type, op_class, a_cur, b_cur, O, O_accum_ptr); /// @todo pass _C_ob
         }
     }
 

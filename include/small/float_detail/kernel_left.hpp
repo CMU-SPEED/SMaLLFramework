@@ -85,7 +85,7 @@ void inline kernel_left(
     }
 
     c_tile_t *c_cur = c_tile;
-    c_tile_t *d_cur = O_accum_ptr; 
+    AccumT *d_cur = O_accum_ptr; 
     // dim_t c_cur = 0;
     for (uint32_t k_p = 0; k_p < l_pad_el; k_p++)
     {

@@ -91,7 +91,7 @@ namespace float_detail
     else if constexpr (op_type == OP_SOFTMAX)                               \
     {                                                                       \
         FLOAT_SOFTMAX_TILE_C(step, a_cur, c_cur, d_cur);        \
-    }                                                                       \                                                                                                                        
+    }                                                                                                                                                                                  
 
 //****************************************************************************
 #define FLOAT_ABSTRACT_OP_END(step, op_type, op_class, a_cur, b_cur, c_cur, d_cur, W_elements, C_ob) \
