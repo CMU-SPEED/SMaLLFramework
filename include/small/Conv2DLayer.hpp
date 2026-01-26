@@ -19,14 +19,56 @@
 
 namespace small
 {
+template <typename BufferT>
+class FusedConv2DReLULayer;  // forward declaration
+
 //****************************************************************************
 template <typename BufferT>
 class Conv2DLayer : public Layer<BufferT>
 {
+    friend class FusedConv2DReLULayer<BufferT>;
+
 public:
     typedef typename BufferT::value_type value_type;
 
     //Conv2DLayer () delete;
+
+    // copy ctor
+    Conv2DLayer(Conv2DLayer const &other) noexcept
+        : Layer<BufferT>(other.output_shape()),
+          m_input_shape(other.m_input_shape),
+          m_kernel_height(other.m_kernel_height),
+          m_kernel_width(other.m_kernel_width),
+          m_stride(other.m_stride),
+          m_activation_type(other.m_activation_type),
+          m_t_pad(other.m_t_pad),
+          m_b_pad(other.m_b_pad),
+          m_l_pad(other.m_l_pad),
+          m_r_pad(other.m_r_pad),
+          m_leaky_slope(other.m_leaky_slope),
+          m_packed_filters(other.m_packed_filters),
+          m_packed_bias(other.m_packed_bias)
+    {
+    }
+
+    // move ctor
+    Conv2DLayer(Conv2DLayer&& other) noexcept
+        : Layer<BufferT>(other.output_shape()),
+          m_input_shape(other.m_input_shape),
+          m_kernel_height(other.m_kernel_height),
+          m_kernel_width(other.m_kernel_width),
+          m_stride(other.m_stride),
+          m_activation_type(other.m_activation_type),
+          m_t_pad(other.m_t_pad),
+          m_b_pad(other.m_b_pad),
+          m_l_pad(other.m_l_pad),
+          m_r_pad(other.m_r_pad),
+          m_leaky_slope(std::move(other.m_leaky_slope)),
+          m_packed_filters(std::move(other.m_packed_filters)),
+          m_packed_bias(std::move(other.m_packed_bias))
+    {
+        // Do something else to invalidate other?
+    }
 
     // No bias, no batch normalization
     Conv2DLayer(shape_type const &input_shape,    //pred.output_shape()
