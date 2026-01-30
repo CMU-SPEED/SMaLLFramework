@@ -69,9 +69,9 @@ FusedConv2DReLULayer<BufferT>::FusedConv2DReLULayer(
     if (m_conv2d_layer.m_activation_type != RELU)
     {
         // move things back
-        conv2d_layer.m_leaky_slope(std::move(m_conv2d_layer.m_leaky_slope));
-        conv2d_layer.m_packed_filters(std::move(m_conv2d_layer.m_packed_filters));
-        conv2d_layer.m_packed_bias(std::move(m_conv2d_layer.m_packed_bias));
+        conv2d_layer.m_leaky_slope.swap(m_conv2d_layer.m_leaky_slope);
+        conv2d_layer.m_packed_filters.swap(m_conv2d_layer.m_packed_filters);
+        conv2d_layer.m_packed_bias.swap(m_conv2d_layer.m_packed_bias);
 
         throw std::invalid_argument(
             "FusedConv2DReLULayer::ctor ERROR: activation type is not ReLU.");
@@ -93,7 +93,7 @@ void FusedConv2DReLULayer<BufferT>::compute_output(
 
     if (m_conv2d_layer.m_packed_bias.size() == 0)
     {
-        std::cerr << "calling Conv2D_ReLU\n";
+        //std::cerr << "calling Conv2D_ReLU\n";
         small::Conv2D_ReLU(m_conv2d_layer.m_kernel_height,
                            m_conv2d_layer.m_kernel_width,
                            m_conv2d_layer.m_stride,
@@ -111,8 +111,8 @@ void FusedConv2DReLULayer<BufferT>::compute_output(
     }
     else
     {
-        std::cerr << "calling Conv2D_Bias_ReLU, bias.size()="
-                  << m_conv2d_layer.m_packed_bias.size() << std::endl;
+        //std::cerr << "calling Conv2D_Bias_ReLU, bias.size()="
+        //          << m_conv2d_layer.m_packed_bias.size() << std::endl;
         small::Conv2D_Bias_ReLU(m_conv2d_layer.m_kernel_height,
                                 m_conv2d_layer.m_kernel_width,
                                 m_conv2d_layer.m_stride,
