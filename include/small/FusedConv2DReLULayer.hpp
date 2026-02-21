@@ -24,10 +24,10 @@ template <typename BufferT>
 class FusedConv2DReLULayer : public Layer<BufferT>
 {
 public:
-    // take ownership of Conv2DLayer buffers
+    // take ownership of Conv2DLayer buffers, don't need ReLULayer object
     FusedConv2DReLULayer(Conv2DLayer<BufferT> const &conv2d_layer);
 
-    // take ownership of Conv2DLayer buffers
+    // take ownership of Conv2DLayer buffers, don't need ReLULayer object
     FusedConv2DReLULayer(Conv2DLayer<BufferT> &&conv2d_layer);
 
     virtual ~FusedConv2DReLULayer()
@@ -49,12 +49,6 @@ FusedConv2DReLULayer<BufferT>::FusedConv2DReLULayer(
     Conv2DLayer<BufferT> const &conv2d_layer)
     : m_conv2d_layer(conv2d_layer)
 {
-    if (m_conv2d_layer.m_activation_type != RELU)
-    {
-        throw std::invalid_argument(
-            "FusedConv2DReLULayer::copy_ctor ERROR: activation type is not ReLU.");
-    }
-
     this->set_output_shape(m_conv2d_layer.output_shape());
 }
 
@@ -66,17 +60,6 @@ FusedConv2DReLULayer<BufferT>::FusedConv2DReLULayer(
     Conv2DLayer<BufferT> &&conv2d_layer)
     : m_conv2d_layer(std::move(conv2d_layer))
 {
-    if (m_conv2d_layer.m_activation_type != RELU)
-    {
-        // move things back
-        conv2d_layer.m_leaky_slope.swap(m_conv2d_layer.m_leaky_slope);
-        conv2d_layer.m_packed_filters.swap(m_conv2d_layer.m_packed_filters);
-        conv2d_layer.m_packed_bias.swap(m_conv2d_layer.m_packed_bias);
-
-        throw std::invalid_argument(
-            "FusedConv2DReLULayer::ctor ERROR: activation type is not ReLU.");
-    }
-
     this->set_output_shape(m_conv2d_layer.output_shape());
 }
 

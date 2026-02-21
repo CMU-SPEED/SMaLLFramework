@@ -54,8 +54,7 @@ void test_fused_conv2d_relu_layer_bad_activation(void)
                                   params.s, params.p,
                                   params.C_o,
                                   filters,
-                                  false,
-                                  small::LEAKY);
+                                  false);
         small::FusedConv2DReLULayer fused_conv2d(std::move(conv2d));
     }
     catch (std::invalid_argument &e_obj)
@@ -90,8 +89,7 @@ void test_fused_conv2d_relu_layer_odd_output_channels(void)
                                   params.s, params.p,
                                   params.C_o,
                                   filters,
-                                  false,
-                                  small::RELU);
+                                  false);
         small::FusedConv2DReLULayer fused_conv2d(std::move(conv2d));
 
         TEST_ASSERT(fused_conv2d.logical_output_channels() == params.C_o);
@@ -124,8 +122,7 @@ void test_fused_conv2d_relu_layer_odd_output_channels(void)
                                   params.C_o,
                                   filters,
                                   bias,
-                                  false,
-                                  small::RELU);
+                                  false);
         small::FusedConv2DReLULayer fused_conv2d(std::move(conv2d));
 
         TEST_ASSERT(fused_conv2d.logical_output_channels() == params.C_o);
@@ -165,8 +162,7 @@ void test_fused_conv2d_relu_layer_odd_output_channels(void)
                                   bn_running_mean,
                                   bn_running_variance,
                                   0.f,
-                                  false,
-                                  small::RELU);
+                                  false);
         small::FusedConv2DReLULayer fused_conv2d(std::move(conv2d));
 
         TEST_ASSERT(fused_conv2d.logical_output_channels() == params.C_o);
@@ -202,8 +198,7 @@ void test_fused_conv2d_relu_layer_odd_output_channels(void)
                                   params.C_o,
                                   filters,
                                   bias,
-                                  false,
-                                  small::RELU);
+                                  false);
         small::FusedConv2DReLULayer fused_conv2d(std::move(conv2d));
 
         small::Tensor<BufferT>  input(input_shape);
@@ -267,8 +262,7 @@ void test_fused_conv2d_relu_without_bias(void)
                                        params.k, params.k,
                                        params.s, params.p,
                                        params.C_o,
-                                       filter_dc, false,
-                                       small::RELU);
+                                       filter_dc, false);
     small::FusedConv2DReLULayer<BufferT> fused_conv2d(std::move(conv2d));
 
     small::shape_type output_shape(fused_conv2d.output_shape());
@@ -414,8 +408,7 @@ void test_fused_conv2d_relu_with_bias(void)
                                        params.k, params.k,
                                        params.s, params.p,
                                        params.C_o,
-                                       filter_dc, bias, false,
-                                       small::RELU);
+                                       filter_dc, bias, false);
     small::FusedConv2DReLULayer<BufferT> fused_conv2d(std::move(conv2d));
 
     small::shape_type output_shape(fused_conv2d.output_shape());
@@ -562,8 +555,7 @@ void test_fused_conv2d_batchnorm_identity(void)
                                        bn_running_mean,
                                        bn_running_variance,
                                        bn_eps,
-                                       false,
-                                       small::RELU);
+                                       false);
     small::FusedConv2DReLULayer fused_conv2d(std::move(conv2d));
 
     small::shape_type output_shape(fused_conv2d.output_shape());
@@ -712,8 +704,7 @@ void test_fused_conv2d_batchnorm_bias_1(void)
                                        bn_running_mean,
                                        bn_running_variance,
                                        bn_eps,
-                                       false,
-                                       small::RELU);
+                                       false);
     small::FusedConv2DReLULayer fused_conv2d(std::move(conv2d));
 
     small::shape_type output_shape(fused_conv2d.output_shape());
@@ -862,8 +853,7 @@ void test_fused_conv2d_batchnorm_mean_1(void)
                                        bn_running_mean,
                                        bn_running_variance,
                                        bn_eps,
-                                       false,
-                                       small::RELU);
+                                       false);
     small::FusedConv2DReLULayer fused_conv2d(std::move(conv2d));
 
     small::shape_type output_shape(fused_conv2d.output_shape());
@@ -1047,8 +1037,7 @@ void test_fused_conv2d_batchnorm(void)
         bn_running_mean,
         bn_running_variance,
         1.e-5,
-        false,
-        small::RELU);
+        false);
     small::FusedConv2DReLULayer fused_conv2d(std::move(conv2d));
 
 
@@ -1243,8 +1232,7 @@ bool run_fused_conv2d_layer_config(LayerParams const &params)
                                        params.k, params.k,
                                        params.s, params.p,
                                        params.C_o,
-                                       filter_dc, false,
-                                       small::RELU);
+                                       filter_dc, false);
     small::FusedConv2DReLULayer fused_conv2d(std::move(conv2d));
     //=========================================================================
 
@@ -1579,7 +1567,7 @@ void measure_fused_conv2d_performance(void)
 
         small::Conv2DLayer<Buffer>
             conv2d(input_shape, p.k, p.k, p.s, p.p,
-                   p.C_o, filter_dc, true, small::RELU);
+                   p.C_o, filter_dc, true);
         small::FusedConv2DReLULayer<Buffer> fused_conv2d(std::move(conv2d));
 
         for (size_t ix = 0; ix < 3; ++ix)

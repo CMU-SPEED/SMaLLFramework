@@ -35,9 +35,7 @@ public:
                        PaddingEnum       padding_type,
                        uint32_t          num_logical_output_channels,
                        BufferT    const &filters,
-                       bool              buffers_are_packed = true,
-                       ActivationType    activation_type = NONE,
-                       float             leaky_slope = 1.e-2);
+                       bool              buffers_are_packed = true);
 
     // With bias term
     PartialConv1DLayer(shape_type const &input_shape,    //pred.output_shape()
@@ -47,9 +45,7 @@ public:
                        uint32_t          num_logical_output_channels,
                        BufferT    const &filters,
                        BufferT    const &bias,
-                       bool              buffers_are_packed = true,
-                       ActivationType    activation_type = NONE,
-                       float             leaky_slope = 1.e-2);
+                       bool              buffers_are_packed = true);
 
     // With fused batch normalization
     PartialConv1DLayer(shape_type const &input_shape,    //pred.output_shape()
@@ -63,9 +59,7 @@ public:
                        BufferT    const &bn_running_mean,      // mu_hat
                        BufferT    const &bn_running_variance,  // sigma_hat^2
                        float      const &bn_eps = 1.e-3,       // float?
-                       bool              buffers_are_packed = true,
-                       ActivationType    activation_type = NONE,
-                       float             leaky_slope = 1.e-2);
+                       bool              buffers_are_packed = true);
 
     // With bias and fused batch normalization
     PartialConv1DLayer(shape_type const &input_shape,    //pred.output_shape()
@@ -80,9 +74,7 @@ public:
                        BufferT    const &bn_running_mean,      // mu_hat
                        BufferT    const &bn_running_variance,  // sigma_hat^2
                        float      const &bn_eps = 1.e-3,       // float?
-                       bool              buffers_are_packed = true,
-                       ActivationType    activation_type = NONE,
-                       float             leaky_slope = 1.e-2);
+                       bool              buffers_are_packed = true);
 
     virtual ~PartialConv1DLayer() {}
 
@@ -107,9 +99,7 @@ private:
         BufferT    const &bn_running_mean,      // mu_hat
         BufferT    const &bn_running_variance,  // sigma_hat^2
         float      const &bn_eps,               // float?
-        bool              buffers_are_packed,
-        ActivationType    activation_type,
-        float             leaky_slope);
+        bool              buffers_are_packed);
 
     void compute_padding_output_shape(
         shape_type const &input_shape,
@@ -125,12 +115,9 @@ private:
     uint32_t   const m_kernel_width;
     uint32_t   const m_stride;
 
-    ActivationType const m_activation_type;
-
     /// @todo: how to make const?
     uint8_t          m_l_pad, m_r_pad;
 
-    BufferT          m_leaky_slope;
     BufferT          m_packed_filters;
     BufferT          m_packed_bias;
 };
@@ -152,9 +139,7 @@ void PartialConv1DLayer<BufferT>::initialize(
     BufferT    const &bn_running_mean,      // mu_hat
     BufferT    const &bn_running_variance,  // sigma_hat^2
     float      const &bn_eps,               // float?
-    bool              buffers_are_packed,
-    ActivationType    activation_type,
-    float             leaky_slope)
+    bool              buffers_are_packed)
 {
     if (((input_shape[CHANNEL] % BufferT::C_ib) != 0) &&
         (input_shape[CHANNEL] != 3) &&
@@ -187,7 +172,6 @@ void PartialConv1DLayer<BufferT>::initialize(
             (BufferT::C_ob - (num_output_channels % BufferT::C_ob));
     }
 
-    m_leaky_slope[0] = leaky_slope;
     compute_padding_output_shape(input_shape,
                                  kernel_width,
                                  stride,
@@ -210,34 +194,6 @@ void PartialConv1DLayer<BufferT>::initialize(
 
 #if defined(DEBUG_LAYERS)
     auto &output_shape = this->output_shape();
-    if (activation_type == RELU)
-    {
-        std::cerr << "ReLU(batches:" << output_shape[BATCH]
-                  << ",chans/lchans:" << output_shape[CHANNEL]
-                  << "/" << output_shape[L_CHAN]
-                  << ",img:" << output_shape[HEIGHT]
-                  << "x" << output_shape[WIDTH]
-                  << ")" << std::endl;
-    }
-    else if (activation_type == LEAKY)
-    {
-        std::cerr << "LeakyReLU(batches:" << output_shape[BATCH]
-                  << ",chans/lchans:" << output_shape[CHANNEL]
-                  << "/" << output_shape[L_CHAN]
-                  << ",slope:" << leaky_slope
-                  << ",img:" << output_shape[HEIGHT]
-                  << "x" << output_shape[WIDTH]
-                  << ")" << std::endl;
-    }
-    else if (activation_type == SOFTMAX)
-    {
-        std::cerr << "SoftMax(batches:" << output_shape[BATCH]
-                  << ",chans/lchans:" << output_shape[CHANNEL]
-                  << "/" << output_shape[L_CHAN]
-                  << ",img:" << output_shape[HEIGHT]
-                  << "x" << output_shape[WIDTH]
-                  << ")" << std::endl;
-    }
 #endif
 }
 
@@ -250,16 +206,12 @@ PartialConv1DLayer<BufferT>::PartialConv1DLayer(
     PaddingEnum       padding_type,
     uint32_t          num_logical_output_channels,
     BufferT    const &filters,
-    bool              buffers_are_packed,
-    ActivationType    activation_type,
-    float             leaky_slope)
+    bool              buffers_are_packed)
     : Layer<BufferT>(),
       m_input_shape(input_shape),
       m_kernel_width(kernel_width),
       m_stride(stride),
-      m_activation_type(activation_type),
       m_l_pad(0), m_r_pad(0),
-      m_leaky_slope(1),  /// @note Allocating 1-element buffer
       m_packed_filters(),
       m_packed_bias()
 {
@@ -280,7 +232,7 @@ PartialConv1DLayer<BufferT>::PartialConv1DLayer(
                padding_type, num_logical_output_channels,
                filters, BufferT(), // no bias
                BufferT(), BufferT(), BufferT(), BufferT(), 0.f, // no BN
-               buffers_are_packed, activation_type, leaky_slope);
+               buffers_are_packed);
 }
 
 //****************************************************************************
@@ -293,16 +245,12 @@ PartialConv1DLayer<BufferT>::PartialConv1DLayer(
     uint32_t          num_logical_output_channels,
     BufferT    const &filters,
     BufferT    const &bias,
-    bool              buffers_are_packed,
-    ActivationType    activation_type,
-    float             leaky_slope)
+    bool              buffers_are_packed)
     : Layer<BufferT>(),
       m_input_shape(input_shape),
       m_kernel_width(kernel_width),
       m_stride(stride),
-      m_activation_type(activation_type),
       m_l_pad(0), m_r_pad(0),
-      m_leaky_slope(1),  /// @note Allocating 1-element buffer
       m_packed_filters(),
       m_packed_bias()
 {
@@ -324,7 +272,7 @@ PartialConv1DLayer<BufferT>::PartialConv1DLayer(
                padding_type, num_logical_output_channels,
                filters, bias,
                BufferT(), BufferT(), BufferT(), BufferT(), 0.f, // no BN
-               buffers_are_packed, activation_type, leaky_slope);
+               buffers_are_packed);
 }
 
 //****************************************************************************
@@ -341,16 +289,12 @@ PartialConv1DLayer<BufferT>::PartialConv1DLayer(
     BufferT    const &bn_running_mean,      // mu_hat
     BufferT    const &bn_running_variance,  // sigma_hat^2
     float      const &bn_eps,               // float?
-    bool              buffers_are_packed,
-    ActivationType    activation_type,
-    float             leaky_slope)
+    bool              buffers_are_packed)
     : Layer<BufferT>(),
       m_input_shape(input_shape),
       m_kernel_width(kernel_width),
       m_stride(stride),
-      m_activation_type(activation_type),
       m_l_pad(0), m_r_pad(0),
-      m_leaky_slope(1),  /// @note Allocating 1-element buffer
       m_packed_filters(),
       m_packed_bias()
 {
@@ -378,7 +322,7 @@ PartialConv1DLayer<BufferT>::PartialConv1DLayer(
                filters, BufferT(), // no bias
                bn_weight, bn_bias,
                bn_running_mean, bn_running_variance, bn_eps,
-               buffers_are_packed, activation_type, leaky_slope);
+               buffers_are_packed);
 }
 
 //****************************************************************************
@@ -396,16 +340,12 @@ PartialConv1DLayer<BufferT>::PartialConv1DLayer(
     BufferT    const &bn_running_mean,      // mu_hat
     BufferT    const &bn_running_variance,  // sigma_hat^2
     float      const &bn_eps,               // float?
-    bool              buffers_are_packed,
-    ActivationType    activation_type,
-    float             leaky_slope)
+    bool              buffers_are_packed)
     : Layer<BufferT>(),
       m_input_shape(input_shape),
       m_kernel_width(kernel_width),
       m_stride(stride),
-      m_activation_type(activation_type),
       m_l_pad(0), m_r_pad(0),
-      m_leaky_slope(1),  /// @note Allocating 1-element buffer
       m_packed_filters(),
       m_packed_bias()
 {
@@ -434,7 +374,7 @@ PartialConv1DLayer<BufferT>::PartialConv1DLayer(
                filters, bias,
                bn_weight, bn_bias,
                bn_running_mean, bn_running_variance, bn_eps,
-               buffers_are_packed, activation_type, leaky_slope);
+               buffers_are_packed);
 }
 
 //****************************************************************************
@@ -478,33 +418,6 @@ void PartialConv1DLayer<BufferT>::compute_output(
     }
 
     output->set_shape(output_shape);
-
-    if (m_activation_type == RELU)
-    {
-        small::ReLUActivation(output_shape[CHANNEL], /// @todo 1D?
-                              output_shape[HEIGHT],  /// @todo BATCH?
-                              output_shape[WIDTH],
-                              output->buffer(),
-                              output->buffer());
-    }
-    else if (m_activation_type == LEAKY)
-    {
-        small::LeakyReLUActivation(output_shape[CHANNEL], /// @todo 1D?
-                                   output_shape[HEIGHT],  /// @todo BATCH?
-                                   output_shape[WIDTH],
-                                   output->buffer(),
-                                   m_leaky_slope,
-                                   output->buffer());
-    }
-    else if (m_activation_type == SOFTMAX)
-    {
-        small::SoftMax(output_shape[CHANNEL],
-                       this->logical_output_channels(),
-                       output_shape[HEIGHT],  /// @todo BATCH?
-                       output_shape[WIDTH],
-                       output->buffer(),
-                       output->buffer());
-    }
 }
 
 //****************************************************************************

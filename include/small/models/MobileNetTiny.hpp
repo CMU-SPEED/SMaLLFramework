@@ -430,15 +430,21 @@ public:
 
         size_t layer_num = 0;
         this->m_layers[layer_num++]->compute_output({input_tensor},
-                                                    m_buffer_0); // Conv2D+ReLU
+                                                    m_buffer_0); // Conv2D
+        this->m_layers[layer_num++]->compute_output({m_buffer_0},
+                                                    m_buffer_0); // +ReLU
 
         for (auto ix = 0U; ix < 13; ++ix)
         {
             this->m_layers[layer_num++]->compute_output({m_buffer_0},
-                                                        m_buffer_1); // DWConv+ReLU
+                                                        m_buffer_1); // DWConv
+            this->m_layers[layer_num++]->compute_output({m_buffer_1},
+                                                        m_buffer_1); // +ReLU
 
             this->m_layers[layer_num++]->compute_output({m_buffer_1},
-                                                        m_buffer_0); // Conv2D+ReLU
+                                                        m_buffer_0); // Conv2D
+            this->m_layers[layer_num++]->compute_output({m_buffer_0},
+                                                        m_buffer_0); // +ReLU
         }
 
         this->m_layers[layer_num++]->compute_output({m_buffer_0},
@@ -478,10 +484,13 @@ private:
                                             stride, small::PADDING_F,
                                             output_channels,
                                             *filters[filter_num++],
-                                            filters_are_packed,
-                                            RELU);
-        max_elt_0 = std::max<size_t>(max_elt_0, prev->output_size());
+                                            filters_are_packed);
         this->m_layers.push_back(prev);
+
+        prev = new small::ReLULayer<BufferT>(prev->output_shape());
+        this->m_layers.push_back(prev);
+
+        max_elt_0 = std::max<size_t>(max_elt_0, prev->output_size());
 
         size_t   const num_blocks{13};
         uint32_t const block_strides[]   = {1,2,1,2,1,2,1,1,1,1,1,2,1};
@@ -495,10 +504,13 @@ private:
                 kernel_size, kernel_size, block_strides[block_num],
                 small::PADDING_F,
                 *filters[filter_num++],
-                filters_are_packed,
-                RELU);
-            max_elt_1 = std::max<size_t>(max_elt_1, prev->output_size());
+                filters_are_packed);
             this->m_layers.push_back(prev);
+
+            prev = new small::ReLULayer<BufferT>(prev->output_shape());
+            this->m_layers.push_back(prev);
+
+            max_elt_1 = std::max<size_t>(max_elt_1, prev->output_size());
 
             // =======================================================
 
@@ -512,10 +524,13 @@ private:
                                                    stride, small::PADDING_V,
                                                    output_channels,
                                                    *filters[filter_num++],
-                                                   filters_are_packed,
-                                                   RELU);
-            max_elt_0 = std::max<size_t>(max_elt_0, prev->output_size());
+                                                   filters_are_packed);
             this->m_layers.push_back(prev);
+
+            prev = new small::ReLULayer<BufferT>(prev->output_shape());
+            this->m_layers.push_back(prev);
+
+            max_elt_0 = std::max<size_t>(max_elt_0, prev->output_size());
         }
 
         kernel_size = 3;

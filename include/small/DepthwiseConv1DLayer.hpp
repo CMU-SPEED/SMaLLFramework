@@ -34,9 +34,7 @@ public:
                          uint32_t          stride,
                          PaddingEnum       padding_type,
                          BufferT    const &filters,
-                         bool              buffers_are_packed = true,
-                         ActivationType    activation_type = NONE,
-                         float             leaky_slope = 1.e-2);
+                         bool              buffers_are_packed = true);
 
     // With bias term
     DepthwiseConv1DLayer(shape_type const &input_shape,
@@ -45,9 +43,7 @@ public:
                          PaddingEnum       padding_type,
                          BufferT    const &filters,
                          BufferT    const &bias,
-                         bool              buffers_are_packed = true,
-                         ActivationType    activation_type = NONE,
-                         float             leaky_slope = 1.e-2);
+                         bool              buffers_are_packed = true);
 
     // With fused batch normalization
     DepthwiseConv1DLayer(
@@ -61,9 +57,7 @@ public:
         BufferT    const &bn_running_mean,      // mu_hat
         BufferT    const &bn_running_variance,  // sigma_hat^2
         float      const &bn_eps = 1.e-3,       // float?
-        bool              buffers_are_packed = true,
-        ActivationType    activation_type = NONE,
-        float             leaky_slope = 1.e-2);
+        bool              buffers_are_packed = true);
 
     // With bias and fused batch normalization
     DepthwiseConv1DLayer(
@@ -78,9 +72,7 @@ public:
         BufferT    const &bn_running_mean,      // mu_hat
         BufferT    const &bn_running_variance,  // sigma_hat^2
         float      const &bn_eps = 1.e-3,       // float?
-        bool              buffers_are_packed = true,
-        ActivationType    activation_type = NONE,
-        float             leaky_slope = 1.e-2);
+        bool              buffers_are_packed = true);
 
     virtual ~DepthwiseConv1DLayer() {}
 
@@ -104,9 +96,7 @@ private:
         BufferT    const &bn_running_mean,      // mu_hat
         BufferT    const &bn_running_variance,  // sigma_hat^2
         float      const &bn_eps,               // float?
-        bool              buffers_are_packed,
-        ActivationType    activation_type,
-        float             leaky_slope);
+        bool              buffers_are_packed);
 
     void compute_padding_output_shape(shape_type const &input_shape,
                                       uint32_t          kernel_width,
@@ -118,12 +108,9 @@ private:
     uint32_t   const m_kernel_width;
     uint32_t   const m_stride;
 
-    ActivationType const m_activation_type;
-
     /// @todo: how to make const?
     uint8_t          m_l_pad, m_r_pad;
 
-    BufferT          m_leaky_slope;
     BufferT          m_packed_filters;
     BufferT          m_packed_bias;
 };
@@ -319,9 +306,7 @@ void DepthwiseConv1DLayer<BufferT>::initialize(
         BufferT    const &bn_running_mean,      // mu_hat
         BufferT    const &bn_running_variance,  // sigma_hat^2
         float      const &bn_eps,               // float?
-        bool              buffers_are_packed,
-        ActivationType    activation_type,
-        float             leaky_slope)
+        bool              buffers_are_packed)
 {
     if ((input_shape[CHANNEL] % BufferT::C_ib) != 0)
     {
@@ -352,7 +337,6 @@ void DepthwiseConv1DLayer<BufferT>::initialize(
     //         (BufferT::C_ob - (num_output_channels % BufferT::C_ob));
     // }
 
-    m_leaky_slope[0] = leaky_slope;
     compute_padding_output_shape(m_input_shape,
                                  m_kernel_width,
                                  m_stride,
@@ -372,34 +356,6 @@ void DepthwiseConv1DLayer<BufferT>::initialize(
 
 #if defined(DEBUG_LAYERS)
     auto &output_shape = this->output_shape();
-    if (activation_type == RELU)
-    {
-        std::cerr << "ReLU(batches:" << output_shape[BATCH]
-                  << ",chans/lchans:" << output_shape[CHANNEL]
-                  << "/" << output_shape[L_CHAN]
-                  << ",img:" << output_shape[HEIGHT]
-                  << "x" << output_shape[WIDTH]
-                  << ")" << std::endl;
-    }
-    else if (activation_type == LEAKY)
-    {
-        std::cerr << "LeakyReLU(batches:" << output_shape[BATCH]
-                  << ",chans/lchans:" << output_shape[CHANNEL]
-                  << "/" << output_shape[L_CHAN]
-                  << ",slope:" << leaky_slope
-                  << ",img:" << output_shape[HEIGHT]
-                  << "x" << output_shape[WIDTH]
-                  << ")" << std::endl;
-    }
-    else if (activation_type == SOFTMAX)
-    {
-        std::cerr << "Softmax(batches:" << output_shape[BATCH]
-                  << ",chans/lchans:" << output_shape[CHANNEL]
-                  << "/" << output_shape[L_CHAN]
-                  << ",img:" << output_shape[HEIGHT]
-                  << "x" << output_shape[WIDTH]
-                  << ")" << std::endl;
-    }
 #endif
 }
 
@@ -415,16 +371,12 @@ DepthwiseConv1DLayer<BufferT>::DepthwiseConv1DLayer(
     uint32_t          stride,
     PaddingEnum       padding_type,
     BufferT    const &filters,
-    bool              buffers_are_packed,
-    ActivationType    activation_type,
-    float             leaky_slope)
+    bool              buffers_are_packed)
     : Layer<BufferT>(),
       m_input_shape(input_shape),
       m_kernel_width(kernel_width),
       m_stride(stride),
-      m_activation_type(activation_type),
       m_l_pad(0), m_r_pad(0),
-      m_leaky_slope(1),  /// @note Allocating 1-element buffer
       m_packed_filters(),
       m_packed_bias()
 {
@@ -443,7 +395,7 @@ DepthwiseConv1DLayer<BufferT>::DepthwiseConv1DLayer(
     initialize(input_shape, kernel_width, stride, padding_type,
                filters, BufferT(),  // empty bias
                BufferT(), BufferT(), BufferT(), BufferT(), 0.f, // no BN
-               buffers_are_packed, activation_type, leaky_slope);
+               buffers_are_packed);
 }
 
 //****************************************************************************
@@ -455,16 +407,12 @@ DepthwiseConv1DLayer<BufferT>::DepthwiseConv1DLayer(
     PaddingEnum       padding_type,
     BufferT    const &filters,
     BufferT    const &bias,
-    bool              buffers_are_packed,
-    ActivationType    activation_type,
-    float             leaky_slope)
+    bool              buffers_are_packed)
     : Layer<BufferT>(),
       m_input_shape(input_shape),
       m_kernel_width(kernel_width),
       m_stride(stride),
-      m_activation_type(activation_type),
       m_l_pad(0), m_r_pad(0),
-      m_leaky_slope(1),  /// @note Allocating 1-element buffer
       m_packed_filters(),
       m_packed_bias()
 {
@@ -484,7 +432,7 @@ DepthwiseConv1DLayer<BufferT>::DepthwiseConv1DLayer(
     initialize(input_shape, kernel_width, stride, padding_type,
                filters, bias,
                BufferT(), BufferT(), BufferT(), BufferT(), 0.f,  // no BN
-               buffers_are_packed, activation_type, leaky_slope);
+               buffers_are_packed);
 }
 
 //****************************************************************************
@@ -500,16 +448,12 @@ DepthwiseConv1DLayer<BufferT>::DepthwiseConv1DLayer(
     BufferT    const &bn_running_mean,      // mu_hat
     BufferT    const &bn_running_variance,  // sigma_hat^2
     float      const &bn_eps ,              // float?
-    bool              buffers_are_packed,
-    ActivationType    activation_type,
-    float             leaky_slope)
+    bool              buffers_are_packed)
     : Layer<BufferT>(),
       m_input_shape(input_shape),
       m_kernel_width(kernel_width),
       m_stride(stride),
-      m_activation_type(activation_type),
       m_l_pad(0), m_r_pad(0),
-      m_leaky_slope(1),  /// @note Allocating 1-element buffer
       m_packed_filters(),
       m_packed_bias()
 {
@@ -534,7 +478,7 @@ DepthwiseConv1DLayer<BufferT>::DepthwiseConv1DLayer(
     initialize(input_shape, kernel_width, stride, padding_type,
                filters, BufferT(),  // no bias,
                bn_weight, bn_bias, bn_running_mean, bn_running_variance, bn_eps,
-               buffers_are_packed, activation_type, leaky_slope);
+               buffers_are_packed);
 }
 
 //****************************************************************************
@@ -551,16 +495,12 @@ DepthwiseConv1DLayer<BufferT>::DepthwiseConv1DLayer(
     BufferT    const &bn_running_mean,      // mu_hat
     BufferT    const &bn_running_variance,  // sigma_hat^2
     float      const &bn_eps ,              // float?
-    bool              buffers_are_packed,
-    ActivationType    activation_type,
-    float             leaky_slope)
+    bool              buffers_are_packed)
 : Layer<BufferT>(),
       m_input_shape(input_shape),
       m_kernel_width(kernel_width),
       m_stride(stride),
-      m_activation_type(activation_type),
       m_l_pad(0), m_r_pad(0),
-      m_leaky_slope(1),  /// @note Allocating 1-element buffer
       m_packed_filters(),
       m_packed_bias()
 {
@@ -586,7 +526,7 @@ DepthwiseConv1DLayer<BufferT>::DepthwiseConv1DLayer(
     initialize(input_shape, kernel_width, stride, padding_type,
                filters, bias,
                bn_weight, bn_bias, bn_running_mean, bn_running_variance, bn_eps,
-               buffers_are_packed, activation_type, leaky_slope);
+               buffers_are_packed);
 }
 
 //****************************************************************************
@@ -639,29 +579,6 @@ void DepthwiseConv1DLayer<BufferT>::compute_output(
     }
 
     output->set_shape(output_shape);
-
-    if (m_activation_type == RELU)
-    {
-        small::ReLUActivation(output_shape[CHANNEL],
-                              output_shape[HEIGHT], output_shape[WIDTH],
-                              output->buffer(),
-                              output->buffer());
-    }
-    else if (m_activation_type == LEAKY)
-    {
-        small::LeakyReLUActivation(output_shape[CHANNEL],
-                                   output_shape[HEIGHT], output_shape[WIDTH],
-                                   output->buffer(),
-                                   m_leaky_slope,
-                                   output->buffer());
-    }
-    else if (m_activation_type == SOFTMAX)
-    {
-        small::SoftMax(output_shape[CHANNEL],
-                       output_shape[HEIGHT], output_shape[WIDTH],
-                       output->buffer(),
-                       output->buffer());
-    }
 }
 
 //****************************************************************************

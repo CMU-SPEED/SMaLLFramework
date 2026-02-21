@@ -63,7 +63,7 @@ void test_dw_1d_filter(void)
     small::DepthwiseConv1DLayer dw_conv1d(
         input_shape,
         params.k, params.s, params.p,
-        filters, false, small::ActivationType::NONE);
+        filters, false);
 
     BufferT inbuf(params.C_i*params.H*params.W);
     small::Tensor<BufferT> packed_input(input_shape);
