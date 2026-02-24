@@ -98,7 +98,9 @@ public:
 
         // yolo_block = 0
         this->m_layers[layer_num++]->compute_output({input_tensor},
-                                                    m_buffer_1); // Conv2D+ReLU
+                                                    m_buffer_1); // Conv2D
+        this->m_layers[layer_num++]->compute_output({m_buffer_1},
+                                                    m_buffer_1); // +ReLU
         // std::cout << "ReLU(Y): " << (*m_buffer_1).buffer()[0]
         //           << "\t" << (*m_buffer_1).buffer()[1]
         //           << "\t" << (*m_buffer_1).buffer()[2]
@@ -110,7 +112,9 @@ public:
         for (size_t yolo_block = 1; yolo_block < m_num_yolo_blocks; ++yolo_block)
         {
             this->m_layers[layer_num++]->compute_output({m_buffer_0},
-                                                        m_buffer_1); // Conv2D+ReLU
+                                                        m_buffer_1); // Conv2D
+            this->m_layers[layer_num++]->compute_output({m_buffer_1},
+                                                        m_buffer_1); // +ReLU
             // std::cout << "ReLU(Y): " << (*m_buffer_1).buffer()[0]
             //           << "\t" << (*m_buffer_1).buffer()[1]
             //           << "\t" << (*m_buffer_1).buffer()[2]
@@ -123,7 +127,9 @@ public:
         for (size_t conv_block = 0; conv_block < 3; ++conv_block)
         {
             this->m_layers[layer_num++]->compute_output({m_buffer_0},
-                                                        m_buffer_1); // Conv2D+ReLU
+                                                        m_buffer_1); // Conv2D
+            this->m_layers[layer_num++]->compute_output({m_buffer_1},
+                                                        m_buffer_1); // +ReLU
             // std::cout << "ReLU(C): " << (*m_buffer_1).buffer()[0]
             //           << "\t" << (*m_buffer_1).buffer()[1]
             //           << "\t" << (*m_buffer_1).buffer()[2]
@@ -167,8 +173,11 @@ private:
                     kernel_size, kernel_size,
                     stride, small::PADDING_F,
                     output_channels,
-                    *filters[filter_num], filters_are_packed,
-                    RELU));
+                    *filters[filter_num], filters_are_packed));
+            this->m_layers.push_back(
+                new small::ReLULayer<BufferT>(
+                    this->m_layers.back()->output_shape()));
+
             max_elt_1 = std::max<size_t>(max_elt_1,
                                          this->m_layers.back()->output_size());
             ++filter_num;
@@ -200,8 +209,11 @@ private:
                 stride, small::PADDING_F,
                 output_channels,
                 *filters[filter_num],
-                filters_are_packed,
-                RELU));
+                filters_are_packed));
+        this->m_layers.push_back(
+            new small::ReLULayer<BufferT>(
+                this->m_layers.back()->output_shape()));
+
         max_elt_1 = std::max<size_t>(max_elt_1,
                                      this->m_layers.back()->output_size());
         ++filter_num;
@@ -217,8 +229,10 @@ private:
                 stride, small::PADDING_F,
                 output_channels,
                 *filters[filter_num],
-                filters_are_packed,
-                RELU));
+                filters_are_packed));
+        this->m_layers.push_back(
+            new small::ReLULayer<BufferT>(
+                this->m_layers.back()->output_shape()));
         max_elt_1 = std::max<size_t>(max_elt_1,
                                      this->m_layers.back()->output_size());
         ++filter_num;
@@ -236,8 +250,10 @@ private:
                 stride, small::PADDING_F,
                 output_channels,
                 *filters[filter_num],
-                filters_are_packed,
-                RELU));
+                filters_are_packed));
+        this->m_layers.push_back(
+            new small::ReLULayer<BufferT>(
+                this->m_layers.back()->output_shape()));
         max_elt_1 = std::max<size_t>(max_elt_1,
                                      this->m_layers.back()->output_size());
         ++filter_num;

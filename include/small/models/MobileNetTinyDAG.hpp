@@ -150,17 +150,23 @@ private:
                                             filters_are_packed);
         this->m_layers.push_back(prev);
 
+        // =================================================
+        this->m_graph.add_vertex(layer_idx);
+        if (layer_idx > 0) this->m_graph.add_edge(layer_idx-1, layer_idx);
+        ++layer_idx;
+        // =================================================
+
         prev = new small::ReLULayer<BufferT>(prev->output_shape());
         this->m_layers.push_back(prev);
-
-        max_buffer_size =
-            std::max<size_t>(max_buffer_size, prev->output_size());
 
         // =================================================
         this->m_graph.add_vertex(layer_idx);
         if (layer_idx > 0) this->m_graph.add_edge(layer_idx-1, layer_idx);
         ++layer_idx;
         // =================================================
+
+        max_buffer_size =
+            std::max<size_t>(max_buffer_size, prev->output_size());
 
         size_t   const num_blocks{13};
         uint32_t const block_strides[]   = {1,2,1,2,1,2,1,1,1,1,1,2,1};
@@ -177,17 +183,23 @@ private:
                 filters_are_packed);
             this->m_layers.push_back(prev);
 
+            // =================================================
+            this->m_graph.add_vertex(layer_idx);
+            if (layer_idx > 0) this->m_graph.add_edge(layer_idx-1, layer_idx);
+            ++layer_idx;
+            // =================================================
+
             prev = new small::ReLULayer<BufferT>(prev->output_shape());
             this->m_layers.push_back(prev);
-
-            max_buffer_size =
-                std::max<size_t>(max_buffer_size, prev->output_size());
 
             // =================================================
             this->m_graph.add_vertex(layer_idx);
             if (layer_idx > 0) this->m_graph.add_edge(layer_idx-1, layer_idx);
             ++layer_idx;
             // =================================================
+
+            max_buffer_size =
+                std::max<size_t>(max_buffer_size, prev->output_size());
 
             // =======================================================
 
@@ -204,17 +216,23 @@ private:
                                                    filters_are_packed);
             this->m_layers.push_back(prev);
 
+            // =================================================
+            this->m_graph.add_vertex(layer_idx);
+            if (layer_idx > 0) this->m_graph.add_edge(layer_idx-1, layer_idx);
+            ++layer_idx;
+            // =================================================
+
             prev = new small::ReLULayer<BufferT>(prev->output_shape());
             this->m_layers.push_back(prev);
-
-            max_buffer_size =
-                std::max<size_t>(max_buffer_size, prev->output_size());
 
             // =================================================
             this->m_graph.add_vertex(layer_idx);
             if (layer_idx > 0) this->m_graph.add_edge(layer_idx-1, layer_idx);
             ++layer_idx;
             // =================================================
+
+            max_buffer_size =
+                std::max<size_t>(max_buffer_size, prev->output_size());
         }
 
         kernel_size = 3;

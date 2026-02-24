@@ -402,10 +402,6 @@ void Conv1DLayer<BufferT>::initialize(
         buffers_are_packed,
         m_packed_filters,
         m_packed_bias);
-
-#if defined(DEBUG_LAYERS)
-    auto &output_shape = this->output_shape();
-#endif
 }
 
 //****************************************************************************
