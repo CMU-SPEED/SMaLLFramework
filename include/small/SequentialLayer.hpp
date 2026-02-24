@@ -52,17 +52,15 @@ public:
         }
     }
 
-    void fuse_layers();
-    void allocate_tensors();
-
     virtual void compute_output(
         std::vector<Tensor<BufferT> const *> input,
         Tensor<BufferT>*                     output) const;
 
 private:
+    void allocate_tensors();
+
     std::vector<Layer<BufferT>*>          m_layers;
     mutable std::vector<Tensor<BufferT>*> m_tensors;
-
 };
 
 //****************************************************************************
@@ -93,17 +91,9 @@ SequentialLayer<BufferT>::SequentialLayer(
         }
     }
 
+    allocate_tensors();
+
     this->set_output_shape(m_layers.back()->output_shape());
-}
-
-
-//****************************************************************************
-template<class BufferT>
-void SequentialLayer<BufferT>::fuse_layers()
-{
-#if defined(DEBUG_LAYERS)
-    std::cerr << "SequentialLayer: fusing layers.\n";
-#endif
 }
 
 //****************************************************************************
@@ -113,6 +103,20 @@ void SequentialLayer<BufferT>::allocate_tensors()
 #if defined(DEBUG_LAYERS)
     std::cerr << "SequentialLayer: allocating tensors.\n";
 #endif
+    size_t max_num_elts{0};
+    for (size_t ix = 0; ix < m_layers.size() - 1; ++ix)
+    {
+        max_num_elts = std::max(max_num_elts,
+                                m_layers[ix]->output_size());
+    }
+    std::cerr << "SequentialLayer tensor size: " << max_num_elts << std::endl;
+
+    m_tensors.push_back(new small::Tensor<BufferT>(max_num_elts));
+    if (m_layers.size() > 2)
+    {
+        std::cerr << "SequentialLayer 2nd tensor\n";
+        m_tensors.push_back(new small::Tensor<BufferT>(max_num_elts));
+    }
 }
 
 //****************************************************************************
@@ -121,16 +125,23 @@ void SequentialLayer<BufferT>::compute_output(
     std::vector<Tensor<BufferT> const *> input,
     Tensor<BufferT>*                     output) const
 {
+    if (input.size() != 1)
+    {
+        throw std::invalid_argument(
+            "ERROR: SequentialLayer::compute_output(): incorrect num input tensors.");
+    }
     // ERROR CHECKING NEEDED...sizes bw each pair of consecutive layers
 
-    for (size_t ix = 0; ix < m_layers.size() - 1; ++ix)
+    // Handle input layer
+    m_layers[0]->compute_output(input, m_tensors[0]);
+
+    for (size_t ix = 1; ix < m_layers.size() - 1; ++ix)
     {
-        m_layers[ix]->compute_output(input, m_tensors[ix]);
-        input = {m_tensors[ix]};
+        m_layers[ix]->compute_output({m_tensors[0]}, m_tensors[1]);
+        m_tensors[0]->swap(*m_tensors[1]);
     }
 
-    m_layers.back()->compute_output(input, output);
-    output->set_shape(this->output_shape());
+    m_layers.back()->compute_output({m_tensors[0]}, output);
 }
 
 } // ns small

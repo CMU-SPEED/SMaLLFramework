@@ -30,6 +30,7 @@
 #include <small/LeakyReLULayer.hpp>
 #include <small/AddLayer.hpp>
 #include <small/UpSample2DLayer.hpp>
+#include <small/SequentialLayer.hpp>
 #include <small/YOLOLayer.hpp>
 #include <small/non_max_suppression.hpp>
 
@@ -213,10 +214,10 @@ private:
     //************************************************************************
     // parsing "[convolutional]" blocks
     template <typename ScalarT>
-    std::vector<Layer<BufferT>*> parse_conv(std::ifstream    &cfg_file,
-                                            shape_type const &input_shape,
-                                            ScalarT          *weight_data_ptr,
-                                            size_t           &weight_idx)
+    Layer<BufferT>* parse_conv(std::ifstream    &cfg_file,
+                               shape_type const &input_shape,
+                               ScalarT          *weight_data_ptr,
+                               size_t           &weight_idx)
     {
 #ifdef PARSER_DEBUG_VERBOSE
         std::cout << "Parsing Convolutional Layer\n";
@@ -371,13 +372,20 @@ private:
         {
             // leaky slope based on the pytorch yolo implementation
             // from https://github.com/eriklindernoren/PyTorch-YOLOv3
-            layers.push_back(new LeakyReLULayer<BufferT>(
-                                 layers[0]->output_shape(),
-                                 0.1)
+            layers.push_back(
+                new LeakyReLULayer<BufferT>(layers[0]->output_shape(),
+                                            0.1)
                 );
         }
 
-        return layers;
+        if (layers.size() == 1)
+        {
+            return layers[0];
+        }
+        else
+        {
+            return(new SequentialLayer<BufferT>(layers));
+        }
     }
 
     //************************************************************************
@@ -891,17 +899,11 @@ private:
 
                 if (line == "[convolutional]" || line == "[conv]")
                 {
-                    std::vector<Layer<BufferT>*> layers;
-                    layers = parse_conv<ScalarT>(cfg_file,
+                    prev = parse_conv<ScalarT>(cfg_file,
                                                prev_shape,
                                                weight_data_ptr,
                                                weight_idx);
-                    prev = layers[0]; XXX;
 
-                    if (layers.size() == 2)
-                    {
-                        // Deal with activation
-                    }
 
 #ifdef PARSER_DEBUG_VERBOSE
                     std::cout << "weights_path elements remaining: "
