@@ -282,18 +282,26 @@ private:
                                             stride, small::PADDING_F,
                                             output_channels,
                                             *filters[filter_num],
-                                            filters_are_packed,
-                                            RELU);
+                                            filters_are_packed);
         this->m_layers.push_back(prev);
         max_buffer_size =
             std::max<size_t>(max_buffer_size, prev->output_size());
+
+        // =================================================
+        this->m_graph.add_vertex(layer_idx);
+        if (layer_idx > 0) this->m_graph.add_edge(layer_idx-1, layer_idx);
+        ++layer_idx;
+        // =================================================
+
+        prev = new small::ReLULayer<BufferT>(prev->output_shape());
+        this->m_layers.push_back(prev);
 
         // =================================================
         resid_idx = layer_idx;
         small::shape_type resid_shape(prev->output_shape());
 
         this->m_graph.add_vertex(layer_idx);
-        //if (layer_idx > 0) this->m_graph.add_edge(layer_idx-1, layer_idx);
+        this->m_graph.add_edge(layer_idx-1, layer_idx);
         ++layer_idx;
         // =================================================
 
@@ -304,11 +312,19 @@ private:
                                                stride, small::PADDING_F,
                                                output_channels,
                                                *filters[filter_num],
-                                               filters_are_packed,
-                                               RELU);
+                                               filters_are_packed);
         this->m_layers.push_back(prev);
         max_buffer_size =
             std::max<size_t>(max_buffer_size, prev->output_size());
+
+        // =================================================
+        this->m_graph.add_vertex(layer_idx);
+        this->m_graph.add_edge(layer_idx-1, layer_idx);
+        ++layer_idx;
+        // =================================================
+
+        prev = new small::ReLULayer<BufferT>(prev->output_shape());
+        this->m_layers.push_back(prev);
 
         // =================================================
         this->m_graph.add_vertex(layer_idx);
@@ -322,8 +338,7 @@ private:
                                                       stride, small::PADDING_F,
                                                       output_channels,
                                                       *filters[filter_num],
-                                                      filters_are_packed,
-                                                      RELU);
+                                                      filters_are_packed);
         this->m_layers.push_back(prev);
         max_buffer_size =
             std::max<size_t>(max_buffer_size, prev->output_size());
@@ -331,6 +346,15 @@ private:
         // =================================================
         this->m_graph.add_vertex(layer_idx);
         this->m_graph.add_edge(resid_idx,   layer_idx);
+        this->m_graph.add_edge(layer_idx-1, layer_idx);
+        ++layer_idx;
+        // =================================================
+
+        prev = new small::ReLULayer<BufferT>(prev->output_shape());
+        this->m_layers.push_back(prev);
+
+        // =================================================
+        this->m_graph.add_vertex(layer_idx);
         this->m_graph.add_edge(layer_idx-1, layer_idx);
         ++layer_idx;
         // =================================================
@@ -370,16 +394,24 @@ private:
                                                    2U, small::PADDING_F,
                                                    output_channels,
                                                    *filters[filter_num + 1],
-                                                   filters_are_packed,
-                                                   RELU);
+                                                   filters_are_packed);
             this->m_layers.push_back(prev);
             max_buffer_size =
                 std::max<size_t>(max_buffer_size, prev->output_size());
 
             // =================================================
-            size_t conv3x3_idx = layer_idx;
             this->m_graph.add_vertex(layer_idx);
             this->m_graph.add_edge(block_input_idx, layer_idx);
+            ++layer_idx;
+            // =================================================
+
+            prev = new small::ReLULayer<BufferT>(prev->output_shape());
+            this->m_layers.push_back(prev);
+
+            // =================================================
+            size_t conv3x3_idx = layer_idx;
+            this->m_graph.add_vertex(layer_idx);
+            this->m_graph.add_edge(layer_idx-1, layer_idx);
             ++layer_idx;
             // =================================================
 
@@ -390,8 +422,7 @@ private:
                 small::PADDING_F,
                 output_channels,
                 *filters[filter_num + 2],
-                filters_are_packed,
-                RELU);
+                filters_are_packed);
 
             this->m_layers.push_back(prev);
             max_buffer_size =
@@ -401,6 +432,15 @@ private:
             this->m_graph.add_vertex(layer_idx);
             this->m_graph.add_edge(conv1x1_idx, layer_idx); // edge order important
             this->m_graph.add_edge(conv3x3_idx, layer_idx);
+            ++layer_idx;
+            // =================================================
+
+            prev = new small::ReLULayer<BufferT>(prev->output_shape());
+            this->m_layers.push_back(prev);
+
+            // =================================================
+            this->m_graph.add_vertex(layer_idx);
+            this->m_graph.add_edge(layer_idx-1, layer_idx);
             ++layer_idx;
             // =================================================
 

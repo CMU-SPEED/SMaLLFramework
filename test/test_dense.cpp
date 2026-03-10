@@ -77,8 +77,7 @@ void test_conv2d_dense_layer(void) {
     small::Conv2DLayer<BufferT> fc(fc_input_shape,
                                    1U, 1U, 1U, fc_params.p,
                                    fc_params.C_o,
-                                   weights_buf, bias_buf, false,
-                                   small::ActivationType::NONE);
+                                   weights_buf, bias_buf, false);
 
     BufferT inbuf(fc_params.C_i*fc_params.H*fc_params.W);
     small::Tensor<BufferT> packed_input(fc_input_shape);
@@ -164,8 +163,7 @@ void test_conv1d_dense_layer(void) {
     small::Conv1DLayer<BufferT> fc(fc_input_shape,
                                    1U, 1U, fc_params.p,
                                    fc_params.C_o,
-                                   weights_buf, bias_buf, false,
-                                   small::ActivationType::NONE);
+                                   weights_buf, bias_buf, false);
 
     BufferT inbuf(fc_params.C_i*fc_params.H*fc_params.W);
     small::Tensor<BufferT> packed_input(fc_input_shape);
@@ -247,8 +245,7 @@ void test_dense_dense_layer(void) {
     std::copy(bias, bias+fc_params.C_o, reinterpret_cast<ScalarT*>(bias_buf.data()));
 
     small::DenseLayer<BufferT> fc(fc_input_shape, fc_params.C_o,
-                                  weights_buf, bias_buf, false,
-                                  small::ActivationType::NONE);
+                                  weights_buf, bias_buf, false);
 
     BufferT inbuf(fc_params.C_i*fc_params.H*fc_params.W);
     small::Tensor<BufferT> packed_input(fc_input_shape);
@@ -325,8 +322,7 @@ void test_dense_dense_layer_no_bias(void) {
     std::copy(weights, weights+weights_buf.size(), reinterpret_cast<ScalarT*>(weights_buf.data()));
 
     small::DenseLayer<BufferT> fc(fc_input_shape, fc_params.C_o,
-                                  weights_buf, false,
-                                  small::ActivationType::NONE);
+                                  weights_buf, false);
 
     BufferT inbuf(fc_params.C_i*fc_params.H*fc_params.W);
     small::Tensor<BufferT> packed_input(fc_input_shape);

@@ -136,11 +136,11 @@ inline void vgg_block(
     uint32_t i_w = in_dims[0];
     uint32_t i_h = in_dims[1];
 
-    #if TIME_LAYER 
+    #if TIME_LAYER
     small::Timer my_timer;
     my_timer.start();
     #endif
-    
+
     small::Conv2D(kernel_size_conv, kernel_size_conv, stride_conv,
                            t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
                   output_channels, input_channels,
@@ -153,14 +153,14 @@ inline void vgg_block(
     uint32_t o_w_p2 = small::output_dim(i_w + l_pad_conv + r_pad_conv,
                                      stride_conv, kernel_size_conv);
     uint32_t o_h_p2 = small::output_dim(i_h + t_pad_conv + b_pad_conv,
-                                        stride_conv, kernel_size_conv); 
+                                        stride_conv, kernel_size_conv);
 
     #if TIME_LAYER
     my_timer.stop();
     layer_timers[0][pool_layer_num-1] = my_timer.elapsed();
     #endif
 
-    #if TIME_LAYER 
+    #if TIME_LAYER
     // small::Timer my_timer;
     my_timer.start();
     #endif
@@ -206,7 +206,7 @@ inline void fused_ewise_vgg_block(
     uint32_t i_w = in_dims[0];
     uint32_t i_h = in_dims[1];
 
-    #if TIME_LAYER 
+    #if TIME_LAYER
     small::Timer my_timer;
     my_timer.start();
     #endif
@@ -227,7 +227,7 @@ inline void fused_ewise_vgg_block(
     uint32_t o_h_p2 = small::output_dim(i_h + t_pad_conv + b_pad_conv
                                         , stride_conv, kernel_size_conv);
 
-     #if TIME_LAYER 
+     #if TIME_LAYER
     // small::Timer my_timer;
     my_timer.start();
     #endif
@@ -236,7 +236,7 @@ inline void fused_ewise_vgg_block(
                            output_channels,
                            o_h_p2, o_w_p2,
                            O_intermediate,O);
-    
+
     #if TIME_LAYER
     my_timer.stop();
     layer_timers[1][pool_layer_num] = my_timer.elapsed();
@@ -272,8 +272,8 @@ inline void fused_vgg_block(
 //                   output_channels, input_channels,
 //                   i_h, i_w,
 //                   I, F_conv, O_intermediate);
-    small::Conv2D_ReLU_Maxpool2D( kernel_size_conv, kernel_size_conv, stride_conv, 
-                                            t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv, 
+    small::Conv2D_ReLU_Maxpool2D( kernel_size_conv, kernel_size_conv, stride_conv,
+                                            t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv,
                                             kernel_size, kernel_size, stride,
                            t_pad, b_pad, l_pad, r_pad,
                            output_channels, input_channels,
@@ -352,7 +352,7 @@ model_inference(uint32_t layer_num_total,
 
     for (int vgg_layer = 1; vgg_layer < 5; vgg_layer++)
     {
-   
+
     #if TIME_LAYER
     my_timer.start();
     #endif
@@ -364,7 +364,7 @@ model_inference(uint32_t layer_num_total,
                   *filter_buf_ptrs[layer_num],
                   inter_1_dc);
 
-    
+
     small::ReLUActivation(GROUP_C(0),
                           I_HEIGHT(layer_num), I_WIDTH(layer_num),
                           inter_1_dc,
@@ -392,7 +392,7 @@ model_inference(uint32_t layer_num_total,
                   *filter_buf_ptrs[layer_num],
                   inter_0_dc);
 
-    
+
 
     small::ReLUActivation(GROUP_C(0),
                           I_HEIGHT(layer_num), I_WIDTH(layer_num),
@@ -404,7 +404,7 @@ model_inference(uint32_t layer_num_total,
         layer_timers[impl][layer_num] = my_timer.elapsed();
         #endif
 
-        layer_num++; 
+        layer_num++;
 
 
         //switch inter_1 and inter_0 ptrs
@@ -430,7 +430,7 @@ model_inference(uint32_t layer_num_total,
             inter_0_dc,
             inter_1_dc);
 
-        
+
         #if TIME_LAYER
         // my_timer.stop();
         // layer_timers[impl][layer_num] = my_timer.elapsed();
@@ -459,7 +459,7 @@ fused_ewise_model_inference(uint32_t layer_num_total,
                 BufferT &inter_0_dc,
                 BufferT       &inter_1_dc)
 {
- 
+
     auto layer_num = 0;
     auto impl = 1;
     #if TIME_LAYER
@@ -547,7 +547,7 @@ fused_ewise_model_inference(uint32_t layer_num_total,
         layer_timers[impl][layer_num] = my_timer.elapsed();
         #endif
 
-        layer_num++; 
+        layer_num++;
 
 
         //switch inter_1 and inter_0 ptrs
@@ -573,7 +573,7 @@ fused_ewise_model_inference(uint32_t layer_num_total,
             inter_0_dc,
             inter_1_dc);
 
-        
+
         #if TIME_LAYER
         // my_timer.stop();
         // layer_timers[impl][layer_num] = my_timer.elapsed();
@@ -602,7 +602,7 @@ fused_model_inference(uint32_t layer_num_total,
                 BufferT &inter_1_dc,
                 BufferT &inter_0_buffer_dc)
 {
-    
+
     auto layer_num = 0;
     auto impl = 2;
     #if TIME_LAYER
@@ -693,7 +693,7 @@ fused_model_inference(uint32_t layer_num_total,
         layer_timers[impl][layer_num] = my_timer.elapsed();
         #endif
 
-        layer_num++; 
+        layer_num++;
 
 
         //switch inter_1 and inter_0 ptrs
@@ -718,7 +718,7 @@ fused_model_inference(uint32_t layer_num_total,
             inter_0_buffer_dc,
             inter_1_dc);
 
-        
+
         #if TIME_LAYER
         my_timer.stop();
         layer_timers[impl][layer_num] = my_timer.elapsed();
@@ -819,7 +819,7 @@ void inference()
     inter_dim = INPUT_NUMEL(layer_num);
     max_numel_inter_0 =
         (inter_dim > max_numel_inter_0)? inter_dim : max_numel_inter_0;
-    
+
     //}
     // common set up for model architecture
     auto vgg_blocks = 5;
@@ -965,7 +965,7 @@ void inference()
         filter_buf_ptrs.push_back(filter_buf_ptr);
     }
     //print size of filter_buf_ptrs
-    printf("Size of filter_buf_ptrs: %d\n", filter_buf_ptrs.size());
+    printf("Size of filter_buf_ptrs: %ld\n", filter_buf_ptrs.size());
 
     uint32_t filter_dimensions = GROUP_C(layer_num_total-1) * num_classes;
     BufferT *filter_fc_dc_ptr =
@@ -993,7 +993,7 @@ void inference()
                        *filter_buf_ptrs[0],
                        inter_0_dc);
 
-    //======================================================    
+    //======================================================
     //unfused vgg_block output
     //======================================================
     vgg_block(intermediate_dims[1], REDUCTION_C(1), // Input dimensions
@@ -1024,7 +1024,7 @@ void inference()
     *filter_buf_ptrs[1],
     inter_1_dc,
     inter_0_ewise_dc);
-  
+
     //======================================================
     // fused vgg block output
     //======================================================
@@ -1046,25 +1046,25 @@ void inference()
     //======================================================
     bool check = 1;
     printf("%d", intermediate_dims[3][0]*intermediate_dims[3][1]*REDUCTION_C(3));
-    CORRECTNESS_CHECK(check, inter_0_unfused_dc, inter_0_ewise_dc, intermediate_dims[3][0]*intermediate_dims[3][1]*GROUP_C(2)); 
+    CORRECTNESS_CHECK(check, inter_0_unfused_dc, inter_0_ewise_dc, intermediate_dims[3][0]*intermediate_dims[3][1]*GROUP_C(2));
     assert(check);
     CORRECTNESS_CHECK(check, inter_0_unfused_dc, inter_0_buffer_dc, intermediate_dims[3][0]*intermediate_dims[3][1]*GROUP_C(2));
     assert(check);
 
-   
+
     //======================================================
     // End-to-End models
     //======================================================
 
     //Check that end-to-end unfused model works
     auto &output_dc =
-        model_inference(layer_num_total, layer_params, vgg_blocks, num_convs, 
+        model_inference(layer_num_total, layer_params, vgg_blocks, num_convs,
                         intermediate_dims,
                         filter_buf_ptrs,
                         input_dc, inter_0_dc, inter_1_dc);
 
 
-    auto output_ewise = fused_ewise_model_inference(layer_num_total, layer_params, vgg_blocks, num_convs, 
+    auto output_ewise = fused_ewise_model_inference(layer_num_total, layer_params, vgg_blocks, num_convs,
                         intermediate_dims,
                         filter_buf_ptrs,
                         input_dc, inter_0_dc, inter_1_dc);
@@ -1074,7 +1074,7 @@ void inference()
     assert(check_model);
 
 
-    auto output_fused = fused_model_inference(layer_num_total, layer_params, vgg_blocks, num_convs, 
+    auto output_fused = fused_model_inference(layer_num_total, layer_params, vgg_blocks, num_convs,
                         intermediate_dims,
                         filter_buf_ptrs,
                         input_dc, inter_0_dc, inter_1_dc, inter_0_buffer_dc);
@@ -1095,7 +1095,7 @@ void inference()
 
         for (int i = 0; i < TRIALS; i++)
         {
-            model_inference(layer_num_total, layer_params, vgg_blocks, num_convs, 
+            model_inference(layer_num_total, layer_params, vgg_blocks, num_convs,
                             intermediate_dims,
                             filter_buf_ptrs,
                             input_dc, inter_0_dc, inter_1_dc);
@@ -1116,7 +1116,7 @@ void inference()
         my_timer.start();
         for(int i = 0; i < TRIALS; i++)
         {
-        fused_ewise_model_inference(layer_num_total, layer_params, vgg_blocks, num_convs, 
+        fused_ewise_model_inference(layer_num_total, layer_params, vgg_blocks, num_convs,
                               intermediate_dims,
                               filter_buf_ptrs,
                               input_dc, inter_0_dc, inter_1_dc);
@@ -1137,7 +1137,7 @@ void inference()
         my_timer.start();
         for(int i = 0; i < TRIALS; i++)
         {
-        fused_model_inference(layer_num_total, layer_params, vgg_blocks, num_convs, 
+        fused_model_inference(layer_num_total, layer_params, vgg_blocks, num_convs,
                               intermediate_dims,
                               filter_buf_ptrs,
                               input_dc, inter_0_dc, inter_1_dc, inter_0_buffer_dc);
@@ -1149,14 +1149,14 @@ void inference()
     }
 
     std::cout << "Minimum time: " << min_small_fused << " ns.\n";
-    
+
 
     #if TIME_LAYER
-   
+
     std::cout << "Performing timing "<< RUNS <<" runs unfused ...\n";
     for (int r = 0; r < RUNS; r++)
     {
-       
+
         int impl = 0;
 
         for (int i = 0; i < TRIALS; i++)
@@ -1195,7 +1195,7 @@ void inference()
     std::cout << "Performing timing runs ewise layers fused...\n";
     for (int r = 0; r < RUNS; r++)
     {
-       
+
         int impl = 1;
 
         for (int i = 0; i < TRIALS; i++)
@@ -1227,7 +1227,7 @@ void inference()
                 min_layer_timers[impl][timer] = avg_layer_timers[impl][timer];
             }
         }
-      
+
         // small_fused_ewise_timing.push_back(diff);
     }
 
@@ -1260,13 +1260,13 @@ void inference()
 
             }
         }
-  
+
         // small_fused_timing.push_back(diff);
     }
 
 
 
-    
+
     double sum_unfused = 0, sum_ewise = 0, sum_fused = 0;
     for(int layer = 0 ; layer < layer_num_total; layer++)
     {

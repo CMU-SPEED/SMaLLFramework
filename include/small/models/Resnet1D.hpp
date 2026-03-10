@@ -155,11 +155,14 @@ void Resnet1D<BufferT>::construct_resnet_input_layers(
                                         bn_mean_buf,
                                         bn_var_buf,
                                         1.e-5,             // bn_epsilon
-                                        false,             // buffers_are_packed
-                                        small::ActivationType::RELU);
+                                        false);            // buffers_are_packed
 
     max_buffer_size = std::max(max_buffer_size, conv_in->output_size());
+
+    // TODO: Replace both with fused layer
     this->m_layers.push_back(conv_in);
+    this->m_layers.push_back(
+        new small::ReLULayer<BufferT>(conv_in->output_shape()));
 }
 
 //****************************************************************************
@@ -212,11 +215,14 @@ void Resnet1D<BufferT>::construct_resnet_stack_layers(
                 conv_weight_buf1,
                 bn_weight_buf1, bn_bias_buf1, bn_mean_buf1, bn_var_buf1,
                 1.e-5,                             // bn_eps
-                false,                             // buffers_are_packed
-                small::ActivationType::RELU);
+                false);                            // buffers_are_packed
 
         max_buffer_size = std::max(max_buffer_size, conv1->output_size());
+
+        // TODO: Replace with fused layer
         this->m_layers.push_back(conv1);
+        this->m_layers.push_back(
+            new small::ReLULayer<BufferT>(conv1->output_shape()));
 
         if (downsample)
         {
@@ -255,11 +261,14 @@ void Resnet1D<BufferT>::construct_resnet_stack_layers(
                 conv_weight_buf2,
                 bn_weight_buf2, bn_bias_buf2, bn_mean_buf2, bn_var_buf2,
                 1.e-5,    // bn_eps
-                false,    // buffers_are_packed
-                small::ActivationType::RELU);
+                false);   // buffers_are_packed
 
         max_buffer_size = std::max(max_buffer_size, conv2->output_size());
+
+        // TODO: replace with fused layers
         this->m_layers.push_back(conv2);
+        this->m_layers.push_back(
+            new small::ReLULayer<BufferT>(conv2.output_shape()));
     }
 }
 
@@ -304,7 +313,7 @@ void Resnet1D<BufferT>::construct_resnet_output_layers(
             avgpool->output_shape(),     // fc_input_shape,
             num_classes,                 // fc_params,
             fc_o_weights, fc_o_biases,
-            false, small::ActivationType::NONE);
+            false);
 
     max_buffer_size = std::max(max_buffer_size, fc->output_size());
     this->m_layers.push_back(fc);

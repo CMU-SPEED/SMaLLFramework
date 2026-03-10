@@ -147,7 +147,7 @@ public:
 
         while (layer_num < this->m_layers.size())
         {
-            // Conv2D + ReLU
+            // Conv2D or ReLU
             this->m_layers[layer_num++]->compute_output({m_buffer_0},
                                                         m_buffer_1);
 
@@ -172,8 +172,7 @@ private:
 
         /// @todo assert dimension_reduction is a multiple of "16"
 
-        size_t max_elt_0 = 0UL;
-        size_t max_elt_1 = 0UL;
+        size_t max_elt = 0UL;
 
         Layer<BufferT> *prev = nullptr;
         shape_type prev_shape(this->m_input_shape);
@@ -190,24 +189,20 @@ private:
                                             kernel_size, kernel_size,
                                             stride, PADDING_V,
                                             output_channels,
-                                            *filters[ix], filters_are_packed,
-                                            RELU);
+                                            *filters[ix], filters_are_packed);
             this->m_layers.push_back(prev);
             prev_shape = prev->output_shape();
+            max_elt = std::max<size_t>(max_elt, prev->output_size());
 
-            if (ix == 0)
-            {
-                max_elt_0 = std::max<size_t>(max_elt_0, prev->output_size());
-            }
-            else
-            {
-                max_elt_1 = std::max<size_t>(max_elt_1, prev->output_size());
-                max_elt_0 = std::max<size_t>(max_elt_0, max_elt_1);  // for the swap
-            }
+            prev = new ReLULayer<BufferT>(prev_shape);
+            this->m_layers.push_back(prev);
+            prev_shape = prev->output_shape();
+            max_elt = std::max<size_t>(max_elt, prev->output_size());
         }
 
-        m_buffer_0 = new Tensor<BufferT>(max_elt_0);
-        m_buffer_1 = new Tensor<BufferT>(max_elt_1);
+        // Conservative bounds
+        m_buffer_0 = new Tensor<BufferT>(max_elt);
+        m_buffer_1 = new Tensor<BufferT>(max_elt);
     }
 };
 

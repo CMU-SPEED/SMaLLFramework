@@ -23,6 +23,7 @@
 #include <small.h>
 #include <small/utils/Timer.hpp>
 #include <small/Conv2DLayer.hpp>
+#include <small/LeakyReLULayer.hpp>
 
 #include "test_utils.hpp"
 
@@ -930,7 +931,7 @@ void test_conv2d_batchnorm(void) {
     using BufferT = small::FloatBuffer;
 
     // run a hardcoded test for batchnorm against pytorch
-    // this comes from the yolo model
+    // this comes from the yolo model and includes LeakyReLU
     // [convolutional]
     // batch_normalize=1
     // filters=16
@@ -996,7 +997,6 @@ void test_conv2d_batchnorm(void) {
                      filter_size);
     BufferT filter(read_inputs<BufferT>(filter_fname));
 
-    small::ActivationType activation = small::ActivationType::LEAKY;
     small::Conv2DLayer<BufferT> conv(
         input_shape,
         params.k, params.k,
@@ -1008,13 +1008,15 @@ void test_conv2d_batchnorm(void) {
         bn_running_mean,
         bn_running_variance,
         1.e-5,
-        false,
-        activation,
-        0.1 // leaky slope from pytorch yolov3 code
+        false
     );
+    small::LeakyReLULayer<BufferT> leaky(output_shape,
+                                         0.1); // leaky slope from pytorch yolov3 code
 
+    small::Tensor<BufferT> output_conv_ans(output_shape);
     small::Tensor<BufferT> output_tensor_ans(output_shape);
-    conv.compute_output({&input_tensor}, &output_tensor_ans);
+    conv.compute_output({&input_tensor}, &output_conv_ans);
+    leaky.compute_output({&output_conv_ans}, &output_tensor_ans);
 
     small::Tensor<BufferT> output_tensor_ans_unpacked(output_shape);
     small::unpack_buffer(output_tensor_ans.buffer(), small::OUTPUT,
