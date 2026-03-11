@@ -137,7 +137,6 @@ void fused_abstract_layer(
                   op_fused_single_element_before == OP_LEAKY_RELU)
     {
         F_before_buf = F_before->data();
-        // printf("bias_buf: %f %f %f %f\n", F_before_buf[0], F_before_buf[1], F_before_buf[2], F_before_buf[3]);
     }
     ScalarT const *F_after_buf = nullptr;
     if constexpr (op_fused_single_element_after == OP_UPSAMPLE ||
@@ -162,7 +161,6 @@ void fused_abstract_layer(
                   op_fused_single_element_before_1 == OP_LEAKY_RELU)
     {
         F_before_buf_1 = F_before_1->data();
-        // printf("bias_buf: %f %f %f %f\n", F_before_buf[0], F_before_buf[1], F_before_buf[2], F_before_buf[3]);
     }
     ScalarT const *F_after_buf_1 = nullptr;
     if constexpr (op_fused_single_element_after_1 == OP_UPSAMPLE ||
@@ -262,6 +260,8 @@ void fused_abstract_layer(
     // back padding elements
     dim_t H_back_index = H_full_index + _stride * (H_o);
     dim_t W_back_index = W_full_index + _stride * (W_o_full);
+    dim_t r_valid = I_w - W_back_index;
+    dim_t b_valid = I_h - H_back_index;
     dim_t b_pad_el, r_pad_el;
     if constexpr (op_type == OP_UPSAMPLE)
     {
@@ -332,12 +332,13 @@ void fused_abstract_layer(
     {
         H_o_1 = small::output_dim((I_h_1 - H_full_index_1), _stride_1, F_h_1);
         W_o_full_1 = small::output_dim((I_w_1 - W_full_index_1), _stride_1, F_w_1);
-        // printf("2d op rows: %d cols %d\n full ind %d  full_rows %d in rows: %d\n", H_o_w_pad_1, W_o_w_pad_1, H_full_index_1, H_o_1, I_h_1);
     }
 
     // back padding elements
     dim_t H_back_index_1 = H_full_index_1 + _stride_1 * (H_o_1);
     dim_t W_back_index_1 = W_full_index_1 + _stride_1 * (W_o_full_1);
+    dim_t r_valid_1 = I_w_1 - W_back_index_1;
+    dim_t b_valid_1 = I_h_1 - H_back_index_1;
     dim_t b_pad_el_1, r_pad_el_1;
     if constexpr (op_type == OP_UPSAMPLE)
     {
@@ -522,7 +523,7 @@ void fused_abstract_layer(
                                    O_w_full,
                                    O_w_left,
                                    r_pad_el,
-                                   pad_right,
+                                   r_valid,//pad_right,
                                    I_row_top,
                                    F_row_top,
                                    O_row_top);
@@ -633,7 +634,7 @@ void fused_abstract_layer(
                                          I_w * _C_ib,
                                          O_w_left,
                                          r_pad_el,
-                                         pad_right,
+                                         r_valid,//pad_right,
                                          I_col_left,
                                          F_col_left,
                                          O_col_left,
@@ -665,7 +666,7 @@ void fused_abstract_layer(
                                       F_w,
                                       I_w * _C_ib,
                                       b_pad_el,
-                                      pad_bottom,
+                                      b_valid,//pad_bottom,
                                       W_full_index,
                                       l_pad_el,
                                       pad_left,
@@ -673,7 +674,7 @@ void fused_abstract_layer(
                                       O_w_full,
                                       O_w_left,
                                       r_pad_el,
-                                      pad_right,
+                                      r_valid,//pad_right,
                                       I_row_bot,
                                       F_row_bot,
                                       O_row_bot);
@@ -728,7 +729,7 @@ void fused_abstract_layer(
                                    O_w_full,
                                    O_w_left,
                                    r_pad_el,
-                                   pad_right,
+                                   r_valid,//pad_right,
                                    I_row_top,
                                    F_row_top,
                                    O_row_top,
@@ -853,7 +854,7 @@ void fused_abstract_layer(
                                          I_w * _C_ib,
                                          O_w_left,
                                          r_pad_el,
-                                         pad_right,
+                                         r_valid,//pad_right,
                                          I_col_left,
                                          F_col_left,
                                          O_col_left,
@@ -862,9 +863,7 @@ void fused_abstract_layer(
                                          F_before_buf_group,
                                          F_after_buf_group);
                     }
-                    // printf("t pad %d b_pad %d\n", t_pad_el, b_pad_el);
                     H_o_computed = (F_h_1 - t_pad_el);
-                    // printf("H_o_computed peeled %d \n", H_o_computed + t_pad_el);
                     // Peel t_pad_el_1 and j_1
                     // Kernel top for second operation
                     ScalarT const *I_row_top_1 = O_channel_block_input;
@@ -889,7 +888,7 @@ void fused_abstract_layer(
                                    O_w_full_1,
                                    O_w_left_1,
                                    r_pad_el_1,
-                                   pad_right_1,
+                                   r_valid_1,//pad_right_1,
                                    I_row_top_1,
                                    F_row_top_1,
                                    O_row_top_1,
@@ -905,7 +904,6 @@ void fused_abstract_layer(
 
                     for (index_t j = 0; j < (H_o_1_full_0 > 0); j++)
                     {
-                        // printf("%d\n ", H_o_computed);
                         // Upsample would be fused ( so the check can be removed)
                         ScalarT const *I_row_1 = I_row_full_1 + (j * _stride_1) * (I_w_1 * _F_cb_1 * _G_b_1);
                         ScalarT const *F_row_1 = F_channel_block_input_1 + 0;
@@ -989,7 +987,7 @@ void fused_abstract_layer(
                                          I_w_1 * _C_ib_1,
                                          O_w_left_1,
                                          r_pad_el_1,
-                                         pad_right_1,
+                                         r_valid_1,//pad_right_1,
                                          I_col_left_1,
                                          F_col_left_1,
                                          O_col_left_1,
@@ -1111,7 +1109,7 @@ void fused_abstract_layer(
                                              I_w * _C_ib,
                                              O_w_left,
                                              r_pad_el,
-                                             pad_right,
+                                             r_valid,//pad_right,
                                              I_col_left,
                                              F_col_left,
                                              O_col_left,
@@ -1188,7 +1186,6 @@ void fused_abstract_layer(
                         ScalarT const *F_col_left_1 = F_row_1 + 0;
                         AccumT        *O_col_left_1 = O_col_full_1 + O_w_full_1 * (_G_b_1 * _K_b_1); // ScalarT --> AccumT
 
-
                         kernel_right<ScalarT, AccumT,
                                      _G_b_1, _K_b_1, _F_cb_1, _O_wb, _stride_1,
                                      _UNROLL_1, op_type_1, op_class_1,
@@ -1201,7 +1198,7 @@ void fused_abstract_layer(
                                          I_w_1 * _C_ib_1,
                                          O_w_left_1,
                                          r_pad_el_1,
-                                         pad_right_1,
+                                         r_valid_1,//pad_right_1,
                                          I_col_left_1,
                                          F_col_left_1,
                                          O_col_left_1,
@@ -1212,7 +1209,6 @@ void fused_abstract_layer(
                     }
 
 
-                    // printf("2nd operation height elements without bottom padding of first operation: %d total: %d , H_o elements: %d left: %d  %d\n", H_o_1_full_0, H_o_1, H_o_computed, H_o - (H_o_computed), H_o_w_pad);
                     //Compute leftover full rows from the first operation
                     for (index_t j = H_o_computed; j < H_o; j++)
                     {
@@ -1319,7 +1315,7 @@ void fused_abstract_layer(
                                          I_w * _C_ib,
                                          O_w_left,
                                          r_pad_el,
-                                         pad_right,
+                                         r_valid,//pad_right,
                                          I_col_left,
                                          F_col_left,
                                          O_col_left,
@@ -1355,7 +1351,7 @@ void fused_abstract_layer(
                                       F_w,
                                       I_w * _C_ib,
                                       b_pad_el,
-                                      pad_bottom,
+                                      b_valid,//pad_bottom,
                                       W_full_index,
                                       l_pad_el,
                                       pad_left,
@@ -1363,7 +1359,7 @@ void fused_abstract_layer(
                                       O_w_full,
                                       O_w_left,
                                       r_pad_el,
-                                      pad_right,
+                                      r_valid,//pad_right,
                                       I_row_bot,
                                       F_row_bot,
                                       O_row_bot,
@@ -1433,7 +1429,6 @@ void fused_abstract_layer(
                         ScalarT const *I_col_left_1 = I_col_full_1 + (O_w_full_1 * _stride_1) * (_F_cb_1 * _G_b_1);
                         ScalarT const *F_col_left_1 = F_row_1 + 0;
                         AccumT        *O_col_left_1 = O_col_full_1 + O_w_full_1 * (_G_b_1 * _K_b_1); // ScalarT --> AccumT
-
                         kernel_right<ScalarT, AccumT,
                                      _G_b_1, _K_b_1, _F_cb_1, _O_wb, _stride_1,
                                      _UNROLL_1, op_type_1, op_class_1,
@@ -1446,7 +1441,7 @@ void fused_abstract_layer(
                                          I_w_1 * _C_ib_1,
                                          O_w_left_1,
                                          r_pad_el_1,
-                                         pad_right_1,
+                                         r_valid_1,//pad_right_1,
                                          I_col_left_1,
                                          F_col_left_1,
                                          O_col_left_1,
@@ -1458,7 +1453,6 @@ void fused_abstract_layer(
 
                     // bottom padding (2nd operation)
                     //  Epilogue with bottom padding
-                    // printf("padding for 2nd op: %d %d %d %d\n w %d h %d", t_pad_el_1, b_pad_el_1, l_pad_el_1, r_pad_el_1, O_w_w_pad_1, O_h_1);
                     ScalarT const *I_row_bot_1;
                     if constexpr (op_type != OP_UPSAMPLE)
                     {
@@ -1478,7 +1472,7 @@ void fused_abstract_layer(
                                       F_w_1,
                                       I_w_1 * _C_ib_1,
                                       b_pad_el_1,
-                                      pad_bottom_1,
+                                      b_valid_1,//pad_bottom_1,
                                       W_full_index_1,
                                       l_pad_el_1,
                                       pad_left_1,
@@ -1486,7 +1480,7 @@ void fused_abstract_layer(
                                       O_w_full_1,
                                       O_w_left_1,
                                       r_pad_el_1,
-                                      pad_right_1,
+                                      r_valid_1,//pad_right_1,
                                       I_row_bot_1,
                                       F_row_bot_1,
                                       O_row_bot_1,

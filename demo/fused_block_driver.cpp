@@ -108,20 +108,20 @@ inline bool almost_equal(T v1, T v2, float rtol = 5e-03, float atol = 1e-05)
         }                                                               \
     }
 #else
-#define CORRECTNESS_CHECK(passing, calculated_output_dc, actual_output_dc) \
-    for (size_t ix = 0; ix < calculated_output_dc.size(); ++ix)            \
-    {                                                                      \
-        if ((actual_output_dc[ix] != calculated_output_dc[ix]) &&          \
-            !almost_equal(actual_output_dc[ix], calculated_output_dc[ix])) \
+#define CORRECTNESS_CHECK(passing, correct_output_dc, computed_output_dc) \
+    for (size_t ix = 0; ix < correct_output_dc.size(); ++ix)            \
+    {                                                                     \
+        if ((computed_output_dc[ix] != correct_output_dc[ix]) &&          \
+            !almost_equal(computed_output_dc[ix], correct_output_dc[ix])) \
         {                                                                  \
             passing = false;                                               \
                                                                            \
             std::cout << "FAIL: Conv2D_out(" << ix << ")-->"               \
                       << std::setw(12) << std::setprecision(10)            \
-                      << actual_output_dc[ix] << "(computed) != "          \
+                      << computed_output_dc[ix] << "(computed) != "          \
                       << std::setw(12) << std::setprecision(10)            \
-                      << calculated_output_dc[ix]                          \
-                      << std::endl;                                        \
+                      << correct_output_dc[ix]                          \
+                      << std::endl;\
         }                                                                  \
     }
 #endif
@@ -329,6 +329,7 @@ inline void small_fused_ewise_layer_block(
                                I,
                                F_conv,
                                O_intermediate);
+            
         }
         else
         {
@@ -608,7 +609,6 @@ int main(int argc, char **argv)
     // Set up first (conv) layer
 
     // Input dims
-    //  printf("layer %d %d %d \n", LAYER, uarch, W_ob);
     int C_i = atoi(argv[1]);
     base_fname += "Ci" + std::to_string(C_i) + "_";
 
@@ -743,9 +743,7 @@ int main(int argc, char **argv)
     // std::cout << "image dimensions  : " << input_height << " x " << input_width << std::endl;
     // std::cout << "stride:           " << stride << std::endl;
     // std::cout << "padding(t,b,l,r): ";
-    // printf("%u %u %u %u \n", t_pad, b_pad, l_pad, r_pad);
     // std::cout << "conv padding(t,b,l,r): ";
-    // printf("%u %u %u %u \n", t_pad_conv, b_pad_conv, l_pad_conv, r_pad_conv);
 
     //uint32_t num_threads = 1;
 #if PARALLEL
@@ -810,7 +808,7 @@ int main(int argc, char **argv)
 #endif
 
     small::FloatBuffer out_intermediate_unfused_dc(out_intermediate_unfused_buffer_size);
-
+    small::FloatBuffer out_intermediate_ewise_fused_dc(out_intermediate_unfused_buffer_size);
     small::FloatBuffer output_dc_unfused(out_buffer_size);
     small::FloatBuffer output_dc(out_buffer_size);
 
@@ -826,7 +824,6 @@ int main(int argc, char **argv)
     //                             sum_conv = ULLONG_MAX;
     std::vector<uint64_t> unfused_timing;
 
-    // printf("running unfused ");
     fflush(0);
 
     // Checking Fused SMaLL Framework implementation
@@ -858,11 +855,9 @@ int main(int argc, char **argv)
     // assert(check_unfused == 1);
     // check_unfused = check_eqivalence<C_ob, C_ib>(out, 'o', out_dimensions, output_dc_unfused.data(), LIMIT);
     // assert(check_unfused == 1);
-    // printf("check_unfused %d ", check_unfused);
 
-    memset(out_intermediate_unfused_dc.data(), 0.0, out_intermediate_unfused_buffer_size * sizeof(float));
+    // memset(out_intermediate_unfused_dc.data(), 0.0, out_intermediate_unfused_buffer_size * sizeof(float));
 
-    // printf("running fused ewise ");
     // fflush(0);
 
     small_fused_ewise_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
@@ -885,20 +880,21 @@ int main(int argc, char **argv)
                                                 conv_bias_dc,
                                                 filter_dc,
                                                 bias_dc,
-                                                out_intermediate_unfused_dc,
+                                                out_intermediate_ewise_fused_dc,
                                                 output_dc);
 
     bool check_ewise_fusion = true;
-    CORRECTNESS_CHECK(check_ewise_fusion, output_dc, output_dc_unfused);
-
+    CORRECTNESS_CHECK(check_ewise_fusion, out_intermediate_unfused_dc, out_intermediate_ewise_fused_dc);
     assert(check_ewise_fusion == 1);
-    // printf("check_ewise_fusion %d ", check_ewise_fusion);
-    // fflush(0);
+    check_ewise_fusion = true;
+    CORRECTNESS_CHECK(check_ewise_fusion, output_dc, output_dc_unfused);
+    assert(check_ewise_fusion == 1);
+
+
 
     // Full Fused block
     memset(out_intermediate_unfused_dc.data(), 0.0, out_intermediate_unfused_buffer_size * sizeof(float));
     memset(output_dc.data(), 0.0, out_buffer_size * sizeof(float));
-    // printf("C_i %d, C_o_conv %d, C_o %d, kernel_size_conv %d, kernel_size %d, stride_conv %d, stride %d, t_pad_conv %d, t_pad %d, b_pad_conv %d, b_pad %d, l_pad_conv %d, l_pad %d, r_pad_conv %d, r_pad %d \n", C_i, C_o_conv, C_o_conv, conv_kernel_size, kernel_size, conv_stride, stride, t_pad_conv, t_pad, b_pad_conv, b_pad, l_pad_conv, l_pad, r_pad_conv, r_pad);
     fused_small_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
                                           conv_kernel_size,
                                           conv_stride, // Covolution parameters
@@ -921,11 +917,10 @@ int main(int argc, char **argv)
                                           bias_dc,
                                           out_intermediate_unfused_dc,
                                           output_dc);
-
+                                   
     bool check = true;
-    CORRECTNESS_CHECK(check, output_dc, output_dc_unfused);
+    CORRECTNESS_CHECK(check, output_dc_unfused, output_dc);
     assert(check == 1);
-    // printf("check %d ", check);
     fflush(0);
 
 #if PERFORMANCE == 0
@@ -937,7 +932,6 @@ int main(int argc, char **argv)
 // performance comparison
 #if PERFORMANCE == 1
 
-    // printf("runs %d, %d, \t ", RUNS, num_threads);
     // Unfused
     small::Timer my_timer;
 
