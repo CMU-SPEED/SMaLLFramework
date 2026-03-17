@@ -57,7 +57,7 @@ public:
 
     virtual ~Model()
     {
-        std::cerr << "Model::dtor: deleting " << m_layers.size() << " layers.\n";
+        //std::cerr << "Model::dtor: deleting " << m_layers.size() << " layers.\n";
         for (auto layer : m_layers)
         {
             delete layer;

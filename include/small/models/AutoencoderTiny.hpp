@@ -141,14 +141,29 @@ public:
         // assert(input_tensor->size() is correct);
 
         size_t layer_num = 0;
-        // Conv2D + ReLU
-        this->m_layers[layer_num++]->compute_output({input_tensor},
+
+        // Consume input tensor
+        this->m_layers[layer_num++]->compute_output({input_tensor}, // Conv2D
+                                                    m_buffer_0);
+        this->m_layers[layer_num++]->compute_output({m_buffer_0},   // + ReLU
                                                     m_buffer_0);
 
+        while (layer_num < this->m_layers.size() - 1)
+        {
+            // Conv2D or ReLU
+            this->m_layers[layer_num++]->compute_output({m_buffer_0}, // Conv2D
+                                                        m_buffer_1);
+            this->m_layers[layer_num++]->compute_output({m_buffer_1}, // + ReLU
+                                                        m_buffer_1);
+
+            m_buffer_0->swap(*m_buffer_1);
+        }
+
+        // Any remaining layers (especially if final dense layer is restored)
         while (layer_num < this->m_layers.size())
         {
             // Conv2D or ReLU
-            this->m_layers[layer_num++]->compute_output({m_buffer_0},
+            this->m_layers[layer_num++]->compute_output({m_buffer_0}, // ??
                                                         m_buffer_1);
 
             m_buffer_0->swap(*m_buffer_1);
