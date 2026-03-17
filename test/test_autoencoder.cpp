@@ -609,6 +609,10 @@ void test_autoencoder(void)
     {
         small::free_buffer(filter);
     }
+    for (auto filter : unpacked_filter_buf_ptrs)
+    {
+        small::free_buffer(filter);
+    }
 }
 
 //****************************************************************************
