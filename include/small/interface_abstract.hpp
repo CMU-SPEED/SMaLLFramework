@@ -1602,6 +1602,79 @@ void ReLUActivation(int input_channels,
     }
 }
 #endif
+//****************************************************************************
+//****************************************************************************
+
+//============================================================================
+#if defined(SMALL_HAS_FLOAT_SUPPORT)
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<FloatBuffer, BufferT>::value, bool> = true>
+void ReLUActivation_inplace(int input_channels,
+                    int input_height, int input_width,
+                    BufferT &in_out_buf)
+{
+#if defined(RECORD_CALLS)
+    std::cout << "ReLUActivation<float>(chans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I,O)\n";
+#endif
+
+    if (input_channels % FLOAT_C_ib == 0)
+    {
+        float_detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1, OP_RELU_inplace, 0, 0>(
+                input_channels, // Output Channel Grouping
+                1,              // Output Channels per group
+                1,
+                input_height, input_width,
+                1, 1,
+                0, 0, 0, 0,
+                &in_out_buf, (FloatBuffer *)nullptr, &in_out_buf);
+    }
+    else
+    {
+        throw std::invalid_argument(
+            "ReLUActivation<float> ERROR: in_channels unsupported.");
+    }
+}
+#endif
+
+//============================================================================
+#if defined(SMALL_HAS_QUINT8_SUPPORT)
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<QUInt8Buffer, BufferT>::value, bool> = true>
+void ReLUActivation_inplace(int input_channels,
+                    int input_height, int input_width,
+                    BufferT &in_out_bf)
+{
+#if defined(RECORD_CALLS)
+    std::cout << "ReLUActivation<quint8>(chans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I,O)\n";
+#endif
+
+    if (input_channels % QUINT8_C_ib == 0)
+    {
+        quint8_detail::abstract_layer<
+            QUInt8Buffer, QUINT8_C_ob, 1, 1, QUINT8_W_ob, 1, 1, OP_RELU_inplace, 0, 1>(
+                input_channels, // Output Channel Grouping
+                1,              // Output Channels per group
+                1,
+                input_height, input_width,
+                1, 1,
+                0, 0, 0, 0,
+                &in_out_buf, (QUInt8Buffer *)nullptr, &in_out_buf);
+    }
+    else
+    {
+        throw std::invalid_argument(
+            "ReLUActivation<quint8> ERROR: in_channels unsupported.");
+    }
+}
+#endif
+
 
 //****************************************************************************
 //****************************************************************************
