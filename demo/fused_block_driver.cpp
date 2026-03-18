@@ -219,6 +219,7 @@ inline void small_layer_block(
     my_timer.start();
     if constexpr (COMPUTE_RELU)
     {
+    O_intermediate[0] = -1;
     small::ReLUActivation_inplace(output_channels_conv, o_h, o_w, O_intermediate);
     }
     my_timer.stop();

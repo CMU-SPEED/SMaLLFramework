@@ -1647,7 +1647,7 @@ template <class BufferT,
               std::is_same<QUInt8Buffer, BufferT>::value, bool> = true>
 void ReLUActivation_inplace(int input_channels,
                     int input_height, int input_width,
-                    BufferT &in_out_bf)
+                    BufferT &in_out_buf)
 {
 #if defined(RECORD_CALLS)
     std::cout << "ReLUActivation<quint8>(chans:" << input_channels
