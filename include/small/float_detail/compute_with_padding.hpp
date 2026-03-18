@@ -68,7 +68,6 @@ void inline compute_with_padding(dim_t H_lb, dim_t H_ub,
                 ScalarT const *b_cur = b + ii * _UNROLL * FLOAT_C_ob;
                 ScalarT const *a_cur = a + ii * _UNROLL;
                 FLOAT_ABSTRACT_OP_END(step, op_type, op_class, a_cur, b_cur, c_cur, W_elements, _C_ob);
-                // printf("%d %d: %f (+%f)\n", n, m, c_cur[0], a_cur[0]);
             }
         }
     }

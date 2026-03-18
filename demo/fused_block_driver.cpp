@@ -859,7 +859,6 @@ int main(int argc, char **argv)
     // memset(out_intermediate_unfused_dc.data(), 0.0, out_intermediate_unfused_buffer_size * sizeof(float));
 
     // fflush(0);
-
     small_fused_ewise_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
                                                 conv_kernel_size,
                                                 conv_stride, // Covolution parameters
@@ -917,15 +916,12 @@ int main(int argc, char **argv)
                                           bias_dc,
                                           out_intermediate_unfused_dc,
                                           output_dc);
-                                   
+
     bool check = true;
     CORRECTNESS_CHECK(check, output_dc_unfused, output_dc);
     assert(check == 1);
     fflush(0);
 
-#if PERFORMANCE == 0
-    output_file(out_fname, output_dc.data(), out_buffer_size);
-#endif
 //_________________________________________________________________
 
     // unsigned long long t0, t1;

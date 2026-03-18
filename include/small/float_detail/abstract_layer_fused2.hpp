@@ -745,7 +745,7 @@ void fused_abstract_layer(
 
                     // Peel (F_h_1 - S_h_1) -  t_pad_el + S_h_1
                     /// @todo: check that there are ^ rows available in the input to be peeled
-                    for (index_t j = 0; j < (F_h_1 - _stride_1) - t_pad_el + _stride_1; j++)
+                    for (index_t j = 0; j < (F_h_1 - _stride_1) - t_pad_el ; j++)
                     {
                         ScalarT const *I_row;
                         // tile over S_h_1
@@ -863,7 +863,7 @@ void fused_abstract_layer(
                                          F_before_buf_group,
                                          F_after_buf_group);
                     }
-                    H_o_computed = (F_h_1 - t_pad_el);
+                    H_o_computed = (F_h_1 - t_pad_el - _stride_1);
                     // Peel t_pad_el_1 and j_1
                     // Kernel top for second operation
                     ScalarT const *I_row_top_1 = O_channel_block_input;
@@ -901,105 +901,11 @@ void fused_abstract_layer(
                         O_row_top_1 + t_pad_el_1 * O_w_w_pad_1 * (_G_b_1*_K_b_1);
 
                     dim_t H_o_1_full_0 = small::output_dim(t_pad_el + H_o, _stride_1, F_h_1);
-
-                    for (index_t j = 0; j < (H_o_1_full_0 > 0); j++)
-                    {
-                        // Upsample would be fused ( so the check can be removed)
-                        ScalarT const *I_row_1 = I_row_full_1 + (j * _stride_1) * (I_w_1 * _F_cb_1 * _G_b_1);
-                        ScalarT const *F_row_1 = F_channel_block_input_1 + 0;
-                        AccumT        *O_row_1 =
-                            O_row_full_1 + j * (O_w_w_pad_1 * _G_b_1*_K_b_1);
-
-                        // Prologue with left padding
-                        kernel_left<ScalarT, AccumT,
-                                    _G_b_1, _K_b_1, _F_cb_1, _O_wb, _stride_1,
-                                    _UNROLL_1, op_type_1, op_class_1,
-                                    op_fused_single_element_before_1,
-                                    op_fused_single_element_after_1,
-                                    _stride_before_1, _stride_after_1>(
-                                        first_1,
-                                        F_h_1,
-                                        F_w_1,
-                                        I_w_1 * _C_ib_1,
-                                        l_pad_el_1,
-                                        pad_left_1,
-                                        I_row_1,
-                                        F_row_1,
-                                        O_row_1,
-                                        0,
-                                        0,
-                                        F_before_buf_group_1,
-                                        F_after_buf_group_1);
-
-                        ScalarT const *I_col_full_1 =
-                            I_row_1 + W_full_index_1 * (_C_ib_1);
-                        AccumT        *O_col_full_1 = O_row_1 + l_pad_el_1 * (_G_b_1*_K_b_1); // ScalarT --> AccumT
-                        // Steady State with microkernel
-                        for (index_t l = 0; l < O_w_full_1; l += _O_wb)
-                        {
-                            ScalarT const *I_col_1 = I_col_full_1 + (l * _stride_1) * (_F_cb_1 * _G_b_1);
-
-                            ScalarT const *F_col_1 = F_row_1 + 0;
-                            AccumT        *O_col_1 = O_col_full_1 + l * (_G_b_1*_K_b_1); // ScalarT --> AccumT
-
-                            kernel<ScalarT, AccumT,
-                                   _G_b_1, _K_b_1, _F_cb_1, _O_wb, _stride_1,
-                                   _UNROLL_1, op_type_1, op_class_1,
-                                   op_fused_single_element_before_1,
-                                   op_fused_single_element_after_1,
-                                   _stride_before_1, _stride_after_1>(
-                                       first_1,
-                                       F_h_1,
-                                       F_w_1,
-                                       I_w_1 * _C_ib_1,
-                                       I_col_1,
-                                       F_col_1,
-                                       O_col_1,
-                                       0,
-                                       0,
-                                       0,
-                                       0,
-                                       F_before_buf_group_1,
-                                       F_after_buf_group_1);
-                        }
-
-#if DEBUG
-                        printf(" end  kernel\n");
-#endif
-
-                        // Epilogue for microkernel + right padding elements
-                        ScalarT const *I_col_left_1 = I_col_full_1 + (O_w_full_1 * _stride_1) * (_F_cb_1 * _G_b_1);
-                        ScalarT const *F_col_left_1 = F_row_1 + 0;
-                        AccumT        *O_col_left_1 = O_col_full_1 + O_w_full_1 * (_G_b_1*_K_b_1); // ScalarT --> AccumT
-
-#if DEBUG
-                        printf(" calling right\n");
-#endif
-                        kernel_right<ScalarT, AccumT,
-                                     _G_b_1, _K_b_1, _F_cb_1, _O_wb, _stride_1,
-                                     _UNROLL_1, op_type_1, op_class_1,
-                                     op_fused_single_element_before_1,
-                                     op_fused_single_element_after_1,
-                                     _stride_before_1, _stride_after_1>(
-                                         first_1,
-                                         F_h_1,
-                                         F_w_1,
-                                         I_w_1 * _C_ib_1,
-                                         O_w_left_1,
-                                         r_pad_el_1,
-                                         r_valid_1,//pad_right_1,
-                                         I_col_left_1,
-                                         F_col_left_1,
-                                         O_col_left_1,
-                                         0,
-                                         0,
-                                         F_before_buf_group_1,
-                                         F_after_buf_group_1);
-                    }
+    
 
                     index_t j_0_idx = H_o_computed;// F_h_1 - t_pad_el;
                     // Second to n-1 rows of the second operation
-                    for (index_t j = 1; j < H_o_1_full_0 ; j++)
+                    for (index_t j = 0; j < H_o_1_full_0 ; j++)
                     {
                         // compute the next _stride_1 rows of the first operation
                         for (index_t j_0 = 0; j_0 < _stride_1; j_0++)
