@@ -12,10 +12,10 @@
 
 #pragma once
 
-#define FLOAT_W_ob   4
-#define FLOAT_C_ob   8
+#define FLOAT_W_ob   1
+#define FLOAT_C_ob   1
 #define FLOAT_SIMD   1
-#define FLOAT_UNROLL 2
+#define FLOAT_UNROLL 1
 #define FLOAT_C_ib   FLOAT_C_ob
 
 //Potential blocking parameters for packing
