@@ -133,7 +133,7 @@ void SequentialLayer<BufferT>::compute_output(
     // ERROR CHECKING NEEDED...sizes bw each pair of consecutive layers
 
     // Handle input layer
-    m_layers[0]->compute_output(input, m_tensors[0]);
+    m_layers[0]->compute_output({input[0]}, m_tensors[0]);
 
     for (size_t ix = 1; ix < m_layers.size() - 1; ++ix)
     {
