@@ -148,6 +148,37 @@ void test_relu_large_tile(void)
 }
 
 //****************************************************************************
+void test_relu_inplace_single_tile(void)
+{
+    size_t const C_i = 16;
+    size_t const H = 1;
+    size_t const W = 6;
+    size_t const num_input_elts = C_i*H*W;
+
+#if defined(QUANTIZED)
+    small::QUInt8Buffer in_out_dc = create_relu_data<small::QUInt8Buffer>(num_input_elts);
+#else
+    small::FloatBuffer  in_out_dc = create_relu_data<small::FloatBuffer>(num_input_elts);
+#endif
+
+    auto expected_dc = in_out_dc;
+    for (size_t ix = 0; ix < num_input_elts; ++ix)
+    {
+        if (expected_dc[ix] < 0)
+        {
+            expected_dc[ix] = 0;
+        }
+    }
+
+    small::ReLUActivation_inplace(C_i, H, W, in_out_dc);
+
+    for (size_t ix = 0; ix < num_input_elts; ++ix)
+    {
+        TEST_CHECK(in_out_dc[ix] == expected_dc[ix]);
+    }
+}
+
+//****************************************************************************
 void test_relu_odd_channels(void)
 {
 #if !defined(QUANTIZED)
@@ -410,6 +441,70 @@ bool run_relu_layer_config(LayerParams const &params)
 }
 
 //****************************************************************************
+template <class BufferT>
+bool run_relu_inplace_config(LayerParams const &params)
+{
+    std::string in_fname =
+        get_pathname(data_dir, "in", "relu",
+                     params,
+                     params.C_i*params.H*params.W);
+    std::cout << "\nReLU inplace: input file = " << in_fname << std::endl;
+
+    BufferT input_dc = read_inputs<BufferT>(in_fname);
+    TEST_ASSERT(input_dc.size() == params.C_i*params.H*params.W);
+
+    BufferT packed_input_dc(input_dc.size());
+    small::pack_buffer(input_dc,
+                       small::INPUT,
+                       1U, params.C_i, params.H, params.W,
+                       BufferT::C_ib, BufferT::C_ob,
+                       packed_input_dc);
+
+    size_t Ho(small::compute_output_dim(
+                  params.H, params.k, params.s, params.p));
+    size_t Wo(small::compute_output_dim(
+                  params.W, params.k, params.s, params.p));
+    std::cerr << "Output image dims: " << Ho << ", " << Wo << std::endl;
+    std::string out_fname =
+        get_pathname(data_dir, "out", "relu",
+                     params,
+                     params.C_i*Ho*Wo);
+    std::cout << "ReLU inplace: output file= " << out_fname << std::endl;
+
+    BufferT output_dc_answers = read_inputs<BufferT>(out_fname);
+    TEST_ASSERT(output_dc_answers.size() == params.C_i*Ho*Wo);
+
+    BufferT packed_output_dc_answers(output_dc_answers.size());
+    small::pack_buffer(output_dc_answers,
+                       small::OUTPUT,
+                       1U, params.C_i, Ho, Wo,
+                       BufferT::C_ib, BufferT::C_ob,
+                       packed_output_dc_answers);
+
+    small::ReLUActivation_inplace(params.C_i,
+                                  params.H, params.W,
+                                  packed_input_dc);
+
+    bool passing = true;
+    for (size_t ix = 0; ix < packed_output_dc_answers.size(); ++ix)
+    {
+        if (packed_input_dc[ix] != packed_output_dc_answers[ix])
+        {
+            passing = false;
+            std::cout << "FAIL: ReLU_inplace_out(" << ix << ")-->"
+                      << std::setw(12) << std::setprecision(10)
+                      << packed_input_dc[ix] << "(computed) != "
+                      << std::setw(12) << std::setprecision(10)
+                      << packed_output_dc_answers[ix]
+                      << std::endl;
+        }
+    }
+
+    if (passing) std::cerr << "Test PASSED\n";
+    return passing;
+}
+
+//****************************************************************************
 //****************************************************************************
 void test_relu_regression_data(void)
 {
@@ -427,6 +522,27 @@ void test_relu_regression_data(void)
         TEST_CHECK(true == run_relu_config<small::QUInt8Buffer>(p));
 #else
         TEST_CHECK(true == run_relu_config<small::FloatBuffer>(p));
+#endif
+    }
+}
+
+//****************************************************************************
+void test_relu_inplace_regression_data(void)
+{
+    std::vector<LayerParams> params =
+    {
+        {16,  1,  1, 1, 1, small::PADDING_V, 0},
+        {16,  1,  6, 1, 1, small::PADDING_V, 0},
+        {96,  1,  6, 1, 1, small::PADDING_V, 0},
+        {96, 30, 30, 1, 1, small::PADDING_V, 0}
+    };
+
+    for (auto const &p : params)
+    {
+#if defined(QUANTIZED)
+        TEST_CHECK(run_relu_inplace_config<small::QUInt8Buffer>(p));
+#else
+        TEST_CHECK(run_relu_inplace_config<small::FloatBuffer>(p));
 #endif
     }
 }
@@ -596,9 +712,11 @@ TEST_LIST = {
     {"relu_single_element",  test_relu_single_element},
     {"relu_single_tile",  test_relu_single_tile},
     {"relu_large_tile",  test_relu_large_tile},
+    {"relu_inplace_single_tile", test_relu_inplace_single_tile},
     {"relu_odd_channels", test_relu_odd_channels},
     {"relu_layer_odd_channels", test_relu_layer_odd_channels},
     {"relu_regression_data", test_relu_regression_data},
+    {"relu_inplace_regression_data", test_relu_inplace_regression_data},
     {"relu_layer_regression_data", test_relu_layer_regression_data},
     // {"relu_performance", measure_relu_performance},
     {NULL, NULL}
