@@ -65,6 +65,7 @@ vector_instruction_table={
 # Mapping from operator to number of operands
 operator_operand_count = {
     "zero": 0,
+    "store": 1,
     "assign": 1,
     "add": 2,
     "sub": 2,
@@ -119,14 +120,17 @@ if(len(sys.argv) - 4 > num_operands):
     print("Ignoring arguments after {:}".format(sys.argv[4 + num_operands]))
 
 #insert default shapes if not provided
-if 'a' not in order_of_operands:
+
+print(order_of_operands.keys())
+if 'a' not in order_of_operands.keys():
     shape_a = None
     order_of_operands['a'] = shape_a
-elif 'b' not in order_of_operands:
+if 'b' not in order_of_operands.keys():
     shape_b = None
     order_of_operands['b'] = shape_b
-elif 'c' not in order_of_operands: 
+if 'c' not in order_of_operands.keys(): 
     shape_c_input = None
+    print("no input c")
     order_of_operands['c'] = shape_c_input
 shape_c = [W_ob, C_ob]
 
