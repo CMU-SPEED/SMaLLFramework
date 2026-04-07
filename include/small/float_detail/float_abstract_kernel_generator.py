@@ -42,6 +42,7 @@ vector_instruction_table={
 "add": "_mm256_add_ps({reg1}, {reg2})",
 "sub": "_mm256_sub_ps({reg1}, {reg2})",
 "mul" :"_mm256_mul_ps({reg1}, {reg2})",
+"div" :"_mm256_div_ps({reg1}, {reg2})",
 "min": "_mm256_min_ps({reg1}, {reg2})",
 "max": "_mm256_max_ps({reg1}, {reg2})",
 "and": "_mm256_and_ps({reg1}, {reg2})",
@@ -70,6 +71,7 @@ operator_operand_count = {
     "add": 2,
     "sub": 2,
     "mul": 2,
+    "div": 2,
     "min": 2,
     "max": 2,
     "and": 2,
@@ -146,27 +148,28 @@ print(shape_a, shape_b, shape_c_input)
 def redefine(name):
     return ['#ifdef {n}\n#undef {n}\n#endif\n'.format(n=name)]
 
-if shape_c_input != None:
-    #If shape_c_input is not the same as W_ob, C_ob then we need to call the appropriate LOAD_FUNCTION_for C
-    l = []
-    if int(shape_c_input[1]) == 1:
-        c_load = vector_instruction_table["broadcast"]
-        type_c ="VECTOR"
-        if int(shape_c_input[0]) == 1:
-            type_c ="SCALAR"
+
+# if shape_c_input != None:
+#     #If shape_c_input is not the same as W_ob, C_ob then we need to call the appropriate LOAD_FUNCTION_for C
+#     l = []
+#     if int(shape_c_input[1]) == 1:
+#         c_load = vector_instruction_table["broadcast"]
+#         type_c ="VECTOR"
+#         if int(shape_c_input[0]) == 1:
+#             type_c ="SCALAR"
         
-    else:
-        c_load = vector_instruction_table["load"]
-        type_c ="VECTOR_T"
-        if int(shape_c_input[0])!= 1:
-            type_c ="MATRIX" 
+#     else:
+#         c_load = vector_instruction_table["load"]
+#         type_c ="VECTOR_T"
+#         if int(shape_c_input[0])!= 1:
+#             type_c ="MATRIX" 
 
-    l += [f'#define FLOAT_LOAD_{type_c}_TILE_C(I, step)\\']    
-    for kk in range(W_ob):
-        for jj in range(C_ob//vector_instruction_table["SIMD"]):
-            l += [f'c_{kk}_{jj} = ' + c_load.format(ptr=(f"c + {kk%(int(shape_c_input[0]))}*step + {jj%(int(shape_c_input[1]))} * SIMD")) + ";\\"]
+#     l += [f'#define FLOAT_LOAD_{type_c}_TILE_C(I, step)\\']    
+#     for kk in range(W_ob):
+#         for jj in range(C_ob//vector_instruction_table["SIMD"]):
+#             l += [f'c_{kk}_{jj} = ' + c_load.format(ptr=(f"c + {kk%(int(shape_c_input[0]))}*step + {jj%(int(shape_c_input[1]))} * SIMD")) + ";\\"]
 
-    print("\n".join(l))
+#     print("\n".join(l))
 
 
 # define tile
@@ -199,28 +202,33 @@ if shape_b != None:
 
 #sort out registers needed for a
 a_regs = vector_instruction_table["REGS"] - b_regs_jj_kk - c_regs
-if int(shape_a[1]) == 1:
-    a_load = vector_instruction_table["broadcast"]
-    a_regs_jj = 1
-    type_a ="VECTOR"
-    if int(shape_a[0]) == 1:
-        a_regs_kk = 1
-        type_a ="SCALAR"
+if num_operands > 0:
+    if int(shape_a[1]) == 1:
+        a_load = vector_instruction_table["broadcast"]
+        a_regs_jj = 1
+        type_a ="VECTOR"
+        if int(shape_a[0]) == 1:
+            a_regs_kk = 1
+            type_a ="SCALAR"
+        else:
+            a_regs_kk = a_regs
+        
     else:
-        a_regs_kk = a_regs
+        a_load = vector_instruction_table["load"]
+        # 1 register per simd width in the channel dimension
+        a_regs_jj = C_ob//vector_instruction_table["SIMD"]
+        type_a ="VECTOR_T"
+        if int(shape_a[0]) == 1:
+            a_regs_kk = 1
+        else:
+            a_regs_kk = (a_regs//a_regs_jj)
+            type_a ="MATRIX" 
     
+    a_regs_jj_kk = a_regs_jj * a_regs_kk
 else:
-    a_load = vector_instruction_table["load"]
-    # 1 register per simd width in the channel dimension
-    a_regs_jj = C_ob//vector_instruction_table["SIMD"]
-    type_a ="VECTOR_T"
-    if int(shape_a[0]) == 1:
-        a_regs_kk = 1
-    else:
-        a_regs_kk = (a_regs//a_regs_jj)
-        type_a ="MATRIX" 
-    
-a_regs_jj_kk = a_regs_jj * a_regs_kk
+    a_regs_jj = 0
+    a_regs_kk = 0
+    a_regs_jj_kk = 0
 
 print()
 
@@ -228,10 +236,15 @@ print()
 # Compute Phase Name and Declaration
 # ----------------------------------------
 s = []
-s += [f'#define FLOAT_{name}_{type_a}_{type_b}_TILE_C(step, a']
-if shape_b != None:
-    s[-1] += ", b"
-s[-1] += ')\\'
+if num_operands == 0:
+    s += [f'#define FLOAT_{name}_TILE_C(step)\\']
+elif num_operands == 1:
+    s += [f'#define FLOAT_{name}_{type_a}_TILE_C(step, a)\\']
+elif num_operands == 2:
+    s += [f'#define FLOAT_{name}_{type_a}_{type_b}_TILE_C(step, a']
+    if shape_b != None:
+        s[-1] += ", b"
+    s[-1] += ')\\'
 # compute
 
 # ----------------------------------------
@@ -262,7 +275,7 @@ order_of_operands['b'] = [1, b_regs_jj_kk]
 # ----------------------------------------
 
 # if a is reused over the width elements, load can be performed outside
-if int(shape_a[0])==1:
+if num_operands > 0 and int(shape_a[0])==1:
     for jj in range(a_regs_jj):
         s += [f"a_0_{jj} = " + a_load.format(ptr=(f"a + {jj} * SIMD")) + ";\\"]
 
@@ -289,7 +302,7 @@ vector_instruction_instance = vector_instruction.format(reg1=reg1_unlabeled, reg
 
 for kk in range(W_ob):
     #if a is not reused it must be reloaded
-    if int(shape_a[0])>1 :
+    if num_operands > 0 and int(shape_a[0])>1 :
         for jj in range(a_regs_jj):
             s += [f"a_{(kk%a_regs_kk)}_{jj} = " + a_load.format(ptr=(f"a + {kk}*step + {jj} * SIMD")) + ";\\"]       
     for jj in range(C_ob//vector_instruction_table["SIMD"]):
@@ -304,26 +317,7 @@ for kk in range(W_ob):
 s += ['']
 print("\n".join(s))
 
-# c_regs_jj = C_ob//vector_instruction_table["SIMD"]
-# s += [f'#define_{name}_END_C(step, a, W_ob, C_ob)\\']
-# # compute
-# s += ['float32x4_t ' + ",".join([f" a_{jj}" for jj in range(a_regs)]) + "; \\"]
-# #if a is reused over the width elements, load can be performed outside
-# if int(shape_a[0])==1:
-#     for jj in range(a_regs_jj):
-#         s += [f"a_{jj} = " + a_load.format(ptr=(f"a + {jj} * SIMD")) + ";\\"]
-# s+=["for(int kk = 0; kk<W_ob; kk++){\\"]
-# if int(shape_a[0])>1 :
-#     for jj in range(a_regs_jj):
-#         s += [f"a_{jj} = " + a_load.format(ptr=(f"a + kk*step + {jj} * SIMD")) + ";\\"]
-# for jj in range(C_ob//vector_instruction_table["SIMD"]):
-#     if not (shape_b == None):
-#         s += ['c_tile[kk * (C_ob/SIMD))+ {j}] = {vop}(c_tile[kk * (C_ob/SIMD))+ {j}], a_{kj});\\'.format(vop = vector_instruction, j=jj, kj=(jj%a_regs_jj))]
-#     else:
-#         s += ['c_tile[kk * (C_ob/SIMD))+ {j}] = {vop}(a_{kj});\\'.format(vop = vector_instruction, j=jj, kj=(jj%a_regs_jj))]
-# s+=["}"]
-# s += ['']
-# print("\n".join(s))
+
 
 
 
