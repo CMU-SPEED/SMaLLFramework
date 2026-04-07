@@ -1,6 +1,7 @@
 import os
 import sys
 from collections import OrderedDict
+from typing import List, Optional
 
 """
 #elementwise operations can be written as follows:
@@ -79,6 +80,43 @@ operator_operand_count = {
     "fmaddsub": 3,
 }
 
+def generate_kernel(tile_size: str, op: str, name: str, operands: Optional[List[str]] = None) -> str:
+    """
+    Generates the microkernel for the given operation, operands, and tile size.
+
+    Input:
+    - tile_size: str,
+        The output tile size, of the form "WxC" where W (int) is the width dimension and C (int) is the channel dimension.
+        C must be a positive integer multiple of the SIMD width specified in `vector_instruction_table["SIMD"]`.
+    - op: str,
+        The primitive operation, must be a key in `operator_operand_count`.
+    - name: str,
+        The name of the generated kernel, preferably meaningful and in all caps.
+    - operands: List[str],
+        A list specifying the operands and their shapes, each of the form "<identifier>:<shape>".
+        The number of operands specified must match the number of operands required for the selected operation as specified in `operator_operand_count`.
+        The operand identifiers must be unique and one of "a", "b", "c".
+        The operand shapes must be of the form "W,C" where W (int) is the width dimension and C (int) is the channel dimension.
+        - Identifier "a":
+            - Can only be used as an input operand and can be of any of the following shapes:
+                - W,C (no rank promotion)
+                - 1,C (rank promotion across width dimension)
+                - W,1 (rank promotion across channel dimension)
+                - 1,1 (rank promotion across both dimensions)
+        - Identifier "b":
+            - Can only be used as an input operand and can only be of the following shapes:
+                - 1,C (rank promotion across width dimension)
+                - 1,1 (rank promotion across both dimensions)
+        - Identifier "c":
+            - Can be used as an input operand, in which case it can be of any of the following shapes:
+                - W,C (no rank promotion)
+                - 1,C (rank promotion across width dimension)
+                - W,1 (rank promotion across channel dimension)
+                - 1,1 (rank promotion across both dimensions)
+            - Is always used as the output operand with the same shape as "tile_size".
+                If "c" is not specified as an input operand, it is assumed to be of the same shape as "tile_size".
+                If "c" is specified as an input operand, the output operand will always shadow the input operand in terms of both name and shape.
+    """
 
 W_ob = int(sys.argv[1].split("x")[0])  # should be of the form w:c
 C_ob = int(sys.argv[1].split("x")[1])
