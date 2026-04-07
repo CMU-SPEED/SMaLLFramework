@@ -65,7 +65,7 @@
 // _C_ib = _G_b * _F_cb; <-- 1 * FLOAT_C_ib
 // step = _stride * _C_ib; <-- 1 * FLOAT_C_ib
 //
-// FLOAT_DEF_TILE_C(_O_wb, _C_ob); <-- (FLOAT_W_ob, FLOAT_C_ob)
+// FLOAT_DEF_TILE_C(_O_wb, _C_ob); <-- 
 // first: FLOAT_ZERO_TILE_C(_O_wb, _C_ob);
 // FLOAT_LOAD_TILE_C(O, _O_wb, _C_ob);
 //
@@ -120,17 +120,17 @@ void test_correctness_FLOAT_CONV_TILE(void)
     constexpr uint32_t _UNROLL = FLOAT_UNROLL;  /// @todo move to template
 
     //==================================================
-    FLOAT_DEF_TILE_C(FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_DEF_TILE_C;
 
     // WHICH SHOULD I DO...DOES IT MATTER?
-    FLOAT_ZERO_TILE_C(FLOAT_W_ob, FLOAT_C_ob); // ???
-    // FLOAT_LOAD_TILE_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_ZERO_TILE_C; // ???
+    // FLOAT_LOAD_TILE_C(output_buf.data());
 
     size_t const num_trials = 1UL;
-    FLOAT_CONV_TILE_C(step, a_cur, b_cur, FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_CONV_TILE_C(step, a_cur, b_cur);
 
     // a cross platform way to move results to the output buffer
-    FLOAT_STORE_TILE_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_STORE_TILE_C(output_buf.data());
     //==================================================
 
     // where STORE writes is different for every platform
@@ -204,11 +204,11 @@ void test_performance_FLOAT_CONV_TILE(void)
     //==================================================
     ScalarT *b_cur = filter_buf.data();
 
-    FLOAT_DEF_TILE_C(FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_DEF_TILE_C;
 
     // WHICH SHOULD I DO...DOES IT MATTER?
-    FLOAT_ZERO_TILE_C(FLOAT_W_ob, FLOAT_C_ob); // ???
-    //FLOAT_LOAD_TILE_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_ZERO_TILE_C; // ???
+    //FLOAT_LOAD_TILE_C(output_buf.data());
 
     //size_t a_offset = 0;
 
@@ -219,7 +219,7 @@ void test_performance_FLOAT_CONV_TILE(void)
         size_t offset = 0;
         for (size_t ix = 0; ix < num_trials; ++ix)
         {
-            FLOAT_CONV_TILE_C(step, a_cur, b_cur, FLOAT_W_ob, FLOAT_C_ob);
+            FLOAT_CONV_TILE_C(step, a_cur, b_cur);
             a_cur += input_step;
             offset += input_step;
             b_cur += filter_step;
@@ -229,7 +229,7 @@ void test_performance_FLOAT_CONV_TILE(void)
     auto elapsed = my_timer.elapsed();
 
     // a cross platform way to move results to the output buffer
-    FLOAT_STORE_TILE_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_STORE_TILE_C(output_buf.data());
     //==================================================
 
     std::cout << "Elapsed time: " << elapsed << " ns." << std::endl;

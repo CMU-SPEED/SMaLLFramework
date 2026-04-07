@@ -81,7 +81,7 @@ void inline kernel_left(
 
     if constexpr(fused_single_element_before == OP_UPSAMPLE)
     {
-        FLOAT_ACCUM_END_C_upsample(F_b, _stride_before, _C_ib, l_pad_el, _C_ob);
+        FLOAT_ACCUM_END_C_upsample(F_b, _stride_before, l_pad_el, _C_ob);
     }
 
     c_tile_t *c_cur = c_tile;
@@ -113,7 +113,7 @@ void inline kernel_left(
     if (op_type == OP_AVERAGE_POOL)
     {
         float norm = 1.0 / (1.0 * F_h * F_w);
-        FLOAT_DIV_END_C(c_tile, norm, l_pad_el, _C_ob);
+        FLOAT_INPLACE_MUL_SCALAR_END_C(c_tile, norm, l_pad_el, _C_ob);
     }
 
     dim_t step_after = _stride_after*_C_ib;

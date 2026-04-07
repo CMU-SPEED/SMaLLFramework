@@ -75,7 +75,7 @@ void inline kernel_right_1D(
             }
             else if (op_type == OP_UPSAMPLE)
             {
-                FLOAT_LOAD_END_C_upsample(I, _stride, _C_ib, O_w_left, _C_ob);
+                FLOAT_LOAD_END_C_upsample(I, _stride, O_w_left, _C_ob);
             }
         }
         else
@@ -88,13 +88,13 @@ void inline kernel_right_1D(
             FLOAT_LOAD_END_C(O, O_w_left, _C_ob);
             if constexpr (op_type == OP_UPSAMPLE)
             {
-                FLOAT_ACCUM_END_C_upsample(I, _stride, _C_ib, O_w_left, _C_ob);
+                FLOAT_ACCUM_END_C_upsample(I, _stride, O_w_left, _C_ob);
             }
         }
 
         if constexpr (fused_single_element_before == OP_UPSAMPLE)
         {
-            FLOAT_ACCUM_END_C_upsample(F_b, _stride_before, _C_ib, O_w_left, _C_ob);
+            FLOAT_ACCUM_END_C_upsample(F_b, _stride_before, O_w_left, _C_ob);
         }
         compute_with_padding_1D<ScalarT, AccumT,
                                 _G_b, _K_b, _F_cb, _O_wb, _stride,
@@ -153,7 +153,7 @@ void inline kernel_right_1D(
 
     if constexpr (fused_single_element_before == OP_UPSAMPLE)
     {
-        FLOAT_ACCUM_END_C_upsample(F_b, _stride_before, _C_ib, r_pad_el, _C_ob);
+        FLOAT_ACCUM_END_C_upsample(F_b, _stride_before, r_pad_el, _C_ob);
     }
 
     c_tile_t *c_cur = c_tile;

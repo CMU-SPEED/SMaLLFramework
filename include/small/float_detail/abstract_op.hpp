@@ -22,75 +22,75 @@ namespace float_detail
 //****************************************************************************
 //****************************************************************************
 /// @todo use constexpr if on op_type and op_class in calling code
-#define FLOAT_ABSTRACT_OP(step, op_type, op_class, a_cur, b_cur, c_cur, d_cur, O_wb, C_ob) \
+#define FLOAT_ABSTRACT_OP(step, op_type, op_class, a_cur, b_cur, c_cur, d_cur) \
     if constexpr (op_type == OP_CONV)                                    \
     {                                                                    \
         if constexpr (op_class == 1)                                     \
         {                                                                \
-            FLOAT_DW_TILE_C(step, a_cur, b_cur, O_wb, C_ob);             \
+            FLOAT_DW_TILE_C(step, a_cur, b_cur);             \
         }                                                                \
         else if constexpr (op_class == 2)                                \
         {                                                                \
-            FLOAT_CONV_TILE_C(step, a_cur, b_cur, O_wb, C_ob);           \
+            FLOAT_CONV_TILE_C(step, a_cur, b_cur);           \
         }                                                                \
     }                                                                    \
     else if constexpr (op_type == OP_RELU || op_type == OP_MAX_POOL)     \
     {                                                                    \
-        FLOAT_MAX_TILE_C(step, a_cur, O_wb, C_ob);                       \
+        FLOAT_MAX_TILE_C(step, a_cur);                       \
     }                                                                    \
     else if constexpr (op_type == OP_LEAKY_RELU)                         \
     {                                                                    \
-        FLOAT_COND_SCALE_TILE_C(step, a_cur, b_cur, O_wb, C_ob);         \
+        FLOAT_COND_SCALE_TILE_C(step, a_cur, b_cur);         \
     }                                                                    \
     else if constexpr (op_type == OP_ADD || op_type == OP_AVERAGE_POOL)  \
     {                                                                    \
-        FLOAT_ACCUM_TILE_C(step, a_cur, O_wb, C_ob);                     \
+        FLOAT_ACCUM_TILE_C(step, a_cur);                     \
     }                                                                    \
     else if constexpr (op_type == OP_EWISE_ADD_SCALAR)                   \
     {                                                                    \
         float scalar = b_cur[0];                                        \
-        FLOAT_EWISE_ADD_SCALAR_TILE_C(scalar, O_wb, C_ob);              \
+        FLOAT_INPLACE_ADD_SCALAR_TILE_C(scalar);              \
     }                                                                    \
     else if constexpr (op_type == OP_MUL)                                \
     {                                                                    \
         float drop_out_rate = b_cur[0];                                  \
-        FLOAT_DIV_TILE_C(drop_out_rate, O_wb, C_ob);                      \
+        FLOAT_INPLACE_MUL_SCALAR_TILE_C(drop_out_rate);                      \
     }                                                                    \
     else if constexpr (op_type == OP_EXP)                                \
     {                                                                    \
-        FLOAT_EXP_TILE_C(step, a_cur, O_wb, C_ob);                        \
+        FLOAT_EXP_TILE_C(step, a_cur);/*FLOAT_EXP_RR_TILE_C(a_cur);*/                        \
     }                                                                   \
     else if constexpr (op_type == OP_SOFTSIGN)                           \
     {                                                                       \
-        FLOAT_SOFTSIGN_TILE_C(step, a_cur, O_wb, C_ob);                     \
+        FLOAT_SOFTSIGN_TILE_C(step, a_cur);                     \
     }                                                                       \
     else if constexpr (op_type == OP_ABS)                                   \
     {                                                                       \
-        FLOAT_ABS_TILE_C(step, a_cur, O_wb, C_ob);                          \
+        FLOAT_ABS_TILE_C(step, a_cur);                          \
     }                                                                       \
     else if constexpr (op_type == OP_DIV)                                   \
     {                                                                       \
-        FLOAT_FUSED_DIV_TILE_C(step, a_cur, O_wb, C_ob);                    \
+        FLOAT_INPLACE_DIV_TILE_C(step, a_cur);                    \
     }                                                                       \
     else if constexpr (op_type == OP_SLOPE_RELU)                            \
     {                                                                       \
-        FLOAT_SLOPE_RELU_TILE_C(step, a_cur, c_cur, O_wb, C_ob);            \
+        FLOAT_SLOPE_RELU_TILE_C(step, a_cur, c_cur);            \
     }                                                                       \
     else if constexpr (op_type == OP_CELU)                                  \
     {                                                                       \
-        FLOAT_CELU_TILE_C(b_cur, O_wb, C_ob);                               \
+        FLOAT_CELU_TILE_C(b_cur);                               \
     }                                                                       \
     else if constexpr (op_type == OP_FUSED_SLOPE_RELU)                      \
     {                                                                       \
-        FLOAT_FUSED_SLOPE_RELU_TILE_C(step, a_cur, c_cur, O_wb, C_ob);      \
+        FLOAT_FUSED_SLOPE_RELU_TILE_C(step, a_cur, c_cur);      \
     }                                                                       \
     else if constexpr (op_type == OP_FUSED_CELU)                            \
     {                                                                       \
-        FLOAT_FUSED_CELU_TILE_C(step, a_cur, b_cur, c_cur, O_wb, C_ob);     \
+        FLOAT_FUSED_CELU_TILE_C(step, a_cur, b_cur, c_cur);     \
     }                                                                       \
     else if constexpr (op_type == OP_SOFTMAX)                               \
     {                                                                       \
-        FLOAT_SOFTMAX_TILE_C(step, a_cur, c_cur, d_cur, O_wb, C_ob);        \
+        FLOAT_SOFTMAX_TILE_C(step, a_cur, c_cur, d_cur);        \
     }                                                                       \
 
 //****************************************************************************
@@ -121,7 +121,7 @@ namespace float_detail
     else if constexpr (op_type == OP_EWISE_ADD_SCALAR)                      \
     {                                                                           \
         float scalar = b_cur[0];                                                \
-        FLOAT_EWISE_ADD_SCALAR_END_C(c_cur, scalar, W_elements, C_ob);               \
+        FLOAT_INPLACE_ADD_SCALAR_END_C(c_cur, scalar, W_elements, C_ob);               \
     }                                                                           \
     else if constexpr (op_type == OP_MUL)                                     \
     {                                                                         \
@@ -142,7 +142,7 @@ namespace float_detail
     }                                                                         \
     else if constexpr (op_type == OP_DIV)                                     \
     {                                                                         \
-        FLOAT_FUSED_DIV_END_C(step, a_cur, c_cur, W_elements, C_ob);          \
+        FLOAT_INPLACE_DIV_END_C(step, a_cur, c_cur, W_elements, C_ob);          \
     }                                                                         \
     else if constexpr (op_type == OP_SLOPE_RELU)                              \
     {                                                                         \
@@ -162,39 +162,39 @@ namespace float_detail
     }
 
 //****************************************************************************
-#define FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_TILE(step, op_type, op_class, b_cur, O_wb, C_ob) \
+#define FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_TILE(step, op_type, op_class, b_cur) \
     if constexpr (op_type == OP_RELU)                                   \
     {                                                                   \
-        FLOAT_FUSED_RELU_TILE_C(O_wb, C_ob);                            \
+        FLOAT_INPLACE_RELU_TILE_C;                            \
     }                                                                   \
     else if constexpr (op_type == OP_LEAKY_RELU)                        \
     {                                                                   \
-        FLOAT_FUSED_COND_SCALE_TILE_C(b_cur, O_wb, C_ob);               \
+        FLOAT_INPLACE_COND_SCALE_TILE_C(b_cur);               \
     }                                                                   \
     else if constexpr (op_type == OP_ADD)                               \
     {                                                                   \
-        FLOAT_ACCUM_TILE_C(step, b_cur, O_wb, C_ob);                    \
+        FLOAT_ACCUM_TILE_C(step, b_cur);                    \
     }                                                                   \
     else if constexpr (op_type == OP_EWISE_ADD_SCALAR)              \
     {                                                                   \
         float scalar = b_cur[0];                                        \
-        FLOAT_EWISE_ADD_SCALAR_TILE_C(scalar, O_wb, C_ob);                    \
+        FLOAT_INPLACE_ADD_SCALAR_TILE_C(scalar);                    \
     }                                                                  \
     else if constexpr (op_type == OP_MUL)                               \
     {                                                                   \
         float drop_out_rate = b_cur[0];                                 \
-        FLOAT_DIV_TILE_C(drop_out_rate, O_wb, C_ob);                    \
+        FLOAT_INPLACE_MUL_SCALAR_TILE_C(drop_out_rate);                    \
     }                                                                   \
     else if constexpr (op_type == OP_EXP)                               \
     {                                                                   \
-        FLOAT_FUSED_EXP_TILE_C(O_wb, C_ob) ;                            \
+        FLOAT_INPLACE_EXP_TILE_C ;                            \
     }                                                      
 
 //****************************************************************************
 #define FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_END(step, op_type, op_class, b_cur, c_cur, W_elements, C_ob) \
     if constexpr (op_type == OP_RELU)                                   \
     {                                                                   \
-        FLOAT_FUSED_RELU_END_C(c_cur, W_elements, C_ob);                \
+        FLOAT_INPLACE_RELU_END_C(c_cur, W_elements, C_ob);                \
     }                                                                   \
     else if constexpr (op_type == OP_LEAKY_RELU)                        \
     {                                                                   \
@@ -207,16 +207,16 @@ namespace float_detail
     else if constexpr (op_type == OP_EWISE_ADD_SCALAR)              \
     {                                                                   \
         float scalar = b_cur[0];                                        \
-        FLOAT_EWISE_ADD_SCALAR_END_C(c_cur, scalar, W_elements, C_ob);       \
+        FLOAT_INPLACE_ADD_SCALAR_END_C(c_cur, scalar, W_elements, C_ob);       \
     }                                                                  \
     else if constexpr (op_type == OP_MUL)                               \
     {                                                                   \
         float drop_out_rate = b_cur[0];                                 \
-        FLOAT_DIV_END_C(c_cur, drop_out_rate, W_elements, C_ob);        \
+        FLOAT_INPLACE_MUL_SCALAR_END_C(c_cur, drop_out_rate, W_elements, C_ob);        \
     }                                                                   \
     else if constexpr (op_type == OP_EXP)                               \
     {                                                                   \
-        FLOAT_FUSED_EXP_END_C(c_cur, W_elements, C_ob) ;                \
+        FLOAT_INPLACE_EXP_END_C(c_cur, W_elements, C_ob) ;                \
     }                                                                   
 
 //****************************************************************************

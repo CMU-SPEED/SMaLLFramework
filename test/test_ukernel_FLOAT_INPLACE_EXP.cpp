@@ -46,12 +46,12 @@ void test_correctness_range_reduced_exp(void)
 
 
 
-    FLOAT_DEF_TILE_C(FLOAT_W_ob, FLOAT_C_ob);
-    FLOAT_LOAD_TILE_C(input_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_DEF_TILE_C;
+    FLOAT_LOAD_TILE_C(input_buf.data());
     
     FLOAT_EXP_RR_TILE_C(input_buf.data());
 
-    FLOAT_STORE_TILE_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_STORE_TILE_C(output_buf.data());
     
     float previous_output = 0.0f;
     for (size_t ix = 0; ix < num_samples; ++ix)

@@ -79,14 +79,14 @@ void test_correctness_ewise_kernel(void)
     constexpr dim_t _stride = 1U;
     constexpr dim_t step = FLOAT_C_ob * _stride;
 
-    FLOAT_DEF_TILE_C(FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_DEF_TILE_C;
 
     // FLOAT_ZERO_TILE_C(FLOAT_W_ob, FLOAT_C_ob);
-    FLOAT_LOAD_TILE_C(c_cur, FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_LOAD_TILE_C(c_cur);
 
-    FLOAT_ABSTRACT_OP(step, op_type, 0, a_cur, b_cur, c_cur, nullptr, FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_ABSTRACT_OP(step, op_type, 0, a_cur, b_cur, c_cur, nullptr);
     // Note: b_cur is nullptr for ewise operations that do not require a second input
-    FLOAT_STORE_TILE_C(c_cur, FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_STORE_TILE_C(c_cur);
 
     for (dim_t ii = 0; ii < FLOAT_W_ob; ++ii)
     {
@@ -132,11 +132,11 @@ void test_correctness_fused_slope_relu(void)
     constexpr dim_t _stride = 1U;
     constexpr dim_t step = FLOAT_C_ob * _stride;
 
-    FLOAT_DEF_TILE_C(FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_DEF_TILE_C;
 
-    FLOAT_LOAD_TILE_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
-    FLOAT_FUSED_SLOPE_RELU_TILE_C(step, a_cur, c_cur, FLOAT_W_ob, FLOAT_C_ob);
-    FLOAT_STORE_TILE_C(output_buf.data(), FLOAT_W_ob, FLOAT_C_ob);
+    FLOAT_LOAD_TILE_C(output_buf.data());
+    FLOAT_FUSED_SLOPE_RELU_TILE_C(step, a_cur, c_cur);
+    FLOAT_STORE_TILE_C(output_buf.data());
 
     for (dim_t ii = 0; ii < FLOAT_W_ob; ++ii)
     {

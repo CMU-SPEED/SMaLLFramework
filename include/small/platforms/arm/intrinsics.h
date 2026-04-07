@@ -1008,25 +1008,25 @@ else\
     c_5_3 = vaddq_f32(c_5_3, a_3);
 
 #if FLOAT_SIMD_EPILOGUE == 1
-#define FLOAT_ACCUM_END_C_upsample(I, stride, _C_ib, _W_ob, C_ob)      \
+#define FLOAT_ACCUM_END_C_upsample(I, stride, _W_ob, C_ob)      \
     for (uint32_t kk = 0; kk < _W_ob; kk++)                           \
     {                                                                 \
         for (uint32_t jj = 0; jj < C_ob; jj++)                        \
         {                                                             \
-            c_tile[kk * C_ob + jj] += I[(kk / stride) * (_C_ib) + jj]; \
+            c_tile[kk * C_ob + jj] += I[(kk / stride) * (C_ob) + jj]; \
         }                                                             \
     }
 
 #else
 
-#define FLOAT_ACCUM_END_C_upsample(I, stride, _C_ib, _W_ob, C_ob)                                     \
+#define FLOAT_ACCUM_END_C_upsample(I, stride, _W_ob, C_ob)                                     \
     c_tile_t av;                                                                                      \
     for (uint32_t kk = 0; kk < _W_ob; kk++)                                                           \
     {                                                                                                 \
         for (uint32_t jj = 0; jj < C_ob / FLOAT_SIMD; jj++)                                           \
         {                                                                                             \
             av =                                                                                      \
-                vld1q_f32(I + (kk / stride) * (_C_ib) + jj * FLOAT_SIMD);                             \
+                vld1q_f32(I + (kk / stride) * (C_ob) + jj * FLOAT_SIMD);                             \
             c_tile[kk * (C_ob / FLOAT_SIMD) + jj] = vaddq_f32(c_tile[kk * (C_ob / FLOAT_SIMD) + jj], av); \
         }                                                                                             \
     }
