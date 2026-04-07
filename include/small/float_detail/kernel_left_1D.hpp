@@ -60,7 +60,7 @@ void inline kernel_left_1D(
     //const dim_t H_UPPER = ((!H_ub) * (F_h)) + (H_ub);
 
     size_t _O_wb_required = (_O_wb > l_pad_el)? (_O_wb): (l_pad_el);
-    FLOAT_DEF_END_C(_O_wb_required, _C_ob);
+    FLOAT_DEF_END_C(_O_wb_required , _C_ob);
 
     // left padding elements
     AccumT *O_ptr = O; // ScalarT -> AccumT

@@ -111,7 +111,7 @@ void inline kernel_right_1D(
         if constexpr (op_type == OP_AVERAGE_POOL)
         {
             float norm = 1.0 / (1.0 * F_w);
-            FLOAT_DIV_END_C(c_tile, norm, O_w_left, _C_ob);
+            FLOAT_INPLACE_MUL_SCALAR_END_C(c_tile, norm, O_w_left, _C_ob);
         }
         if constexpr (op_type == OP_ADD && op_class == 3 && _C_ob == 1)
         {
@@ -180,7 +180,7 @@ void inline kernel_right_1D(
     if (op_type == OP_AVERAGE_POOL)
     {
         float norm = 1.0 / (1.0 * F_w);
-        FLOAT_DIV_END_C(c_tile, norm, r_pad_el, _C_ob);
+        FLOAT_INPLACE_MUL_SCALAR_END_C(c_tile, norm, r_pad_el, _C_ob);
     }
 
     dim_t step_after = _stride_after * _C_ib;

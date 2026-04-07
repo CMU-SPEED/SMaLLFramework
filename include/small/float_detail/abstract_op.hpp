@@ -126,7 +126,7 @@ namespace float_detail
     else if constexpr (op_type == OP_MUL)                                     \
     {                                                                         \
         float drop_out_rate = b_cur[0];                                       \
-        FLOAT_DIV_END_C(c_cur, drop_out_rate, W_elements, C_ob);              \
+        FLOAT_INPLACE_MUL_SCALAR_END_C(c_cur, drop_out_rate, W_elements, C_ob);              \
     }                                                                         \
     else if constexpr (op_type == OP_EXP)                                     \
     {                                                                         \
