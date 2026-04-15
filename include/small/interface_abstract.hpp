@@ -1830,43 +1830,16 @@ void SoftMax(int channels,
 
         if (num_block_channels > 0)
         {
-            // float_detail::abstract_layer<
-            //     FloatBuffer, 1, 1, FLOAT_C_ob, FLOAT_W_ob, 1, FLOAT_C_ob,
-            //     OP_ADD, 3, 1>(
-            //         1, // Output Channel Grouping
-            //         1, // Output Channels per group
-            //         num_block_channels,
-            //         height, width,
-            //         height, width,
-            //         0, 0, 0, 0,
-            //         &output_buf, (FloatBuffer *)nullptr, &softmax_norm_buf);
-        }
-
-        if (rem_channels > 0)
-        {
-            // compute input buffer offset
-            size_t offset = num_block_channels*height*width;
-            size_t end_idx = logical_channels*height*width;
-
-            // std::cerr << "SOFTMAX: rem range: [" << offset << ".."
-            //           << end_idx << ")" << std::endl;
-
-            for (size_t ix = offset; ix < end_idx; ++ix)
-            {
-                softmax_norm_buf[0] += output_buf[ix];
-            }
-            //FloatBuffer rem_buf(1);
-            //float_detail::abstract_layer<
-            //    FloatBuffer, 1, 1, rem_channels, FLOAT_W_ob, 1, FLOAT_C_ob,
-            //    OP_ADD, 3, 1>(
-            //        1, // Output Channel Grouping
-            //        1, // Output Channels per group
-            //        rem_channels,
-            //        height, width,
-            //        height, width,
-            //        0, 0, 0, 0,
-            //        &output_buf[offset],  <---- NOT CORRECT
-            //        (FloatBuffer *)nullptr, &rem_buf);
+            float_detail::abstract_layer<
+                FloatBuffer, 1, 1, FLOAT_C_ob, FLOAT_W_ob, 1, FLOAT_C_ob,
+                OP_ADD, 3, 1>(
+                    1, // Output Channel Grouping
+                    1, // Output Channels per group
+                    num_block_channels,
+                    height, width,
+                    height, width,
+                    0, 0, 0, 0,
+                    &output_buf, (FloatBuffer *)nullptr, &softmax_norm_buf);
         }
 
         // std::cerr << "sum " << softmax_norm_buf[0] << std::endl;
@@ -1874,17 +1847,17 @@ void SoftMax(int channels,
         // take the inverse
         softmax_norm_buf.data()[0] = 1.0/softmax_norm_buf[0];
 
-        // // element-wise scaling
-        // float_detail::abstract_layer<
-        //     FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1,
-        //     OP_MUL, 0, 1>(
-        //         channels,       // Output Channel Grouping
-        //         1,              // Output Channels per group
-        //         1,
-        //         height, width,
-        //         1, 1,
-        //         0, 0, 0, 0,
-        //         &output_buf, &softmax_norm_buf, &output_buf);
+        // element-wise scaling
+        float_detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1,
+            OP_MUL, 0, 1>(
+                channels,       // Output Channel Grouping
+                1,              // Output Channels per group
+                1,
+                height, width,
+                1, 1,
+                0, 0, 0, 0,
+                &output_buf, &softmax_norm_buf, &output_buf);
     }
     else
     {

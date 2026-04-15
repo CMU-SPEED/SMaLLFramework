@@ -114,15 +114,15 @@ void test_softmax_odd_channels(void)
     // for all platforms
     if ((channels % small::FloatBuffer::C_ob) != 0)
     {
-        channels = channels + small::FloatBuffer::C_ob
-            -  (logical_channels % small::FloatBuffer::C_ob);
+        channels = channels + (small::FloatBuffer::C_ob
+            -  (logical_channels % small::FloatBuffer::C_ob));
     }
 
     small::Tensor<small::FloatBuffer>  in_tensor({1, channels, H, W});
     small::Tensor<small::FloatBuffer> out_tensor({1, channels, H, W});
-    small::init_zeros(in_tensor.buffer(), in_tensor.size());
+    small::init_ones(in_tensor.buffer(), in_tensor.size());
     in_tensor.buffer()[0] = 1.0f;
-    in_tensor.buffer()[channels - 1] = 10.0f;
+    in_tensor.buffer()[logical_channels - 1] = -100.0f;
 
     float sum{0.f};
     for (size_t ix = 0; ix < logical_channels; ++ix)
@@ -140,8 +140,8 @@ void test_softmax_odd_channels(void)
         //           << (std::exp(in_tensor.buffer()[ix])*sum) << std::endl;
         TEST_CHECK(out_tensor.buffer()[ix] ==
                    (std::exp(in_tensor.buffer()[ix])*sum));
-        // std::cerr << ix << " in|out : " << in_tensor.buffer()[ix]
-        //           << "|" << out_tensor.buffer()[ix] << std::endl;
+        std::cerr << ix << " in|out : " << in_tensor.buffer()[ix]
+                  << "|" << out_tensor.buffer()[ix] << " correct "<< (std::exp(in_tensor.buffer()[ix])*sum)<< std::endl;
     }
 #endif
 }

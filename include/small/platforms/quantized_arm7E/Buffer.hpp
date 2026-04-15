@@ -30,7 +30,9 @@ namespace quint8_detail
 //  #define MAX_BUFF_SIZE 50000000
 //  #define MAX_BUFF_SIZE 10000000
 //  #define MAX_BUFF_SIZE 200000
+#ifndef MAX_BUFF_SIZE
     #define MAX_BUFF_SIZE 208200
+#endif
 
     uint8_t  memory_buffer[MAX_BUFF_SIZE];
     uint8_t *current_free_ptr = memory_buffer;
