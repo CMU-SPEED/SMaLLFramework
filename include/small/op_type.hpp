@@ -27,7 +27,7 @@ enum OpType
     OP_MUL,
     OP_UPSAMPLE,      // 'u'
     OP_EXP,
-    OP_EWISE_ADD_SCALAR,
+    OP_INPLACE_ADD_SCALAR,
     OP_SOFTSIGN,
     OP_ABS,
     OP_DIV, // c_i = a_i / c_i

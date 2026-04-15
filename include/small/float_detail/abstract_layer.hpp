@@ -80,7 +80,7 @@ void abstract_layer( /// @todo add B (batch size) param?
     ScalarT const *I_buf = I->data(); //__restrict__ ?
 
     ScalarT const *F_buf = nullptr;
-    if constexpr (op_type == OP_CONV || op_type == OP_LEAKY_RELU || op_type == OP_MUL || op_type == OP_EWISE_ADD_SCALAR || op_type == OP_CELU || op_type == OP_FUSED_CELU) // if (F != nullptr)
+    if constexpr (op_type == OP_CONV || op_type == OP_LEAKY_RELU || op_type == OP_MUL || op_type == OP_INPLACE_ADD_SCALAR || op_type == OP_CELU || op_type == OP_FUSED_CELU) // if (F != nullptr)
     {
         F_buf = F->data();
     }
@@ -300,7 +300,7 @@ void abstract_layer( /// @todo add B (batch size) param?
             // if leaky relu, the weight pointer does not change with the group id
 
             ScalarT const *F_group;
-            if constexpr ((op_type == OP_LEAKY_RELU) || (op_type == OP_MUL) || (op_type == OP_EWISE_ADD_SCALAR) || op_type == OP_CELU || op_type == OP_FUSED_CELU)
+            if constexpr ((op_type == OP_LEAKY_RELU) || (op_type == OP_MUL) || (op_type == OP_INPLACE_ADD_SCALAR) || op_type == OP_CELU || op_type == OP_FUSED_CELU)
             {
                 F_group = F_buf;
             }
@@ -332,7 +332,7 @@ void abstract_layer( /// @todo add B (batch size) param?
                 // Loop over input channel reduction
                 for (index_t i = 0; i < (F_c / _F_cb); i++)
                 {
-                    bool first = (rewrite_output || op_type == OP_EWISE_ADD_SCALAR) && (i == 0);
+                    bool first = (rewrite_output || op_type == OP_INPLACE_ADD_SCALAR) && (i == 0);
 
                     ScalarT const *I_channel_block_input =
                         I_channel_block_output + i * (I_h * I_w * _F_cb * _G_b);

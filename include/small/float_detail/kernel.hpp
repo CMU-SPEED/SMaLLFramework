@@ -66,7 +66,7 @@ void inline kernel(
     if (first)
     {
         FLOAT_ZERO_TILE_C;
-        if constexpr(op_type == OP_MAX_POOL || op_type == OP_MUL || op_type == OP_EWISE_ADD_SCALAR)
+        if constexpr(op_type == OP_MAX_POOL || op_type == OP_MUL || op_type == OP_INPLACE_ADD_SCALAR)
         {
             /// @note using platform C_ob
             FLOAT_LOAD_TILE_C_strided(I, step);
@@ -78,7 +78,7 @@ void inline kernel(
     }
     else
     {
-        if constexpr(op_type == OP_EWISE_ADD_SCALAR) 
+        if constexpr(op_type == OP_INPLACE_ADD_SCALAR) 
         {
             FLOAT_LOAD_TILE_C_strided(I, step);
         }

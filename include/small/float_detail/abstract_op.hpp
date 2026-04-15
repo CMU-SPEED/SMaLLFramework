@@ -46,7 +46,7 @@ namespace float_detail
     {                                                                    \
         FLOAT_ACCUM_TILE_C(step, a_cur);                     \
     }                                                                    \
-    else if constexpr (op_type == OP_EWISE_ADD_SCALAR)                   \
+    else if constexpr (op_type == OP_INPLACE_ADD_SCALAR)                   \
     {                                                                    \
         float scalar = b_cur[0];                                        \
         FLOAT_INPLACE_ADD_SCALAR_TILE_C(scalar);              \
@@ -118,7 +118,7 @@ namespace float_detail
     {                                                                         \
         FLOAT_ACCUM_END_C(step, a_cur, c_cur, W_elements, C_ob);              \
     }                                                                           \
-    else if constexpr (op_type == OP_EWISE_ADD_SCALAR)                      \
+    else if constexpr (op_type == OP_INPLACE_ADD_SCALAR)                      \
     {                                                                           \
         float scalar = b_cur[0];                                                \
         FLOAT_INPLACE_ADD_SCALAR_END_C(c_cur, scalar, W_elements, C_ob);               \
@@ -175,7 +175,7 @@ namespace float_detail
     {                                                                   \
         FLOAT_ACCUM_TILE_C(step, b_cur);                    \
     }                                                                   \
-    else if constexpr (op_type == OP_EWISE_ADD_SCALAR)              \
+    else if constexpr (op_type == OP_INPLACE_ADD_SCALAR)              \
     {                                                                   \
         float scalar = b_cur[0];                                        \
         FLOAT_INPLACE_ADD_SCALAR_TILE_C(scalar);                    \
@@ -204,7 +204,7 @@ namespace float_detail
     {                                                                   \
         FLOAT_ACCUM_END_C(step, b_cur, c_cur, W_elements, C_ob);        \
     }                                                                   \
-    else if constexpr (op_type == OP_EWISE_ADD_SCALAR)              \
+    else if constexpr (op_type == OP_INPLACE_ADD_SCALAR)              \
     {                                                                   \
         float scalar = b_cur[0];                                        \
         FLOAT_INPLACE_ADD_SCALAR_END_C(c_cur, scalar, W_elements, C_ob);       \

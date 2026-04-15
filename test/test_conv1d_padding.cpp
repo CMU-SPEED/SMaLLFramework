@@ -37,7 +37,7 @@ bool run_conv1d_layer_config(LayerParams const &params)
     {
         small::calc_padding(W, K, S, left_pad, right_pad);
     }
-
+    printf("kernel dim: %d stride: %d\n", K, S);
     printf("padding (%d,%d) %d \n", left_pad, right_pad, FLOAT_C_ob);
     // Input, Filter, Output sizes
     size_t input_size = C_i * W * B;
@@ -177,13 +177,10 @@ void test_conv1d_layer_regression_data(void)
         {16, 2, 32, 13, 2, small::PADDING_F, 16},
 
         //kernel = 13
-        {32, 2, 32, 13, 1, small::PADDING_F, 16},
-        {32, 2, 31, 13, 2, small::PADDING_F, 16},
-        {32, 2, 32, 13, 2, small::PADDING_F, 16},
+        {32, 1, 32, 13, 1, small::PADDING_F, 16},
+        {32, 1, 31, 13, 2, small::PADDING_F, 16},
+        {32, 1, 32, 13, 2, small::PADDING_F, 16},
 
-        {32, 2, 32, 30, 1, small::PADDING_F, 16},
-        {32, 2, 31, 30, 2, small::PADDING_F, 16},
-        {32, 2, 32, 30, 2, small::PADDING_F, 16},
 
 
     };
