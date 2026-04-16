@@ -1649,27 +1649,181 @@ namespace small
     FLOAT_SOFTSIGN_SIMD_C(c_5_3, Iv, I, 5, 3);
 
 #if FLOAT_SIMD_EPILOGUE == 1
-#define FLOAT_ACCUM_END_C_upsample(I, stride, _C_ib, _W_ob, C_ob)      \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)                           \
-    {                                                                 \
-        for (uint32_t jj = 0; jj < C_ob; jj++)                        \
-        {                                                             \
-            c_tile[kk * C_ob + jj] += I[(kk / stride) * (_C_ib) + jj]; \
-        }                                                             \
+#define FLOAT_SOFTSIGN_END_C(step, I, c_cur, W_ob, C_ob)                \
+    c_tile_t *c_pixel = c_cur;                                          \
+    c_tile_t const *I_pixel = I;                                        \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                              \
+    {                                                                   \
+        c_tile_t *c_channel = c_pixel;                                  \
+        c_tile_t const *I_channel = I_pixel;                            \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                          \
+        {                                                               \
+            *(c_channel) = *(I_channel) / (1.0f + std::abs(*I_channel)); \
+            c_channel++;                                                \
+            I_channel++;                                                \
+        }                                                               \
+        I_pixel += step;                                                \
+        c_pixel += C_ob;                                                \
     }
 
 #else
 
-#define FLOAT_ACCUM_END_C_upsample(I, stride, _C_ib, _W_ob, C_ob)                                     \
-    c_tile_t av;                                                                                      \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)                                                           \
-    {                                                                                                 \
-        for (uint32_t jj = 0; jj < C_ob / FLOAT_SIMD; jj++)                                           \
-        {                                                                                             \
-            av =                                                                                      \
-                vld1q_f32(I + (kk / stride) * (_C_ib) + jj * FLOAT_SIMD);                             \
-            c_tile[kk * (C_ob / FLOAT_SIMD) + jj] = vaddq_f32(c_tile[kk * (C_ob / FLOAT_SIMD) + jj], av); \
-        }                                                                                             \
+#define FLOAT_SOFTSIGN_END_C(step, I, c_cur, W_ob, C_ob)                \
+    float32x4_t Iv;                                                     \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                              \
+    {                                                                   \
+        for (uint32_t jj = 0; jj < C_ob / FLOAT_SIMD; jj++)             \
+        {                                                               \
+            float32x4_t cv = c_cur[kk * (C_ob / FLOAT_SIMD) + jj];      \
+            FLOAT_SOFTSIGN_SIMD_C(cv, Iv, I, kk, jj);                   \
+            c_cur[kk * (C_ob / FLOAT_SIMD) + jj] = cv;                  \
+        }                                                               \
+    }
+#endif
+
+#define FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_x_x, Iv)  \
+    Iv = c_x_x;                                   \
+    c_x_x = vabsq_f32(Iv);                        \
+    c_x_x = vaddq_f32(c_x_x, vdupq_n_f32(1.0f));  \
+    c_x_x = vdivq_f32(Iv, c_x_x);
+
+#define FLOAT_INPLACE_SOFTSIGN_TILE_C               \
+    float32x4_t Iv;                                 \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_0_0, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_0_1, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_0_2, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_0_3, Iv);       \
+    /**/                                            \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_1_0, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_1_1, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_1_2, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_1_3, Iv);       \
+    /**/                                            \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_2_0, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_2_1, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_2_2, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_2_3, Iv);       \
+    /**/                                            \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_3_0, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_3_1, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_3_2, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_3_3, Iv);       \
+    /**/                                            \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_4_0, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_4_1, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_4_2, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_4_3, Iv);       \
+    /**/                                            \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_5_0, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_5_1, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_5_2, Iv);       \
+    FLOAT_INPLACE_SOFTSIGN_SIMD_C(c_5_3, Iv);
+
+#if FLOAT_SIMD_EPILOGUE == 1
+#define FLOAT_SOFTSIGN_END_C(c_cur, W_ob, C_ob)      \
+    c_tile_t *c_pixel = c_cur;                       \
+    for (uint32_t kk = 0; kk < W_ob; kk++)           \
+    {                                                \
+        c_tile_t *c_channel = c_pixel;               \
+        for (uint32_t jj = 0; jj < C_ob; jj++)       \
+        {                                            \
+            *(c_channel) = *(c_channel) / (1.0f + std::abs(*c_channel)); \
+            c_channel++;                             \
+        }                                            \
+        c_pixel += C_ob;                             \
+    }
+
+#else
+
+#define FLOAT_INPLACE_SOFTSIGN_END_C(c_cur, W_ob, C_ob)               \
+    float32x4_t Iv;                                                   \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                            \
+    {                                                                 \
+        for (uint32_t jj = 0; jj < C_ob / FLOAT_SIMD; jj++)           \
+        {                                                             \
+            float32x4_t cv = c_cur[kk * (C_ob / FLOAT_SIMD) + jj];    \
+            FLOAT_INPLACE_SOFTSIGN_SIMD_C(cv, Iv, a, kk, jj);         \
+            c_cur[kk * (C_ob / FLOAT_SIMD) + jj] = cv;                \
+        }                                                             \
+    }
+#endif
+
+
+//****************************************************************************
+// Ewise abs
+//****************************************************************************
+
+#define FLOAT_ABS_TILE_C(step, I)                       \
+    float32x4_t Iv;                                     \
+    Iv = vld1q_f32(I + 0 * step + 0 * FLOAT_SIMD);      \
+    c_0_0 = vabsq_f32(Iv);                              \
+    Iv = vld1q_f32(I + 0 * step + 1 * FLOAT_SIMD);      \
+    c_0_1 = vabsq_f32(Iv);                              \
+    Iv = vld1q_f32(I + 0 * step + 2 * FLOAT_SIMD);      \
+    c_0_2 = vabsq_f32(Iv);                              \
+    Iv = vld1q_f32(I + 0 * step + 3 * FLOAT_SIMD);      \
+    c_0_3 = vabsq_f32(Iv);                              \
+    Iv = vld1q_f32(I + 1 * step + 0 * FLOAT_SIMD);      \
+    c_1_0 = vabsq_f32(Iv);                              \
+    Iv = vld1q_f32(I + 1 * step + 1 * FLOAT_SIMD);      \
+    c_1_1 = vabsq_f32(Iv);                              \
+    Iv = vld1q_f32(I + 1 * step + 2 * FLOAT_SIMD);      \
+    c_1_2 = vabsq_f32(Iv);                              \
+    Iv = vld1q_f32(I + 1 * step + 3 * FLOAT_SIMD);      \
+    c_1_3 = vabsq_f32(Iv);                              \
+    Iv = vld1q_f32(I + 2 * step + 0 * FLOAT_SIMD);      \
+    c_2_0 = vabsq_f32(Iv);                              \
+    Iv = vld1q_f32(I + 2 * step + 1 * FLOAT_SIMD);      \
+    c_2_1 = vabsq_f32(Iv);                              \
+    Iv = vld1q_f32(I + 2 * step + 2 * FLOAT_SIMD);      \
+    c_2_2 = vabsq_f32(Iv);                              \
+    Iv = vld1q_f32(I + 2 * step + 3 * FLOAT_SIMD);      \
+    c_2_3 = vabsq_f32(Iv);                              \
+    Iv = vld1q_f32(I + 3 * step + 0 * FLOAT_SIMD);      \
+    c_3_0 = vabsq_f32(Iv);                              \
+    Iv = vld1q_f32(I + 3 * step + 1 * FLOAT_SIMD);      \
+    c_3_1 = vabsq_f32(Iv);                              \
+    Iv = vld1q_f32(I + 3 * step + 2 * FLOAT_SIMD);      \
+    c_3_2 = vabsq_f32(Iv);                              \
+    Iv = vld1q_f32(I + 3 * step + 3 * FLOAT_SIMD);      \
+    c_3_3 = vabsq_f32(Iv);                              \
+    Iv = vld1q_f32(I + 4 * step + 0 * FLOAT_SIMD);      \
+    c_4_0 = vabsq_f32(Iv);                              \
+    Iv = vld1q_f32(I + 4 * step + 1 * FLOAT_SIMD);      \
+    c_4_1 = vabsq_f32(Iv);                              \
+    Iv = vld1q_f32(I + 4 * step + 2 * FLOAT_SIMD);      \
+    c_4_2 = vabsq_f32(Iv);                              \
+    Iv = vld1q_f32(I + 4 * step + 3 * FLOAT_SIMD);      \
+    c_4_3 = vabsq_f32(Iv);                              \
+    Iv = vld1q_f32(I + 5 * step + 0 * FLOAT_SIMD);      \
+    c_5_0 = vabsq_f32(Iv);                              \
+    Iv = vld1q_f32(I + 5 * step + 1 * FLOAT_SIMD);      \
+    c_5_1 = vabsq_f32(Iv);                              \
+    Iv = vld1q_f32(I + 5 * step + 2 * FLOAT_SIMD);      \
+    c_5_2 = vabsq_f32(Iv);                              \
+    Iv = vld1q_f32(I + 5 * step + 3 * FLOAT_SIMD);      \
+    c_5_3 = vabsq_f32(Iv);
+
+#if FLOAT_SIMD_EPILOGUE == 1
+#define FLOAT_ABS_END_C(step, I, c_cur, W_ob, C_ob)     \
+    for (uint32_t kk = 0; kk < W_ob; kk++)              \
+    {                                                   \
+        for (uint32_t jj = 0; jj < C_ob; jj++)          \
+        {                                               \
+            c_cur[kk * C_ob + jj] = std::abs(I[kk * step + jj]); \
+        }                                               \
+    }
+
+#else
+
+#define FLOAT_ABS_END_C(step, I, c_cur, W_ob, C_ob)                     \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                              \
+    {                                                                   \
+        for (uint32_t jj = 0; jj < FLOAT_C_ob / FLOAT_SIMD; jj++)       \
+        {                                                               \
+            float32x4_t Iv = vld1q_f32(I + kk * step + jj * FLOAT_SIMD); \
+            c_cur[(kk) * (FLOAT_C_ob / FLOAT_SIMD) + jj] = vabsq_f32(Iv);\
+        }                                                               \
     }
 #endif
 
