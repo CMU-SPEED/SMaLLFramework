@@ -65,9 +65,9 @@
 // _C_ib = _G_b * _F_cb; <-- 1 * FLOAT_C_ib
 // step = _stride * _C_ib; <-- 1 * FLOAT_C_ib
 //
-// FLOAT_DEF_TILE_C(_O_wb, _C_ob); <-- 
-// first: FLOAT_ZERO_TILE_C(_O_wb, _C_ob);
-// FLOAT_LOAD_TILE_C(O, _O_wb, _C_ob);
+// FLOAT_DEF_TILE_C; <-- (FLOAT_W_ob, FLOAT_C_ob)
+// first: FLOAT_ZERO_TILE_C;
+// FLOAT_LOAD_TILE_C(O);
 //
 // *b_cur <-- *F + ??
 // *a_cur <-- *I + ??

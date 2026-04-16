@@ -198,7 +198,7 @@ namespace float_detail
     }                                                                   \
     else if constexpr (op_type == OP_LEAKY_RELU)                        \
     {                                                                   \
-        FLOAT_FUSED_COND_SCALE_END_C(b_cur, c_cur, W_elements, C_ob);   \
+        FLOAT_INPLACE_COND_SCALE_END_C(b_cur, c_cur, W_elements, C_ob); \
     }                                                                   \
     else if constexpr (op_type == OP_ADD)                               \
     {                                                                   \
@@ -227,7 +227,7 @@ namespace float_detail
         { /*@todo: we need the output column width as a parameter*/         \
             for (index_t kk_s = 0; kk_s < out_step / _C_ib; kk_s++)         \
             { /*@todo: add a strided store, move this to the kernel stage*/ \
-                FLOAT_STORE_END_C_strided();                                \
+                FLOAT_STORE_END_C_strided;                                  \
             }                                                               \
         }                                                                   \
     }

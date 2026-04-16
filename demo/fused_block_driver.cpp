@@ -93,19 +93,19 @@ inline bool almost_equal(T v1, T v2, float rtol = 5e-03, float atol = 1e-05)
 }
 
 #if defined(QUANTIZED)
-#define CORRECTNESS_CHECK                                                                                         \
+#define CORRECTNESS_CHECK                                               \
     (passing, calculated_output_dc, actual_output_dc) for (size_t ix = 0; ix < calculated_output_dc.size(); ++ix) \
-    {                                                                                                             \
-        if (actual_output_dc[ix] != calculated_output_dc[ix])                                                     \
-        {                                                                                                         \
-            passing = false;                                                                                      \
-            std::cout << "FAIL: Conv2D_out(" << ix << ")-->"                                                      \
-                      << std::setw(12) << std::setprecision(10)                                                   \
-                      << actual_output_dc[ix] << "(computed) != "                                                 \
-                      << std::setw(12) << std::setprecision(10)                                                   \
-                      << calculated_output_dc[ix]                                                                 \
-                      << std::endl;                                                                               \
-        }                                                                                                         \
+    {                                                                   \
+        if (actual_output_dc[ix] != calculated_output_dc[ix])           \
+        {                                                               \
+            passing = false;                                            \
+            std::cout << "FAIL: Conv2D_out(" << ix << ")-->"            \
+                      << std::setw(12) << std::setprecision(10)         \
+                      << actual_output_dc[ix] << "(computed) != "       \
+                      << std::setw(12) << std::setprecision(10)         \
+                      << calculated_output_dc[ix]                       \
+                      << std::endl;                                     \
+        }                                                               \
     }
 #else
 #define CORRECTNESS_CHECK(passing, calculated_output_dc, actual_output_dc) \
@@ -164,8 +164,6 @@ inline bool almost_equal(T v1, T v2, float rtol = 5e-03, float atol = 1e-05)
 #define C_ob FLOAT_C_ob
 #define W_ob FLOAT_W_ob
 #define C_ib FLOAT_C_ib
-
-
 
 
 // SMaLL layer block
@@ -899,6 +897,7 @@ int main(int argc, char **argv)
 
     // Full Fused block
     memset(out_intermediate_unfused_dc.data(), 0.0, out_intermediate_unfused_buffer_size * sizeof(float));
+    memset(output_dc.data(), 0.0, out_buffer_size * sizeof(float));
     // printf("C_i %d, C_o_conv %d, C_o %d, kernel_size_conv %d, kernel_size %d, stride_conv %d, stride %d, t_pad_conv %d, t_pad %d, b_pad_conv %d, b_pad %d, l_pad_conv %d, l_pad %d, r_pad_conv %d, r_pad %d \n", C_i, C_o_conv, C_o_conv, conv_kernel_size, kernel_size, conv_stride, stride, t_pad_conv, t_pad, b_pad_conv, b_pad, l_pad_conv, l_pad, r_pad_conv, r_pad);
     fused_small_layer_block<COMPUTE_BIAS>(std::array<int32_t, 2>({input_height, input_width}), C_i, // Input dimensions
                                           conv_kernel_size,

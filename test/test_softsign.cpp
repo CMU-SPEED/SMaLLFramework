@@ -51,6 +51,10 @@ void test_correctness_FLOAT_SOFTSIGN_TILE(void)
     FLOAT_DEF_TILE_C;
 
     FLOAT_ZERO_TILE_C;
+<<<<<<< HEAD
+=======
+    // FLOAT_LOAD_TILE_C(output_buf.data());
+>>>>>>> dev
 
     FLOAT_SOFTSIGN_TILE_C(step, a_cur);
 
@@ -66,7 +70,7 @@ void test_correctness_FLOAT_SOFTSIGN_TILE(void)
             TEST_CHECK(output_buf[ix] == input_buf[ix]/(1.0f + std::abs(input_buf[ix])));
         }
     }
-#endif 
+#endif
 }
 
 void test_correctness_individual_FLOAT_SOFTSIGN_TILE(void)
@@ -96,6 +100,7 @@ void test_correctness_individual_FLOAT_SOFTSIGN_TILE(void)
     FLOAT_ZERO_TILE_C;
     // FLOAT_LOAD_TILE_C(output_buf.data());
     {
+<<<<<<< HEAD
     FLOAT_ABS_TILE_C(step, a_cur);
     }
     {
@@ -103,6 +108,15 @@ void test_correctness_individual_FLOAT_SOFTSIGN_TILE(void)
     }
     {
     FLOAT_INPLACE_DIV_TILE_C(step, a_cur);
+=======
+        FLOAT_ABS_TILE_C(step, a_cur);
+    }
+    {
+        FLOAT_INPLACE_ADD_SCALAR_TILE_C(scalar);
+    }
+    {
+        FLOAT_INPLACE_DIV_TILE_C(step, a_cur);
+>>>>>>> dev
     }
     FLOAT_STORE_TILE_C(output_buf.data());
     //==================================================
@@ -116,10 +130,10 @@ void test_correctness_individual_FLOAT_SOFTSIGN_TILE(void)
             TEST_CHECK(output_buf[ix] == input_buf[ix]/(1.0f + std::abs(input_buf[ix])));
         }
     }
-#endif 
+#endif
 }
 
-void test_correctness_FLOAT_FUSED_SOFTSIGN_TILE(void)
+void test_correctness_FLOAT_INPLACE_SOFTSIGN_TILE(void)
 {
 #if defined(SMALL_HAS_FLOAT_SUPPORT)
     using BufferT = FloatBuffer;
@@ -154,11 +168,11 @@ void test_correctness_FLOAT_FUSED_SOFTSIGN_TILE(void)
             TEST_CHECK(output_buf[ix] == input_buf[ix]/(1.0f + std::abs(input_buf[ix])));
         }
     }
-#endif 
+#endif
 }
 
 
-#if 0 // only support for zen2 
+#if 0 // only support for zen2
 #include <immintrin.h>
 
 #define REPEAT_10_BASE(macro, base) \
@@ -197,7 +211,7 @@ void test_correctness_FLOAT_FUSED_SOFTSIGN_TILE(void)
     REPEAT_1000_BASE(macro, 6) REPEAT_1000_BASE(macro, 7) REPEAT_1000_BASE(macro, 8) \
     REPEAT_1000_BASE(macro, 9)
 
-    
+
 #define SOFTSIGN_CALL(iteration) \
     asm volatile("iteration" #iteration ":" ::: "memory");\
     FLOAT_SOFTSIGN_TILE_C(step, a_cur); \
@@ -212,8 +226,8 @@ void test_correctness_FLOAT_FUSED_SOFTSIGN_TILE(void)
 #define INDIVIDUAL_SOFTSIGN_CALL(iteration) \
     asm volatile("iteration" #iteration ":" ::: "memory");\
     {FLOAT_ABS_TILE_C(step, a_cur);} \
-    {const float scalar = 1.0f; FLOAT_EWISE_ADD_SCALAR_TILE_C(scalar);} \
-    {FLOAT_FUSED_DIV_TILE_C(step, a_cur);} \
+    {const float scalar = 1.0f; FLOAT_INPLACE_ADD_SCALAR_TILE_C(scalar);} \
+    {FLOAT_INPLACE_DIV_TILE_C(step, a_cur);} \
     result_accumulator = _mm256_add_ps(result_accumulator,  \
             _mm256_add_ps(_mm256_add_ps(c0, c1), _mm256_add_ps(c2, c3))); \
     result_accumulator = _mm256_add_ps(result_accumulator,  \
@@ -237,7 +251,7 @@ void test_performance_FLOAT_SOFTSIGN_TILE(void)
     size_t const OUTPUT_SIZE = FLOAT_W_ob * FLOAT_C_ob;
     BufferT output_buf(OUTPUT_SIZE);
     for (size_t ix = 0; ix < OUTPUT_SIZE; ++ix) output_buf[ix] = 0.0f;
-    
+
     std::cout << std::endl;
 
     ScalarT *a_cur = input_buf.data();
@@ -246,10 +260,15 @@ void test_performance_FLOAT_SOFTSIGN_TILE(void)
 
     //==================================================
     FLOAT_DEF_TILE_C;
+<<<<<<< HEAD
+
+    FLOAT_ZERO_TILE_C;
+=======
 
     FLOAT_ZERO_TILE_C;
 
-    
+>>>>>>> dev
+
     double tx(0.);
     double min_t = std::numeric_limits<double>::max();
     double max_t = 0.;
@@ -257,7 +276,7 @@ void test_performance_FLOAT_SOFTSIGN_TILE(void)
     __m256 result_accumulator = _mm256_setzero_ps();
     for (size_t iy = 0; iy < num_trails; ++iy)
     {
-        
+
         my_timer.start();
         asm volatile("look_here:" ::: "memory");
         // REPEAT_10000(SOFTSIGN_CALL);
@@ -268,7 +287,7 @@ void test_performance_FLOAT_SOFTSIGN_TILE(void)
         min_t = std::min(min_t, elapsed);
         max_t = std::max(max_t, elapsed);
     }
-    
+
     const float cpu_freq = 2.4; // 2.4 GHz, adjust as needed
     std::cout << "Min Ave time: " << min_t << " ns." << std::endl;
     std::cout << "Max Ave time: " << max_t << " ns." << std::endl;
@@ -282,7 +301,7 @@ void test_performance_FLOAT_SOFTSIGN_TILE(void)
 #endif
 }
 
-#endif 
+#endif
 
 
 template <typename BufferT>
@@ -488,7 +507,7 @@ void measure_softsign_performance(void)
 
     printf("\nsoftsign(%s) func.\n", type.c_str());
     printf("\tC_i\tH\tW\tk\ts\tnthd\truns\tt_min\tt_max\tt_avg\n");
-    
+
     for (LayerParams const &p : params)
     {
         size_t num_input_elts(p.C_i*p.H*p.W);
@@ -575,7 +594,7 @@ void measure_softsign_performance(void)
                 min_t, max_t, (tx/num_runs));
         }
     }
-    
+
 }
 
 }
@@ -586,8 +605,8 @@ TEST_LIST = {
      small::float_detail::test_correctness_FLOAT_SOFTSIGN_TILE},
     {"correctness individual FLOAT_SOFTSIGN_TILE",
      small::float_detail::test_correctness_individual_FLOAT_SOFTSIGN_TILE},
-    {"correctness FLOAT_FUSED_SOFTSIGN_TILE",
-     small::float_detail::test_correctness_FLOAT_FUSED_SOFTSIGN_TILE},
+    {"correctness FLOAT_INPLACE_SOFTSIGN_TILE",
+     small::float_detail::test_correctness_FLOAT_INPLACE_SOFTSIGN_TILE},
     // {"performance FLOAT_SOFTSIGN_TILE",
     //  small::float_detail::test_performance_FLOAT_SOFTSIGN_TILE},
     {"softsign single element",

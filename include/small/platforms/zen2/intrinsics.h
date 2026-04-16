@@ -17,28 +17,23 @@
 
 #include <immintrin.h>
 #include "avx_mathfun.h"
+
 // scalar versions of all the float microkernels for platform portability
 // Use the FLOAT_ prefix for all macros in this file.
 
 #define FLOAT_SIMD_EPILOGUE 1
-
 // #define FLOAT_SIMD_EPILOGUE 8
 
 namespace small
 {
-namespace float_detail
-{
-    /// @todo both pairs of typedefs should not be needed.
-    typedef small::FloatBuffer::value_type dtype;
-
-    // typedef small::FloatBuffer::value_type c_tile_t;
+    namespace float_detail
+    {
 #if FLOAT_SIMD_EPILOGUE == 1
-    // typedef float c_tile_t;
-    typedef small::FloatBuffer::value_type  c_tile_t;
+        typedef small::FloatBuffer::value_type  c_tile_t;
 #else
-    typedef __m256 c_tile_t;
+        typedef __m256 c_tile_t;
 #endif
-}
+    }
 }
 
 
@@ -51,7 +46,7 @@ namespace float_detail
     __m256 a_reg, b0, b1, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12; \
     c_tile_t c_tile[FLOAT_W_ob * FLOAT_C_ob];
 
-/// @todo VERIFY this. Args are _W_ob/_C_ob but does not use them
+/// @todo VERIFY this. Args are W_ob, C_ob but does not use C_ob
 #if FLOAT_SIMD_EPILOGUE == 1
 #define FLOAT_DEF_END_C          \
     c_tile_t c_tile[FLOAT_W_ob * FLOAT_C_ob];
@@ -80,60 +75,63 @@ namespace float_detail
         c11 = _mm256_setzero_ps();
 
 #if FLOAT_SIMD_EPILOGUE == 1
-#define FLOAT_ZERO_END_C(W_ob, C_ob)              \
-        for (uint32_t kk = 0; kk < W_ob; kk++)     \
-        {                                           \
-            for (uint32_t jj = 0; jj < C_ob; jj++) \
-            {                                       \
-                c_tile[kk * C_ob + jj] = 0.f;      \
-            }                                       \
-        }
-#elif FLOAT_SIMD_EPILOGUE == 8
 #define FLOAT_ZERO_END_C(W_ob, C_ob)                \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)           \
-    {                                                 \
+    for (uint32_t kk = 0; kk < W_ob; kk++)          \
+    {                                               \
+        for (uint32_t jj = 0; jj < C_ob; jj++)      \
+        {                                           \
+            c_tile[kk * C_ob + jj] = 0.f;           \
+        }                                           \
+    }
+#elif FLOAT_SIMD_EPILOGUE == 8
+#define FLOAT_ZERO_END_C(W_ob, C_ob)                 \
+    for (uint32_t kk = 0; kk < W_ob; kk++)           \
+    {                                                \
         c_tile[kk * C_ob + 0] = _mm256_setzero_ps(); \
         c_tile[kk * C_ob + 1] = _mm256_setzero_ps(); \
     }
 #endif
+
+
 //****************************************************************************
 // Loads
 //****************************************************************************
 
 #define FLOAT_LOAD_TILE_C(I)                                      \
-{                                                             \
-    c0 =  _mm256_load_ps(I + (0 * FLOAT_C_ob));               \
-    c1 =  _mm256_load_ps(I + (0 * FLOAT_C_ob) + FLOAT_SIMD);  \
-    c2 =  _mm256_load_ps(I + (1 * FLOAT_C_ob));               \
-    c3 =  _mm256_load_ps(I + (1 * FLOAT_C_ob) + FLOAT_SIMD);  \
-    c4 =  _mm256_load_ps(I + (2 * FLOAT_C_ob));               \
-    c5 =  _mm256_load_ps(I + (2 * FLOAT_C_ob) + FLOAT_SIMD);  \
-    c6 =  _mm256_load_ps(I + (3 * FLOAT_C_ob));               \
-    c7 =  _mm256_load_ps(I + (3 * FLOAT_C_ob) + FLOAT_SIMD);  \
-    c8 =  _mm256_load_ps(I + (4 * FLOAT_C_ob));               \
-    c9 =  _mm256_load_ps(I + (4 * FLOAT_C_ob) + FLOAT_SIMD);  \
-    c10 = _mm256_load_ps(I + (5 * FLOAT_C_ob));               \
-    c11 = _mm256_load_ps(I + (5 * FLOAT_C_ob) + FLOAT_SIMD);  \
-}
-
+    {                                                             \
+        c0 =  _mm256_load_ps(I + (0 * FLOAT_C_ob));               \
+        c1 =  _mm256_load_ps(I + (0 * FLOAT_C_ob) + FLOAT_SIMD);  \
+        c2 =  _mm256_load_ps(I + (1 * FLOAT_C_ob));               \
+        c3 =  _mm256_load_ps(I + (1 * FLOAT_C_ob) + FLOAT_SIMD);  \
+        c4 =  _mm256_load_ps(I + (2 * FLOAT_C_ob));               \
+        c5 =  _mm256_load_ps(I + (2 * FLOAT_C_ob) + FLOAT_SIMD);  \
+        c6 =  _mm256_load_ps(I + (3 * FLOAT_C_ob));               \
+        c7 =  _mm256_load_ps(I + (3 * FLOAT_C_ob) + FLOAT_SIMD);  \
+        c8 =  _mm256_load_ps(I + (4 * FLOAT_C_ob));               \
+        c9 =  _mm256_load_ps(I + (4 * FLOAT_C_ob) + FLOAT_SIMD);  \
+        c10 = _mm256_load_ps(I + (5 * FLOAT_C_ob));               \
+        c11 = _mm256_load_ps(I + (5 * FLOAT_C_ob) + FLOAT_SIMD);  \
+    }
 
 #if FLOAT_SIMD_EPILOGUE == 1
-#define FLOAT_LOAD_END_C(I, W_ob, C_ob)                 \
-    for (uint32_t kk = 0; kk < W_ob; kk++)               \
+#define FLOAT_LOAD_END_C(I, W_ob, C_ob)                   \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                \
     {                                                     \
-        for (uint32_t jj = 0; jj < C_ob; jj++)           \
+        for (uint32_t jj = 0; jj < C_ob; jj++)            \
         {                                                 \
-            c_tile[kk * C_ob + jj] = I[kk * C_ob + jj]; \
+            c_tile[kk * C_ob + jj] = I[kk * C_ob + jj];   \
         }                                                 \
     }
 #elif FLOAT_SIMD_EPILOGUE == 8
-#define FLOAT_LOAD_END_C(O, _W_ob, _C_ob)                 \
-    for (uint32_t kk = 0; kk < _W_ob; kk++)               \
-    {                                                     \
-        c_tile[kk * _C_ob + 0] = _mm256_load_ps(O + kk * _C_ob + 0); \
-        c_tile[kk * _C_ob + 1] = _mm256_load_ps(O + kk * _C_ob + FLOAT_SIMD); \
+#define FLOAT_LOAD_END_C(I, W_ob, C_ob)                                 \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                              \
+    {                                                                   \
+        c_tile[kk * C_ob + 0] = _mm256_load_ps(I + kk * C_ob + 0);      \
+        c_tile[kk * C_ob + 1] = _mm256_load_ps(I + kk * C_ob + FLOAT_SIMD); \
     }
 #endif
+/// @todo missing a #else
+
 //****************************************************************************
 // Pooling Loads
 //****************************************************************************
@@ -170,6 +168,7 @@ namespace float_detail
         c_tile[kk * C_ob + 1] = _mm256_load_ps(I + kk * step + FLOAT_SIMD); \
     }
 #endif
+
 //****************************************************************************
 // Upsampling loads (stride < 1, factor = 1/stride)
 //****************************************************************************
@@ -961,6 +960,7 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
         c_pixel += (C_ob/FLOAT_SIMD);                           \
     }
 #endif
+
 //****************************************************************************
 // Accumulate upsampling
 //****************************************************************************
@@ -1018,6 +1018,8 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
 // Accumulate channel dimension
 //****************************************************************************
 
+/// @todo Code changes made in second macro added brace
+
 #if FLOAT_SIMD_EPILOGUE == 1
 #define FLOAT_REDUCE_CHANNEL_END_C(O_w_left, C_ob)            \
     if constexpr (C_ob == 1 && C_ob != FLOAT_SIMD_EPILOGUE)   \
@@ -1057,7 +1059,7 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
 #endif
 
 //****************************************************************************
-// Softmax  (Ewise exponentiation)
+// Ewise exponentiation (Softmax)
 //****************************************************************************
 
 #define FLOAT_EXP_TILE_C(step, I)                                    \
@@ -1159,8 +1161,7 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
     }
 
 //****************************************************************************
-// LogSoftmax  (Ewise logarithm)
-//      (implementation copied from softmax, exponential above)
+// Ewise logarithm
 //****************************************************************************
 
 // implementation copied from softmax, exponential above
@@ -1270,7 +1271,7 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
 
 
 //****************************************************************************
-// Softsign Activation
+// Ewise Softsign
 //****************************************************************************
 #define FLOAT_INPLACE_SOFTSIGN_TILE_C             \
     c12 = _mm256_castsi256_ps(_mm256_set1_epi32(0x7fffffff));  \
@@ -1543,18 +1544,18 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
 
 #define FLOAT_MUL_END_C(step, I, c_cur, W_last, C_ob) \
     c_tile_t *c_pixel = c_cur;                                  \
-    c_tile_t const *a_pixel = a;                                \
-    for (uint32_t kk = 0; kk < W_last; kk++)                    \
+    c_tile_t const *I_pixel = I;                                \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                      \
     {                                                           \
         c_tile_t *c_channel = c_pixel;                          \
-        c_tile_t const *a_channel = a_pixel;                    \
+        c_tile_t const *I_channel = I_pixel;                    \
         for (uint32_t jj = 0; jj < C_ob; jj++)                  \
         {                                                       \
-            *(c_channel) = *(a_channel) * *(c_channel);         \
+            *(c_channel) = *(I_channel) / *(c_channel);         \
             c_channel++;                                        \
-            a_channel++;                                        \
+            I_channel++;                                        \
         }                                                       \
-        a_pixel += step;                                        \
+        I_pixel += step;                                        \
         c_pixel += C_ob;                                        \
     }
 
