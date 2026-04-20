@@ -51,10 +51,7 @@ void test_correctness_FLOAT_SOFTSIGN_TILE(void)
     FLOAT_DEF_TILE_C;
 
     FLOAT_ZERO_TILE_C;
-<<<<<<< HEAD
-=======
     // FLOAT_LOAD_TILE_C(output_buf.data());
->>>>>>> dev
 
     FLOAT_SOFTSIGN_TILE_C(step, a_cur);
 
@@ -100,15 +97,6 @@ void test_correctness_individual_FLOAT_SOFTSIGN_TILE(void)
     FLOAT_ZERO_TILE_C;
     // FLOAT_LOAD_TILE_C(output_buf.data());
     {
-<<<<<<< HEAD
-    FLOAT_ABS_TILE_C(step, a_cur);
-    }
-    {
-    FLOAT_INPLACE_ADD_SCALAR_TILE_C(scalar);
-    }
-    {
-    FLOAT_INPLACE_DIV_TILE_C(step, a_cur);
-=======
         FLOAT_ABS_TILE_C(step, a_cur);
     }
     {
@@ -116,7 +104,6 @@ void test_correctness_individual_FLOAT_SOFTSIGN_TILE(void)
     }
     {
         FLOAT_INPLACE_DIV_TILE_C(step, a_cur);
->>>>>>> dev
     }
     FLOAT_STORE_TILE_C(output_buf.data());
     //==================================================
@@ -260,14 +247,9 @@ void test_performance_FLOAT_SOFTSIGN_TILE(void)
 
     //==================================================
     FLOAT_DEF_TILE_C;
-<<<<<<< HEAD
-
-    FLOAT_ZERO_TILE_C;
-=======
 
     FLOAT_ZERO_TILE_C;
 
->>>>>>> dev
 
     double tx(0.);
     double min_t = std::numeric_limits<double>::max();
