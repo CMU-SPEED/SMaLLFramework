@@ -105,6 +105,9 @@ def generate_kernel(tile_size: str, op: str, name: str, operands: Optional[List[
                 - 1,C (rank promotion across width dimension)
                 - W,1 (rank promotion across channel dimension)
                 - 1,1 (rank promotion across both dimensions)
+            - For the "store" operation, "a" is the base destination pointer and must
+              be of shape 1,1 (scalar). The tile data to store is always taken from the
+              c registers; striding into the destination is handled via kk*step + jj*SIMD.
         - Identifier "b":
             - Can only be used as an input operand and can only be of the following shapes:
                 - 1,C (rank promotion across width dimension)
@@ -129,6 +132,7 @@ def generate_kernel(tile_size: str, op: str, name: str, operands: Optional[List[
     assert op in vector_instruction_table.keys()
     vector_instruction = vector_instruction_table[op]
     num_operands = operator_operand_count[op]
+    is_store = (op == "store")
 
     # operand shapes
     # operands can appear in any order after the first 3 arguments a, b, c
@@ -170,6 +174,18 @@ def generate_kernel(tile_size: str, op: str, name: str, operands: Optional[List[
         order_of_operands["c"] = shape_c_input
     shape_c = [W_ob, C_ob]
 
+    # store-specific validation: the base address operand must be scalar (1,1)
+    if op == "store":
+        if shape_a is None:
+            raise ValueError(
+                "store requires a base address operand, e.g. a:1,1"
+            )
+        if int(shape_a[0]) != 1 or int(shape_a[1]) != 1:
+            raise ValueError(
+                f"store: base address operand 'a' must be scalar (1,1), got {shape_a[0]},{shape_a[1]}. "
+                "The destination pointer is a single base address; striding is handled internally."
+            )
+
     operand_order = list(order_of_operands.keys())
     print(operand_order)
     print(shape_a, shape_b, shape_c_input)
@@ -188,14 +204,14 @@ def generate_kernel(tile_size: str, op: str, name: str, operands: Optional[List[
 #         type_c ="VECTOR"
 #         if int(shape_c_input[0]) == 1:
 #             type_c ="SCALAR"
-        
+
 #     else:
 #         c_load = vector_instruction_table["load"]
 #         type_c ="VECTOR_T"
 #         if int(shape_c_input[0])!= 1:
-#             type_c ="MATRIX" 
+#             type_c ="MATRIX"
 
-#     l += [f'#define FLOAT_LOAD_{type_c}_TILE_C(I, step)\\']    
+#     l += [f'#define FLOAT_LOAD_{type_c}_TILE_C(I, step)\\']
 #     for kk in range(W_ob):
 #         for jj in range(C_ob//vector_instruction_table["SIMD"]):
 #             l += [f'c_{kk}_{jj} = ' + c_load.format(ptr=(f"c + {kk%(int(shape_c_input[0]))}*step + {jj%(int(shape_c_input[1]))} * SIMD")) + ";\\"]
@@ -243,7 +259,7 @@ def generate_kernel(tile_size: str, op: str, name: str, operands: Optional[List[
                 type_a ="SCALAR"
             else:
                 a_regs_kk = a_regs
-            
+
         else:
             a_load = vector_instruction_table["load"]
             # 1 register per simd width in the channel dimension
@@ -253,8 +269,8 @@ def generate_kernel(tile_size: str, op: str, name: str, operands: Optional[List[
                 a_regs_kk = 1
             else:
                 a_regs_kk = (a_regs//a_regs_jj)
-                type_a ="MATRIX" 
-        
+                type_a ="MATRIX"
+
         a_regs_jj_kk = a_regs_jj * a_regs_kk
     else:
         a_regs_jj = 0
@@ -271,7 +287,11 @@ def generate_kernel(tile_size: str, op: str, name: str, operands: Optional[List[
     if num_operands == 0:
         s += [f'#define FLOAT_{name}_TILE_C\\']
     elif num_operands == 1:
-        s += [f'#define FLOAT_{name}_{type_a}_TILE_C(step, a)\\']
+        if op == "store":
+            # store: c holds the tile data, a is the scalar base destination pointer
+            s += [f'#define FLOAT_{name}_TILE_C(step, a)\\']
+        else:
+            s += [f'#define FLOAT_{name}_{type_a}_TILE_C(step, a)\\']
     elif num_operands == 2:
         s += [f'#define FLOAT_{name}_{type_a}_{type_b}_TILE_C(step, a']
         if shape_b != None:
@@ -285,11 +305,13 @@ def generate_kernel(tile_size: str, op: str, name: str, operands: Optional[List[
     vector_type_name = vector_instruction_table["vector_type"]
 
     a_vector_registers = []
-    for kk in range(a_regs_kk):
-        for jj in range(a_regs_jj):
-            a_vector_registers += [f"a_{kk}_{jj}"]
-    a_vec_declaration = ", ".join(a_vector_registers) + "; \\"
-    s += ["{vector_type} ".format(vector_type=vector_type_name) + a_vec_declaration]
+    if not is_store:
+        for kk in range(a_regs_kk):
+            for jj in range(a_regs_jj):
+                a_vector_registers += [f"a_{kk}_{jj}"]
+    if a_vector_registers:
+        a_vec_declaration = ", ".join(a_vector_registers) + "; \\"
+        s += ["{vector_type} ".format(vector_type=vector_type_name) + a_vec_declaration]
 
     if shape_b != None:
         b_vector_registers = []
@@ -307,7 +329,7 @@ def generate_kernel(tile_size: str, op: str, name: str, operands: Optional[List[
     # ----------------------------------------
 
 # if a is reused over the width elements, load can be performed outside
-    if num_operands > 0 and int(shape_a[0])==1:
+    if not is_store and num_operands > 0 and int(shape_a[0])==1:
         for jj in range(a_regs_jj):
             s += [f"a_0_{jj} = " + a_load.format(ptr=(f"a + {jj} * SIMD")) + ";\\"]
 
@@ -335,14 +357,17 @@ def generate_kernel(tile_size: str, op: str, name: str, operands: Optional[List[
         else None
     )
 
+    # store uses {ptr}/{reg} placeholders rather than {reg1}/{reg2}/{reg3},
+    # so it must be handled separately in both template formatting and emit.
 
-    vector_instruction_instance = vector_instruction.format(
-        reg1=reg1_unlabeled, reg2=reg2_unlabeled, reg3=reg3_unlabeled
-    )
+    if not is_store:
+        vector_instruction_instance = vector_instruction.format(
+            reg1=reg1_unlabeled, reg2=reg2_unlabeled, reg3=reg3_unlabeled
+        )
 
     for kk in range(W_ob):
         # if a is not reused it must be reloaded
-        if  num_operands > 0 and int(shape_a[0]) > 1:
+        if not is_store and num_operands > 0 and int(shape_a[0]) > 1:
             for jj in range(a_regs_jj):
                 s += [
                     f"a_{(kk%a_regs_kk)}_{jj} = "
@@ -360,13 +385,22 @@ def generate_kernel(tile_size: str, op: str, name: str, operands: Optional[List[
                     ]
                 )
 
-            s += [
-                "c_{k}_{j} = {vop};\\".format(
-                    vop=vector_instruction_instance.format(idxs=register_operand_idxs),
-                    k=kk,
-                    j=jj,
+            if is_store:
+                # store is void: emit the instruction directly without assigning to c.
+                # c_{kk}_{jj} holds the tile data; a is the scalar base destination pointer.
+                vop = vector_instruction.format(
+                    ptr=f"a + {kk}*step + {jj} * SIMD",
+                    reg=f"c_{kk}_{jj}",
                 )
-            ]
+                s += ["{vop};\\".format(vop=vop)]
+            else:
+                s += [
+                    "c_{k}_{j} = {vop};\\".format(
+                        vop=vector_instruction_instance.format(idxs=register_operand_idxs),
+                        k=kk,
+                        j=jj,
+                    )
+                ]
             # else:
             #     s += ['c_{k}_{j} = {vop});\\'.format(vop = vector_instruction_instance, k=kk, j=jj, kj=((kk%a_regs_kk)*(a_regs_jj)+(jj%a_regs_jj)))]
     s += [""]
