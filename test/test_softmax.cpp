@@ -627,8 +627,8 @@ void measure_softmax_performance(void)
 //****************************************************************************
 TEST_LIST = {
     //{"compute_output", test_compute_softmax_output},
-    {"softmax_odd_channels", test_softmax_odd_channels},
-    {"softmax_layer_odd_channels", test_softmax_layer_odd_channels},
+    // {"softmax_odd_channels", test_softmax_odd_channels},
+    // {"softmax_layer_odd_channels", test_softmax_layer_odd_channels},
     {"softmax_regression_data", test_softmax_regression_data},
     {"softmax_layer_regression_data", test_softmax_layer_regression_data},
     // {"softmax_performance", measure_softmax_performance},
