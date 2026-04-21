@@ -250,7 +250,7 @@ def generate_kernel(tile_size: str, op: str, name: str, operands: Optional[List[
 #sort out registers needed for a
     a_regs = vector_instruction_table["REGS"] - b_regs_jj_kk - c_regs
     if num_operands > 0:
-        if int(shape_a[1]) == 1:
+        if shape_a is not None and int(shape_a[1]) == 1:
             a_load = vector_instruction_table["broadcast"]
             a_regs_jj = 1
             type_a ="VECTOR"
@@ -265,7 +265,7 @@ def generate_kernel(tile_size: str, op: str, name: str, operands: Optional[List[
             # 1 register per simd width in the channel dimension
             a_regs_jj = C_ob//vector_instruction_table["SIMD"]
             type_a ="VECTOR_T"
-            if int(shape_a[0]) == 1:
+            if shape_a is not None and int(shape_a[0]) == 1:
                 a_regs_kk = 1
             else:
                 a_regs_kk = (a_regs//a_regs_jj)
@@ -294,7 +294,7 @@ def generate_kernel(tile_size: str, op: str, name: str, operands: Optional[List[
             s += [f'#define FLOAT_{name}_{type_a}_TILE_C(step, a)\\']
     elif num_operands == 2:
         s += [f'#define FLOAT_{name}_{type_a}_{type_b}_TILE_C(step, a']
-        if shape_b != None:
+        if shape_b is not None:
             s[-1] += ", b"
     s[-1] += ')\\'
 # compute
@@ -313,7 +313,7 @@ def generate_kernel(tile_size: str, op: str, name: str, operands: Optional[List[
         a_vec_declaration = ", ".join(a_vector_registers) + "; \\"
         s += ["{vector_type} ".format(vector_type=vector_type_name) + a_vec_declaration]
 
-    if shape_b != None:
+    if shape_b is not None:
         b_vector_registers = []
         for jj in range(b_regs_jj_kk):
             b_vector_registers += [f"b_0_{jj}"]
@@ -329,12 +329,12 @@ def generate_kernel(tile_size: str, op: str, name: str, operands: Optional[List[
     # ----------------------------------------
 
 # if a is reused over the width elements, load can be performed outside
-    if not is_store and num_operands > 0 and int(shape_a[0])==1:
+    if not is_store and num_operands > 0 and shape_a is not None and int(shape_a[0])==1:
         for jj in range(a_regs_jj):
             s += [f"a_0_{jj} = " + a_load.format(ptr=(f"a + {jj} * SIMD")) + ";\\"]
 
     # if the b operand is present load it
-    if shape_b != None:
+    if shape_b is not None:
         for jj in range(b_regs_jj_kk):
             s += [f"b_0_{jj} = " + b_load.format(ptr=(f"b + {jj} * SIMD")) + ";\\"]
 
@@ -367,7 +367,7 @@ def generate_kernel(tile_size: str, op: str, name: str, operands: Optional[List[
 
     for kk in range(W_ob):
         # if a is not reused it must be reloaded
-        if not is_store and num_operands > 0 and int(shape_a[0]) > 1:
+        if not is_store and num_operands > 0 and shape_a is not None and int(shape_a[0]) > 1:
             for jj in range(a_regs_jj):
                 s += [
                     f"a_{(kk%a_regs_kk)}_{jj} = "
