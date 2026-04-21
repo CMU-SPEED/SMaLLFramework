@@ -466,10 +466,10 @@ void test_conv_dw_fused_only_all_ones_sanity(void)
     std::memset(fused_output.data(), 0, output_size * sizeof(BufferT::value_type));
 
     small::Conv2D(params.conv_k, params.conv_k, params.conv_s,
-                         conv_t_pad, conv_b_pad, conv_l_pad, conv_r_pad,
-                         params.C_o, params.C_i, params.H, params.W,
-                         input_dc, conv_filter_dc,
-                         reference_intermediate);
+                  conv_t_pad, conv_b_pad, conv_l_pad, conv_r_pad,
+                  params.C_o, params.C_i, params.H, params.W,
+                  input_dc, conv_filter_dc,
+                  reference_intermediate);
     small::DepthwiseConv2D(
         params.block_k, params.block_k, params.block_s,
         dw_t_pad, dw_b_pad, dw_l_pad, dw_r_pad,
@@ -483,7 +483,7 @@ void test_conv_dw_fused_only_all_ones_sanity(void)
         params.block_k, params.block_k, params.block_s,
         dw_t_pad, dw_b_pad, dw_l_pad, dw_r_pad,
         params.C_o, params.C_i, params.H, params.W,
-        input_dc, conv_filter_dc, 
+        input_dc, conv_filter_dc,
         fused_intermediate, dw_filter_dc,
         fused_output);
 
@@ -504,9 +504,9 @@ TEST_LIST = {
      test_conv_dw_fused_only_all_ones_sanity},
     {"conv_dw_fused_plain", test_conv_dw_fused_plain},
     {"conv_maxpool_fused_plain", test_conv_maxpool_fused_plain},
-    // {"conv_dw_fused_relu", test_conv_dw_fused_relu},
-    // {"conv_dw_fused_bias_relu", test_conv_dw_fused_bias_relu},
-    // {"conv_maxpool_fused_relu", test_conv_maxpool_fused_relu},
-    // {"conv_maxpool_fused_bias_relu", test_conv_maxpool_fused_bias_relu},
+    {"conv_dw_fused_relu", test_conv_dw_fused_relu},
+    {"conv_dw_fused_bias_relu", test_conv_dw_fused_bias_relu},
+    {"conv_maxpool_fused_relu", test_conv_maxpool_fused_relu},
+    {"conv_maxpool_fused_bias_relu", test_conv_maxpool_fused_bias_relu},
     {nullptr, nullptr}
 };
