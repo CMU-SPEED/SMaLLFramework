@@ -296,6 +296,10 @@ def generate_kernel(tile_size: str, op: str, name: str, operands: Optional[List[
         s += [f'#define FLOAT_{name}_{type_a}_{type_b}_TILE_C(step, a']
         if shape_b is not None:
             s[-1] += ", b"
+    elif num_operands == 3:
+        s += [f'#define FLOAT_{name}_{type_a}_{type_b}_TILE_C(step, a, b, c']
+    else:
+        raise ValueError("Unsupported number of operands")
     s[-1] += ')\\'
 # compute
 
