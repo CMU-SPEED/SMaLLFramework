@@ -631,6 +631,6 @@ TEST_LIST = {
     // {"softmax_layer_odd_channels", test_softmax_layer_odd_channels},
     {"softmax_regression_data", test_softmax_regression_data},
     {"softmax_layer_regression_data", test_softmax_layer_regression_data},
-    // {"softmax_performance", measure_softmax_performance},
+    {"softmax_performance", measure_softmax_performance},
     {NULL, NULL}
 };

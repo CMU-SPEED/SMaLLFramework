@@ -28,6 +28,9 @@
 #include <Buffer.hpp>
 #include <intrinsics.h>
 
+// ============ Composition Programs  ============ 
+// todo: add a header file with existing compostion programs
+// to consider: how to handle the 
 // ================== Public API ====================
 #include <small/utils.hpp>
 #include <small/buffers.hpp>

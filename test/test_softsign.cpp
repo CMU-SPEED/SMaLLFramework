@@ -35,7 +35,9 @@ void test_correctness_FLOAT_SOFTSIGN_TILE(void)
     srand(time(0));
     size_t const INPUT_SIZE = FLOAT_W_ob * FLOAT_C_ib;
     BufferT input_buf(INPUT_SIZE);
-    for (size_t ix = 0; ix < INPUT_SIZE; ++ix) input_buf[ix] = 2.0 * ((float)rand() / RAND_MAX) - 1;
+    // for (size_t ix = 0; ix < INPUT_SIZE; ++ix) input_buf[ix] = 2.0 * ((float)rand() / RAND_MAX) - 1;
+    for (size_t ix = 0; ix < INPUT_SIZE; ++ix) input_buf[ix] = (float)(ix) - (INPUT_SIZE/2.0);
+
 
     size_t const OUTPUT_SIZE = FLOAT_W_ob * FLOAT_C_ob;
     BufferT output_buf(OUTPUT_SIZE);
@@ -63,8 +65,11 @@ void test_correctness_FLOAT_SOFTSIGN_TILE(void)
         for (dim_t jj = 0; jj < FLOAT_C_ob; ++jj)
         {
             size_t ix = ii*FLOAT_C_ob + jj;
-            // std::cout << output_buf[ix] << " " << (float)(input_buf[ix]/(1.0f + std::abs(input_buf[ix]))) << " " << input_buf[ix] << " " << ix << std::endl;
+            std::cout << output_buf[ix] << " " << (float)(input_buf[ix]/(1.0f + std::abs(input_buf[ix]))) << " " << input_buf[ix] << " " << ix << std::endl;
             TEST_CHECK(output_buf[ix] == input_buf[ix]/(1.0f + std::abs(input_buf[ix])));
+            // std::cout << output_buf[ix] << " " << (float)(1.0f + std::abs(input_buf[ix])) << " " << input_buf[ix] << " " << ix << std::endl;
+            // TEST_CHECK(output_buf[ix] == (1.0f + std::abs(input_buf[ix])));
+
         }
     }
 #endif
@@ -97,17 +102,14 @@ void test_correctness_individual_FLOAT_SOFTSIGN_TILE(void)
     FLOAT_ZERO_TILE_C;
     // FLOAT_LOAD_TILE_C(output_buf.data());
     {
-        FLOAT_ABS_TILE_C(step, a_cur);
-    }
-    {
-        FLOAT_INPLACE_ADD_SCALAR_TILE_C(scalar);
-    }
-    {
-        FLOAT_INPLACE_DIV_TILE_C(step, a_cur);
+        // FLOAT_ABS_TILE_C(step, a_cur);
+        // FLOAT_INPLACE_ADD_SCALAR_TILE_C(scalar);
+        // FLOAT_INPLACE_DIV_TILE_C(step, a_cur);
+        FLOAT_COMPOSED_SOFTSIGN_TILE_C(step, a_cur);
     }
     FLOAT_STORE_TILE_C(output_buf.data());
     //==================================================
-
+    printf("end of individua kernels\n");
     for (dim_t ii = 0; ii < FLOAT_W_ob; ++ii)
     {
         for (dim_t jj = 0; jj < FLOAT_C_ob; ++jj)
@@ -447,36 +449,39 @@ void test_softsign_large_tile(void)
 void measure_softsign_performance(void)
 {
     // C_i,Hi,Wi,k,s,p,C_o
+    // Only including problem sizes that are a multiple of the tile size.
     std::vector<LayerParams> params =
     {
-        {  16,   48,  48, 1, 1, small::PADDING_F,   16},
-        {  32,   24,  24, 1, 1, small::PADDING_F,   32},
+        {  16,   48,  48, 1, 1, small::PADDING_V,   16},
+        {  32,   24,  24, 1, 1, small::PADDING_V,   32},
 
-        {  32,   48,  48, 1, 1, small::PADDING_F,   32},
-        {  64,   24,  24, 1, 1, small::PADDING_F,   64},
-        { 128,   12,  12, 1, 1, small::PADDING_F,  128},
+        {  32,   48,  48, 1, 1, small::PADDING_V,   32},
+        {  64,   24,  24, 1, 1, small::PADDING_V,   64},
+        { 128,   12,  12, 1, 1, small::PADDING_V,  128},
 
-        {  16,   48,  48, 1, 1, small::PADDING_F,   32},
-        {  32,   24,  24, 1, 1, small::PADDING_F,   64},
-        {  64,   12,  12, 1, 1, small::PADDING_F,  128},
-        { 128,    6,   6, 1, 1, small::PADDING_F,  256},
+        {  16,   48,  48, 1, 1, small::PADDING_V,   32},
+        {  32,   24,  24, 1, 1, small::PADDING_V,   64},
+        {  64,   12,  12, 1, 1, small::PADDING_V,  128},
+        { 128,    6,   6, 1, 1, small::PADDING_V,  256},
 
-        { 128,   24,  24, 1, 1, small::PADDING_F,  128},
-        { 256,   12,  12, 1, 1, small::PADDING_F,  256},
+        { 128,   24,  24, 1, 1, small::PADDING_V,  128},
+        { 256,   12,  12, 1, 1, small::PADDING_V,  256},
 
-        { 512,   12,  12, 1, 1, small::PADDING_F,  512},
-        {1024,    6,   6, 1, 1, small::PADDING_F, 1024},
+        { 512,   12,  12, 1, 1, small::PADDING_V,  512},
+        {1024,    6,   6, 1, 1, small::PADDING_V, 1024},
 
-        {  32,  208, 208, 1, 1, small::PADDING_F,   64},
-        {  64,  104, 104, 1, 1, small::PADDING_F,  128},
-        { 128,   52,  52, 1, 1, small::PADDING_F,  256},
-        { 256,   26,  26, 1, 1, small::PADDING_F,  512},
-        { 512,   13,  13, 1, 1, small::PADDING_F, 1024}
+        // {  32,  208, 208, 1, 1, small::PADDING_V,   64},
+        // {  64,  104, 104, 1, 1, small::PADDING_V,  128},
+        // { 128,   52,  52, 1, 1, small::PADDING_V,  256},
+        // { 256,   26,  26, 1, 1, small::PADDING_V,  512},
+        // { 512,   13,  13, 1, 1, small::PADDING_V, 1024}
     };
 
     uint32_t const num_threads[] = {1, 2, 4};
     char const *str_num_threads[] = {"1", "2", "4"};
     uint32_t const num_runs(100);
+    uint32_t const num_trials(1000);
+
     small::Timer t;
 
 #if defined(QUANTIZED)
@@ -514,7 +519,10 @@ void measure_softsign_performance(void)
             for (size_t iy = 0; iy < num_runs; ++iy)
             {
                 t.start();
+                for(size_t i_trials = 0; i_trials < num_trials; ++i_trials)
+                {
                 small::SoftSign(p.C_i, p.H, p.W, input_dc, output_dc);
+                }
                 t.stop();
                 double ts = t.elapsed();
                 tx += ts;
@@ -525,7 +533,7 @@ void measure_softsign_performance(void)
             printf("\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%.0lf\t%.0lf\t%.0lf\n",
                    p.C_i, p.H, p.W, p.k, p.s,
                    num_threads[ix], num_runs,
-                   min_t, max_t, (tx/num_runs));
+                   min_t, max_t, ((tx - max_t - min_t)/(num_runs-2)));
         }
     }
 
@@ -558,11 +566,13 @@ void measure_softsign_performance(void)
 
             // Warm up
             softsign_layer.compute_output({&input_dc}, &output_dc);
-
             for (size_t iy = 0; iy < num_runs; ++iy)
             {
                 t.start();
+                for(size_t i_trials = 0; i_trials< num_trials; i_trials++)
+                {
                 softsign_layer.compute_output({&input_dc}, &output_dc);
+                }
                 t.stop();
                 double ts = t.elapsed();
                 tx += ts;
@@ -573,7 +583,7 @@ void measure_softsign_performance(void)
             printf("\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%.0lf\t%.0lf\t%.0lf\n",
                 p.C_i, p.H, p.W, p.k, p.s,
                 num_threads[ix], num_runs,
-                min_t, max_t, (tx/num_runs));
+                min_t, max_t,((tx - max_t - min_t)/(num_runs-2)));
         }
     }
 
@@ -589,8 +599,6 @@ TEST_LIST = {
      small::float_detail::test_correctness_individual_FLOAT_SOFTSIGN_TILE},
     {"correctness FLOAT_INPLACE_SOFTSIGN_TILE",
      small::float_detail::test_correctness_FLOAT_INPLACE_SOFTSIGN_TILE},
-    // {"performance FLOAT_SOFTSIGN_TILE",
-    //  small::float_detail::test_performance_FLOAT_SOFTSIGN_TILE},
     {"softsign single element",
      small::float_detail::test_softsign_single_element},
     {"softsign single tile",

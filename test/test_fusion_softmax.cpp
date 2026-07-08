@@ -101,18 +101,18 @@ bool run_softmax_config(LayerParams const &params)
     for (size_t ix = 0; ix < packed_output_dc_answers.size(); ++ix)
     {
         //if (packed_output_dc[ix] != packed_output_dc_answers[ix])
-        printf("%f %f %f\n", packed_input_dc[ix], packed_output_dc[ix], packed_output_dc_answers[ix]);
+        // printf("%f %f %f\n", packed_input_dc[ix], packed_output_dc[ix], packed_output_dc_answers[ix]);
         if (!almost_equal(packed_output_dc[ix], packed_output_dc_answers[ix]))
         {
             passing = false;
 
-            // std::cout << "FAIL: softmax_out(" << packed_input_dc[ix] << ")--> "
-            //           << std::setw(12) << std::setprecision(10)
-            //           << packed_output_dc[ix] << "(computed) != "
-            //           << std::setw(12) << std::setprecision(10)
-            //           << packed_output_dc_answers[ix]
-            //           << ", ratio = " << packed_output_dc[ix]/packed_output_dc_answers[ix]
-            //           << std::endl;
+            std::cout << "FAIL: softmax_out(" << packed_input_dc[ix] << ")--> "
+                      << std::setw(12) << std::setprecision(10)
+                      << packed_output_dc[ix] << "(computed) != "
+                      << std::setw(12) << std::setprecision(10)
+                      << packed_output_dc_answers[ix]
+                      << ", ratio = " << packed_output_dc[ix]/packed_output_dc_answers[ix]
+                      << std::endl;
         }
     }
 
@@ -129,7 +129,7 @@ void test_softmax_regression_data(void)
         // {16,  3, 13, 3, 2, small::PADDING_V, 0},
 
         {16, 30, 30, 3, 2, small::PADDING_V, 0},
-        // {96, 30, 30, 3, 2, small::PADDING_V, 0},
+        {96, 30, 30, 3, 2, small::PADDING_V, 0},
         // {96,  3, 13, 3, 2, small::PADDING_V, 0},
 
         // {16,  3,  3, 3, 2, small::PADDING_F, 0},  //Ci,Hi,Wi,k,s,p,Co
@@ -314,7 +314,7 @@ void measure_softmax_performance(void)
 //****************************************************************************
 //****************************************************************************
 TEST_LIST = {
-    //{"compute_output", test_compute_softmax_output},
+    // {"compute_output", test_compute_softmax_output},
     // {"softmax_odd_channels", test_softmax_odd_channels},
     // {"softmax_layer_odd_channels", test_softmax_layer_odd_channels},
     {"softmax_regression_data", test_softmax_regression_data},

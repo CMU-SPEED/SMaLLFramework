@@ -16,7 +16,6 @@
 #include <Buffer.hpp>
 
 #include <immintrin.h>
-#include "avx_mathfun.h"
 
 // scalar versions of all the float microkernels for platform portability
 // Use the FLOAT_ prefix for all macros in this file.
@@ -225,6 +224,12 @@ namespace small
         _mm256_store_ps(O + (5 * FLOAT_C_ob + FLOAT_SIMD), c11); \
     }
 
+#define FLOAT_STORE_ROW_C(O)                                    \
+    {                                                            \
+        _mm256_store_ps(O + (0 * FLOAT_C_ob), c0);               \
+        _mm256_store_ps(O + (0 * FLOAT_C_ob) + FLOAT_SIMD, c1);  \
+    }
+
 #if FLOAT_SIMD_EPILOGUE == 1
 #define FLOAT_STORE_END_C(O, W_ob, C_ob)                 \
     for (uint32_t kk = 0; kk < W_ob; kk++)               \
@@ -280,6 +285,37 @@ namespace small
     }
 #endif
 
+//****************************************************************************
+// Binary Primitives
+//****************************************************************************
+#define FLOAT_AND_TILE_C_MATRIX_A_SCALAR_B(step, I, W)\
+__m256 a_0_0, a_0_1; \
+__m256 b_0_0; \
+b_0_0 = _mm256_broadcast_ss(W + 0 * FLOAT_SIMD);\
+a_0_0 = _mm256_load_ps(I + 0*step + 0 * FLOAT_SIMD);\
+a_0_1 = _mm256_load_ps(I + 0*step + 1 * FLOAT_SIMD);\
+c0 = _mm256_and_ps(a_0_0, b_0_0);\
+c1 = _mm256_and_ps(a_0_1, b_0_0);\
+a_0_0 = _mm256_load_ps(I + 1*step + 0 * FLOAT_SIMD);\
+a_0_1 = _mm256_load_ps(I + 1*step + 1 * FLOAT_SIMD);\
+c2 = _mm256_and_ps(a_0_0, b_0_0);\
+c3 = _mm256_and_ps(a_0_1, b_0_0);\
+a_0_0 = _mm256_load_ps(I + 2*step + 0 * FLOAT_SIMD);\
+a_0_1 = _mm256_load_ps(I + 2*step + 1 * FLOAT_SIMD);\
+c4 = _mm256_and_ps(a_0_0, b_0_0);\
+c5 = _mm256_and_ps(a_0_1, b_0_0);\
+a_0_0 = _mm256_load_ps(I + 3*step + 0 * FLOAT_SIMD);\
+a_0_1 = _mm256_load_ps(I + 3*step + 1 * FLOAT_SIMD);\
+c6 = _mm256_and_ps(a_0_0, b_0_0);\
+c7 = _mm256_and_ps(a_0_1, b_0_0);\
+a_0_0 = _mm256_load_ps(I + 4*step + 0 * FLOAT_SIMD);\
+a_0_1 = _mm256_load_ps(I + 4*step + 1 * FLOAT_SIMD);\
+c8 = _mm256_and_ps(a_0_0, b_0_0);\
+c9 = _mm256_and_ps(a_0_1, b_0_0);\
+a_0_0 = _mm256_load_ps(I + 5*step + 0 * FLOAT_SIMD);\
+a_0_1 = _mm256_load_ps(I + 5*step + 1 * FLOAT_SIMD);\
+c10 = _mm256_and_ps(a_0_0, b_0_0);\
+c11 = _mm256_and_ps(a_0_1, b_0_0);
 
 //****************************************************************************
 // Convolution Computation (Strided GEMM)
@@ -797,27 +833,121 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
     b1 = _mm256_load_ps(I + (0 * step) + FLOAT_SIMD);  \
     c0 = _mm256_add_ps(b0, c0);                        \
     c1 = _mm256_add_ps(b1, c1);                        \
-    a_reg = _mm256_load_ps(I + (1 * step));            \
-    c12 = _mm256_load_ps(I + (1 * step) + FLOAT_SIMD); \
-    c2 = _mm256_add_ps(a_reg, c2);                     \
-    c3 = _mm256_add_ps(c12, c3);                       \
+    b0 = _mm256_load_ps(I + (1 * step));            \
+    b1 = _mm256_load_ps(I + (1 * step) + FLOAT_SIMD); \
+    c2 = _mm256_add_ps(b0, c2);                     \
+    c3 = _mm256_add_ps(b1, c3);                       \
     b0 = _mm256_load_ps(I + (2 * step));               \
     b1 = _mm256_load_ps(I + (2 * step) + FLOAT_SIMD);  \
     c4 = _mm256_add_ps(b0, c4);                        \
     c5 = _mm256_add_ps(b1, c5);                        \
-    a_reg = _mm256_load_ps(I + (3 * step));            \
-    c12 = _mm256_load_ps(I + (3 * step) + FLOAT_SIMD); \
-    c6 = _mm256_add_ps(a_reg, c6);                     \
-    c7 = _mm256_add_ps(c12, c7);                       \
+    b0 = _mm256_load_ps(I + (3 * step));            \
+    b1 = _mm256_load_ps(I + (3 * step) + FLOAT_SIMD); \
+    c6 = _mm256_add_ps(b0, c6);                     \
+    c7 = _mm256_add_ps(b1, c7);                       \
     b0 = _mm256_load_ps(I + (4 * step));               \
     b1 = _mm256_load_ps(I + (4 * step) + FLOAT_SIMD);  \
     c8 = _mm256_add_ps(b0, c8);                        \
     c9 = _mm256_add_ps(b1, c9);                        \
-    a_reg = _mm256_load_ps(I + (5 * step));            \
-    c12 = _mm256_load_ps(I + (5 * step) + FLOAT_SIMD); \
-    c10 = _mm256_add_ps(a_reg, c10);                   \
-    c11 = _mm256_add_ps(c12, c11);
+    b0 = _mm256_load_ps(I + (5 * step));            \
+    b1 = _mm256_load_ps(I + (5 * step) + FLOAT_SIMD); \
+    c10 = _mm256_add_ps(b0, c10);                   \
+    c11 = _mm256_add_ps(b1, c11);
                   
+
+#define FLOAT_ACCUM_ROW_C(step, I)                    \
+    b0 = _mm256_load_ps(I + (0 * step));               \
+    b1 = _mm256_load_ps(I + (0 * step) + FLOAT_SIMD);  \
+    c0 = _mm256_add_ps(b0, c0);                        \
+    c1 = _mm256_add_ps(b1, c1);\
+    b0 = _mm256_load_ps(I + (1 * step));               \
+    b1 = _mm256_load_ps(I + (1 * step) + FLOAT_SIMD);  \
+    c0 = _mm256_add_ps(b0, c0);\
+    c1 = _mm256_add_ps(b1, c1);\
+    b0 = _mm256_load_ps(I + (2 * step));               \
+    b1 = _mm256_load_ps(I + (2 * step) + FLOAT_SIMD);  \
+    c0 = _mm256_add_ps(b0, c0);\
+    c1 = _mm256_add_ps(b1, c1);\
+    b0 = _mm256_load_ps(I + (3 * step));               \
+    b1 = _mm256_load_ps(I + (3 * step) + FLOAT_SIMD);  \
+    c0 = _mm256_add_ps(b0, c0);\
+    c1 = _mm256_add_ps(b1, c1);\
+    b0 = _mm256_load_ps(I + (4 * step));               \
+    b1 = _mm256_load_ps(I + (4 * step) + FLOAT_SIMD);  \
+    c0 = _mm256_add_ps(b0, c0);\
+    c1 = _mm256_add_ps(b1, c1);\
+    b0 = _mm256_load_ps(I + (5 * step));               \
+    b1 = _mm256_load_ps(I + (5 * step) + FLOAT_SIMD);  \
+    c0 = _mm256_add_ps(b0, c0);\
+    c1 = _mm256_add_ps(b1, c1);                        
+
+ #define FLOAT_INPLACE_ACCUM_ROW_C                    \
+    c0 = _mm256_add_ps(c0, c2);\
+    c1 = _mm256_add_ps(c1, c3);\
+    c4 = _mm256_add_ps(c4, c6);\
+    c5 = _mm256_add_ps(c5, c7);\
+    c8 = _mm256_add_ps(c8, c10);\
+    c9 = _mm256_add_ps(c9, c11);\
+    c0 = _mm256_add_ps(c0, c4);\
+    c1 = _mm256_add_ps(c1, c5);\
+    c0 = _mm256_add_ps(c0, c8);\
+    c1 = _mm256_add_ps(c1, c9);
+
+#define FLOAT_ACCUM_COLUMN_C(step, I)\
+    b0 = _mm256_load_ps(I + (0 * step));               \
+    b1 = _mm256_load_ps(I + (0 * step) + FLOAT_SIMD);  \
+    c0 = _mm256_add_ps(b0, c0);                        \
+    c1 = _mm256_add_ps(b1, c1);\
+    b0 = _mm256_load_ps(I + (1 * step));               \
+    b1 = _mm256_load_ps(I + (1 * step) + FLOAT_SIMD);  \
+    c2 = _mm256_add_ps(b0, c2);                        \
+    c3 = _mm256_add_ps(b1, c3);\
+    b0 = _mm256_load_ps(I + (2 * step));               \
+    b1 = _mm256_load_ps(I + (2 * step) + FLOAT_SIMD);  \
+    c4 = _mm256_add_ps(b0, c4);                        \
+    c5 = _mm256_add_ps(b1, c5);\
+    c0 = _mm256_add_ps(c0, c1);\
+    b0 = _mm256_load_ps(I + (3 * step));               \
+    b1 = _mm256_load_ps(I + (3 * step) + FLOAT_SIMD);  \
+    c6 = _mm256_add_ps(b0, c6);                        \
+    c7 = _mm256_add_ps(b1, c7);\
+    c2 = _mm256_add_ps(c2, c3);\
+    b0 = _mm256_load_ps(I + (4 * step));               \
+    b1 = _mm256_load_ps(I + (4 * step) + FLOAT_SIMD);  \
+    c8 = _mm256_add_ps(b0, c8);                        \
+    c9 = _mm256_add_ps(b1, c9);\
+    c4 = _mm256_add_ps(c4, c5);\
+    b0 = _mm256_load_ps(I + (5 * step));               \
+    b1 = _mm256_load_ps(I + (5 * step) + FLOAT_SIMD);  \
+    c10 = _mm256_add_ps(b0, c10);                      \
+    c11 = _mm256_add_ps(b1, c11);\
+    c6 = _mm256_add_ps(c6, c7);\
+    c8 = _mm256_add_ps(c8, c9);\
+    c10 = _mm256_add_ps(c10, c11);\
+    _mm256_store_ps(c_tile + 0 * FLOAT_SIMD, c0);\
+    _mm256_store_ps(c_tile + 1 * FLOAT_SIMD, c2);\
+    _mm256_store_ps(c_tile + 2 * FLOAT_SIMD, c4);\
+    _mm256_store_ps(c_tile + 3 * FLOAT_SIMD, c6);\
+    _mm256_store_ps(c_tile + 4 * FLOAT_SIMD, c8);\
+    _mm256_store_ps(c_tile + 5 * FLOAT_SIMD, c10);\
+    for(uint32_t kk = 1; kk < FLOAT_SIMD; kk++)\
+    {\
+        c_tile[0*FLOAT_SIMD] += c_tile[kk + 0 *FLOAT_SIMD]; c_tile[kk + 0*FLOAT_SIMD] = 0.0;\
+        c_tile[1*FLOAT_SIMD] += c_tile[kk + 1 * FLOAT_SIMD];c_tile[kk + 1*FLOAT_SIMD] = 0.0;\
+        c_tile[2*FLOAT_SIMD] += c_tile[kk + 2 * FLOAT_SIMD];c_tile[kk + 2*FLOAT_SIMD] = 0.0;\
+        c_tile[3*FLOAT_SIMD] += c_tile[kk + 3 * FLOAT_SIMD];c_tile[kk + 3*FLOAT_SIMD] = 0.0;\
+        c_tile[4*FLOAT_SIMD] += c_tile[kk + 4 * FLOAT_SIMD];c_tile[kk + 4*FLOAT_SIMD] = 0.0;\
+        c_tile[5*FLOAT_SIMD] += c_tile[kk + 5 * FLOAT_SIMD];c_tile[kk + 5*FLOAT_SIMD] = 0.0;\
+    }\
+    c0 = _mm256_load_ps(c_tile + 0 * FLOAT_SIMD);\
+    c2 = _mm256_load_ps(c_tile + 1 * FLOAT_SIMD);\
+    c4 = _mm256_load_ps(c_tile + 2 * FLOAT_SIMD);\
+    c6 = _mm256_load_ps(c_tile + 3 * FLOAT_SIMD);\
+    c8 = _mm256_load_ps(c_tile + 4 * FLOAT_SIMD);\
+    c10 = _mm256_load_ps(c_tile + 5 * FLOAT_SIMD);
+
+
+
 
 
 #if FLOAT_SIMD_EPILOGUE == 1
@@ -1273,6 +1403,56 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
 //****************************************************************************
 // Ewise Softsign
 //****************************************************************************
+#define FLOAT_SOFTSIGN_TILE_C(step, I)\
+    c12 = _mm256_castsi256_ps(_mm256_set1_epi32(0x7fffffff));\
+    __m256 a0, a1;\
+    b0 = _mm256_set1_ps(1.0f);\
+    a0 = _mm256_load_ps(I + step* 0 + 0 * FLOAT_SIMD); a1 = _mm256_load_ps(I + step * 0 + 1 * FLOAT_SIMD);\
+    c0 = _mm256_and_ps(c12, a0); c1 = _mm256_and_ps(c12,a1);\
+    a0 = _mm256_load_ps(I + step* 1 + 0 * FLOAT_SIMD); a1 = _mm256_load_ps(I + step * 1 + 1 * FLOAT_SIMD);\
+    c0 = _mm256_add_ps(b0, c0); c1 = _mm256_add_ps(b0, c1); c2 = _mm256_and_ps(c12, a0); c3 = _mm256_and_ps(c12, a1);\
+    a0 = _mm256_load_ps(I + step* 2 + 0 * FLOAT_SIMD); a1 = _mm256_load_ps(I + step * 2 + 1 * FLOAT_SIMD);\
+    c2 = _mm256_add_ps(b0, c2); c3 = _mm256_add_ps(b0, c3); c4 = _mm256_and_ps(c12, a0); c5 = _mm256_and_ps(c12, a1);\
+    a0 = _mm256_load_ps(I + step* 3 + 0 * FLOAT_SIMD); a1 = _mm256_load_ps(I + step * 3 + 1 * FLOAT_SIMD);\
+    c4 = _mm256_add_ps(b0, c4); c5 = _mm256_add_ps(b0, c5); c6 = _mm256_and_ps(c12, a0); c7 = _mm256_and_ps(c12, a1);\
+    a0 = _mm256_load_ps(I + step* 4 + 0 * FLOAT_SIMD); a1 = _mm256_load_ps(I + step * 4 + 1 * FLOAT_SIMD);\
+    c6 = _mm256_add_ps(b0, c6); c7 = _mm256_add_ps(b0, c7); c8 = _mm256_and_ps(c12, a0); c9 = _mm256_and_ps(c12, a1);\
+    a0 = _mm256_load_ps(I + step* 5 + 0 * FLOAT_SIMD); a1 = _mm256_load_ps(I + step * 5 + 1 * FLOAT_SIMD);\
+    c8 = _mm256_add_ps(b0, c8); c9 = _mm256_add_ps(b0, c9); c10 = _mm256_and_ps(c12, a0); c11 = _mm256_and_ps(c12, a1);\
+    a0 = _mm256_load_ps(I + step* 0 + 0 * FLOAT_SIMD); a1 = _mm256_load_ps(I + step * 0 + 1 * FLOAT_SIMD);\
+    c10 = _mm256_add_ps(b0, c10); c11 = _mm256_add_ps(b0, c11);\
+    c0 = _mm256_div_ps(a0, c0); c1 = _mm256_div_ps(a1, c1);\
+    a0 = _mm256_load_ps(I + step* 1 + 0 * FLOAT_SIMD); a1 = _mm256_load_ps(I + step * 1 + 1 * FLOAT_SIMD);\
+    c2 = _mm256_div_ps(a0, c2); c3 = _mm256_div_ps(a1, c3);\
+    a0 = _mm256_load_ps(I + step* 2 + 0 * FLOAT_SIMD); a1 = _mm256_load_ps(I + step * 2 + 1 * FLOAT_SIMD);\
+    c4 = _mm256_div_ps(a0, c4); c5 = _mm256_div_ps(a1, c5);\
+    a0 = _mm256_load_ps(I + step* 3 + 0 * FLOAT_SIMD); a1 = _mm256_load_ps(I + step * 3 + 1 * FLOAT_SIMD);\
+    c6 = _mm256_div_ps(a0, c6); c7 = _mm256_div_ps(a1, c7);\
+    a0 = _mm256_load_ps(I + step* 4 + 0 * FLOAT_SIMD); a1 = _mm256_load_ps(I + step * 4 + 1 * FLOAT_SIMD);\
+    c8 = _mm256_div_ps(a0, c8); c9 = _mm256_div_ps(a1, c9);\
+    a0 = _mm256_load_ps(I + step* 5 + 0 * FLOAT_SIMD); a1 = _mm256_load_ps(I + step * 5 + 1 * FLOAT_SIMD);\
+    c10 = _mm256_div_ps(a0, c10); c11 = _mm256_div_ps(a1, c11);
+
+    #define FLOAT_SOFTSIGN_END_C(step, I, c_cur, W_ob, C_ob)                \
+    c_tile_t *c_pixel = c_cur;                                          \
+    c_tile_t const *I_pixel = I;                                        \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                              \
+    {                                                                   \
+        c_tile_t *c_channel = c_pixel;                                  \
+        c_tile_t const *I_channel = I_pixel;                            \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                          \
+        {                                                               \
+            *(c_channel) = *(I_channel) / (1.0f + std::abs(*I_channel)); \
+            c_channel++;                                                \
+            I_channel++;                                                \
+        }                                                               \
+        I_pixel += step;                                                \
+        c_pixel += C_ob;                                                \
+    }
+    
+
+
+
 #define FLOAT_INPLACE_SOFTSIGN_TILE_C             \
     c12 = _mm256_castsi256_ps(_mm256_set1_epi32(0x7fffffff));  \
     a_reg = _mm256_set1_ps(1.0f);                 \
@@ -1332,31 +1512,31 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
 //****************************************************************************
 
 #define FLOAT_ABS_TILE_C(step, I)                                       \
-    c12 = _mm256_set1_ps(-0.0f);                                        \
+    c12 = _mm256_castsi256_ps(_mm256_set1_epi32(0x7fffffff));                                        \
     b0 = _mm256_load_ps(I + (0 * step));                                \
-    c0 = _mm256_andnot_ps(c12, b0);                                     \
+    c0 = _mm256_and_ps(c12, b0);                                     \
     b1 = _mm256_load_ps(I + (0 * step) + FLOAT_SIMD);                   \
-    c1 = _mm256_andnot_ps(c12, b1);                                     \
+    c1 = _mm256_and_ps(c12, b1);                                     \
     a_reg = _mm256_load_ps(I + (1 * step));                             \
-    c2 = _mm256_andnot_ps(c12, a_reg);                                  \
+    c2 = _mm256_and_ps(c12, a_reg);                                  \
     b0 = _mm256_load_ps(I + (1 * step) + FLOAT_SIMD);                   \
-    c3 = _mm256_andnot_ps(c12, b0);                                     \
+    c3 = _mm256_and_ps(c12, b0);                                     \
     b1 = _mm256_load_ps(I + (2 * step));                                \
-    c4 = _mm256_andnot_ps(c12, b1);                                     \
+    c4 = _mm256_and_ps(c12, b1);                                     \
     a_reg = _mm256_load_ps(I + (2 * step) + FLOAT_SIMD);                \
-    c5 = _mm256_andnot_ps(c12, a_reg);                                  \
+    c5 = _mm256_and_ps(c12, a_reg);                                  \
     b0 = _mm256_load_ps(I + (3 * step));                                \
-    c6 = _mm256_andnot_ps(c12, b0);                                     \
+    c6 = _mm256_and_ps(c12, b0);                                     \
     b1 = _mm256_load_ps(I + (3 * step) + FLOAT_SIMD);                   \
-    c7 = _mm256_andnot_ps(c12, b1);                                     \
+    c7 = _mm256_and_ps(c12, b1);                                     \
     a_reg = _mm256_load_ps(I + (4 * step));                             \
-    c8 = _mm256_andnot_ps(c12, a_reg);                                  \
+    c8 = _mm256_and_ps(c12, a_reg);                                  \
     b0 = _mm256_load_ps(I + (4 * step) + FLOAT_SIMD);                   \
-    c9 = _mm256_andnot_ps(c12, b0);                                     \
+    c9 = _mm256_and_ps(c12, b0);                                     \
     b1 = _mm256_load_ps(I + (5 * step));                                \
-    c10 = _mm256_andnot_ps(c12, b1);                                    \
+    c10 = _mm256_and_ps(c12, b1);                                    \
     a_reg = _mm256_load_ps(I + (5 * step) + FLOAT_SIMD);                \
-    c11 = _mm256_andnot_ps(c12, a_reg);
+    c11 = _mm256_and_ps(c12, a_reg);
 
 #define FLOAT_ABS_END_C(step, I, c_cur, W_ob, C_ob)             \
     c_tile_t *c_pixel = c_cur;                                  \
@@ -1374,6 +1554,35 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
         I_pixel += step;                                        \
         c_pixel += C_ob;                                        \
     }
+
+#define FLOAT_INPLACE_ABS_TILE_C\
+    __m256 sign_mask = _mm256_castsi256_ps(_mm256_set1_epi32(0x7FFFFFFF));\
+    c0 = _mm256_and_ps(c0, sign_mask);\
+    c1 = _mm256_and_ps(c1, sign_mask);\
+    c2 = _mm256_and_ps(c2, sign_mask);\
+    c3 = _mm256_and_ps(c3, sign_mask);\
+    c4 = _mm256_and_ps(c4, sign_mask);\
+    c5 = _mm256_and_ps(c5, sign_mask);\
+    c6 = _mm256_and_ps(c6, sign_mask);\
+    c7 = _mm256_and_ps(c7, sign_mask);\
+    c8 = _mm256_and_ps(c8, sign_mask);\
+    c9 = _mm256_and_ps(c9, sign_mask);\
+    c10 = _mm256_and_ps(c10, sign_mask);\
+    c11 = _mm256_and_ps(c11, sign_mask);
+    
+#define FLOAT_INPLACE_ABS_END_C(c_cur, W_ob, C_ob) \
+    c_tile_t *c_pixel = c_cur;                                  \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                      \
+    {                                                           \
+        c_tile_t *c_channel = c_pixel;                          \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                  \
+        {                                                       \
+            *(c_channel) = std::abs(*c_channel);                \
+            c_channel++;                                        \
+        }                                                       \
+        c_pixel += C_ob;                                        \
+    }
+
 
 //****************************************************************************
 // Ewise div
@@ -1423,30 +1632,10 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
     }
 
 
-//****************************************************************************
-// Slope ReLu activation
-//****************************************************************************
 
 
-#define FLOAT_SLOPE_RELU_END_C(step, a, c_cur, W_ob, C_ob)                                     \
-    float *c_pixel = c_cur;                                                                         \
-    float const *a_pixel = a;                                                                       \
-    for (uint32_t kk = 0; kk < W_ob; kk++)                                                        \
-    {                                                                                               \
-        float *c_channel = c_pixel;                                                                 \
-        float const *a_channel = a_pixel;                                                           \
-        for (uint32_t jj = 0; jj < C_ob; jj++)                                                      \
-        {                                                                                           \
-            *(c_channel) = *(c_channel) > 0 ? *(c_channel) : (*(a_channel) * *(c_channel)); \
-            c_channel++;                                                                            \
-            a_channel++;                                                                            \
-        }                                                                                           \
-        a_pixel += step;                                                                            \
-        c_pixel += C_ob;                                                                            \
-    }
-
 //****************************************************************************
-// Fused Slope ReLU activation
+// Inplace Slope ReLU activation primtivives
 //****************************************************************************
 #define FLOAT_MIN_SCALAR_TILE_C \
     c12 = _mm256_setzero_ps();   \
@@ -1463,18 +1652,15 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
     c10 = _mm256_min_ps(c10, c12);  \
     c11 = _mm256_min_ps(c11, c12);
 
-#define FLOAT_MIN_SCALAR_END_C(I, c_cur, W_ob, C_ob) \
-    c_tile_t *c_pixel = c_cur;                                  \
-    for (uint32_t kk = 0; kk < W_ob; kk++)                    \
-    {                                                           \
-        c_tile_t *c_channel = c_pixel;                          \
-        for (uint32_t jj = 0; jj < C_ob; jj++)                  \
-        {                                                       \
-            *(c_channel) = std::min(*(c_channel), I[0]);        \
-            c_channel++;                                        \
-        }                                                       \
-        c_pixel += C_ob;                                        \
+#define FLOAT_MIN_SCALAR_END_C(c_cur, W_ob, C_ob) \
+    for(uint32_t kk = 0; kk < W_ob; kk++)\
+    {\
+        for(uint32_t jj = 0; jj < C_ob; jj++)\
+        {\
+            c_cur[kk * C_ob + jj] = (c_cur[kk * C_ob +jj] < 0.0) ? c_cur[kk * C_ob +jj]:0.0;\
+        }\
     }
+
 
 #define FLOAT_MUL_TILE_C(step, I)        \
     b0 = _mm256_load_ps(I + (0 * step));               \
@@ -1502,47 +1688,7 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
     c12 = _mm256_load_ps(I + (5 * step) + FLOAT_SIMD); \
     c11 = _mm256_mul_ps(c12, c11);
 
-#define FLOAT_FMA_TILE_C(step, I, O_inter, W_ob, C_ob)           \
-    b0 = _mm256_load_ps(I + (0 * step));                \
-    b1 = _mm256_load_ps(O_inter + (0 * step));                \
-    c0 = _mm256_fmadd_ps(b0, b1, c0);                   \
-    c12 = _mm256_load_ps(I + (0 * step) + FLOAT_SIMD); \
-    a_reg = _mm256_load_ps(O_inter + (0 * step) + FLOAT_SIMD); \
-    c1 = _mm256_fmadd_ps(c12, a_reg, c1);                 \
-    b0 = _mm256_load_ps(I + (1 * step));                \
-    b1 = _mm256_load_ps(O_inter + (1 * step));                \
-    c2 = _mm256_fmadd_ps(b0, b1, c2);                   \
-    c12 = _mm256_load_ps(I + (1 * step) + FLOAT_SIMD); \
-    a_reg = _mm256_load_ps(O_inter + (1 * step) + FLOAT_SIMD); \
-    c3 = _mm256_fmadd_ps(c12, a_reg, c3);                 \
-    b0 = _mm256_load_ps(I + (2 * step));                \
-    b1 = _mm256_load_ps(O_inter + (2 * step));                \
-    c4 = _mm256_fmadd_ps(b0, b1, c4);                   \
-    c12 = _mm256_load_ps(I + (2 * step) + FLOAT_SIMD); \
-    a_reg = _mm256_load_ps(O_inter + (2 * step) + FLOAT_SIMD); \
-    c5 = _mm256_fmadd_ps(c12, a_reg, c5);                 \
-    b0 = _mm256_load_ps(I + (3 * step));                \
-    b1 = _mm256_load_ps(O_inter + (3 * step));                \
-    c6 = _mm256_fmadd_ps(b0, b1, c6);                   \
-    c12 = _mm256_load_ps(I + (3 * step) + FLOAT_SIMD); \
-    a_reg = _mm256_load_ps(O_inter + (3 * step) + FLOAT_SIMD); \
-    c7 = _mm256_fmadd_ps(c12, a_reg, c7);                 \
-    b0 = _mm256_load_ps(I + (4 * step));                \
-    b1 = _mm256_load_ps(O_inter + (4 * step));                \
-    c8 = _mm256_fmadd_ps(b0, b1, c8);                   \
-    c12 = _mm256_load_ps(I + (4 * step) + FLOAT_SIMD); \
-    a_reg = _mm256_load_ps(O_inter + (4 * step) + FLOAT_SIMD); \
-    c9 = _mm256_fmadd_ps(c12, a_reg, c9);                 \
-    b0 = _mm256_load_ps(I + (5 * step));                \
-    b1 = _mm256_load_ps(O_inter + (5 * step));                \
-    c10 = _mm256_fmadd_ps(b0, b1, c10);                 \
-    c12 = _mm256_load_ps(I + (5 * step) + FLOAT_SIMD); \
-    a_reg = _mm256_load_ps(O_inter + (5 * step) + FLOAT_SIMD); \
-    c11 = _mm256_fmadd_ps(c12, a_reg, c11);
-
-
-
-#define FLOAT_MUL_END_C(step, I, c_cur, W_last, C_ob) \
+#define FLOAT_MUL_END_C(step, I, c_cur, W_ob, C_ob) \
     c_tile_t *c_pixel = c_cur;                                  \
     c_tile_t const *I_pixel = I;                                \
     for (uint32_t kk = 0; kk < W_ob; kk++)                      \
@@ -1551,7 +1697,7 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
         c_tile_t const *I_channel = I_pixel;                    \
         for (uint32_t jj = 0; jj < C_ob; jj++)                  \
         {                                                       \
-            *(c_channel) = *(I_channel) / *(c_channel);         \
+            *(c_channel) = *(I_channel) * (*(c_channel));         \
             c_channel++;                                        \
             I_channel++;                                        \
         }                                                       \
@@ -1560,198 +1706,9 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
     }
 
 
-
-
-#define FLOAT_FUSED_SLOPE_RELU_TILE_C(step, a_cur, c_cur) \
-    FLOAT_MIN_SCALAR_TILE_C; \
-    FLOAT_MUL_TILE_C(step, a_cur);  \
-    FLOAT_STORE_TILE_C(c_tile); \
-    __asm__ __volatile__("" ::: "memory"); \
-    FLOAT_LOAD_TILE_C(c_cur); \
-    FLOAT_INPLACE_RELU_TILE_C;  \
-    FLOAT_ACCUM_TILE_C(step, c_tile);
-
 //****************************************************************************
-// CeLu activation
+// CeLU activation primitives
 //****************************************************************************
-// CUSTOM CELU microkernel
-#define FLOAT_CELU_TILE_C(b) \
-    c12 = _mm256_broadcast_ss(b);   \
-    a_reg = _mm256_setzero_ps();   \
-    b0 = _mm256_set1_ps(1.0f);      \
-    b1 = _mm256_div_ps(c0, c12);    \
-    _mm256_storeu_ps(c_tile + 0 * FLOAT_C_ob + 0 * FLOAT_SIMD, b1); \
-    for (uint32_t kk = 0; kk < FLOAT_SIMD; ++kk) \
-    { \
-        c_tile[kk] = std::exp(c_tile[kk]); \
-    } \
-    b1 = _mm256_loadu_ps(c_tile + 0 * FLOAT_C_ob + 0 * FLOAT_SIMD); \
-    b1 = _mm256_sub_ps(b1, b0);     \
-    b1 = _mm256_mul_ps(c12, b1);    \
-    b1 = _mm256_min_ps(b1, a_reg);  \
-    c0 = _mm256_max_ps(c0, a_reg);  \
-    c0 = _mm256_add_ps(c0, b1);     \
-    b1 = _mm256_div_ps(c1, c12);    \
-    _mm256_storeu_ps(c_tile + 0 * FLOAT_C_ob + 0 * FLOAT_SIMD, b1); \
-    for (uint32_t kk = 0; kk < FLOAT_SIMD; ++kk) \
-    { \
-        c_tile[kk] = std::exp(c_tile[kk]); \
-    } \
-    b1 = _mm256_loadu_ps(c_tile + 0 * FLOAT_C_ob + 0 * FLOAT_SIMD); \
-    b1 = _mm256_sub_ps(b1, b0);     \
-    b1 = _mm256_mul_ps(c12, b1);    \
-    b1 = _mm256_min_ps(b1, a_reg);  \
-    c1 = _mm256_max_ps(c1, a_reg);  \
-    c1 = _mm256_add_ps(c1, b1);     \
-    b1 = _mm256_div_ps(c2, c12);    \
-    _mm256_storeu_ps(c_tile + 0 * FLOAT_C_ob + 0 * FLOAT_SIMD, b1); \
-    for (uint32_t kk = 0; kk < FLOAT_SIMD; ++kk) \
-    { \
-        c_tile[kk] = std::exp(c_tile[kk]); \
-    } \
-    b1 = _mm256_loadu_ps(c_tile + 0 * FLOAT_C_ob + 0 * FLOAT_SIMD); \
-    b1 = _mm256_sub_ps(b1, b0);     \
-    b1 = _mm256_mul_ps(c12, b1);    \
-    b1 = _mm256_min_ps(b1, a_reg);  \
-    c2 = _mm256_max_ps(c2, a_reg);  \
-    c2 = _mm256_add_ps(c2, b1);     \
-    b1 = _mm256_div_ps(c3, c12);    \
-    _mm256_storeu_ps(c_tile + 0 * FLOAT_C_ob + 0 * FLOAT_SIMD, b1); \
-    for (uint32_t kk = 0; kk < FLOAT_SIMD; ++kk) \
-    { \
-        c_tile[kk] = std::exp(c_tile[kk]); \
-    } \
-    b1 = _mm256_loadu_ps(c_tile + 0 * FLOAT_C_ob + 0 * FLOAT_SIMD); \
-    b1 = _mm256_sub_ps(b1, b0);     \
-    b1 = _mm256_mul_ps(c12, b1);    \
-    b1 = _mm256_min_ps(b1, a_reg);  \
-    c3 = _mm256_max_ps(c3, a_reg);  \
-    c3 = _mm256_add_ps(c3, b1);     \
-    b1 = _mm256_div_ps(c4, c12);    \
-    _mm256_storeu_ps(c_tile + 0 * FLOAT_C_ob + 0 * FLOAT_SIMD, b1); \
-    for (uint32_t kk = 0; kk < FLOAT_SIMD; ++kk) \
-    { \
-        c_tile[kk] = std::exp(c_tile[kk]); \
-    } \
-    b1 = _mm256_loadu_ps(c_tile + 0 * FLOAT_C_ob + 0 * FLOAT_SIMD); \
-    b1 = _mm256_sub_ps(b1, b0);     \
-    b1 = _mm256_mul_ps(c12, b1);    \
-    b1 = _mm256_min_ps(b1, a_reg);  \
-    c4 = _mm256_max_ps(c4, a_reg);  \
-    c4 = _mm256_add_ps(c4, b1);     \
-    b1 = _mm256_div_ps(c5, c12);    \
-    _mm256_storeu_ps(c_tile + 0 * FLOAT_C_ob + 0 * FLOAT_SIMD, b1); \
-    for (uint32_t kk = 0; kk < FLOAT_SIMD; ++kk) \
-    { \
-        c_tile[kk] = std::exp(c_tile[kk]); \
-    } \
-    b1 = _mm256_loadu_ps(c_tile + 0 * FLOAT_C_ob + 0 * FLOAT_SIMD); \
-    b1 = _mm256_sub_ps(b1, b0);     \
-    b1 = _mm256_mul_ps(c12, b1);    \
-    b1 = _mm256_min_ps(b1, a_reg);  \
-    c5 = _mm256_max_ps(c5, a_reg);  \
-    c5 = _mm256_add_ps(c5, b1);     \
-    b1 = _mm256_div_ps(c6, c12);    \
-    _mm256_storeu_ps(c_tile + 0 * FLOAT_C_ob + 0 * FLOAT_SIMD, b1); \
-    for (uint32_t kk = 0; kk < FLOAT_SIMD; ++kk) \
-    { \
-        c_tile[kk] = std::exp(c_tile[kk]); \
-    } \
-    b1 = _mm256_loadu_ps(c_tile + 0 * FLOAT_C_ob + 0 * FLOAT_SIMD); \
-    b1 = _mm256_sub_ps(b1, b0);     \
-    b1 = _mm256_mul_ps(c12, b1);    \
-    b1 = _mm256_min_ps(b1, a_reg);  \
-    c6 = _mm256_max_ps(c6, a_reg);  \
-    c6 = _mm256_add_ps(c6, b1);     \
-    b1 = _mm256_div_ps(c7, c12);    \
-    _mm256_storeu_ps(c_tile + 0 * FLOAT_C_ob + 0 * FLOAT_SIMD, b1); \
-    for (uint32_t kk = 0; kk < FLOAT_SIMD; ++kk) \
-    { \
-        c_tile[kk] = std::exp(c_tile[kk]); \
-    } \
-    b1 = _mm256_loadu_ps(c_tile + 0 * FLOAT_C_ob + 0 * FLOAT_SIMD); \
-    b1 = _mm256_sub_ps(b1, b0);     \
-    b1 = _mm256_mul_ps(c12, b1);    \
-    b1 = _mm256_min_ps(b1, a_reg);  \
-    c7 = _mm256_max_ps(c7, a_reg);  \
-    c7 = _mm256_add_ps(c7, b1);     \
-    b1 = _mm256_div_ps(c8, c12);    \
-    _mm256_storeu_ps(c_tile + 0 * FLOAT_C_ob + 0 * FLOAT_SIMD, b1); \
-    for (uint32_t kk = 0; kk < FLOAT_SIMD; ++kk) \
-    { \
-        c_tile[kk] = std::exp(c_tile[kk]); \
-    } \
-    b1 = _mm256_loadu_ps(c_tile + 0 * FLOAT_C_ob + 0 * FLOAT_SIMD); \
-    b1 = _mm256_sub_ps(b1, b0);     \
-    b1 = _mm256_mul_ps(c12, b1);    \
-    b1 = _mm256_min_ps(b1, a_reg);  \
-    c8 = _mm256_max_ps(c8, a_reg);  \
-    c8 = _mm256_add_ps(c8, b1);     \
-    b1 = _mm256_div_ps(c9, c12);    \
-    _mm256_storeu_ps(c_tile + 0 * FLOAT_C_ob + 0 * FLOAT_SIMD, b1); \
-    for (uint32_t kk = 0; kk < FLOAT_SIMD; ++kk) \
-    { \
-        c_tile[kk] = std::exp(c_tile[kk]); \
-    } \
-    b1 = _mm256_loadu_ps(c_tile + 0 * FLOAT_C_ob + 0 * FLOAT_SIMD); \
-    b1 = _mm256_sub_ps(b1, b0);     \
-    b1 = _mm256_mul_ps(c12, b1);    \
-    b1 = _mm256_min_ps(b1, a_reg);  \
-    c9 = _mm256_max_ps(c9, a_reg);  \
-    c9 = _mm256_add_ps(c9, b1);     \
-    b1 = _mm256_div_ps(c10, c12);   \
-    _mm256_storeu_ps(c_tile + 0 * FLOAT_C_ob + 0 * FLOAT_SIMD, b1); \
-    for (uint32_t kk = 0; kk < FLOAT_SIMD; ++kk) \
-    { \
-        c_tile[kk] = std::exp(c_tile[kk]); \
-    } \
-    b1 = _mm256_loadu_ps(c_tile + 0 * FLOAT_C_ob + 0 * FLOAT_SIMD); \
-    b1 = _mm256_sub_ps(b1, b0);     \
-    b1 = _mm256_mul_ps(c12, b1);    \
-    b1 = _mm256_min_ps(b1, a_reg);  \
-    c10 = _mm256_max_ps(c10, a_reg); \
-    c10 = _mm256_add_ps(c10, b1);   \
-    b1 = _mm256_div_ps(c11, c12);   \
-    _mm256_storeu_ps(c_tile + 0 * FLOAT_C_ob + 0 * FLOAT_SIMD, b1); \
-    for (uint32_t kk = 0; kk < FLOAT_SIMD; ++kk) \
-    { \
-        c_tile[kk] = std::exp(c_tile[kk]); \
-    } \
-    b1 = _mm256_loadu_ps(c_tile + 0 * FLOAT_C_ob + 0 * FLOAT_SIMD); \
-    b1 = _mm256_sub_ps(b1, b0);     \
-    b1 = _mm256_mul_ps(c12, b1);    \
-    b1 = _mm256_min_ps(b1, a_reg);  \
-    c11 = _mm256_max_ps(c11, a_reg); \
-    c11 = _mm256_add_ps(c11, b1);  
-
-#define FLOAT_CELU_END_C(b, c_cur, W_ob, C_ob)                   \
-    float *c_pixel = c_cur;                                           \
-    float alpha = b[0];                                              \
-    for (uint32_t kk = 0; kk < W_ob; kk++)                          \
-    {                                                                 \
-        float *c_channel = c_pixel;                                   \
-        for (uint32_t jj = 0; jj < C_ob; jj++)                        \
-        {                                                             \
-            *(c_channel) = std::max(0.f, *(c_channel)) + std::min(0.f, alpha * (*(c_channel) / alpha - 1.0f)); \
-            c_channel++;                                              \
-        }                                                             \
-        c_pixel += C_ob;                                              \
-    }                                                           
-
-#define FLOAT_FUSED_CELU_TILE_C(step, a, b, c) \
-    float recip_fact_table[] = {0.008333333333, 0.0416667, 0.16667, 0.5, 1.0};\
-    FLOAT_DIV_SCALAR_TILE_C(b); \
-    FLOAT_STORE_TILE_C(c_tile); \
-    /*FLOAT_INPLACE_EXP_horner_TILE_C(step, c_tile, recip_fact_table);*/ \
-    FLOAT_INPLACE_EXP_TILE_C; \
-    FLOAT_SUB_ONE_TILE_C; \
-    FLOAT_MUL_SCALAR_TILE_C(b); \
-    FLOAT_MIN_SCALAR_TILE_C; \
-    FLOAT_STORE_TILE_C(c_tile); \
-    FLOAT_LOAD_TILE_C(c); \
-    FLOAT_INPLACE_RELU_TILE_C; \
-    FLOAT_ACCUM_TILE_C(step, c_tile);
-
 
 #define FLOAT_DIV_SCALAR_TILE_C(b)  \
     c12 = _mm256_broadcast_ss(b);   \
@@ -1768,6 +1725,21 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
     c10 = _mm256_div_ps(c10, c12);  \
     c11 = _mm256_div_ps(c11, c12);
 
+#define FLOAT_DIV_SCALAR_END_C(b, c_cur, W_ob, C_ob)\
+    c_tile_t *c_pixel = c_cur;                                  \
+    c_tile_t const b_value = *b;                                \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                      \
+    {                                                           \
+        c_tile_t *c_channel = c_pixel;                          \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                  \
+        {                                                       \
+            *(c_channel) = *(c_channel)/b_value;         \
+            c_channel++;                                        \
+        }                                                       \
+        c_pixel += C_ob;                                        \
+    }
+
+
 #define FLOAT_SUB_ONE_TILE_C \
     b0 = _mm256_set1_ps(1.0f);      \
     c0 = _mm256_sub_ps(c0, b0);    \
@@ -1782,6 +1754,20 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
     c9 = _mm256_sub_ps(c9, b0);    \
     c10 = _mm256_sub_ps(c10, b0);  \
     c11 = _mm256_sub_ps(c11, b0);
+
+#define FLOAT_SUB_ONE_END_C(c_cur, W_ob, C_ob)\
+c_tile_t *c_pixel = c_cur;                                  \
+c_tile_t const one = 1.0;                                \
+for (uint32_t kk = 0; kk < W_ob; kk++)                      \
+{                                                           \
+    c_tile_t *c_channel = c_pixel;                          \
+    for (uint32_t jj = 0; jj < C_ob; jj++)                  \
+    {                                                       \
+        *(c_channel) = *(c_channel) - one;         \
+        c_channel++;                                        \
+    }                                                       \
+    c_pixel += C_ob;                                        \
+}
 
 #define FLOAT_MUL_SCALAR_TILE_C(b) \
     c12 = _mm256_broadcast_ss(b);   \
@@ -1826,64 +1812,11 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
     }
 #endif
 
-#define FLOAT_SOFTMAX_TILE_C(step, a, c, d) \
-    _mm256_storeu_ps(c_tile + 0 * FLOAT_C_ob + 0 * FLOAT_SIMD, c0);  \
-    _mm256_storeu_ps(c_tile + 0 * FLOAT_C_ob + 1 * FLOAT_SIMD, c1);  \
-    _mm256_storeu_ps(c_tile + 1 * FLOAT_C_ob + 0 * FLOAT_SIMD, c2);  \
-    _mm256_storeu_ps(c_tile + 1 * FLOAT_C_ob + 1 * FLOAT_SIMD, c3);  \
-    _mm256_storeu_ps(c_tile + 2 * FLOAT_C_ob + 0 * FLOAT_SIMD, c4);  \
-    _mm256_storeu_ps(c_tile + 2 * FLOAT_C_ob + 1 * FLOAT_SIMD, c5);  \
-    _mm256_storeu_ps(c_tile + 3 * FLOAT_C_ob + 0 * FLOAT_SIMD, c6);  \
-    _mm256_storeu_ps(c_tile + 3 * FLOAT_C_ob + 1 * FLOAT_SIMD, c7);  \
-    _mm256_storeu_ps(c_tile + 4 * FLOAT_C_ob + 0 * FLOAT_SIMD, c8);  \
-    _mm256_storeu_ps(c_tile + 4 * FLOAT_C_ob + 1 * FLOAT_SIMD, c9);  \
-    _mm256_storeu_ps(c_tile + 5 * FLOAT_C_ob + 0 * FLOAT_SIMD, c10); \
-    _mm256_storeu_ps(c_tile + 5 * FLOAT_C_ob + 1 * FLOAT_SIMD, c11); \
-    c_tile_t *c_pixel = c_tile;                                \
-    c_tile_t *d_pixel = d;                                     \
-    c_tile_t const *a_pixel = a;                               \
-    for (uint32_t kk = 0; kk < FLOAT_W_ob; kk++)                     \
-    {                                                          \
-        c_tile_t *c_channel = c_pixel;                         \
-        c_tile_t *d_channel = d_pixel;                         \
-        c_tile_t const *a_channel = a_pixel;                   \
-        for (uint32_t jj = 0; jj < FLOAT_C_ob; jj++)                 \
-        {                                                      \
-            *(d_channel) = std::exp(*a_channel);               \
-            *(c_channel) += *(d_channel);                      \
-            std::cout << "exp: " << *(d_channel) << " sum: " << *(c_channel) << std::endl; \
-            c_channel++;                                       \
-            d_channel++;                                       \
-            a_channel++;                                       \
-        }                                                      \
-        a_pixel += step;                                       \
-        c_pixel += FLOAT_C_ob;                                       \
-        d_pixel += FLOAT_C_ob;                                       \
-    }                                                          \
-    c0 = _mm256_loadu_ps(c_tile + 0 * FLOAT_C_ob + 0 * FLOAT_SIMD);  \
-    c1 = _mm256_loadu_ps(c_tile + 0 * FLOAT_C_ob + 1 * FLOAT_SIMD);  \
-    c2 = _mm256_loadu_ps(c_tile + 1 * FLOAT_C_ob + 0 * FLOAT_SIMD);  \
-    c3 = _mm256_loadu_ps(c_tile + 1 * FLOAT_C_ob + 1 * FLOAT_SIMD);  \
-    c4 = _mm256_loadu_ps(c_tile + 2 * FLOAT_C_ob + 0 * FLOAT_SIMD);  \
-    c5 = _mm256_loadu_ps(c_tile + 2 * FLOAT_C_ob + 1 * FLOAT_SIMD);  \
-    c6 = _mm256_loadu_ps(c_tile + 3 * FLOAT_C_ob + 0 * FLOAT_SIMD);  \
-    c7 = _mm256_loadu_ps(c_tile + 3 * FLOAT_C_ob + 1 * FLOAT_SIMD);  \
-    c8 = _mm256_loadu_ps(c_tile + 4 * FLOAT_C_ob + 0 * FLOAT_SIMD);  \
-    c9 = _mm256_loadu_ps(c_tile + 4 * FLOAT_C_ob + 1 * FLOAT_SIMD);  \
-    c10 = _mm256_loadu_ps(c_tile + 5 * FLOAT_C_ob + 0 * FLOAT_SIMD); \
-    c11 = _mm256_loadu_ps(c_tile + 5 * FLOAT_C_ob + 1 * FLOAT_SIMD);
-
-#define FLOAT_FUSED_SOFTMAX_TILE_C(step, a, c) \
-    FLOAT_STORE_TILE_C(c_tile); \
-    FLOAT_LOAD_TILE_C(c);  \
-    FLOAT_SOFTMAX_TILE_C(step, a, c); \
-    FLOAT_MUL_TILE_C(step, a, c);
-
-
 
 //****************************************************************************
 // FMA for taylor series like sum
 //****************************************************************************
+// Not needed for reference with std::exp
 // assuming one input is already in c_tile
 // will be over-written
 // Implements C = A*C + B (with rank promotion)
@@ -1905,6 +1838,21 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
         c11 = _mm256_fmadd_ps(a_v, c11, b_v);\
 }
 
+#define FLOAT_FMA_END_C_A_SCALAR_B_SCALAR(a,b, c_cur, W_ob, C_ob)\
+{\
+    c_tile_t * c_pixel = c_cur;\
+    for(int kk = 0; kk < W_ob; kk++)\
+    {\
+        c_tile_t * c_channel = c_pixel;\
+        for(int jj = 0; jj < C_ob; jj++)\
+        {\
+            *c_channel = a[0] * (*c_channel) + b[0];\
+            c_channel++;\
+        }\
+        c_pixel += C_ob;\
+    }\
+}
+
 // Implements C = A*C + B (with rank promotion)
 #define FLOAT_FMA_TILE_C_A_MATRIX_B_SCALAR(step, a, b)\
 {\
@@ -1912,37 +1860,38 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
     float * a_row_ptr = a;\
     __m256 a_0, a_1;\
     a_0 = _mm256_load_ps(a_row_ptr + 0 * FLOAT_SIMD);\
-    c0 = _mm256_fmadd_ps(a_0, c0, b_v); a_1 = _mm256_load_ps(a_row_ptr + 0*(FLOAT_C_ob) + 1 * FLOAT_SIMD);\
-    c1 = _mm256_fmadd_ps(a_1, c1, b_v); a_0 = _mm256_load_ps(a_row_ptr + 1*(FLOAT_C_ob) + 0 * FLOAT_SIMD);\
-    c2 = _mm256_fmadd_ps(a_0, c2, b_v); a_1 = _mm256_load_ps(a_row_ptr + 1*(FLOAT_C_ob) + 1 * FLOAT_SIMD);\
-    c3 = _mm256_fmadd_ps(a_1, c3, b_v); a_0 = _mm256_load_ps(a_row_ptr + 2*(FLOAT_C_ob) + 0 * FLOAT_SIMD);\
-    c4 = _mm256_fmadd_ps(a_0, c4, b_v); a_1 = _mm256_load_ps(a_row_ptr + 2*(FLOAT_C_ob) + 1 * FLOAT_SIMD);\
-    c5 = _mm256_fmadd_ps(a_1, c5, b_v); a_0 = _mm256_load_ps(a_row_ptr + 3*(FLOAT_C_ob) + 0 * FLOAT_SIMD);\
-    c6 = _mm256_fmadd_ps(a_0, c6, b_v); a_1 = _mm256_load_ps(a_row_ptr + 3*(FLOAT_C_ob) + 1 * FLOAT_SIMD);\
-    c7 = _mm256_fmadd_ps(a_1, c7, b_v); a_0 = _mm256_load_ps(a_row_ptr + 4*(FLOAT_C_ob) + 0 * FLOAT_SIMD);\
-    c8 = _mm256_fmadd_ps(a_0, c8, b_v); a_1 = _mm256_load_ps(a_row_ptr + 4*(FLOAT_C_ob) + 1 * FLOAT_SIMD);\
-    c9 = _mm256_fmadd_ps(a_1, c9, b_v); a_0 = _mm256_load_ps(a_row_ptr + 5*(FLOAT_C_ob) + 0 * FLOAT_SIMD);\
-    c10 = _mm256_fmadd_ps(a_0, c10, b_v); a_1 = _mm256_load_ps(a_row_ptr + 5*(FLOAT_C_ob) + 1 * FLOAT_SIMD);\
+    c0 = _mm256_fmadd_ps(a_0, c0, b_v); a_1 = _mm256_load_ps(a_row_ptr + 0*step + 1 * FLOAT_SIMD);\
+    c1 = _mm256_fmadd_ps(a_1, c1, b_v); a_0 = _mm256_load_ps(a_row_ptr + 1*step + 0 * FLOAT_SIMD);\
+    c2 = _mm256_fmadd_ps(a_0, c2, b_v); a_1 = _mm256_load_ps(a_row_ptr + 1*step + 1 * FLOAT_SIMD);\
+    c3 = _mm256_fmadd_ps(a_1, c3, b_v); a_0 = _mm256_load_ps(a_row_ptr + 2*step + 0 * FLOAT_SIMD);\
+    c4 = _mm256_fmadd_ps(a_0, c4, b_v); a_1 = _mm256_load_ps(a_row_ptr + 2*step + 1 * FLOAT_SIMD);\
+    c5 = _mm256_fmadd_ps(a_1, c5, b_v); a_0 = _mm256_load_ps(a_row_ptr + 3*step + 0 * FLOAT_SIMD);\
+    c6 = _mm256_fmadd_ps(a_0, c6, b_v); a_1 = _mm256_load_ps(a_row_ptr + 3*step + 1 * FLOAT_SIMD);\
+    c7 = _mm256_fmadd_ps(a_1, c7, b_v); a_0 = _mm256_load_ps(a_row_ptr + 4*step + 0 * FLOAT_SIMD);\
+    c8 = _mm256_fmadd_ps(a_0, c8, b_v); a_1 = _mm256_load_ps(a_row_ptr + 4*step + 1 * FLOAT_SIMD);\
+    c9 = _mm256_fmadd_ps(a_1, c9, b_v); a_0 = _mm256_load_ps(a_row_ptr + 5*step + 0 * FLOAT_SIMD);\
+    c10 = _mm256_fmadd_ps(a_0, c10, b_v); a_1 = _mm256_load_ps(a_row_ptr + 5*step + 1 * FLOAT_SIMD);\
     c11 = _mm256_fmadd_ps(a_1, c11, b_v);\
 }
 
-
-
-
-// a: array to be exponentiated in-place
-// b: lookup table of reciprocal factorials (upto 4!)
-#define FLOAT_INPLACE_EXP_horner_TILE_C(step, a, b)\
-    auto a_scalar = 0;\
-    FLOAT_FMA_TILE_C_A_SCALAR_B_SCALAR(b+0, b+1);\
-    FLOAT_FMA_TILE_C_A_MATRIX_B_SCALAR(step, a, b+2);\
-    FLOAT_FMA_TILE_C_A_MATRIX_B_SCALAR(step, a, b+3);\
-    FLOAT_FMA_TILE_C_A_MATRIX_B_SCALAR(step, a, b+4);\
-    FLOAT_FMA_TILE_C_A_MATRIX_B_SCALAR(step, a, b+4);
-
-
-
-
-
+#define FLOAT_FMA_END_C_A_MATRIX_B_SCALAR(step, a,b, c_cur, W_ob, C_ob)\
+{\
+    c_tile_t * c_pixel = c_cur;\
+    c_tile_t * a_pixel = a;\
+    for(int kk = 0; kk < W_ob; kk++)\
+    {\
+        c_tile_t * c_channel = c_pixel;\
+        c_tile_t * a_channel = a_pixel;\
+        for(int jj = 0; jj < C_ob; jj++)\
+        {\
+            *c_channel = (*a_channel) * (*c_channel) + b[0];\
+            c_channel++;\
+            a_channel++;\
+        }\
+        c_pixel += C_ob;\
+        a_pixel += step;\
+    }\
+}
 
 #define FLOAT_MUL_TILE_C_A_SCALAR(a)\
 {\
@@ -1961,6 +1910,21 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
         c11 = _mm256_mul_ps(a_v, c11);\
 }
 
+#define FLOAT_MUL_END_C_A_SCALAR(a, c_cur, W_ob, C_ob)\
+{\
+    c_tile_t * c_pixel = c_cur;\
+    for(int kk = 0; kk < W_ob; kk++)\
+    {\
+        c_tile_t * c_channel = c_pixel;\
+        for(int jj = 0; jj < C_ob; jj++)\
+        {\
+            *c_channel = a[0] * (*c_channel);\
+            c_channel++;\
+        }\
+        c_pixel += C_ob;\
+    }\
+}
+
 #define FLOAT_RND_TILE_C \
 {\
         c0 = _mm256_round_ps(c0, (_MM_FROUND_TO_NEAREST_INT|_MM_FROUND_NO_EXC));\
@@ -1976,6 +1940,20 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
         c10 = _mm256_round_ps(c10, (_MM_FROUND_TO_NEAREST_INT|_MM_FROUND_NO_EXC));\
         c11 = _mm256_round_ps(c11, (_MM_FROUND_TO_NEAREST_INT|_MM_FROUND_NO_EXC));\
 }
+#define FLOAT_RND_END_C(c_cur, W_ob, C_ob)\
+{\
+    c_tile_t * c_pixel = c_cur;\
+    for(int kk = 0; kk < W_ob; kk++)\
+    {\
+        c_tile_t * c_channel = c_pixel;\
+        for(int jj = 0; jj < C_ob; jj++)\
+        {\
+            *c_channel = std::round(*c_channel);\
+            c_channel++;\
+        }\
+        c_pixel += C_ob;\
+    }\
+}
 
 #define FLOAT_NFMA_TILE_C_A_MATRIX_B_scalar(a, b)\
 {\
@@ -1996,25 +1974,27 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
         c11 = _mm256_fnmadd_ps(b_v, c11, a_1);\
 }
 
-
-#define FLOAT_NFMA_TILE_C_A_MATRIX_B_scalar(a, b)\
+#define FLOAT_NFMA_END_C_A_MATRIX_B_scalar(a, b, c_cur, W_ob, C_ob)\
 {\
-        __m256 a_0 = _mm256_loadu_ps(a + 0* FLOAT_C_ob + 0);\
-        __m256 a_1 = _mm256_loadu_ps(a + 0* FLOAT_C_ob + 8);\
-        __m256 b_v = _mm256_broadcast_ss(b);\
-        c0 = _mm256_fnmadd_ps(b_v, c0, a_0); a_0 = _mm256_loadu_ps(a + 1* FLOAT_C_ob + 0); \
-        c1 = _mm256_fnmadd_ps(b_v, c1, a_1); a_1 = _mm256_loadu_ps(a + 1* FLOAT_C_ob + 8); \
-        c2 = _mm256_fnmadd_ps(b_v, c2, a_0); a_0 = _mm256_loadu_ps(a + 2* FLOAT_C_ob + 0); \
-        c3 = _mm256_fnmadd_ps(b_v, c3, a_1); a_1 = _mm256_loadu_ps(a + 2* FLOAT_C_ob + 8); \
-        c4 = _mm256_fnmadd_ps(b_v, c4, a_0); a_0 = _mm256_loadu_ps(a + 3* FLOAT_C_ob + 0); \
-        c5 = _mm256_fnmadd_ps(b_v, c5, a_1); a_1 = _mm256_loadu_ps(a + 3* FLOAT_C_ob + 8); \
-        c6 = _mm256_fnmadd_ps(b_v, c6, a_0); a_0 = _mm256_loadu_ps(a + 4* FLOAT_C_ob + 0); \
-        c7 = _mm256_fnmadd_ps(b_v, c7, a_1); a_1 = _mm256_loadu_ps(a + 4* FLOAT_C_ob + 8); \
-        c8 = _mm256_fnmadd_ps(b_v, c8, a_0); a_0 = _mm256_loadu_ps(a + 5* FLOAT_C_ob + 0); \
-        c9 = _mm256_fnmadd_ps(b_v, c9, a_1); a_1 = _mm256_loadu_ps(a + 5* FLOAT_C_ob + 8); \
-        c10 = _mm256_fnmadd_ps(b_v, c10, a_0);\
-        c11 = _mm256_fnmadd_ps(b_v, c11, a_1);\
+        c_tile_t * c_pixel = c_cur;\
+    c_tile_t * a_pixel = a;\
+    for(int kk = 0; kk < W_ob; kk++)\
+    {\
+        c_tile_t * c_channel = c_pixel;\
+        c_tile_t * a_channel = a_pixel;\
+        for(int jj = 0; jj < C_ob; jj++)\
+        {\
+            *c_channel = (*a_channel) -  (b[0] * (*c_channel));\
+            c_channel++;\
+            a_channel++;\
+        }\
+        c_pixel += C_ob;\
+        a_pixel += step;\
+    }\
 }
+
+
+
 
 //Assumes all exponents in a are non-negative integers and b is 1. Implements C = 2^A * C (with rank promotion)
 //todo use mask to handle cases where a < 0
@@ -2038,42 +2018,22 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
 }
 
 
-// //todo use mask to handle cases where a < 0
-// #define FLOAT_TWO_EXP_TILE_C_MATRIX_A_SCALAR_B_ANY(a)\
-// {\
-//     __m256i a_0 = _mm256_cvtps_epi32(_mm256_loadu_ps(a + 0* FLOAT_C_ob + 0));\
-//     __m256i a_1 = _mm256_cvtps_epi32(_mm256_loadu_ps(a + 0* FLOAT_C_ob + 8));\
-//     __m256i b_v = _mm256_set1_epi32(1);\
-//     __m256i zero = _mm256_setzero_si256();\
-//     __m256i pos_exp_0 = reinterpret_cast<__m256i>c8, neg_exp_0 = reinterpret_cast<__m256i>c9;\
-//     __m256i pos_exp_1 = reinterpret_cast<__m256i>c10, neg_exp_1 = reinterpret_cast<__m256i>c11;\
-//     __mmask8 tmp_0 = _mm256_cmp_epi32_mask(a_0, zero, _MM_CMPINT_LT);\
-//     __mmask8 tmp_1 = _mm256_cmp_epi32_mask(a_1, zero, _MM_CMPINT_LT);\
-//     pos_exp_0 = _mm256_sllv_epi32(b_v, a_0); pos_exp_1 = _mm256_sllv_epi32(b_v, a_1); neg_exp_0 = _mm256_srlv_epi32(b_v, a_0);  neg_exp_1 = _mm256_srlv_epi32(b_v, a_1);\ 
-//     c0 = _mm256_cvtepi32_ps(_mm256_blend_epi32(pos_exp_0, neg_exp_0, tmp_0)); a_0 = _mm256_cvtps_epi32(_mm256_loadu_ps(a + 1* FLOAT_C_ob + 0));\
-//     c1 = _mm256_cvtepi32_ps(_mm256_blend_epi32(pos_exp_1, neg_exp_1, tmp_1)); a_1 = _mm256_cvtps_epi32(_mm256_loadu_ps(a + 1* FLOAT_C_ob + 0));\
-//     tmp_0 = _mm256_cmp_epi32_mask(a_0, zero, _MM_CMPINT_LT);tmp_1 = _mm256_cmp_epi32_mask(a_1, zero, _MM_CMPINT_LT);\
-//     pos_exp_0 = _mm256_sllv_epi32(b_v, a_0); pos_exp_1 = _mm256_sllv_epi32(b_v, a_1); neg_exp_0 = _mm256_srlv_epi32(b_v, a_0);  neg_exp_1 = _mm256_srlv_epi32(b_v, a_1);\ 
-//     c2 = _mm256_cvtepi32_ps(_mm256_blend_epi32(pos_exp_0, neg_exp_0, tmp_0)); a_0 = _mm256_cvtps_epi32(_mm256_loadu_ps(a + 2* FLOAT_C_ob + 0));\
-//     c3 = _mm256_cvtepi32_ps(_mm256_blend_epi32(pos_exp_1, neg_exp_1, tmp_1)); a_1 = _mm256_cvtps_epi32(_mm256_loadu_ps(a + 2* FLOAT_C_ob + 0));\
-//     tmp_0 = _mm256_cmp_epi32_mask(a_0, zero, _MM_CMPINT_LT);tmp_1 = _mm256_cmp_epi32_mask(a_1, zero, _MM_CMPINT_LT);\
-//     pos_exp_0 = _mm256_sllv_epi32(b_v, a_0); pos_exp_1 = _mm256_sllv_epi32(b_v, a_1); neg_exp_0 = _mm256_srlv_epi32(b_v, a_0);  neg_exp_1 = _mm256_srlv_epi32(b_v, a_1);\ 
-//     c4 = _mm256_cvtepi32_ps(_mm256_blend_epi32(pos_exp_0, neg_exp_0, tmp_0)); a_0 = _mm256_cvtps_epi32(_mm256_loadu_ps(a + 3* FLOAT_C_ob + 0));\
-//     c5 = _mm256_cvtepi32_ps(_mm256_blend_epi32(pos_exp_1, neg_exp_1, tmp_1)); a_1 = _mm256_cvtps_epi32(_mm256_loadu_ps(a + 3* FLOAT_C_ob + 8)); \
-//     tmp_0 = _mm256_cmp_epi32_mask(a_0, zero, _MM_CMPINT_LT);tmp_1 = _mm256_cmp_epi32_mask(a_1, zero, _MM_CMPINT_LT);\
-//     pos_exp_0 = _mm256_sllv_epi32(b_v, a_0); pos_exp_1 = _mm256_sllv_epi32(b_v, a_1); neg_exp_0 = _mm256_srlv_epi32(b_v, a_0);  neg_exp_1 = _mm256_srlv_epi32(b_v, a_1);\ 
-//     c6 = _mm256_cvtepi32_ps(_mm256_blend_epi32(pos_exp_0, neg_exp_0, tmp_0)); a_0 = _mm256_cvtps_epi32(_mm256_loadu_ps(a + 4* FLOAT_C_ob + 0));\
-//     c7 = _mm256_cvtepi32_ps(_mm256_blend_epi32(pos_exp_1, neg_exp_1, tmp_1)); a_1 = _mm256_cvtps_epi32(_mm256_loadu_ps(a + 4* FLOAT_C_ob + 8)); \
-//     tmp_0 = _mm256_cmp_epi32_mask(a_0, zero, _MM_CMPINT_LT);tmp_1 = _mm256_cmp_epi32_mask(a_1, zero, _MM_CMPINT_LT);\
-//     pos_exp_0 = _mm256_sllv_epi32(b_v, a_0); pos_exp_1 = _mm256_sllv_epi32(b_v, a_1); neg_exp_0 = _mm256_srlv_epi32(b_v, a_0);  neg_exp_1 = _mm256_srlv_epi32(b_v, a_1);\ 
-//     c8 = _mm256_cvtepi32_ps(_mm256_blend_epi32(pos_exp_0, neg_exp_0, tmp_0)); a_0 = _mm256_cvtps_epi32(_mm256_loadu_ps(a + 5* FLOAT_C_ob + 0));\
-//     c9 = _mm256_cvtepi32_ps(_mm256_blend_epi32(pos_exp_1, neg_exp_1, tmp_1)); a_1 = _mm256_cvtps_epi32(_mm256_loadu_ps(a + 5* FLOAT_C_ob + 8)); \
-//     tmp_0 = _mm256_cmp_epi32_mask(a_0, zero, _MM_CMPINT_LT);tmp_1 = _mm256_cmp_epi32_mask(a_1, zero, _MM_CMPINT_LT);\
-//     c10 = _mm256_sllv_epi32(b_v, a_0); c11 = _mm256_sllv_epi32(b_v, a_1); zero = _mm256_srlv_epi32(b_v, a_0);\
-//     c10 = _mm256_cvtepi32_ps(_mm256_blend_epi32(c10, c11, tmp_0));\
-//     c11 = _mm256_srlv_epi32(b_v, a_1);\
-//     c11 = _mm256_cvtepi32_ps(_mm256_sllv_epi32(, a_1)); \
-// }
+
+
+#define FLOAT_RECIPROCAL_TILE_C\
+    c0 = _mm256_rcp_ps(c0);\
+    c1 = _mm256_rcp_ps(c1);\
+    c2 = _mm256_rcp_ps(c2);\
+    c3 = _mm256_rcp_ps(c3);\
+    c4 = _mm256_rcp_ps(c4);\
+    c5 = _mm256_rcp_ps(c5);\
+    c6 = _mm256_rcp_ps(c6);\
+    c7 = _mm256_rcp_ps(c7);\
+    c8 = _mm256_rcp_ps(c8);\
+    c9 = _mm256_rcp_ps(c9);\
+    c10 = _mm256_rcp_ps(c10);\
+    c11 = _mm256_rcp_ps(c11);\
+
 
 
 #define FLOAT_MUL_TILE_C_MATRIX_A(a)\
@@ -2094,9 +2054,28 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
     c11 = _mm256_mul_ps(c11, a_1);\
 }
 
+// a: array to be exponentiated in-place
+// b: lookup table of reciprocal factorials (upto 4!)
+#define FLOAT_INPLACE_EXP_horner_TILE_C(step, a, b)\
+    auto a_scalar = 0;\
+    FLOAT_FMA_TILE_C_A_SCALAR_B_SCALAR(b+0, b+1);\
+    FLOAT_FMA_TILE_C_A_MATRIX_B_SCALAR(step, a, b+2);\
+    FLOAT_FMA_TILE_C_A_MATRIX_B_SCALAR(step, a, b+3);\
+    FLOAT_FMA_TILE_C_A_MATRIX_B_SCALAR(step, a, b+4);\
+    FLOAT_FMA_TILE_C_A_MATRIX_B_SCALAR(step, a, b+4);
+
+
 #define FLOAT_LDEXP_TILE_C_MATRIX_A_MATRIX_B(a, b)\
 {\
     FLOAT_TWO_EXP_TILE_C_MATRIX_A_SCALAR_B(a);\
+    FLOAT_STORE_TILE_C(a);\
+    FLOAT_MUL_TILE_C_MATRIX_A(b);\
+}
+
+#define FLOAT_LDEXP_NEG_TILE_C_MATRIX_A_MATRIX_B(a, b)\
+{\
+    FLOAT_TWO_EXP_TILE_C_MATRIX_A_SCALAR_B(a);\
+    FLOAT_RECIPROCAL_TILE_C;\
     FLOAT_STORE_TILE_C(a);\
     FLOAT_MUL_TILE_C_MATRIX_A(b);\
 }
@@ -2111,6 +2090,7 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
     FLOAT_MUL_TILE_C_A_SCALAR(&inv_ln2);\
     FLOAT_RND_TILE_C;\
     FLOAT_STORE_TILE_C(exponent_buf);\
+    FLOAT_PRINT_TILE_a(exponent_buf);\
     FLOAT_NFMA_TILE_C_A_MATRIX_B_scalar(a, &ln2);\
     FLOAT_STORE_TILE_C(reduced_buf);\
     FLOAT_LOAD_TILE_C(a);\
@@ -2121,31 +2101,62 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
 
 
 
+//*************************************************
+// Composed microkernels
+//************************************************* 
+
+#define FLOAT_COMPOSED_SOFTSIGN_TILE_C(step, I) \
+    {FLOAT_ABS_TILE_C(step, I); \
+    const float scalar = 1.0f; FLOAT_INPLACE_ADD_SCALAR_TILE_C(scalar); \
+    FLOAT_INPLACE_DIV_TILE_C(step, I);} 
+
+#define FLOAT_COMPOSED_SOFTSIGN_END_C(step, I, c_cur, W_ob, C_ob) \
+{FLOAT_ABS_END_C(step, I, c_cur, W_ob, C_ob);} \
+{const float scalar = 1.0f; FLOAT_INPLACE_ADD_SCALAR_END_C(scalar, c_cur, W_ob, C_ob);} \
+{FLOAT_INPLACE_DIV_END_C(step, I);} 
 
 
-#define FLOAT_SOFTSIGN_TILE_C(step, I) \
-    {FLOAT_ABS_TILE_C(step, I);} \
-    {const float scalar = 1.0f; FLOAT_INPLACE_ADD_SCALAR_TILE_C(scalar);} \
-    {FLOAT_INPLACE_DIV_TILE_C(step, I);} 
-
-#define FLOAT_SOFTSIGN_END_C(step, I, c_cur, W_ob, C_ob) \
-    c_tile_t *c_pixel = c_cur;                                  \
-    c_tile_t const *a_pixel = I;                                \
-    for (uint32_t kk = 0; kk < W_ob; kk++)                    \
-    {                                                           \
-        c_tile_t *c_channel = c_pixel;                          \
-        c_tile_t const *a_channel = a_pixel;                    \
-        for (uint32_t jj = 0; jj < C_ob; jj++)                  \
-        {                                                       \
-            *(c_channel) = *(a_channel) / (1.0f + std::abs(*a_channel)); \
-            c_channel++;                                        \
-            a_channel++;                                        \
-        }                                                       \
-        a_pixel += step;                                        \
-        c_pixel += C_ob;                                        \
-    }
 
 
+
+//****************************************************************************
+// CeLu activation
+//****************************************************************************
+
+#define FLOAT_FUSED_CELU_TILE_C(step, a, b, c) \
+    float recip_fact_table[] = {0.008333333333, 0.0416667, 0.16667, 0.5, 1.0};\
+    FLOAT_DIV_SCALAR_TILE_C(b); \
+    FLOAT_STORE_TILE_C(c_tile); \
+    /*FLOAT_INPLACE_EXP_horner_TILE_C(step, c_tile, recip_fact_table);*/ \
+    FLOAT_INPLACE_EXP_TILE_C; \
+    FLOAT_SUB_ONE_TILE_C; \
+    FLOAT_MUL_SCALAR_TILE_C(b); \
+    FLOAT_MIN_SCALAR_TILE_C; \
+    FLOAT_STORE_TILE_C(c_tile); \
+    FLOAT_LOAD_TILE_C(c); \
+    FLOAT_INPLACE_RELU_TILE_C; \
+    FLOAT_ACCUM_TILE_C(step, c_tile);
+
+#define FLOAT_CELU_END_C(b, c_cur, W_ob, C_ob)                   \
+    float *c_pixel = c_cur;                                           \
+    float alpha = b[0];                                              \
+    for (uint32_t kk = 0; kk < W_ob; kk++)                          \
+    {                                                                 \
+        float *c_channel = c_pixel;                                   \
+        for (uint32_t jj = 0; jj < C_ob; jj++)                        \
+        {                                                             \
+            *(c_channel) = std::max(0.f, *(c_channel)) + std::min(0.f, alpha * (*(c_channel) / alpha - 1.0f)); \
+            c_channel++;                                              \
+        }                                                             \
+        c_pixel += C_ob;                                              \
+    }                                                           
+
+
+//****************************************************************************
+// Slope ReLu activation
+//****************************************************************************
+
+// inplace
 #define FLOAT_SLOPE_RELU_TILE_C(step, a_cur, c_cur) \
     FLOAT_MIN_SCALAR_TILE_C; \
     FLOAT_MUL_TILE_C(step, a_cur);  \
@@ -2153,3 +2164,66 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
     FLOAT_LOAD_TILE_C(c_cur); \
     FLOAT_INPLACE_RELU_TILE_C;  \
     FLOAT_ACCUM_TILE_C(step, c_tile);
+
+
+#define FLOAT_FUSED_SLOPE_RELU_TILE_C(step, a_cur, c_cur) \
+    FLOAT_MIN_SCALAR_TILE_C; \
+    FLOAT_MUL_TILE_C(step, a_cur);  \
+    FLOAT_STORE_TILE_C(c_tile); \
+    FLOAT_LOAD_TILE_C(c_cur); \
+    FLOAT_INPLACE_RELU_TILE_C;  \
+    FLOAT_ACCUM_TILE_C(step, c_tile);
+
+
+#define FLOAT_SLOPE_RELU_END_C(step, a, c_cur, W_ob, C_ob) \
+    float *c_pixel = c_cur;                         \
+    float const * a_in_channel = a;                     \
+    for(uint32_t u =0 ; u < _UNROLL; u++)               \
+    {                                                   \
+        float const *a_pixel = a_in_channel;            \
+        for (uint32_t kk = 0; kk < W_ob; kk++)        \
+        {                                               \
+            float *c_channel = c_pixel;                 \
+            float const *a_channel = a_pixel;           \
+            for (uint32_t jj = 0; jj < C_ob; jj++)      \
+            {                                           \
+                *(c_channel) = (*(c_channel) > 0) ? *(c_channel) : *(a_channel) * *(c_channel);           \
+                c_channel++;                            \
+                a_channel++;                            \
+            }                                           \
+            a_pixel += step;                            \
+            c_pixel += C_ob;                            \
+        }                                               \
+        a_in_channel++;                                 \
+    }
+
+
+#define FLOAT_PRINT_TILE_a(a)\
+{\
+    float *a_pixel = a;\
+    for (uint32_t kk = 0; kk < FLOAT_W_ob; kk++)                    \
+    {                                                           \
+        float *a_channel = a_pixel;                          \
+        for (uint32_t jj = 0; jj < FLOAT_C_ob; jj++)                  \
+        {                                                       \
+            std::cout << *(a_channel) << " "; \
+            a_channel++;                                        \
+        }                                                       \
+        std::cout << std::endl;\
+        a_pixel += FLOAT_C_ob;                                        \
+    }                                                           \
+}
+
+
+#define FLOAT_COMPOSED_ABS_TILE_C(step, I)                                       \
+    uint32_t sign_mask = 0x7FFFFFFF;\
+    FLOAT_AND_TILE_C_MATRIX_A_SCALAR_B(step, I, reinterpret_cast<float*>(&sign_mask));\
+
+#define FLOAT_FUSED_SOFTMAX_TILE_C(step, a, c) \
+    FLOAT_STORE_TILE_C(c_tile); \
+    FLOAT_LOAD_TILE_C(c);  \
+    FLOAT_SOFTMAX_TILE_C(step, a, c); \
+    FLOAT_MUL_TILE_C(step, a, c);
+
+// include hand implemented instrinsics for new operators to compare with composed versions using platform-specific primitives.
+#include "custom_intrinsics.hpp"

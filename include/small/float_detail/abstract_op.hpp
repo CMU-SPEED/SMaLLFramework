@@ -42,7 +42,7 @@ namespace float_detail
     {                                                                    \
         FLOAT_COND_SCALE_TILE_C(step, a_cur, b_cur);         \
     }                                                                    \
-    else if constexpr (op_type == OP_ADD || op_type == OP_AVERAGE_POOL)  \
+    else if constexpr (op_type == OP_AVERAGE_POOL)  \
     {                                                                    \
         FLOAT_ACCUM_TILE_C(step, a_cur);                     \
     }                                                                    \
@@ -232,6 +232,12 @@ namespace float_detail
         }                                                                   \
     }
 
+
+#define FLOAT_ABSTRACT_FULL_REDUCTION_OP_END(step, op_type, op_class, a_cur, b_cur, d_cur, c_cur, W_elements, C_ob) \
+    if constexpr (op_type == OP_ADD)                               \
+    {                                                                       \
+        FLOAT_ACCUM_END_C(step, a_cur, c_cur, W_elements, C_ob); \
+    }                                                                       \    
 
 } // ns float_detail
 } // ns small

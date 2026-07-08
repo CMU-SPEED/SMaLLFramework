@@ -1841,7 +1841,20 @@ void SoftMax(int channels,
                     0, 0, 0, 0,
                     &output_buf, (FloatBuffer *)nullptr, &softmax_norm_buf);
         }
+        if (rem_channels > 0)
+        {
+            // compute input buffer offset
+            size_t offset = num_block_channels*height*width;
+            size_t end_idx = logical_channels*height*width;
 
+            // std::cerr << "SOFTMAX: rem range: [" << offset << ".."
+            //           << end_idx << ")" << std::endl;
+
+            for (size_t ix = offset; ix < end_idx; ++ix)
+            {
+                softmax_norm_buf[0] += output_buf[ix];
+            }
+        }
         // std::cerr << "sum " << softmax_norm_buf[0] << std::endl;
 
         // take the inverse
@@ -1880,6 +1893,128 @@ void SoftMax(int channels,
     SoftMax<BufferT>(channels, channels, height, width,
                      input_buf, output_buf);
 }
+
+
+//Softmax where the add layer is separated into stages
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<FloatBuffer, BufferT>::value, bool> = true>
+void SoftMax_add_stages(int channels,
+             int logical_channels,
+             int height, int width,
+             BufferT const &input_buf,
+             BufferT       &output_buf)
+{
+#if defined(RECORD_CALLS)
+    std::cout << "SoftMax_add_stages<float>(chans/logical:" << channels
+              << "/" << logical_channels
+              << ",img:" << height << "x" << width
+              << ",I,O)\n";
+#endif
+    if ((logical_channels == 0) || (logical_channels > channels))
+    {
+        throw std::invalid_argument(
+            "SoftMax_add_stages ERROR: invalid logical channels.");
+    }
+
+    if (channels % FLOAT_C_ib == 0)
+    {
+        // SoftMax_add_stages is a
+        // - point wise exponent
+        // - global ADD (reduction) of the point-wise result
+        // - pointwise multiply (of inverse of sum to the point-wise result)
+
+        // point-wise exponent
+        float_detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1,
+            OP_EXP, 0, 1>(
+                channels, // Output Channel Grouping
+                1,              // Output Channels per group
+                1,
+                height, width,
+                1, 1,
+                0, 0, 0, 0,
+                &input_buf, (FloatBuffer *)nullptr, &output_buf);
+
+        // global sum
+        FloatBuffer softmax_add_stages_norm_buf(FLOAT_W_ob * FLOAT_C_ob);
+       for(int i = 0; i < FLOAT_W_ob * FLOAT_C_ob; ++i) softmax_add_stages_norm_buf[i] = 0.f;
+
+        // support "odd" logical channels
+        int rem_channels = logical_channels % FLOAT_C_ob;
+        int num_block_channels = logical_channels - rem_channels;
+
+        // std::cerr << "SOFTMAX_add_stages: chans/logical_chans: "
+        //           << channels << "/" << logical_channels << std::endl;
+        // std::cerr << "SOFTMAX_add_stages: block_channels/rem_channels: "
+        //           << num_block_channels << "/" << rem_channels << std::endl;
+
+        if (num_block_channels > 0)
+        {
+            float_detail::abstract_layer<
+                FloatBuffer, 1, 1, FLOAT_C_ob, FLOAT_W_ob, 1, FLOAT_C_ob,
+                OP_ADD, 3, 1>(
+                    1, // Output Channel Grouping
+                    1, // Output Channels per group
+                    num_block_channels,
+                    height, width,
+                    height, width,
+                    0, 0, 0, 0,
+                    &output_buf, (FloatBuffer *)nullptr, &softmax_add_stages_norm_buf);
+        }
+        if (rem_channels > 0)
+        {
+            // compute input buffer offset
+            size_t offset = num_block_channels*height*width;
+            size_t end_idx = logical_channels*height*width;
+
+            // std::cerr << "SOFTMAX_add_stages: rem range: [" << offset << ".."
+            //           << end_idx << ")" << std::endl;
+
+            for (size_t ix = offset; ix < end_idx; ++ix)
+            {
+                softmax_add_stages_norm_buf[0] += output_buf[ix];
+            }
+        }
+        // std::cerr << "sum " << softmax_add_stages_norm_buf[0] << std::endl;
+
+        // take the inverse
+        softmax_add_stages_norm_buf.data()[0] = 1.0/softmax_add_stages_norm_buf[0];
+
+        // element-wise scaling
+        float_detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1,
+            OP_MUL, 0, 1>(
+                channels,       // Output Channel Grouping
+                1,              // Output Channels per group
+                1,
+                height, width,
+                1, 1,
+                0, 0, 0, 0,
+                &output_buf, &softmax_add_stages_norm_buf, &output_buf);
+    }
+    else
+    {
+        throw std::invalid_argument(
+            "SoftMax_add_stages<float> ERROR: in_channels unsupported.");
+    }
+}
+
+//****************************************************************************
+// For calls where logical_channels and storage channels are the same
+// For backward compatibility
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<FloatBuffer, BufferT>::value, bool> = true>
+void SoftMax_add_stages(int channels,
+             int height, int width,
+             BufferT const &input_buf,
+             BufferT       &output_buf)
+{
+    SoftMax_add_stages<BufferT>(channels, channels, height, width,
+                     input_buf, output_buf);
+}
+
 #endif
 
 
@@ -1913,7 +2048,7 @@ void CustomizedSoftMax(int channels,
         // - pointwise multiply (of inverse of sum to the point-wise result)
 
         // global sum
-        FloatBuffer softmax_norm_buf(channels * height * width);
+        FloatBuffer softmax_norm_buf(FLOAT_C_ob);
         softmax_norm_buf[0] = 0.f;
 
         // support "odd" logical channels
@@ -1968,20 +2103,22 @@ void CustomizedSoftMax(int channels,
 
         // // std::cerr << "sum " << softmax_norm_buf[0] << std::endl;
 
+        //reduce FLOAT_C_ob elements
+        
         // // take the inverse
-        // softmax_norm_buf.data()[0] = 1.0/softmax_norm_buf[0];
+        softmax_norm_buf.data()[0] = 1.0/softmax_norm_buf[0];
 
-        // // element-wise scaling
-        // float_detail::abstract_layer<
-        //     FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1,
-        //     OP_MUL, 0, 1>(
-        //         channels,       // Output Channel Grouping
-        //         1,              // Output Channels per group
-        //         1,
-        //         height, width,
-        //         1, 1,
-        //         0, 0, 0, 0,
-        //         &output_buf, &softmax_norm_buf, &output_buf);
+        // element-wise scaling
+        float_detail::abstract_layer<
+            FloatBuffer, FLOAT_C_ob, 1, 1, FLOAT_W_ob, 1, 1,
+            OP_MUL, 0, 1>(
+                channels,       // Output Channel Grouping
+                1,              // Output Channels per group
+                1,
+                height, width,
+                1, 1,
+                0, 0, 0, 0,
+                &output_buf, &softmax_norm_buf, &output_buf);
     }
     else
     {

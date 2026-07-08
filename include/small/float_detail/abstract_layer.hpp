@@ -193,8 +193,18 @@ void abstract_layer( /// @todo add B (batch size) param?
     }
 
     const dim_t O_h = H_o;
-    const dim_t O_w = W_o_full;
+
+    // if op_class == 3, separate into different microkernel calls
+    dim_t W_o_buffer = 0;
+    if constexpr (op_class == 3)
+    {
+        W_o_buffer = FLOAT_W_ob;   
+    }
+
+    const dim_t O_w = W_o_full ;
     //************************************************************************
+
+
 
     // setting up microkernel specific parameters
     const dim_t O_w_full = (O_w / _O_wb) * _O_wb;

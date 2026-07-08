@@ -169,8 +169,8 @@ void test_performance_FLOAT_CONV_TILE(void)
     constexpr dim_t step = _stride * FLOAT_C_ib;
     constexpr dim_t input_step = _UNROLL;
     constexpr dim_t input_width = FLOAT_W_ob;
-    size_t const num_trials = 128; //INPUT_SIZE/input_step; (number of times the kernels is called)
-
+    size_t const num_runs = 128; //INPUT_SIZE/input_step; (number of times the kernels is called)
+    size_t const num_trials = 100;
     //Assume input is row major (num_trials*input_step) first, then input_width
     size_t const INPUT_SIZE = input_width * (num_trials * _UNROLL);
     // size_t const INPUT_SIZE = num_input_channels*img_height*img_width;
@@ -212,27 +212,31 @@ void test_performance_FLOAT_CONV_TILE(void)
 
     //size_t a_offset = 0;
 
-    my_timer.start();
-    for (size_t iy = 0; iy < 1; ++iy)
+    double min_time;
+    for (size_t iy = 0; iy < num_trials; ++iy)
     {
+        my_timer.start();
         ScalarT *a_cur = input_buf.data();
         size_t offset = 0;
-        for (size_t ix = 0; ix < num_trials; ++ix)
+        for (size_t ix = 0; ix < num_runs; ++ix)
         {
             FLOAT_CONV_TILE_C(step, a_cur, b_cur);
-            a_cur += input_step;
-            offset += input_step;
-            b_cur += filter_step;
+            // a_cur += input_step;
+            // // offset += input_step;
+            // b_cur += filter_step;
         }
+        my_timer.stop();
+        auto elapsed = my_timer.elapsed();
+        min_time = (iy > 0)? (std::min(elapsed, min_time)):elapsed;
     }
-    my_timer.stop();
-    auto elapsed = my_timer.elapsed();
+  
+    
 
     // a cross platform way to move results to the output buffer
     FLOAT_STORE_TILE_C(output_buf.data());
     //==================================================
 
-    std::cout << "Elapsed time: " << elapsed << " ns." << std::endl;
+    std::cout << "Elapsed time: " << min_time << " ns."  << "Throughput: " << (OUTPUT_SIZE * num_trials)/(min_time*5.2)<< std::endl;
     // where STORE writes is different for every platform
     // std::cout << "CONV_TILE O[0] = " << output_buf[0] << std::endl;
     // std::cout << "CONV_TILE O[n] = " << output_buf[FLOAT_W_ob*FLOAT_C_ob - 1] << std::endl;
@@ -242,7 +246,7 @@ void test_performance_FLOAT_CONV_TILE(void)
         {
             size_t ix = ii*FLOAT_C_ob + jj;
             // std::cout << "CONV_TILE ix=" << ix << " = " << output_buf[ix] << std::endl;
-            TEST_CHECK(output_buf[ix] == input_val*filter_val*num_trials*_UNROLL);
+            TEST_CHECK(output_buf[ix] == input_val*filter_val*num_trials*num_runs*_UNROLL);
         }
     }
 #endif
