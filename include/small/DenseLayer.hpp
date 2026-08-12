@@ -32,18 +32,14 @@ public:
     DenseLayer(shape_type const &input_shape,    //pred.output_shape()
                uint32_t          num_output_channels,
                BufferT    const &filters,
-               bool              buffers_are_packed = true,
-               ActivationType    activation_type = NONE,
-               float             leaky_slope = 1.e-2);
+               bool              buffers_are_packed = true);
 
     // With bias term
     DenseLayer(shape_type const &input_shape,    //pred.output_shape()
                uint32_t          num_output_channels,
                BufferT    const &filters,
                BufferT    const &bias,
-               bool              buffers_are_packed = true,
-               ActivationType    activation_type = NONE,
-               float             leaky_slope = 1.e-2);
+               bool              buffers_are_packed = true);
 
     virtual ~DenseLayer() {}
 
@@ -59,17 +55,10 @@ private:
                     uint32_t          num_logical_output_channels,
                     BufferT    const &filters,
                     BufferT    const &bias,
-                    bool              buffers_are_packed,
-                    ActivationType    activation_type,
-                    float             leaky_slope);
+                    bool              buffers_are_packed);
 
     shape_type const m_input_shape;
 
-    ActivationType const m_activation_type;
-
-    /// @todo: how to make const?
-
-    BufferT          m_leaky_slope;
     BufferT          m_packed_filters;
     BufferT          m_packed_bias;
 };
@@ -199,13 +188,9 @@ DenseLayer<BufferT>::DenseLayer(
     shape_type const &input_shape,         // todo: assert NCHW = (1, C_i, 1, 1)
     uint32_t          num_logical_output_channels, // assumes NCHW = (1, C_o, 1, 1)
     BufferT    const &filters,
-    bool              buffers_are_packed,
-    ActivationType    activation_type,
-    float             leaky_slope)
+    bool              buffers_are_packed)
     : Layer<BufferT>(),
       m_input_shape(input_shape),
-      m_activation_type(activation_type),
-      m_leaky_slope(1),  /// @note Allocating 1-element buffer
       m_packed_filters(),
       m_packed_bias()
 {
@@ -220,8 +205,7 @@ DenseLayer<BufferT>::DenseLayer(
 #endif
 
     initialize(input_shape, num_logical_output_channels,
-               filters, BufferT(), buffers_are_packed, // no bias
-               activation_type, leaky_slope);
+               filters, BufferT(), buffers_are_packed); // no bias
 }
 
 //****************************************************************************
@@ -231,13 +215,9 @@ DenseLayer<BufferT>::DenseLayer(
     uint32_t          num_logical_output_channels, // assumes NCHW = (1, C_o, 1, 1)
     BufferT    const &filters,
     BufferT    const &bias,
-    bool              buffers_are_packed,
-    ActivationType    activation_type,
-    float             leaky_slope)
+    bool              buffers_are_packed)
     : Layer<BufferT>(),
       m_input_shape(input_shape),
-      m_activation_type(activation_type),
-      m_leaky_slope(1),  /// @note Allocating 1-element buffer
       m_packed_filters(),
       m_packed_bias()
 {
@@ -253,8 +233,7 @@ DenseLayer<BufferT>::DenseLayer(
 #endif
 
     initialize(input_shape, num_logical_output_channels,
-               filters, bias, buffers_are_packed,
-               activation_type, leaky_slope);
+               filters, bias, buffers_are_packed);
 }
 
 //****************************************************************************
@@ -263,9 +242,7 @@ void DenseLayer<BufferT>::initialize(shape_type const &input_shape,
                                      uint32_t          num_logical_output_channels,
                                      BufferT    const &filters,
                                      BufferT    const &bias,
-                                     bool              buffers_are_packed,
-                                     ActivationType    activation_type,
-                                     float             leaky_slope)
+                                     bool              buffers_are_packed)
 {
     if (((input_shape[CHANNEL] % BufferT::C_ib) != 0) &&
         (input_shape[CHANNEL] != 3) &&  // all of the cases that Conv2D supports
@@ -291,8 +268,6 @@ void DenseLayer<BufferT>::initialize(shape_type const &input_shape,
             (BufferT::C_ob - (num_output_channels % BufferT::C_ob));
     }
 
-    m_leaky_slope[0] = leaky_slope;
-
     this->set_output_shape(
         {input_shape[BATCH],  num_output_channels,
          input_shape[HEIGHT], input_shape[WIDTH],
@@ -307,38 +282,6 @@ void DenseLayer<BufferT>::initialize(shape_type const &input_shape,
         buffers_are_packed,
         m_packed_filters,
         m_packed_bias);
-
-#if defined(DEBUG_LAYERS)
-    auto &output_shape = this->output_shape();
-    if (activation_type == RELU)
-    {
-        std::cerr << "ReLU(batches:" << output_shape[BATCH]
-                  << ",chans/lchans:" << output_shape[CHANNEL]
-                  << "/" << output_shape[L_CHAN]
-                  << ",img:" << output_shape[HEIGHT]
-                  << "x" << output_shape[WIDTH]
-                  << ")" << std::endl;
-    }
-    else if (activation_type == LEAKY)
-    {
-        std::cerr << "LeakyReLU(batches:" << output_shape[BATCH]
-                  << ",chans/lchans:" << output_shape[CHANNEL]
-                  << "/" << output_shape[L_CHAN]
-                  << ",slope:" << leaky_slope
-                  << ",img:" << output_shape[HEIGHT]
-                  << "x" << output_shape[WIDTH]
-                  << ")" << std::endl;
-    }
-    else if (activation_type == SOFTMAX)
-    {
-        std::cerr << "SoftMax(batches:" << output_shape[BATCH]
-                  << ",chans/lchans:" << output_shape[CHANNEL]
-                  << "/" << output_shape[L_CHAN]
-                  << ",img:" << output_shape[HEIGHT]
-                  << "x" << output_shape[WIDTH]
-                  << ")" << std::endl;
-    }
-#endif
 }
 
 //****************************************************************************
@@ -390,30 +333,6 @@ void DenseLayer<BufferT>::compute_output(
    }
 
     output->set_shape(output_shape);
-
-    if (m_activation_type == RELU)
-    {
-        small::ReLUActivation(output_shape[CHANNEL],
-                              output_shape[HEIGHT], output_shape[WIDTH],
-                              output->buffer(),
-                              output->buffer());
-    }
-    else if (m_activation_type == LEAKY)
-    {
-        small::LeakyReLUActivation(output_shape[CHANNEL],
-                                   output_shape[HEIGHT], output_shape[WIDTH],
-                                   output->buffer(),
-                                   m_leaky_slope,
-                                   output->buffer());
-    }
-    else if (m_activation_type == SOFTMAX)
-    {
-        small::SoftMax(output_shape[CHANNEL],
-                       this->logical_output_channels(),
-                       output_shape[HEIGHT], output_shape[WIDTH],
-                       output->buffer(),
-                       output->buffer());
-    }
 }
 
 }

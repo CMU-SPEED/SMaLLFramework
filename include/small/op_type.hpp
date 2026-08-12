@@ -31,7 +31,8 @@ enum OpType
     OP_SOFTSIGN = 10,
     OP_ABS = 11,
     OP_DIV = 12, // c_i = a_i / c_i
-    OP_NONE = -1
+    OP_NONE = -1,
+    OP_RELU_inplace= 13
 };
 
 }

@@ -266,10 +266,10 @@ protected:
         std::cerr << "first layer addr: " << this->m_layers[0] << std::endl;
         std::cerr << "Graph: " << m_graph;
 
-        std::cerr << "sources:";
+        std::cerr << "source nodes:";
         for (auto src : sources) std::cerr << " " << src;
         std::cerr << std::endl;
-        std::cerr << "sinks:";
+        std::cerr << "sink nodes:";
         for (auto dst : sinks) std::cerr << " " << dst;
         std::cerr << std::endl;
         std::cerr << "m_graph.max_width = " << max_width << std::endl;

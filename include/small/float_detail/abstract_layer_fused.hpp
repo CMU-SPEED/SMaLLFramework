@@ -195,6 +195,8 @@ void fused_abstract_layer(
     // back padding elements
     dim_t H_back_index = H_full_index + _stride * (H_o);
     dim_t W_back_index = W_full_index + _stride * (W_o_full);
+    dim_t r_valid = I_w - W_back_index;
+    dim_t b_valid = I_h - H_back_index;
     dim_t b_pad_el, r_pad_el;
     if constexpr (op_type == OP_UPSAMPLE)
     {
@@ -378,7 +380,7 @@ void fused_abstract_layer(
                                    O_w_full,
                                    O_w_left,
                                    r_pad_el,
-                                   pad_right,
+                                   r_valid, //pad_right,
                                    I_row_top,
                                    F_row_top,
                                    O_row_top);
@@ -479,7 +481,7 @@ void fused_abstract_layer(
 
 #if DEBUG
                         printf(" calling right\n");
-#endif
+#endif           
                         kernel_right<ScalarT, AccumT,
                                      _G_b, _K_b, _F_cb, _O_wb, _stride,
                                      _UNROLL, op_type, op_class>(
@@ -489,7 +491,7 @@ void fused_abstract_layer(
                                          I_w * _C_ib,
                                          O_w_left,
                                          r_pad_el,
-                                         pad_right,
+                                         r_valid,//pad_right,
                                          I_col_left,
                                          F_col_left,
                                          O_col_left,
@@ -521,7 +523,7 @@ void fused_abstract_layer(
                                       F_w,
                                       I_w * _C_ib,
                                       b_pad_el,
-                                      pad_bottom,
+                                      b_valid,//pad_bottom,
                                       W_full_index,
                                       l_pad_el,
                                       pad_left,
@@ -529,7 +531,7 @@ void fused_abstract_layer(
                                       O_w_full,
                                       O_w_left,
                                       r_pad_el,
-                                      pad_right,
+                                      r_valid,//pad_right,
                                       I_row_bot,
                                       F_row_bot,
                                       O_row_bot);
@@ -574,7 +576,7 @@ void fused_abstract_layer(
                                    O_w_full,
                                    O_w_left,
                                    r_pad_el,
-                                   pad_right,
+                                   r_valid,
                                    I_row_top,
                                    F_row_top,
                                    O_row_top,
@@ -700,7 +702,7 @@ void fused_abstract_layer(
                                          I_w * _C_ib,
                                          O_w_left,
                                          r_pad_el,
-                                         pad_right,
+                                         r_valid,//pad_right,
                                          I_col_left,
                                          F_col_left,
                                          O_col_left,
@@ -737,7 +739,7 @@ void fused_abstract_layer(
                                       F_w,
                                       I_w * _C_ib,
                                       b_pad_el,
-                                      pad_bottom,
+                                      b_valid,//pad_bottom,
                                       W_full_index,
                                       l_pad_el,
                                       pad_left,
@@ -745,7 +747,7 @@ void fused_abstract_layer(
                                       O_w_full,
                                       O_w_left,
                                       r_pad_el,
-                                      pad_right,
+                                      r_valid,//pad_right,
                                       I_row_bot,
                                       F_row_bot,
                                       O_row_bot,

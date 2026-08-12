@@ -3320,7 +3320,7 @@ template <class BufferT,
               std::is_same<FloatBuffer, BufferT>::value, bool> = true>
 void Conv1D_Bias_ReLU_GroupConv1D_Bias_ReLU(
     int conv_kernel_width, int conv_stride,
-   uint8_t conv_l_pad, uint8_t conv_r_pad,
+    uint8_t conv_l_pad, uint8_t conv_r_pad,
 
     int pool_kernel_width, int pool_stride,
     int output_groups,

@@ -120,5 +120,6 @@ void inline kernel_1D(
     //@todo support reduction-tree like store for global reductions
 }
 
-} // ns detail
+
+} // ns float_detail
 } // ns small

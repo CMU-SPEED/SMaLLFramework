@@ -157,11 +157,21 @@ private:
                                             kernel_size, kernel_size,
                                             stride, PADDING_V,
                                             output_channels,
-                                            *filters[ix], filters_are_packed,
-                                            RELU);
+                                            *filters[ix], filters_are_packed);
             this->m_layers.push_back(prev);
             prev_shape = prev->output_shape();
+            max_buffer_size =
+                std::max<size_t>(max_buffer_size, prev->output_size());
 
+            // =================================================
+            this->m_graph.add_vertex(layer_idx);
+            if (layer_idx > 0) this->m_graph.add_edge(layer_idx-1, layer_idx);
+            ++layer_idx;
+            // =================================================
+
+            prev = new ReLULayer<BufferT>(prev_shape);
+            this->m_layers.push_back(prev);
+            prev_shape = prev->output_shape();
             max_buffer_size =
                 std::max<size_t>(max_buffer_size, prev->output_size());
 

@@ -38,6 +38,10 @@ namespace float_detail
     {                                                                   \
         FLOAT_MAX_TILE_C(step, a_cur);                                  \
     }                                                                   \
+    else if constexpr (op_type == OP_RELU_inplace)                      \
+    {                                                                   \
+        FLOAT_INPLACE_RELU_TILE_C;                                      \
+    }                                                                   \
     else if constexpr (op_type == OP_LEAKY_RELU)                        \
     {                                                                   \
         FLOAT_COND_SCALE_TILE_C(step, a_cur, b_cur);                    \
@@ -89,6 +93,10 @@ namespace float_detail
     else if constexpr (op_type == OP_RELU || op_type == OP_MAX_POOL)          \
     {                                                                         \
         FLOAT_MAX_END_C(step, a_cur, c_cur, W_elements, C_ob);                \
+    }                                                                         \
+    else if constexpr (op_type == OP_RELU_inplace)                        \
+    {                                                                         \
+        FLOAT_INPLACE_RELU_END_C(c_cur, W_elements, C_ob);                                            \
     }                                                                         \
     else if constexpr (op_type == OP_LEAKY_RELU)                              \
     {                                                                         \

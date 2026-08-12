@@ -259,7 +259,7 @@ void test_conv1d_weights_1_channel(void) {
     std::copy(weights, weights+filters.size(), reinterpret_cast<ScalarT*>(filters.data()));
 
     small::Conv1DLayer conv1d(input_shape, params.k, params.s, params.p, params.C_o,
-                              filters, false, small::ActivationType::NONE);
+                              filters, false);
 
     BufferT inbuf(params.C_i*params.H*params.W);
     small::Tensor<BufferT> packed_input(input_shape);
@@ -324,7 +324,7 @@ void test_conv1d_weights_2_channel(void) {
     std::copy(weights, weights+filters.size(), reinterpret_cast<ScalarT*>(filters.data()));
 
     small::Conv1DLayer conv1d(input_shape, params.k, params.s, params.p, params.C_o,
-                              filters, false, small::ActivationType::NONE);
+                              filters, false);
 
     BufferT inbuf(params.C_i*params.H*params.W);
     small::Tensor<BufferT> packed_input(input_shape);
@@ -1934,7 +1934,7 @@ void test_conv1d_weights_2_channel_big(void) {
 
 
     small::Conv1DLayer conv1d(input_shape, params.k, params.s, params.p, params.C_o,
-                            packed_filters, true, small::ActivationType::NONE);
+                            packed_filters, true);
 
     small::Tensor<BufferT> output(conv1d.output_shape());
     small::init_zeros(output.buffer(), output.size());
@@ -2002,7 +2002,7 @@ void test_conv1d_with_weights_and_batchnorm_params_simple(void) {
                               bn_weights_buf, bn_biases_buf,
                               bn_running_means_buf, bn_running_vars_buf,
                               1.e-05,
-                              false, small::ActivationType::NONE);
+                              false);
 
     BufferT inbuf(params.C_i*params.H*params.W);
     small::Tensor<BufferT> packed_input(input_shape);

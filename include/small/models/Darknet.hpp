@@ -30,12 +30,12 @@
 #include <small/LeakyReLULayer.hpp>
 #include <small/AddLayer.hpp>
 #include <small/UpSample2DLayer.hpp>
+#include <small/SequentialLayer.hpp>
 #include <small/YOLOLayer.hpp>
 #include <small/non_max_suppression.hpp>
 
 namespace small
 {
-
 //****************************************************************************
 template <typename BufferT>
 class Darknet : public DAGModel<BufferT>
@@ -174,6 +174,13 @@ private:
         return list;
     }
 
+    /** In-place activation functions supported by Darknet */
+    enum ActivationType {
+        NONE    = 0,  // aka LINEAR/Identity
+        RELU    = 1,
+        LEAKY   = 2
+    };
+
     //************************************************************************
     // returns type of activation based on the key
     ActivationType parse_activation(std::string act_type)
@@ -268,7 +275,7 @@ private:
         size_t filt_size =
             num_filters * kernel_size * kernel_size * input_shape[CHANNEL];
 
-        Conv2DLayer<BufferT> *conv{nullptr};
+        std::vector<Layer<BufferT> *> layers;
 
         if (bn)
         {
@@ -310,7 +317,7 @@ private:
                       &filters[0]);
             weight_idx += filt_size;
 
-            conv = new Conv2DLayer<BufferT> (
+            layers.push_back(new Conv2DLayer<BufferT>(
                 input_shape,
                 kernel_size, kernel_size,
                 stride,
@@ -322,11 +329,7 @@ private:
                 bn_running_mean,
                 bn_running_variance,
                 1.e-5,
-                false,
-                activation,
-                // This next val is based on the pytorch yolo implementation
-                // from https://github.com/eriklindernoren/PyTorch-YOLOv3
-                0.1
+                false)
             );
         }
         else  // no batch normalization params
@@ -348,7 +351,7 @@ private:
                       &filters[0]);
             weight_idx += filt_size;
 
-            conv = new Conv2DLayer<BufferT> (
+            layers.push_back(new Conv2DLayer<BufferT> (
                 input_shape,
                 kernel_size, kernel_size,
                 stride,
@@ -356,15 +359,33 @@ private:
                 num_filters,
                 filters,
                 bias,
-                false,
-                activation,
-                // This next val is based on the pytorch yolo implementation
-                // from https://github.com/eriklindernoren/PyTorch-YOLOv3
-                0.1
+                false)
             );
+
         }
 
-        return conv;
+        if (activation == RELU)
+        {
+            layers.push_back(new ReLULayer<BufferT>(layers[0]->output_shape()));
+        }
+        else if (activation == LEAKY)
+        {
+            // leaky slope based on the pytorch yolo implementation
+            // from https://github.com/eriklindernoren/PyTorch-YOLOv3
+            layers.push_back(
+                new LeakyReLULayer<BufferT>(layers[0]->output_shape(),
+                                            0.1)
+                );
+        }
+
+        if (layers.size() == 1)
+        {
+            return layers[0];
+        }
+        else
+        {
+            return(new SequentialLayer<BufferT>(layers));
+        }
     }
 
     //************************************************************************
@@ -882,6 +903,8 @@ private:
                                                prev_shape,
                                                weight_data_ptr,
                                                weight_idx);
+
+
 #ifdef PARSER_DEBUG_VERBOSE
                     std::cout << "weights_path elements remaining: "
                               << total_elems - weight_idx << "\n";

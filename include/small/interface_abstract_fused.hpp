@@ -173,7 +173,7 @@ void Conv2D_ReLU(
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
                 1,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 2,
                 1,
                 OP_NONE, OP_RELU>(
@@ -189,7 +189,7 @@ void Conv2D_ReLU(
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
                 2,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 2,
                 1,
                 OP_NONE, OP_RELU>(
@@ -306,7 +306,7 @@ void Conv2D_Bias_ReLU(
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
                 1,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 2,
                 1,
                 OP_UPSAMPLE, OP_RELU,
@@ -323,7 +323,7 @@ void Conv2D_Bias_ReLU(
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
                 2,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 2,
                 1,
                 OP_UPSAMPLE, OP_RELU,
@@ -545,7 +545,7 @@ void Conv2D_Bias_ReLU_Maxpool2D(
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
                 1,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 2,
                 1,
 
@@ -573,7 +573,7 @@ void Conv2D_Bias_ReLU_Maxpool2D(
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
                 1,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 2,
                 1,
 
@@ -601,7 +601,7 @@ void Conv2D_Bias_ReLU_Maxpool2D(
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
                 2,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 2,
                 1,
 
@@ -629,7 +629,7 @@ void Conv2D_Bias_ReLU_Maxpool2D(
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
                 2,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 2,
                 1,
 
@@ -863,7 +863,7 @@ void Conv2D_Maxpool2D(
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
                 1,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 2,
                 1,
 
@@ -891,7 +891,7 @@ void Conv2D_Maxpool2D(
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
                 1,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 2,
                 1,
 
@@ -919,7 +919,7 @@ void Conv2D_Maxpool2D(
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
                 2,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 2,
                 1,
 
@@ -947,7 +947,7 @@ void Conv2D_Maxpool2D(
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
                 2,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 2,
                 1,
 
@@ -1188,7 +1188,7 @@ void Conv2D_ReLU_Maxpool2D(
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
                 1,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 2,
                 1,
 
@@ -1216,7 +1216,7 @@ void Conv2D_ReLU_Maxpool2D(
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
                 1,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 2,
                 1,
 
@@ -1244,7 +1244,7 @@ void Conv2D_ReLU_Maxpool2D(
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
                 2,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 2,
                 1,
 
@@ -1272,7 +1272,7 @@ void Conv2D_ReLU_Maxpool2D(
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
                 2,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 2,
                 1,
 
@@ -1709,7 +1709,7 @@ void Conv2D_DepthwiseConv2D(
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
                 1,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 2,
                 1,
 
@@ -1737,7 +1737,7 @@ void Conv2D_DepthwiseConv2D(
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
                 1,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 2,
                 1,
 
@@ -1765,7 +1765,7 @@ void Conv2D_DepthwiseConv2D(
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
                 2,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 2,
                 1,
 
@@ -1793,7 +1793,7 @@ void Conv2D_DepthwiseConv2D(
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
                 2,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 2,
                 1,
 
@@ -2038,7 +2038,7 @@ void Conv2D_ReLU_DepthwiseConv2D_ReLU(
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
                 1,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 2,
                 1,
 
@@ -2066,7 +2066,7 @@ void Conv2D_ReLU_DepthwiseConv2D_ReLU(
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
                 1,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 2,
                 1,
 
@@ -2094,7 +2094,7 @@ void Conv2D_ReLU_DepthwiseConv2D_ReLU(
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
                 2,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 2,
                 1,
 
@@ -2122,7 +2122,7 @@ void Conv2D_ReLU_DepthwiseConv2D_ReLU(
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
                 2,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 2,
                 1,
 
@@ -2156,6 +2156,318 @@ void Conv2D_ReLU_DepthwiseConv2D_ReLU(
 
 
     // }
+}
+
+#endif
+
+//****************************************************************************
+//****************************************************************************
+
+//============================================================================
+#if defined(SMALL_HAS_FLOAT_SUPPORT)
+template <class BufferT,
+          std::enable_if_t<
+              std::is_same<FloatBuffer, BufferT>::value, bool> = true>
+void Conv2D_Bias_DepthwiseConv2D_Bias(
+    int conv_kernel_height, int conv_kernel_width, int conv_stride,
+    uint8_t conv_t_pad, uint8_t conv_b_pad, uint8_t conv_l_pad, uint8_t conv_r_pad,
+
+    int pool_kernel_height, int pool_kernel_width, int pool_stride,
+    uint8_t pool_t_pad, uint8_t pool_b_pad, uint8_t pool_l_pad, uint8_t pool_r_pad,
+
+    int output_channels, int input_channels,
+    int input_height, int input_width,
+    BufferT const &input_buf,
+    BufferT const &filter_buf,
+    BufferT const &bias_buf,
+    BufferT &inter_output_buf,
+    BufferT const &dwise_filter_buf,
+    BufferT const &dwise_bias_buf,
+    BufferT &output_buf)
+{
+#if defined(RECORD_CALLS)
+    std::cout << "Conv2D_Bias_DepthwiseConv2D_Bias<float>(k:"
+              << conv_kernel_height << "x" << conv_kernel_width
+              << ",s:" << conv_stride
+              << ",pad:[" << (int)conv_t_pad << "," << (int)conv_b_pad
+              << "," << (int)conv_l_pad << "," << (int)conv_r_pad
+              << "],ochans:" << output_channels
+              << ",ichans:" << input_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I,F,O)\n"
+        /*DW params*/
+              << pool_kernel_height << "x" << pool_kernel_width
+              << ",s:" << pool_stride
+              << ",pad:[" << (int)pool_t_pad << "," << (int)pool_b_pad
+              << "," << (int)pool_l_pad << "," << (int)pool_r_pad
+              << "],ochans:" << output_channels
+              << ",img:" << input_height << "x" << input_width
+              << ",I,F,O)\n";
+#endif
+
+    small::Mapping<FloatBuffer> convolution_params;
+    convolution_params.G = 1;
+    convolution_params.K = output_channels;
+    convolution_params.F_c = input_channels;
+    convolution_params.F_h = conv_kernel_height;
+    convolution_params.F_w = conv_kernel_width;
+    convolution_params.pad_top = conv_t_pad;
+    convolution_params.pad_left = conv_l_pad;
+    convolution_params.pad_right = conv_r_pad;
+    convolution_params.pad_bottom = conv_b_pad;
+    convolution_params.F = &filter_buf;
+    convolution_params.F_before = &bias_buf;
+
+    small::Mapping<FloatBuffer> dwise_convolution_params;
+    dwise_convolution_params.G = output_channels;
+    dwise_convolution_params.K = 1;
+    dwise_convolution_params.F_c = 1;
+    dwise_convolution_params.F_h = pool_kernel_height;
+    dwise_convolution_params.F_w = pool_kernel_width;
+    dwise_convolution_params.pad_top = pool_t_pad;
+    dwise_convolution_params.pad_left = pool_l_pad;
+    dwise_convolution_params.pad_right = pool_r_pad;
+    dwise_convolution_params.pad_bottom = pool_b_pad;
+    dwise_convolution_params.F = &dwise_filter_buf;
+    dwise_convolution_params.F_before = &dwise_bias_buf;
+
+    if (input_channels % FLOAT_C_ib == 0)
+    {
+        if (conv_stride == 1 && pool_stride == 1)
+        {
+            float_detail::fused_abstract_layer<
+                FloatBuffer,
+                1, FLOAT_C_ob, FLOAT_C_ib,
+                FLOAT_W_ob,
+                1,
+                FLOAT_UNROLL,
+                OP_CONV, 2,
+                1,
+
+                FLOAT_C_ob, 1, 1,
+                FLOAT_W_ob,
+                1,
+                1,
+                OP_CONV, 1,
+                1,
+
+                OP_UPSAMPLE, OP_NONE,
+                std::numeric_limits<dim_t>::max(), 1,
+                OP_UPSAMPLE, OP_NONE,
+                std::numeric_limits<dim_t>::max(), 1>(
+                    &convolution_params,
+                    &dwise_convolution_params,
+                    input_height, input_width,
+                    &input_buf, &inter_output_buf, &output_buf);
+        }
+        else if (conv_stride == 1 && pool_stride == 2)
+        {
+            float_detail::fused_abstract_layer<
+                FloatBuffer,
+                1, FLOAT_C_ob, FLOAT_C_ib,
+                FLOAT_W_ob,
+                1,
+                FLOAT_UNROLL,
+                OP_CONV, 2,
+                1,
+
+                FLOAT_C_ob, 1, 1,
+                FLOAT_W_ob,
+                2,
+                1,
+                OP_CONV, 1,
+                1,
+
+                OP_UPSAMPLE, OP_NONE,
+                std::numeric_limits<dim_t>::max(), 1,
+                OP_UPSAMPLE, OP_NONE,
+                std::numeric_limits<dim_t>::max(), 1>(
+                    &convolution_params,
+                    &dwise_convolution_params,
+                    input_height, input_width,
+                    &input_buf, &inter_output_buf, &output_buf);
+        }
+        else if (conv_stride == 2 && pool_stride == 1)
+        {
+            float_detail::fused_abstract_layer<
+                FloatBuffer,
+                1, FLOAT_C_ob, FLOAT_C_ib,
+                FLOAT_W_ob,
+                2,
+                FLOAT_UNROLL,
+                OP_CONV, 2,
+                1,
+
+                FLOAT_C_ob, 1, 1,
+                FLOAT_W_ob,
+                1,
+                1,
+                OP_CONV, 1,
+                1,
+
+                OP_UPSAMPLE, OP_NONE,
+                std::numeric_limits<dim_t>::max(), 1,
+                OP_UPSAMPLE, OP_NONE,
+                std::numeric_limits<dim_t>::max(), 1>(
+                    &convolution_params,
+                    &dwise_convolution_params,
+                    input_height, input_width,
+                    &input_buf, &inter_output_buf, &output_buf);
+        }
+        else if (conv_stride == 2 && pool_stride == 2)
+        {
+            float_detail::fused_abstract_layer<
+                FloatBuffer,
+                1, FLOAT_C_ob, FLOAT_C_ib,
+                FLOAT_W_ob,
+                2,
+                FLOAT_UNROLL,
+                OP_CONV, 2,
+                1,
+
+                FLOAT_C_ob, 1, 1,
+                FLOAT_W_ob,
+                2,
+                1,
+                OP_CONV, 1,
+                1,
+
+                OP_UPSAMPLE, OP_NONE,
+                std::numeric_limits<dim_t>::max(), 1,
+                OP_UPSAMPLE, OP_NONE,
+                std::numeric_limits<dim_t>::max(), 1>(
+                    &convolution_params,
+                    &dwise_convolution_params,
+                    input_height, input_width,
+                    &input_buf, &inter_output_buf, &output_buf);
+        }
+        else
+        {
+            throw std::invalid_argument(
+                "Conv2D_Bias_DepthwiseConv2D_Bias<float> ERROR: stride unsupported.");
+        }
+    }
+    else if ((input_channels == 3) && (input_channels < FLOAT_C_ib))
+    {
+        if (conv_stride == 1 && pool_stride == 1)
+        {
+            float_detail::fused_abstract_layer<
+                FloatBuffer,
+                1, FLOAT_C_ob, 3,
+                FLOAT_W_ob,
+                1,
+                1,
+                OP_CONV, 2,
+                1,
+
+                FLOAT_C_ob, 1, 1,
+                FLOAT_W_ob,
+                1,
+                1,
+                OP_CONV, 1,
+                1,
+
+                OP_UPSAMPLE, OP_NONE,
+                std::numeric_limits<dim_t>::max(), 1,
+                OP_UPSAMPLE, OP_NONE,
+                std::numeric_limits<dim_t>::max(), 1>(
+                    &convolution_params,
+                    &dwise_convolution_params,
+                    input_height, input_width,
+                    &input_buf, &inter_output_buf, &output_buf);
+        }
+        else if (conv_stride == 1 && pool_stride == 2)
+        {
+            float_detail::fused_abstract_layer<
+                FloatBuffer,
+                1, FLOAT_C_ob, 3,
+                FLOAT_W_ob,
+                1,
+                1,
+                OP_CONV, 2,
+                1,
+
+                FLOAT_C_ob, 1, 1,
+                FLOAT_W_ob,
+                2,
+                1,
+                OP_CONV, 1,
+                1,
+
+                OP_UPSAMPLE, OP_NONE,
+                std::numeric_limits<dim_t>::max(), 1,
+                OP_UPSAMPLE, OP_NONE,
+                std::numeric_limits<dim_t>::max(), 1>(
+                    &convolution_params,
+                    &dwise_convolution_params,
+                    input_height, input_width,
+                    &input_buf, &inter_output_buf, &output_buf);
+        }
+        else if (conv_stride == 2 && pool_stride == 1)
+        {
+            float_detail::fused_abstract_layer<
+                FloatBuffer,
+                1, FLOAT_C_ob, 3,
+                FLOAT_W_ob,
+                2,
+                1,
+                OP_CONV, 2,
+                1,
+
+                FLOAT_C_ob, 1, 1,
+                FLOAT_W_ob,
+                1,
+                1,
+                OP_CONV, 1,
+                1,
+
+                OP_UPSAMPLE, OP_NONE,
+                std::numeric_limits<dim_t>::max(), 1,
+                OP_UPSAMPLE, OP_NONE,
+                std::numeric_limits<dim_t>::max(), 1>(
+                    &convolution_params,
+                    &dwise_convolution_params,
+                    input_height, input_width,
+                    &input_buf, &inter_output_buf, &output_buf);
+        }
+        else if (conv_stride == 2 && pool_stride == 2)
+        {
+            float_detail::fused_abstract_layer<
+                FloatBuffer,
+                1, FLOAT_C_ob, 3,
+                FLOAT_W_ob,
+                2,
+                1,
+                OP_CONV, 2,
+                1,
+
+                FLOAT_C_ob, 1, 1,
+                FLOAT_W_ob,
+                2,
+                1,
+                OP_CONV, 1,
+                1,
+
+                OP_UPSAMPLE, OP_NONE,
+                std::numeric_limits<dim_t>::max(), 1,
+                OP_UPSAMPLE, OP_NONE,
+                std::numeric_limits<dim_t>::max(), 1>(
+                    &convolution_params,
+                    &dwise_convolution_params,
+                    input_height, input_width,
+                    &input_buf, &inter_output_buf, &output_buf);
+        }
+        else
+        {
+            throw std::invalid_argument(
+                "Conv2D_Bias_DepthwiseConv2D_Bias<float> ERROR: stride unsupported.");
+        }
+    }
+    else
+    {
+        throw std::invalid_argument(
+            "Conv2D_Bias_DepthwiseConv2D_Bias<float> ERROR: in_channels unsupported.");
+    }
 }
 
 #endif
@@ -2373,7 +2685,7 @@ void Conv2D_Bias_ReLU_DepthwiseConv2D_Bias_ReLU(
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
                 1,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 2,
                 1,
 
@@ -2401,7 +2713,7 @@ void Conv2D_Bias_ReLU_DepthwiseConv2D_Bias_ReLU(
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
                 1,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 2,
                 1,
 
@@ -2429,7 +2741,7 @@ void Conv2D_Bias_ReLU_DepthwiseConv2D_Bias_ReLU(
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
                 2,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 2,
                 1,
 
@@ -2457,7 +2769,7 @@ void Conv2D_Bias_ReLU_DepthwiseConv2D_Bias_ReLU(
                 1, FLOAT_C_ob, 3,
                 FLOAT_W_ob,
                 2,
-                FLOAT_UNROLL,
+                1,
                 OP_CONV, 2,
                 1,
 

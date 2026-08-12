@@ -170,7 +170,7 @@ private:
 template <class BufferT>
 inline BufferT *alloc_buffer(size_t)
 {
-    BufferT::unimplemented_funtion();
+    BufferT::unimplemented_function();
 }
 
 template<>
@@ -184,4 +184,6 @@ inline void free_buffer(FloatBuffer *buffer)
     delete buffer;
 }
 
-} // small
+}
+
+// small

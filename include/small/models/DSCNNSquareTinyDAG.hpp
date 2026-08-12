@@ -99,15 +99,26 @@ private:
                                             stride, small::PADDING_F,
                                             output_channels,
                                             *filters[filter_num],
-                                            filters_are_packed,
-                                            RELU);
+                                            filters_are_packed);
         this->m_layers.push_back(prev);
-        max_buffer_size = std::max<size_t>(max_buffer_size, prev->output_size());
+
         // =================================================
         this->m_graph.add_vertex(layer_idx);
         if (layer_idx > 0) this->m_graph.add_edge(layer_idx-1, layer_idx);
         ++layer_idx;
         // =================================================
+
+        prev = new small::ReLULayer<BufferT>(prev->output_shape());
+        this->m_layers.push_back(prev);
+
+        // =================================================
+        this->m_graph.add_vertex(layer_idx);
+        if (layer_idx > 0) this->m_graph.add_edge(layer_idx-1, layer_idx);
+        ++layer_idx;
+        // =================================================
+
+        max_buffer_size =
+            std::max<size_t>(max_buffer_size, prev->output_size());
 
         stride = 1;
         uint32_t num_channels = 64;
@@ -120,16 +131,26 @@ private:
             prev = new small::DepthwiseConv2DLayer<BufferT>(
                 prev->output_shape(),
                 kernel_size, kernel_size, stride, small::PADDING_F,
-                *filters[filter_num], filters_are_packed,
-                RELU);
+                *filters[filter_num], filters_are_packed);
             this->m_layers.push_back(prev);
-            max_buffer_size = std::max<size_t>(max_buffer_size, prev->output_size());
 
             // =================================================
             this->m_graph.add_vertex(layer_idx);
             if (layer_idx > 0) this->m_graph.add_edge(layer_idx-1, layer_idx);
             ++layer_idx;
             // =================================================
+
+            prev = new small::ReLULayer<BufferT>(prev->output_shape());
+            this->m_layers.push_back(prev);
+
+            // =================================================
+            this->m_graph.add_vertex(layer_idx);
+            if (layer_idx > 0) this->m_graph.add_edge(layer_idx-1, layer_idx);
+            ++layer_idx;
+            // =================================================
+
+            max_buffer_size =
+                std::max<size_t>(max_buffer_size, prev->output_size());
 
             ++filter_num;
             kernel_size = 1;
@@ -138,16 +159,26 @@ private:
                                                    stride, small::PADDING_V,
                                                    num_channels,
                                                    *filters[filter_num],
-                                                   filters_are_packed,
-                                                   RELU);
+                                                   filters_are_packed);
             this->m_layers.push_back(prev);
-            max_buffer_size = std::max<size_t>(max_buffer_size, prev->output_size());
 
             // =================================================
             this->m_graph.add_vertex(layer_idx);
             if (layer_idx > 0) this->m_graph.add_edge(layer_idx-1, layer_idx);
             ++layer_idx;
             // =================================================
+
+            prev = new small::ReLULayer<BufferT>(prev->output_shape());
+            this->m_layers.push_back(prev);
+
+            // =================================================
+            this->m_graph.add_vertex(layer_idx);
+            if (layer_idx > 0) this->m_graph.add_edge(layer_idx-1, layer_idx);
+            ++layer_idx;
+            // =================================================
+
+            max_buffer_size =
+                std::max<size_t>(max_buffer_size, prev->output_size());
         }
 
         prev = new small::MaxPool2DLayer<BufferT>(prev->output_shape(),

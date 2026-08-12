@@ -50,6 +50,8 @@ std::string const data_dir("../test/regression_data");
 #define REDUCTION_H(layer_num) layer_params[layer_num][3]
 #define REDUCTION_W(layer_num) layer_params[layer_num][9]
 
+#define GROUP_C_LOGICAL(layer_num) layer_params[layer_num][10]
+
 #define SET_PADDING(layer_num, t_pad, b_pad, l_pad, r_pad) layer_params[layer_num][5] = t_pad, layer_params[layer_num][6] = b_pad, layer_params[layer_num][7] = l_pad, layer_params[layer_num][8] = r_pad;
 #define PADDING(layer_num) layer_params[layer_num][5], layer_params[layer_num][6], layer_params[layer_num][7], layer_params[layer_num][8]
 
@@ -80,7 +82,7 @@ void build_baseline_autoencoder(uint32_t C_i,         // 128, 1, 1, 16(8), ...
                                 uint32_t M, // I_w
                                 uint32_t dimension_reduction,
                                 size_t&  layer_num_total,
-                                uint16_t layer_params[30][10],
+                                uint16_t layer_params[30][11],
                                 std::vector<BufferT *>& filter_buf_ptrs,
                                 size_t& max_numel_inter_0,
                                 size_t& max_numel_inter_1,
@@ -96,9 +98,18 @@ void build_baseline_autoencoder(uint32_t C_i,         // 128, 1, 1, 16(8), ...
     intermediate_dims[layer_num][0] = 1;
     intermediate_dims[layer_num][1] = 1;
 
-    // conv
+    // first conv
     REDUCTION_C(layer_num) = C_i; // input channels
-    GROUP_C(layer_num) = C_i;     // output channels
+
+    // output channels
+    GROUP_C_LOGICAL(layer_num) = C_i;
+    GROUP_C(layer_num) = C_i;
+    if ((GROUP_C(layer_num) % BufferT::C_ob) != 0)  // pad odd output channels
+    {
+        GROUP_C(layer_num) +=
+            (BufferT::C_ob - (GROUP_C(layer_num) % BufferT::C_ob));
+    }
+
     GROUPS(layer_num) = 1;
     REDUCTION_HW(layer_num) = 1;  // kernel size
     STRIDE(layer_num) = 1;        // stride
@@ -111,16 +122,26 @@ void build_baseline_autoencoder(uint32_t C_i,         // 128, 1, 1, 16(8), ...
     // common set up for model architecture
     for (uint32_t cur_layer = 1; cur_layer+1 < layer_num_total; cur_layer++)
     {
-        REDUCTION_C(layer_num) = GROUP_C(layer_num - 1); // input channels
+        REDUCTION_C(layer_num) = GROUP_C(layer_num - 1); // C_i = pred(C_o)
 
         if (cur_layer == 4)
         {
             GROUP_C(layer_num) = dimension_reduction;    // output channels
+            GROUP_C_LOGICAL(layer_num) = dimension_reduction;
         }
         else
         {
             GROUP_C(layer_num) = C_i;                    // output channels
+            GROUP_C_LOGICAL(layer_num) = C_i;
         }
+
+        // Pad odd channels
+        if ((GROUP_C(layer_num) % BufferT::C_ob) != 0)
+        {
+            GROUP_C(layer_num) +=
+                (BufferT::C_ob - (GROUP_C(layer_num) % BufferT::C_ob));
+        }
+
         GROUPS(layer_num) = 1;
         REDUCTION_HW(layer_num) = 1;                     // kernel size
         STRIDE(layer_num) = 1; // stride
@@ -133,6 +154,15 @@ void build_baseline_autoencoder(uint32_t C_i,         // 128, 1, 1, 16(8), ...
 
     REDUCTION_C(layer_num) = GROUP_C(layer_num-1);
     GROUP_C(layer_num) = C_i;
+    GROUP_C_LOGICAL(layer_num) = C_i;
+
+    // Pad odd channels
+    if ((GROUP_C(layer_num) % BufferT::C_ob) != 0)
+    {
+        GROUP_C(layer_num) +=
+            (BufferT::C_ob - (GROUP_C(layer_num) % BufferT::C_ob));
+    }
+
     GROUPS(layer_num) = 1;
     REDUCTION_HW(layer_num) =   1;
     STRIDE(layer_num) = 1;
@@ -144,11 +174,11 @@ void build_baseline_autoencoder(uint32_t C_i,         // 128, 1, 1, 16(8), ...
 
 #if 0
     printf("Layer num total: %ld\n", layer_num_total);
-    printf("Layer: Red_C(in_chan), Grp_C(out_chan), Grps, Red_HW(k), Stride(s)\n");
+    printf("Layer: Red_C(in_chan), Grp_C(out_chan), Grps, Red_HW(k), Stride(s), Grp_C_logical(out_chan)\n");
     for (uint32_t i = 0; i < layer_num_total; i++)
     {
         printf("%d: ", i);
-        for (auto j = 0; j < 10; j++)
+        for (auto j = 0; j < 11; j++)
         {
             printf("%d, ", layer_params[i][j]);
         }
@@ -159,12 +189,34 @@ void build_baseline_autoencoder(uint32_t C_i,         // 128, 1, 1, 16(8), ...
     // Direct Convolution Setup
     for (uint32_t l = 0; l < layer_num_total; l++)
     {
+        uint32_t logical_filter_dimensions =
+            REDUCTION_HW(l) * REDUCTION_HW(l) * REDUCTION_C(l) *
+            GROUP_C_LOGICAL(l) * GROUPS(l);
         uint32_t filter_dimensions =
             REDUCTION_HW(l) * REDUCTION_HW(l) * REDUCTION_C(l) *
             GROUP_C(l) * GROUPS(l);
         BufferT *filter_buf_ptr =
             small::alloc_buffer<BufferT>(filter_dimensions);
-        init(*filter_buf_ptr, filter_dimensions);
+
+        if (filter_dimensions > logical_filter_dimensions)
+        {
+            std::cerr << "Layer " << l << ": dealing with smaller logical chans.\n";
+
+            BufferT unpacked_filter_buf(filter_dimensions);
+            init_zeros(unpacked_filter_buf, filter_dimensions);
+            init(unpacked_filter_buf, logical_filter_dimensions);
+            small::pack_buffer(unpacked_filter_buf,
+                               small::FILTER_CONV,
+                               GROUP_C(l), REDUCTION_C(l),
+                               REDUCTION_HW(l), REDUCTION_HW(l),
+                               BufferT::C_ib, BufferT::C_ob,
+                               *filter_buf_ptr);
+        }
+        else
+        {
+            init(*filter_buf_ptr, filter_dimensions);
+        }
+
         filter_buf_ptrs.push_back(filter_buf_ptr);
     }
 
@@ -176,7 +228,7 @@ void build_baseline_autoencoder(uint32_t C_i,         // 128, 1, 1, 16(8), ...
 template <class BufferT>
 BufferT &model_inference(
     size_t                        layer_num_total,
-    uint16_t                      layer_params[30][10],
+    uint16_t                      layer_params[30][11],
     std::vector<BufferT *> const &filter_buf_ptrs,
     BufferT  const &input_dc,
     BufferT        &inter_0_dc,
@@ -230,7 +282,7 @@ void test_autoencoder(void)
     uint32_t C_i = 128;
     uint32_t N = 1;
     uint32_t M = 1;
-    uint32_t num_classes = 16;  // dimension reduction (multiple of 16??)
+    uint32_t num_classes = 8; //16;  // dimension reduction (multiple of 16??)
 
     //************************************************************************
     // Baseline (function call) model
@@ -238,7 +290,7 @@ void test_autoencoder(void)
 
     // "model" params
     size_t   layer_num_total = 0;
-    uint16_t layer_params[30][10] = {1};
+    uint16_t layer_params[30][11] = {1};
     size_t   max_numel_inter_0 = 0;
     size_t   max_numel_inter_1 = 0;
     std::vector<BufferT*> filter_buf_ptrs;
@@ -332,6 +384,38 @@ void test_autoencoder(void)
     }
 
     //************************************************************************
+    // HACK: unpack the filter buffers so that odd channel filter buffers will work
+    //************************************************************************
+    std::vector<BufferT*> unpacked_filter_buf_ptrs;
+    for (size_t ix = 0; ix < filter_buf_ptrs.size(); ++ix)
+    {
+        BufferT* unpacked_buf = new BufferT(filter_buf_ptrs[ix]->size());
+        small::unpack_buffer(*filter_buf_ptrs[ix],
+                             small::FILTER_CONV,
+                             GROUP_C(ix),
+                             REDUCTION_C(ix),
+                             REDUCTION_HW(ix), REDUCTION_HW(ix),
+                             BufferT::C_ib,
+                             BufferT::C_ob,
+                             *unpacked_buf);
+        size_t logical_size = (GROUP_C_LOGICAL(ix) * REDUCTION_C(ix) *
+                               REDUCTION_HW(ix) * REDUCTION_HW(ix));
+        //std::cerr << ix << ": Filter size: " << filter_buf_ptrs[ix]->size()
+        //          << ", logical size: " << logical_size << std::endl;
+        if (filter_buf_ptrs[ix]->size() > logical_size)
+        {
+            //std::cerr << "Reducing filter footprint, layer: " << ix << std::endl;
+            BufferT logical_buf(logical_size);
+            std::copy(unpacked_buf->data(),
+                      unpacked_buf->data() + logical_size,
+                      logical_buf.data());
+            unpacked_buf->swap(logical_buf);
+        }
+
+        unpacked_filter_buf_ptrs.push_back(unpacked_buf);
+    }
+
+    //************************************************************************
     // Model class
     //************************************************************************
     std::vector<double> layer_timing;
@@ -341,7 +425,8 @@ void test_autoencoder(void)
 
         small::AutoencoderTiny<BufferT> model(input_shape,
                                               dimension_reduction,
-                                              filter_buf_ptrs, true);
+                                              unpacked_filter_buf_ptrs,
+                                              false);
 
         small::Tensor<BufferT> input_tensor(input_shape, input_dc);
 
@@ -425,7 +510,8 @@ void test_autoencoder(void)
 
         small::AutoencoderTinyDAG<BufferT> model(input_shape,
                                                  dimension_reduction,
-                                                 filter_buf_ptrs, true);
+                                                 unpacked_filter_buf_ptrs,
+                                                 false);
 
         small::Tensor<BufferT> input_tensor(input_shape, input_dc);
 
@@ -520,6 +606,10 @@ void test_autoencoder(void)
 
     // clean up
     for (auto filter : filter_buf_ptrs)
+    {
+        small::free_buffer(filter);
+    }
+    for (auto filter : unpacked_filter_buf_ptrs)
     {
         small::free_buffer(filter);
     }

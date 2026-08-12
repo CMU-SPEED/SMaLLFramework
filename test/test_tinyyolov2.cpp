@@ -12,6 +12,7 @@
 
 #define PARALLEL 1
 
+//#define DAG_DEBUG_VERBOSE 1
 //#define DAG_DEBUG
 //#define BUFFER_DEBUG
 //#define DEBUG_LAYERS
@@ -767,7 +768,7 @@ void test_tinyyolov2(void)
             my_timer.start();
 
             //***********
-            model.inference(&input_tensor);
+            auto output_tensors = model.inference(&input_tensor);
             //***********
 
             my_timer.stop();
