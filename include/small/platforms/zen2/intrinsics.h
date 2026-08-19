@@ -825,7 +825,7 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
 #endif
 
 //****************************************************************************
-// Accumulation kernels
+// Accumulation kernels 
 //****************************************************************************
 
 #define FLOAT_ACCUM_TILE_C(step, I)                    \
@@ -985,6 +985,8 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
     }
 #endif
 
+
+
 /// @todo This is not in reference
 #define FLOAT_INPLACE_ACCUM_TILE_C                   \
     c10 = _mm256_add_ps(c10, c11);                   \
@@ -998,6 +1000,20 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
     c2 = _mm256_add_ps(c2, c3);                      \
     c1 = _mm256_add_ps(c1, c2);                      \
     c0 = _mm256_add_ps(c0, c1);
+
+#define FLOAT_INPLACE_MAX_TILE_C                   \
+    c10 = _mm256_max_ps(c10, c11);                   \
+    c8 = _mm256_max_ps(c8, c9);                      \
+    c6 = _mm256_max_ps(c6, c7);                      \
+    c4 = _mm256_max_ps(c4, c5);                      \
+    c2 = _mm256_max_ps(c2, c3);                      \
+    c0 = _mm256_max_ps(c0, c1);\
+    c8 = _mm256_max_ps(c8, c10);\
+    c4 = _mm256_max_ps(c4, c6);\
+    c0 = _mm256_max_ps(c0, c2);\
+    c6 = _mm256_max_ps(c4, c8);\
+    c0 = _mm256_max_ps(c0, c6);
+
 
 
 //****************************************************************************
@@ -1633,6 +1649,19 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
 
 
 
+    #define FLOAT_INPLACE_RCP_TILE_C\
+    c0 = _mm256_rcp_ps(c0);\
+    c1 = _mm256_rcp_ps(c1);\
+    c2 = _mm256_rcp_ps(c2);\
+    c3 = _mm256_rcp_ps(c3);\
+    c4 = _mm256_rcp_ps(c4);\
+    c5 = _mm256_rcp_ps(c5);\
+    c6 = _mm256_rcp_ps(c6);\
+    c7 = _mm256_rcp_ps(c7);\
+    c8 = _mm256_rcp_ps(c8);\
+    c9 = _mm256_rcp_ps(c9);\
+    c10 = _mm256_rcp_ps(c10);\
+    c11 = _mm256_rcp_ps(c11);
 
 //****************************************************************************
 // Inplace Slope ReLU activation primtivives
@@ -1710,20 +1739,23 @@ for (uint32_t kk = 0; kk < W_ob; kk++)             \
 // CeLU activation primitives
 //****************************************************************************
 
+
+
 #define FLOAT_DIV_SCALAR_TILE_C(b)  \
     c12 = _mm256_broadcast_ss(b);   \
-    c0 = _mm256_div_ps(c0, c12);    \
-    c1 = _mm256_div_ps(c1, c12);    \
-    c2 = _mm256_div_ps(c2, c12);    \
-    c3 = _mm256_div_ps(c3, c12);    \
-    c4 = _mm256_div_ps(c4, c12);    \
-    c5 = _mm256_div_ps(c5, c12);    \
-    c6 = _mm256_div_ps(c6, c12);    \
-    c7 = _mm256_div_ps(c7, c12);    \
-    c8 = _mm256_div_ps(c8, c12);    \
-    c9 = _mm256_div_ps(c9, c12);    \
-    c10 = _mm256_div_ps(c10, c12);  \
-    c11 = _mm256_div_ps(c11, c12);
+    c12 = _mm256_rcp_ps(c12);\
+    c0 = _mm256_mul_ps(c0, c12);    \
+    c1 = _mm256_mul_ps(c1, c12);    \
+    c2 = _mm256_mul_ps(c2, c12);    \
+    c3 = _mm256_mul_ps(c3, c12);    \
+    c4 = _mm256_mul_ps(c4, c12);    \
+    c5 = _mm256_mul_ps(c5, c12);    \
+    c6 = _mm256_mul_ps(c6, c12);    \
+    c7 = _mm256_mul_ps(c7, c12);    \
+    c8 = _mm256_mul_ps(c8, c12);    \
+    c9 = _mm256_mul_ps(c9, c12);    \
+    c10 = _mm256_mul_ps(c10, c12);  \
+    c11 = _mm256_mul_ps(c11, c12);
 
 #define FLOAT_DIV_SCALAR_END_C(b, c_cur, W_ob, C_ob)\
     c_tile_t *c_pixel = c_cur;                                  \
@@ -2057,12 +2089,101 @@ for (uint32_t kk = 0; kk < W_ob; kk++)                      \
 // a: array to be exponentiated in-place
 // b: lookup table of reciprocal factorials (upto 4!)
 #define FLOAT_INPLACE_EXP_horner_TILE_C(step, a, b)\
-    auto a_scalar = 0;\
+    /*printf("%f \n", b[0]);\*/\
     FLOAT_FMA_TILE_C_A_SCALAR_B_SCALAR(b+0, b+1);\
+    /*printf("%f \n", b[1]);\*/\
     FLOAT_FMA_TILE_C_A_MATRIX_B_SCALAR(step, a, b+2);\
+    /*printf("%f \n", b[2]);\*/\
     FLOAT_FMA_TILE_C_A_MATRIX_B_SCALAR(step, a, b+3);\
+    /*printf("%f \n", b[3]);\*/\
     FLOAT_FMA_TILE_C_A_MATRIX_B_SCALAR(step, a, b+4);\
-    FLOAT_FMA_TILE_C_A_MATRIX_B_SCALAR(step, a, b+4);
+    /*printf("%f \n", b[4]);\*/\
+    FLOAT_FMA_TILE_C_A_MATRIX_B_SCALAR(step, a, b+5);\
+    FLOAT_FMA_TILE_C_A_MATRIX_B_SCALAR(step, a, b+6);\
+    /*printf("%f \n", b[5]);*/
+
+
+ #define FLOAT_INPLACE_EXP_negative_horner_TILE_C(step, a, b)\
+    FLOAT_COMPOSED_ABS_TILE_C(step, a);\
+    FLOAT_STORE_TILE_C(c_tile);\
+    FLOAT_INPLACE_EXP_horner_TILE_C(step, c_tile, b);\
+    FLOAT_INPLACE_RCP_TILE_C;
+
+
+
+#define FLOAT_BESPOKE_INPLACE_EXP_horner_TILE_C(step, a, b)\
+    __m256 a0 = _mm256_broadcast_ss(b + 0);\
+    __m256 bv = _mm256_broadcast_ss(b + 1);\
+    c0 = _mm256_fmadd_ps(a0, c0, bv);\
+    c1 = _mm256_fmadd_ps(a0, c1, bv);\
+    c2 = _mm256_fmadd_ps(a0, c2, bv);\
+    c3 = _mm256_fmadd_ps(a0, c3, bv);\
+    c4 = _mm256_fmadd_ps(a0, c4, bv);\
+    c5 = _mm256_fmadd_ps(a0, c5, bv);\
+    c6 = _mm256_fmadd_ps(a0, c6, bv);\
+    c7 = _mm256_fmadd_ps(a0, c7, bv);\
+    c8 = _mm256_fmadd_ps(a0, c8, bv);\
+    c9 = _mm256_fmadd_ps(a0, c9, bv);\
+    c10 = _mm256_fmadd_ps(a0, c10, bv);\
+    c11 = _mm256_fmadd_ps(a0, c11, bv);\
+    bv = _mm256_broadcast_ss(b + 2);\
+    float * a_row_ptr = a;\
+    __m256 a1;\
+    a0 = _mm256_load_ps(a_row_ptr + 0 * FLOAT_SIMD);\
+    c0 = _mm256_fmadd_ps(a0, c0, bv); a1 = _mm256_load_ps(a_row_ptr + 0*step + 1 * FLOAT_SIMD);\
+    c1 = _mm256_fmadd_ps(a1, c1, bv); a0 = _mm256_load_ps(a_row_ptr + 1*step + 0 * FLOAT_SIMD);\
+    c2 = _mm256_fmadd_ps(a0, c2, bv); a1 = _mm256_load_ps(a_row_ptr + 1*step + 1 * FLOAT_SIMD);\
+    c3 = _mm256_fmadd_ps(a1, c3, bv); a0 = _mm256_load_ps(a_row_ptr + 2*step + 0 * FLOAT_SIMD);\
+    c4 = _mm256_fmadd_ps(a0, c4, bv); a1 = _mm256_load_ps(a_row_ptr + 2*step + 1 * FLOAT_SIMD);\
+    c5 = _mm256_fmadd_ps(a1, c5, bv); a0 = _mm256_load_ps(a_row_ptr + 3*step + 0 * FLOAT_SIMD);\
+    c6 = _mm256_fmadd_ps(a0, c6, bv); a1 = _mm256_load_ps(a_row_ptr + 3*step + 1 * FLOAT_SIMD);\
+    c7 = _mm256_fmadd_ps(a1, c7, bv); a0 = _mm256_load_ps(a_row_ptr + 4*step + 0 * FLOAT_SIMD);\
+    c8 = _mm256_fmadd_ps(a0, c8, bv); a1 = _mm256_load_ps(a_row_ptr + 4*step + 1 * FLOAT_SIMD);\
+    c9 = _mm256_fmadd_ps(a1, c9, bv); a0 = _mm256_load_ps(a_row_ptr + 5*step + 0 * FLOAT_SIMD);\
+    c10 = _mm256_fmadd_ps(a0, c10, bv); a1 = _mm256_load_ps(a_row_ptr + 5*step + 1 * FLOAT_SIMD);\
+    c11 = _mm256_fmadd_ps(a1, c11, bv);\
+    bv = _mm256_broadcast_ss(b + 3);\
+    a0 = _mm256_load_ps(a_row_ptr + 0 * FLOAT_SIMD);\
+    c0 = _mm256_fmadd_ps(a0, c0, bv); a1 = _mm256_load_ps(a_row_ptr + 0*step + 1 * FLOAT_SIMD);\
+    c1 = _mm256_fmadd_ps(a1, c1, bv); a0 = _mm256_load_ps(a_row_ptr + 1*step + 0 * FLOAT_SIMD);\
+    c2 = _mm256_fmadd_ps(a0, c2, bv); a1 = _mm256_load_ps(a_row_ptr + 1*step + 1 * FLOAT_SIMD);\
+    c3 = _mm256_fmadd_ps(a1, c3, bv); a0 = _mm256_load_ps(a_row_ptr + 2*step + 0 * FLOAT_SIMD);\
+    c4 = _mm256_fmadd_ps(a0, c4, bv); a1 = _mm256_load_ps(a_row_ptr + 2*step + 1 * FLOAT_SIMD);\
+    c5 = _mm256_fmadd_ps(a1, c5, bv); a0 = _mm256_load_ps(a_row_ptr + 3*step + 0 * FLOAT_SIMD);\
+    c6 = _mm256_fmadd_ps(a0, c6, bv); a1 = _mm256_load_ps(a_row_ptr + 3*step + 1 * FLOAT_SIMD);\
+    c7 = _mm256_fmadd_ps(a1, c7, bv); a0 = _mm256_load_ps(a_row_ptr + 4*step + 0 * FLOAT_SIMD);\
+    c8 = _mm256_fmadd_ps(a0, c8, bv); a1 = _mm256_load_ps(a_row_ptr + 4*step + 1 * FLOAT_SIMD);\
+    c9 = _mm256_fmadd_ps(a1, c9, bv); a0 = _mm256_load_ps(a_row_ptr + 5*step + 0 * FLOAT_SIMD);\
+    c10 = _mm256_fmadd_ps(a0, c10, bv); a1 = _mm256_load_ps(a_row_ptr + 5*step + 1 * FLOAT_SIMD);\
+    c11 = _mm256_fmadd_ps(a1, c11, bv);\
+    bv = _mm256_broadcast_ss(b + 4);\
+    a0 = _mm256_load_ps(a_row_ptr + 0 * FLOAT_SIMD);\
+    c0 = _mm256_fmadd_ps(a0, c0, bv); a1 = _mm256_load_ps(a_row_ptr + 0*step + 1 * FLOAT_SIMD);\
+    c1 = _mm256_fmadd_ps(a1, c1, bv); a0 = _mm256_load_ps(a_row_ptr + 1*step + 0 * FLOAT_SIMD);\
+    c2 = _mm256_fmadd_ps(a0, c2, bv); a1 = _mm256_load_ps(a_row_ptr + 1*step + 1 * FLOAT_SIMD);\
+    c3 = _mm256_fmadd_ps(a1, c3, bv); a0 = _mm256_load_ps(a_row_ptr + 2*step + 0 * FLOAT_SIMD);\
+    c4 = _mm256_fmadd_ps(a0, c4, bv); a1 = _mm256_load_ps(a_row_ptr + 2*step + 1 * FLOAT_SIMD);\
+    c5 = _mm256_fmadd_ps(a1, c5, bv); a0 = _mm256_load_ps(a_row_ptr + 3*step + 0 * FLOAT_SIMD);\
+    c6 = _mm256_fmadd_ps(a0, c6, bv); a1 = _mm256_load_ps(a_row_ptr + 3*step + 1 * FLOAT_SIMD);\
+    c7 = _mm256_fmadd_ps(a1, c7, bv); a0 = _mm256_load_ps(a_row_ptr + 4*step + 0 * FLOAT_SIMD);\
+    c8 = _mm256_fmadd_ps(a0, c8, bv); a1 = _mm256_load_ps(a_row_ptr + 4*step + 1 * FLOAT_SIMD);\
+    c9 = _mm256_fmadd_ps(a1, c9, bv); a0 = _mm256_load_ps(a_row_ptr + 5*step + 0 * FLOAT_SIMD);\
+    c10 = _mm256_fmadd_ps(a0, c10, bv); a1 = _mm256_load_ps(a_row_ptr + 5*step + 1 * FLOAT_SIMD);\
+    c11 = _mm256_fmadd_ps(a1, c11, bv);\
+    bv = _mm256_broadcast_ss(b + 4);\
+    a0 = _mm256_load_ps(a_row_ptr + 0 * FLOAT_SIMD);\
+    c0 = _mm256_fmadd_ps(a0, c0, bv); a1 = _mm256_load_ps(a_row_ptr + 0*step + 1 * FLOAT_SIMD);\
+    c1 = _mm256_fmadd_ps(a1, c1, bv); a0 = _mm256_load_ps(a_row_ptr + 1*step + 0 * FLOAT_SIMD);\
+    c2 = _mm256_fmadd_ps(a0, c2, bv); a1 = _mm256_load_ps(a_row_ptr + 1*step + 1 * FLOAT_SIMD);\
+    c3 = _mm256_fmadd_ps(a1, c3, bv); a0 = _mm256_load_ps(a_row_ptr + 2*step + 0 * FLOAT_SIMD);\
+    c4 = _mm256_fmadd_ps(a0, c4, bv); a1 = _mm256_load_ps(a_row_ptr + 2*step + 1 * FLOAT_SIMD);\
+    c5 = _mm256_fmadd_ps(a1, c5, bv); a0 = _mm256_load_ps(a_row_ptr + 3*step + 0 * FLOAT_SIMD);\
+    c6 = _mm256_fmadd_ps(a0, c6, bv); a1 = _mm256_load_ps(a_row_ptr + 3*step + 1 * FLOAT_SIMD);\
+    c7 = _mm256_fmadd_ps(a1, c7, bv); a0 = _mm256_load_ps(a_row_ptr + 4*step + 0 * FLOAT_SIMD);\
+    c8 = _mm256_fmadd_ps(a0, c8, bv); a1 = _mm256_load_ps(a_row_ptr + 4*step + 1 * FLOAT_SIMD);\
+    c9 = _mm256_fmadd_ps(a1, c9, bv); a0 = _mm256_load_ps(a_row_ptr + 5*step + 0 * FLOAT_SIMD);\
+    c10 = _mm256_fmadd_ps(a0, c10, bv); a1 = _mm256_load_ps(a_row_ptr + 5*step + 1 * FLOAT_SIMD);\
+    c11 = _mm256_fmadd_ps(a1, c11, bv); 
 
 
 #define FLOAT_LDEXP_TILE_C_MATRIX_A_MATRIX_B(a, b)\
@@ -2084,13 +2205,30 @@ for (uint32_t kk = 0; kk < W_ob; kk++)                      \
 {\
     constexpr float ln2 = 0.6931471805599453f;\
     constexpr float inv_ln2 = 1.4426950408889634f;\
-    float reduced_buf[FLOAT_W_ob*FLOAT_C_ob];\
-    float exponent_buf[FLOAT_W_ob*FLOAT_C_ob];\
-    float recip_fact_table[] = {1.0f / 120.0f,1.0f / 24.0f,1.0f / 6.0f,0.5f,1.0f};\
+    alignas(64) float reduced_buf[FLOAT_W_ob*FLOAT_C_ob];\
+    alignas(64) float exponent_buf[FLOAT_W_ob*FLOAT_C_ob];\
+    float recip_fact_table[] = {1.0/720.0f, 1.0f / 120.0f,1.0f / 24.0f,1.0f / 6.0f,0.5f,1.0f, 1.0};\
     FLOAT_MUL_TILE_C_A_SCALAR(&inv_ln2);\
     FLOAT_RND_TILE_C;\
     FLOAT_STORE_TILE_C(exponent_buf);\
-    FLOAT_PRINT_TILE_a(exponent_buf);\
+    FLOAT_NFMA_TILE_C_A_MATRIX_B_scalar(a, &ln2);\
+    FLOAT_STORE_TILE_C(reduced_buf);\
+    FLOAT_LOAD_TILE_C(a);\
+    FLOAT_INPLACE_EXP_horner_TILE_C(FLOAT_C_ob,reduced_buf,recip_fact_table);\
+    FLOAT_STORE_TILE_C(reduced_buf);\
+    FLOAT_LDEXP_TILE_C_MATRIX_A_MATRIX_B(exponent_buf, reduced_buf);\
+}
+
+#define FLOAT_INPLACE_EXP_RR_TILE_C(a)\
+{\
+    constexpr float ln2 = 0.6931471805599453f;\
+    constexpr float inv_ln2 = 1.4426950408889634f;\
+    alignas(64) float reduced_buf[FLOAT_W_ob*FLOAT_C_ob];\
+    alignas(64) float exponent_buf[FLOAT_W_ob*FLOAT_C_ob];\
+    float recip_fact_table[] = {{1.0/720.0f,1.0f / 120.0f,1.0f / 24.0f,1.0f / 6.0f,0.5f,1.0f, 1.0f};\
+    FLOAT_MUL_TILE_C_A_SCALAR(&inv_ln2);\
+    FLOAT_RND_TILE_C;\
+    FLOAT_STORE_TILE_C(exponent_buf);\
     FLOAT_NFMA_TILE_C_A_MATRIX_B_scalar(a, &ln2);\
     FLOAT_STORE_TILE_C(reduced_buf);\
     FLOAT_LOAD_TILE_C(a);\
@@ -2101,12 +2239,13 @@ for (uint32_t kk = 0; kk < W_ob; kk++)                      \
 
 
 
+
 //*************************************************
 // Composed microkernels
 //************************************************* 
 
 #define FLOAT_COMPOSED_SOFTSIGN_TILE_C(step, I) \
-    {FLOAT_ABS_TILE_C(step, I); \
+    {FLOAT_COMPOSED_ABS_TILE_C(step, I); \
     const float scalar = 1.0f; FLOAT_INPLACE_ADD_SCALAR_TILE_C(scalar); \
     FLOAT_INPLACE_DIV_TILE_C(step, I);} 
 
@@ -2122,20 +2261,24 @@ for (uint32_t kk = 0; kk < W_ob; kk++)                      \
 //****************************************************************************
 // CeLu activation
 //****************************************************************************
+//Assumes input is already in the register tile
+// max(0,x) + min(0,alpha*(exp(x/alpha)-1))
+
 
 #define FLOAT_FUSED_CELU_TILE_C(step, a, b, c) \
-    float recip_fact_table[] = {0.008333333333, 0.0416667, 0.16667, 0.5, 1.0};\
+    float recip_fact_table_negative[] = {1.0/720.0f, -0.008333333333, 0.0416667, -0.16667, 0.5, -1.0, 1.0};\
+    float recip_fact_table[] = {1.0/720.0f, 0.008333333333, 0.0416667, 0.16667, 0.5, 1.0, 1.0};\
     FLOAT_DIV_SCALAR_TILE_C(b); \
+    FLOAT_MIN_SCALAR_TILE_C; \
     FLOAT_STORE_TILE_C(c_tile); \
-    /*FLOAT_INPLACE_EXP_horner_TILE_C(step, c_tile, recip_fact_table);*/ \
-    FLOAT_INPLACE_EXP_TILE_C; \
+    FLOAT_INPLACE_EXP_negative_horner_TILE_C(step, c_tile, recip_fact_table); \
+    /*FLOAT_INPLACE_EXP_TILE_C;*/ \
     FLOAT_SUB_ONE_TILE_C; \
     FLOAT_MUL_SCALAR_TILE_C(b); \
-    FLOAT_MIN_SCALAR_TILE_C; \
     FLOAT_STORE_TILE_C(c_tile); \
     FLOAT_LOAD_TILE_C(c); \
     FLOAT_INPLACE_RELU_TILE_C; \
-    FLOAT_ACCUM_TILE_C(step, c_tile);
+    FLOAT_ACCUM_TILE_C(step, c_tile);\
 
 #define FLOAT_CELU_END_C(b, c_cur, W_ob, C_ob)                   \
     float *c_pixel = c_cur;                                           \
@@ -2219,11 +2362,10 @@ for (uint32_t kk = 0; kk < W_ob; kk++)                      \
     uint32_t sign_mask = 0x7FFFFFFF;\
     FLOAT_AND_TILE_C_MATRIX_A_SCALAR_B(step, I, reinterpret_cast<float*>(&sign_mask));\
 
-#define FLOAT_FUSED_SOFTMAX_TILE_C(step, a, c) \
-    FLOAT_STORE_TILE_C(c_tile); \
-    FLOAT_LOAD_TILE_C(c);  \
-    FLOAT_SOFTMAX_TILE_C(step, a, c); \
-    FLOAT_MUL_TILE_C(step, a, c);
+#define FLOAT_FUSED_SOFTMAX_TILE_C(step, a, b, c) \
+    FLOAT_INPLACE_EXP_horner_TILE_C(FLOAT_C_ob, a, b);\
+    FLOAT_STORE_TILE_C(c);\
+    FLOAT_ACCUM_TILE_C(step, c)
 
 // include hand implemented instrinsics for new operators to compare with composed versions using platform-specific primitives.
 #include "custom_intrinsics.hpp"

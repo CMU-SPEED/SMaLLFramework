@@ -26,6 +26,7 @@ namespace float_detail {
 
 #if !defined(QUANTIZED)
 
+// Simplified version of small::SoftMax
 void compute_softmax_microkernel_stages(FloatBuffer &microkernel_buf,
                                         FloatBuffer &scalar_buf,
                                         dim_t ChannelBlocks,
@@ -33,6 +34,7 @@ void compute_softmax_microkernel_stages(FloatBuffer &microkernel_buf,
                                         dim_t WidthBlocks)
 {
     using ScalarT = typename FloatBuffer::value_type;
+    float recip_fact_table_positive[] = {1.0f/720.0f, 1.0f / 120.0f,1.0f / 24.0f,1.0f / 6.0f,0.5f,1.0f, 1.0};\
 
     dim_t const width = WidthBlocks * FLOAT_W_ob;
     constexpr dim_t step = FLOAT_C_ob;
@@ -51,8 +53,8 @@ void compute_softmax_microkernel_stages(FloatBuffer &microkernel_buf,
 
                 FLOAT_DEF_TILE_C;
                 FLOAT_LOAD_TILE_C(tile);
-                FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_TILE(step, OP_EXP, 0,
-                                                      scalar_buf.data());
+                FLOAT_INPLACE_EXP_horner_TILE_C(FLOAT_C_ob, tile, recip_fact_table_positive);
+                // FLOAT_ABSTRACT_OP(step, OP_EXP, 1, tile, recip_fact_table_positive, tile, tile);
                 FLOAT_STORE_TILE_C(tile);
             }
         }
@@ -101,7 +103,7 @@ void compute_softmax_microkernel_stages(FloatBuffer &microkernel_buf,
 
 
 
-
+// Simplified version of small::SoftMax, with horner's rule for exp (stable for small range of values -1 to +2)
 void compute_softmax_microkernel_lazy(FloatBuffer &microkernel_buf,
                                         FloatBuffer &scalar_buf,
                                         dim_t ChannelBlocks,
@@ -113,7 +115,7 @@ void compute_softmax_microkernel_lazy(FloatBuffer &microkernel_buf,
     dim_t const width = WidthBlocks * FLOAT_W_ob;
     constexpr dim_t step = FLOAT_C_ob;
     constexpr dim_t _UNROLL = FLOAT_C_ob;
-
+    float recip_fact_table_positive[] = {1.0f/720.0f, 1.0f / 120.0f,1.0f / 24.0f,1.0f / 6.0f,0.5f,1.0f, 1.0};\
     for (dim_t cb = 0; cb < ChannelBlocks; ++cb)
     {
         ScalarT *block =
@@ -127,8 +129,7 @@ void compute_softmax_microkernel_lazy(FloatBuffer &microkernel_buf,
 
                 FLOAT_DEF_TILE_C;
                 FLOAT_LOAD_TILE_C(tile);
-                FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_TILE(step, OP_EXP, 0,
-                                                      scalar_buf.data());
+                FLOAT_INPLACE_EXP_horner_TILE_C(FLOAT_C_ob, tile, recip_fact_table_positive);
                 FLOAT_STORE_TILE_C(tile);
             }
         }
@@ -201,6 +202,8 @@ void compute_fused_softmax_microkernel_lazy(FloatBuffer &microkernel_buf,
     constexpr dim_t step = FLOAT_C_ob;
     constexpr dim_t _UNROLL = FLOAT_C_ob;
     FloatBuffer reduction_buf(FLOAT_W_ob * FLOAT_C_ob);
+    float recip_fact_table_positive[] = {1.0f/720.0f, 1.0f / 120.0f,1.0f / 24.0f,1.0f / 6.0f,0.5f,1.0f, 1.0};\
+
     for(dim_t t =0; t < FLOAT_W_ob * FLOAT_C_ob; t++)
     {
         reduction_buf[t] = 0.0f;
@@ -222,8 +225,7 @@ void compute_fused_softmax_microkernel_lazy(FloatBuffer &microkernel_buf,
 
                 
                 FLOAT_LOAD_TILE_C(tile);
-                FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_TILE(step, OP_EXP, 0,
-                                                      scalar_buf.data());
+                FLOAT_INPLACE_EXP_horner_TILE_C(FLOAT_C_ob, tile, recip_fact_table_positive);
                 FLOAT_STORE_TILE_C(tile);
                 FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_TILE(step, OP_ADD, 0, reduction_buf.data());
                 FLOAT_STORE_TILE_C(reduction_buf.data());
@@ -266,6 +268,8 @@ void compute_fused_softmax_microkernel_lazy(FloatBuffer &microkernel_buf,
 
 
 
+
+
 void compute_fused_softmax_microkernel_lazy_bespoke(FloatBuffer &microkernel_buf,
                                         FloatBuffer &scalar_buf,
                                         dim_t ChannelBlocks,
@@ -273,6 +277,7 @@ void compute_fused_softmax_microkernel_lazy_bespoke(FloatBuffer &microkernel_buf
                                         dim_t WidthBlocks)
 {
     using ScalarT = typename FloatBuffer::value_type;
+    float recip_fact_table_positive[] = {1.0f/720.0f, 1.0f / 120.0f,1.0f / 24.0f,1.0f / 6.0f,0.5f,1.0f, 1.0};\
 
     dim_t const width = WidthBlocks * FLOAT_W_ob;
     constexpr dim_t step = FLOAT_C_ob;
@@ -301,8 +306,10 @@ void compute_fused_softmax_microkernel_lazy_bespoke(FloatBuffer &microkernel_buf
 
                 
                 FLOAT_LOAD_TILE_C(tile);
-                FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_TILE(step, OP_EXP, 0,
-                                                      scalar_buf.data());
+                // FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_TILE(step, OP_EXP, 0,
+                //                                       scalar_buf.data());
+                FLOAT_INPLACE_EXP_horner_TILE_C(FLOAT_C_ob, tile, recip_fact_table_positive);
+
                 FLOAT_STORE_TILE_C(tile);
                 // FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_TILE(step, OP_ADD, 0, reduction_buf.data());
                 FLOAT_INPLACE_ACCUM_TILE_C;
@@ -347,14 +354,14 @@ void compute_fused_softmax_microkernel_lazy_bespoke(FloatBuffer &microkernel_buf
 }
 
 
-
+//inplace microkernel_buf becomes exp_buf
 void compute_softmax_microkernel_exp_only(FloatBuffer &microkernel_buf,
-                                          FloatBuffer &scalar_buf,
                                           dim_t ChannelBlocks,
                                           dim_t height,
                                           dim_t WidthBlocks)
 {
     using ScalarT = typename FloatBuffer::value_type;
+    float recip_fact_table_positive[] = {1.0f/720.0f, 1.0f / 120.0f,1.0f / 24.0f,1.0f / 6.0f,0.5f,1.0f, 1.0};\
 
     dim_t const width = WidthBlocks * FLOAT_W_ob;
     constexpr dim_t step = FLOAT_C_ob;
@@ -372,8 +379,7 @@ void compute_softmax_microkernel_exp_only(FloatBuffer &microkernel_buf,
 
                 FLOAT_DEF_TILE_C;
                 FLOAT_LOAD_TILE_C(tile);
-                FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_TILE(step, OP_EXP, 0,
-                                                      scalar_buf.data());
+                FLOAT_INPLACE_EXP_horner_TILE_C(FLOAT_C_ob, tile, recip_fact_table_positive);
                 FLOAT_STORE_TILE_C(tile);
             }
         }
@@ -427,6 +433,8 @@ void compute_softmax_microkernel_lazy_add_only(
     scalar_buf[0] = 0.0f;
     FloatBuffer reduction_buf(FLOAT_W_ob * FLOAT_C_ob);
     FLOAT_DEF_TILE_C;
+    a_reg = _mm256_setzero_ps();
+    c12 = _mm256_setzero_ps();
     FLOAT_ZERO_TILE_C;
     for (dim_t cb = 0; cb < ChannelBlocks; ++cb)
     {
@@ -438,18 +446,152 @@ void compute_softmax_microkernel_lazy_add_only(
             for (dim_t wb = 0; wb < WidthBlocks; ++wb)
             {
                 ScalarT const *a_cur = row + wb * FLOAT_W_ob * FLOAT_C_ob;
-                FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_TILE(step, OP_ADD, 0, a_cur);
+                // FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_TILE(step, OP_ADD, 0, a_cur);
+                FLOAT_LOAD_TILE_C(a_cur);
+                FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_TILE(step, OP_ADD, 0, reduction_buf.data());
+                FLOAT_STORE_TILE_C(reduction_buf.data());
             }
         }
     }
-    FLOAT_INPLACE_ACCUM_TILE_C;
-    FLOAT_STORE_TILE_C(reduction_buf.data());
+    // FLOAT_INPLACE_ACCUM_TILE_C;
+    // FLOAT_STORE_TILE_C(reduction_buf.data());
+    // for (dim_t c = 0; c < FLOAT_SIMD; ++c)
+    // {
+    //     scalar_buf[0] += reduction_buf[c];
+    // }
+    FLOAT_ABSTRACT_REDUCTION_OP_TILE(OP_ADD, reduction_buf.data(), scalar_buf.data());
+}
+
+
+void compute_softmax_microkernel_bespoke_add_only(
+    FloatBuffer const &microkernel_buf,
+    FloatBuffer &scalar_buf,
+    dim_t ChannelBlocks,
+    dim_t height,
+    dim_t WidthBlocks)
+{
+    using ScalarT = typename FloatBuffer::value_type;
+
+    dim_t const width = WidthBlocks * FLOAT_W_ob;
+    constexpr dim_t step = FLOAT_C_ob;
+
+    scalar_buf[0] = 0.0f;
+    FloatBuffer reduction_buf(FLOAT_W_ob * FLOAT_C_ob);
+    FLOAT_DEF_TILE_C;
+    a_reg = _mm256_setzero_ps();
+    c12 = _mm256_setzero_ps();
+    FLOAT_ZERO_TILE_C;
+    for (dim_t cb = 0; cb < ChannelBlocks; ++cb)
+    {
+        ScalarT const *block =
+            microkernel_buf.data() + cb * height * width * FLOAT_C_ob;
+        for(dim_t h = 0; h < height; ++h)
+        {
+            ScalarT const *row = block + h * width * FLOAT_C_ob;
+            for (dim_t wb = 0; wb < WidthBlocks; ++wb)
+            {
+                ScalarT const *a_cur = row + wb * FLOAT_W_ob * FLOAT_C_ob;
+                // FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_TILE(step, OP_ADD, 0, a_cur);
+                FLOAT_LOAD_TILE_C(a_cur);
+                // FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_TILE(step, OP_ADD, 0, reduction_buf.data());
+                // FLOAT_STORE_TILE_C(reduction_buf.data());
+                FLOAT_INPLACE_ACCUM_TILE_C;
+                a_reg = _mm256_add_ps(c0, a_reg);
+                c12 =  _mm256_add_ps(c12, c1);
+            }
+        }
+    }
+    c0 = a_reg;
+    c1 = c12;
+    FLOAT_STORE_ROW_C(reduction_buf.data());
+    //reduction over channels
     for (dim_t c = 0; c < FLOAT_SIMD; ++c)
     {
         scalar_buf[0] += reduction_buf[c];
     }
+
+
 }
 
+
+void compute_softmax_microkernel_mul_only(
+    FloatBuffer &microkernel_buf,
+    FloatBuffer const &scalar_buf,
+    dim_t ChannelBlocks,
+    dim_t height,
+    dim_t WidthBlocks)
+{
+    using ScalarT = typename FloatBuffer::value_type;
+    dim_t const width = WidthBlocks * FLOAT_W_ob;
+    constexpr dim_t step = FLOAT_C_ob;
+
+    for (dim_t cb = 0; cb < ChannelBlocks; ++cb)
+    {
+        ScalarT *block = microkernel_buf.data() + cb * height * width * FLOAT_C_ob;
+        for (dim_t h = 0; h < height; ++h)
+        {
+            ScalarT *row = block + h * width * FLOAT_C_ob;
+            for (dim_t wb = 0; wb < WidthBlocks; ++wb)
+            {
+                ScalarT *tile = row + wb * FLOAT_W_ob * FLOAT_C_ob;
+                FLOAT_DEF_TILE_C;
+                FLOAT_LOAD_TILE_C(tile);
+                FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_TILE(
+                    step, OP_MUL, 0, scalar_buf.data());
+                FLOAT_STORE_TILE_C(tile);
+            }
+        }
+    }
+}
+
+
+void compute_composed_softmax_microkernel_lazy(FloatBuffer &microkernel_buf,
+                                        FloatBuffer &scalar_buf,
+                                        dim_t ChannelBlocks,
+                                        dim_t height,
+                                        dim_t WidthBlocks)
+{
+    using ScalarT = typename FloatBuffer::value_type;
+
+    compute_softmax_microkernel_exp_only(microkernel_buf, ChannelBlocks, height, WidthBlocks);
+    compute_softmax_microkernel_lazy_add_only(microkernel_buf, scalar_buf, ChannelBlocks, height, WidthBlocks);
+
+    scalar_buf[0] = 1.0f / scalar_buf[0];
+    constexpr dim_t step = FLOAT_C_ob;
+    for (dim_t cb = 0; cb < ChannelBlocks; ++cb)
+    {
+        ScalarT *block =
+            microkernel_buf.data() + cb * height * WidthBlocks * FLOAT_W_ob * FLOAT_C_ob;
+        for(dim_t h = 0; h < height; ++h)
+        {
+            ScalarT *row = block + h *  WidthBlocks * FLOAT_W_ob  * FLOAT_C_ob;
+            for (dim_t wb = 0; wb < WidthBlocks; ++wb)
+            {
+                ScalarT *tile = row + wb * FLOAT_W_ob * FLOAT_C_ob;
+
+                FLOAT_DEF_TILE_C;
+                FLOAT_LOAD_TILE_C(tile);
+                FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_TILE(step, OP_MUL, 0,
+                                                      scalar_buf.data());
+                FLOAT_STORE_TILE_C(tile);
+            }
+        }
+    }
+}
+
+
+
+
+
+FloatBuffer create_small_negative_data(size_t num_elts)
+{
+    FloatBuffer data(num_elts);
+    for (size_t ix = 0; ix < num_elts; ++ix)
+    {
+        data[ix] = -0.5f + static_cast<float>((ix))*1.0/static_cast<float>(num_elts);
+    }
+    return data;
+}
 
 void run_softmax_microkernel_stages(dim_t ChannelBlocks, dim_t Height, dim_t WidthBlocks)
 {
@@ -460,15 +602,11 @@ void run_softmax_microkernel_stages(dim_t ChannelBlocks, dim_t Height, dim_t Wid
     dim_t const width = WidthBlocks * FLOAT_W_ob;
     size_t const num_elts = channels * height * width;
 
-    BufferT input_buf(num_elts);
+    BufferT input_buf = create_small_negative_data(num_elts);
     BufferT microkernel_buf(num_elts);
     BufferT softmax_buf(num_elts);
     BufferT scalar_buf(1);
 
-    for (size_t ix = 0; ix < num_elts; ++ix)
-    {
-        input_buf[ix] = -0.5f + 0.01f * static_cast<float>((ix * 7U) % 101U);
-    }
     microkernel_buf = input_buf;
 
     small::SoftMax(channels, height, width, input_buf, softmax_buf);
@@ -505,15 +643,11 @@ void run_softmax_microkernel_lazy(dim_t ChannelBlocks, dim_t Height, dim_t Width
     dim_t const width = WidthBlocks * FLOAT_W_ob;
     size_t const num_elts = channels * height * width;
 
-    FloatBuffer input_buf(num_elts);
+    FloatBuffer input_buf = create_small_negative_data(num_elts);
     FloatBuffer microkernel_buf(num_elts);
     FloatBuffer softmax_buf(num_elts);
     FloatBuffer scalar_buf(1);
 
-    for (size_t ix = 0; ix < num_elts; ++ix)
-    {
-        input_buf[ix] = -0.5f + 0.01f * static_cast<float>((ix * 7U) % 101U);
-    }
     microkernel_buf = input_buf;
 
     small::SoftMax(channels, height, width, input_buf, softmax_buf);
@@ -551,15 +685,11 @@ void run_fused_softmax_microkernel_lazy(dim_t ChannelBlocks,
     dim_t const width = WidthBlocks * FLOAT_W_ob;
     size_t const num_elts = channels * height * width;
 
-    FloatBuffer input_buf(num_elts);
+    FloatBuffer input_buf = create_small_negative_data(num_elts);
     FloatBuffer microkernel_buf(num_elts);
     FloatBuffer softmax_buf(num_elts);
     FloatBuffer scalar_buf(1);
 
-    for (size_t ix = 0; ix < num_elts; ++ix)
-    {
-        input_buf[ix] = -0.5f + 0.01f * static_cast<float>((ix * 7U) % 101U);
-    }
     microkernel_buf = input_buf;
 
     small::SoftMax(channels, height, width, input_buf, softmax_buf);
@@ -599,15 +729,11 @@ void run_fused_softmax_microkernel_lazy_bespoke(dim_t ChannelBlocks,
     dim_t const width = WidthBlocks * FLOAT_W_ob;
     size_t const num_elts = channels * height * width;
 
-    FloatBuffer input_buf(num_elts);
+    FloatBuffer input_buf = create_small_negative_data(num_elts);
     FloatBuffer microkernel_buf(num_elts);
     FloatBuffer softmax_buf(num_elts);
     FloatBuffer scalar_buf(1);
 
-    for (size_t ix = 0; ix < num_elts; ++ix)
-    {
-        input_buf[ix] = -0.5f + 0.01f * static_cast<float>((ix * 7U) % 101U);
-    }
     microkernel_buf = input_buf;
 
     small::SoftMax(channels, height, width, input_buf, softmax_buf);
@@ -637,15 +763,7 @@ void run_fused_softmax_microkernel_lazy_bespoke(dim_t ChannelBlocks,
     }
 }
 
-void test_softmax_microkernel_stages_1x1()
-{
-    run_softmax_microkernel_stages(1, 1,1);
-}
 
-void test_softmax_microkernel_stages_2x3()
-{
-    run_softmax_microkernel_stages(2, 1, 3);
-}
 
 struct SoftmaxStageConfig
 {
@@ -654,29 +772,58 @@ struct SoftmaxStageConfig
     dim_t width;
 };
 
+SoftmaxStageConfig const softmax_stage_configs[] = {
+    {16, 48, 48},
+    {32, 24, 24},
+    {32, 48, 48},
+    {64, 24, 24},
+    {64, 12, 12},
+    {128, 12, 12},
+    {128, 6, 6},
+    {128, 24, 24},
+    {256, 12, 12},
+    {512, 12, 12},
+    {1024, 6, 6},
+    {16, 1, 6},
+    {16, 36, 36},
+    {16, 60, 60},
+    {16, 114, 114},
+
+};
+
 template <typename Callable>
-small::test::TimingStats time_softmax_trials(size_t num_trials,
-                                             size_t runs_per_trial,
+small::test::TimingStats time_softmax_trials(size_t num_runs,
+                                             size_t num_trials,
                                              Callable &&run_once)
 {
-    return small::test::time_trials(num_trials, [&]() {
-        for (size_t run = 0; run < runs_per_trial; ++run)
+    std::vector<double> times;
+    times.reserve(num_runs);
+    small::Timer timer;
+
+    for (size_t run = 0; run < num_runs; ++run)
+    {
+        timer.start();
+        for (size_t trial = 0; trial < num_trials; ++trial)
         {
             run_once();
         }
-    });
+        timer.stop();
+        times.push_back(timer.elapsed() / static_cast<double>(num_trials));
+    }
+
+    return small::test::summarize_times(std::move(times));
 }
 
 void print_softmax_timing_row(SoftmaxStageConfig const &config,
                               size_t num_trials,
-                              size_t runs_per_trial,
+                              size_t num_runs,
                               small::test::TimingStats const &stats)
 {
     std::cout << "\t" << config.channels
               << "\t" << config.height
               << "\t" << config.width
               << "\t" << num_trials
-              << "\t" << runs_per_trial
+              << "\t" << num_runs
               << "\t" << stats.min
               << "\t" << stats.max
               << "\t" << stats.trimmed_avg
@@ -684,181 +831,35 @@ void print_softmax_timing_row(SoftmaxStageConfig const &config,
               << std::endl;
 }
 
-void test_softmax_microkernel_stages_conv2d_compatible_configs()
-{
-    SoftmaxStageConfig const configs[] = {
-        {16, 1, 6},
-        {16, 30, 30},
-        {96, 1, 6},
-        {96, 30, 30},
-        {16, 48, 48},
-        {32, 24, 24},
-        {32, 48, 48},
-        {64, 12, 12},
-        {64, 24, 24},
-        {128, 6, 6},
-        {128, 12, 12},
-        {128, 24, 24},
-        {256, 12, 12},
-        {512, 12, 12},
-        {1024, 6, 6},
-    };
-
-    for (SoftmaxStageConfig const &config : configs)
-    {
-        std::cout << "softmax stages Conv2D-compatible config: C="
-                  << config.channels << ", H=" << config.height
-                  << ", W=" << config.width << std::endl;
-        TEST_ASSERT(config.channels % 16 == 0);
-        TEST_ASSERT(config.width % 6 == 0);
-        run_softmax_microkernel_stages(config.channels / 16,
-                                       config.height,
-                                       config.width / 6);
-    }
-}
-
-void test_softmax_microkernel_lazy_conv2d_compatible_configs()
-{
-    SoftmaxStageConfig const configs[] = {
-        {16, 1, 6},
-        {16, 30, 30},
-        {96, 1, 6},
-        {96, 30, 30},
-        {16, 48, 48},
-        {32, 24, 24},
-        {32, 48, 48},
-        {64, 12, 12},
-        {64, 24, 24},
-        {128, 6, 6},
-        {128, 12, 12},
-        {128, 24, 24},
-        {256, 12, 12},
-        {512, 12, 12},
-        {1024, 6, 6},
-    };
-
-    for (SoftmaxStageConfig const &config : configs)
-    {
-        std::cout << "lazy softmax stages Conv2D-compatible config: C="
-                  << config.channels << ", H=" << config.height
-                  << ", W=" << config.width << std::endl;
-        TEST_ASSERT(config.channels % 16 == 0);
-        TEST_ASSERT(config.width % 6 == 0);
-        run_softmax_microkernel_lazy(config.channels / 16,
-                                     config.height,
-                                     config.width / 6);
-    }
-}
-
-void test_fused_softmax_microkernel_lazy_conv2d_compatible_configs()
-{
-    SoftmaxStageConfig const configs[] = {
-        {16, 1, 6},
-        {16, 30, 30},
-        {96, 1, 6},
-        {96, 30, 30},
-        {16, 48, 48},
-        {32, 24, 24},
-        {32, 48, 48},
-        {64, 12, 12},
-        {64, 24, 24},
-        {128, 6, 6},
-        {128, 12, 12},
-        {128, 24, 24},
-        {256, 12, 12},
-        {512, 12, 12},
-        {1024, 6, 6},
-    };
-
-    for (SoftmaxStageConfig const &config : configs)
-    {
-        std::cout << "fused lazy softmax stages Conv2D-compatible config: C="
-                  << config.channels << ", H=" << config.height
-                  << ", W=" << config.width << std::endl;
-        TEST_ASSERT(config.channels % 16 == 0);
-        TEST_ASSERT(config.width % 6 == 0);
-        run_fused_softmax_microkernel_lazy(config.channels / 16,
-                                           config.height,
-                                           config.width / 6);
-    }
-}
 
 
-void test_fused_softmax_microkernel_lazy_bespoke_conv2d_compatible_configs()
-{
-    SoftmaxStageConfig const configs[] = {
-        {16, 1, 6},
-        {16, 30, 30},
-        {96, 1, 6},
-        {96, 30, 30},
-        {16, 48, 48},
-        {32, 24, 24},
-        {32, 48, 48},
-        {64, 12, 12},
-        {64, 24, 24},
-        {128, 6, 6},
-        {128, 12, 12},
-        {128, 24, 24},
-        {256, 12, 12},
-        {512, 12, 12},
-        {1024, 6, 6},
-    };
-
-    for (SoftmaxStageConfig const &config : configs)
-    {
-        std::cout << "fused lazy bespoke softmax stages Conv2D-compatible config: C="
-                  << config.channels << ", H=" << config.height
-                  << ", W=" << config.width << std::endl;
-        TEST_ASSERT(config.channels % 16 == 0);
-        TEST_ASSERT(config.width % 6 == 0);
-        run_fused_softmax_microkernel_lazy_bespoke(config.channels / 16,
-                                                   config.height,
-                                                   config.width / 6);
-    }
-}
-
+// ==================================================================
+// Performance measurement
+// ==================================================================
 void measure_softmax_microkernel_stages_performance()
 {
-    SoftmaxStageConfig const configs[] = {
-        {16, 48, 48},
-        {32, 24, 24},
-        {32, 48, 48},
-        {64, 24, 24},
-        {128, 12, 12},
-        {64, 12, 12},
-        {128, 6, 6},
-        {128, 24, 24},
-        {256, 12, 12},
-        {512, 12, 12},
-        {1024, 6, 6},
-        {16, 12, 12},
-        {32, 6, 6},
-        {16, 24, 24},
-    };
-
-    constexpr size_t num_trials = 10;
-    constexpr size_t runs_per_trial = 100;
+    constexpr size_t num_trials = 1000;
+    constexpr size_t num_runs = 100;
 
     std::cout << "\nsoftmax stage ukernel performance\n";
-    std::cout << "\tC\tH\tW\ttrials\truns/trial\tt_min\tt_max\tt_avg_trim\tstd_dev_trim\n";
+    std::cout << "\tC\tH\tW\ttrials\truns\tt_min\tt_max\tt_avg_trim\tstd_dev_trim\n";
 
-    for (SoftmaxStageConfig const &config : configs)
+    for (SoftmaxStageConfig const &config : softmax_stage_configs)
     {
         TEST_ASSERT(config.channels % 16 == 0);
         TEST_ASSERT(config.width % 6 == 0);
 
         dim_t const ChannelBlocks = config.channels / 16;
         dim_t const WidthBlocks = config.width / 6;
+        run_softmax_microkernel_stages(ChannelBlocks, config.height,
+                                       WidthBlocks);
+
         size_t const num_elts = config.channels * config.height * config.width;
 
-        FloatBuffer input_buf(num_elts);
+        FloatBuffer input_buf = create_small_negative_data(num_elts);
         FloatBuffer microkernel_buf(num_elts);
         FloatBuffer scalar_buf(1);
 
-        for (size_t ix = 0; ix < num_elts; ++ix)
-        {
-            input_buf[ix] = -0.5f + 0.01f * static_cast<float>((ix * 7U) % 101U);
-        }
 
         microkernel_buf = input_buf;
         compute_softmax_microkernel_stages(microkernel_buf, scalar_buf,
@@ -866,59 +867,41 @@ void measure_softmax_microkernel_stages_performance()
                                            WidthBlocks);
 
         small::test::TimingStats const stats =
-            time_softmax_trials(num_trials, runs_per_trial, [&]() {
-                microkernel_buf = input_buf;
+            time_softmax_trials(num_runs, num_trials, [&]() {
+                // microkernel_buf = input_buf;
                 compute_softmax_microkernel_stages(microkernel_buf, scalar_buf,
                                                    ChannelBlocks,
                                                    config.height,
                                                    WidthBlocks);
             });
-        print_softmax_timing_row(config, num_trials, runs_per_trial, stats);
+        print_softmax_timing_row(config, num_trials, num_runs, stats);
     }
 }
 
 void measure_softmax_microkernel_lazy_performance()
 {
-    SoftmaxStageConfig const configs[] = {
-        {16, 48, 48},
-        {32, 24, 24},
-        {32, 48, 48},
-        {64, 24, 24},
-        {128, 12, 12},
-        {64, 12, 12},
-        {128, 6, 6},
-        {128, 24, 24},
-        {256, 12, 12},
-        {512, 12, 12},
-        {1024, 6, 6},
-        {16, 12, 12},
-        {32, 6, 6},
-        {16, 24, 24},
-    };
-
-    constexpr size_t num_trials = 10;
-    constexpr size_t runs_per_trial = 100;
+    constexpr size_t num_trials = 1000;
+    constexpr size_t num_runs = 100;
 
     std::cout << "\nlazy softmax stage ukernel performance\n";
-    std::cout << "\tC\tH\tW\ttrials\truns/trial\tt_min\tt_max\tt_avg_trim\tstd_dev_trim\n";
+    std::cout << "\tC\tH\tW\ttrials\truns\tt_min\tt_max\tt_avg_trim\tstd_dev_trim\n";
 
-    for (SoftmaxStageConfig const &config : configs)
+    for (SoftmaxStageConfig const &config : softmax_stage_configs)
     {
         TEST_ASSERT(config.channels % 16 == 0);
         TEST_ASSERT(config.width % 6 == 0);
 
         dim_t const ChannelBlocks = config.channels / 16;
         dim_t const WidthBlocks = config.width / 6;
+        run_softmax_microkernel_lazy(ChannelBlocks, config.height,
+                                     WidthBlocks);
+
         size_t const num_elts = config.channels * config.height * config.width;
 
-        FloatBuffer input_buf(num_elts);
+        FloatBuffer input_buf = create_small_negative_data(num_elts);
         FloatBuffer microkernel_buf(num_elts);
         FloatBuffer scalar_buf(1);
 
-        for (size_t ix = 0; ix < num_elts; ++ix)
-        {
-            input_buf[ix] = -0.5f + 0.01f * static_cast<float>((ix * 7U) % 101U);
-        }
 
         microkernel_buf = input_buf;
         compute_softmax_microkernel_lazy(microkernel_buf, scalar_buf,
@@ -926,59 +909,41 @@ void measure_softmax_microkernel_lazy_performance()
                                          WidthBlocks);
 
         small::test::TimingStats const stats =
-            time_softmax_trials(num_trials, runs_per_trial, [&]() {
-                microkernel_buf = input_buf;
+            time_softmax_trials(num_runs, num_trials, [&]() {
+                // microkernel_buf = input_buf;
                 compute_softmax_microkernel_lazy(microkernel_buf, scalar_buf,
                                                  ChannelBlocks,
                                                  config.height,
                                                  WidthBlocks);
             });
-        print_softmax_timing_row(config, num_trials, runs_per_trial, stats);
+        print_softmax_timing_row(config, num_trials, num_runs, stats);
     }
 }
 
 void measure_fused_softmax_microkernel_lazy_performance()
 {
-    SoftmaxStageConfig const configs[] = {
-        {16, 48, 48},
-        {32, 24, 24},
-        {32, 48, 48},
-        {64, 24, 24},
-        {128, 12, 12},
-        {64, 12, 12},
-        {128, 6, 6},
-        {128, 24, 24},
-        {256, 12, 12},
-        {512, 12, 12},
-        {1024, 6, 6},
-        {16, 12, 12},
-        {32, 6, 6},
-        {16, 24, 24},
-    };
-
-    constexpr size_t num_trials = 10;
-    constexpr size_t runs_per_trial = 100;
+    constexpr size_t num_trials = 1000;
+    constexpr size_t num_runs = 100;
 
     std::cout << "\nfused lazy softmax stage ukernel performance\n";
-    std::cout << "\tC\tH\tW\ttrials\truns/trial\tt_min\tt_max\tt_avg_trim\tstd_dev_trim\n";
+    std::cout << "\tC\tH\tW\ttrials\truns\tt_min\tt_max\tt_avg_trim\tstd_dev_trim\n";
 
-    for (SoftmaxStageConfig const &config : configs)
+    for (SoftmaxStageConfig const &config : softmax_stage_configs)
     {
         TEST_ASSERT(config.channels % 16 == 0);
         TEST_ASSERT(config.width % 6 == 0);
 
         dim_t const ChannelBlocks = config.channels / 16;
         dim_t const WidthBlocks = config.width / 6;
+        run_fused_softmax_microkernel_lazy(ChannelBlocks, config.height,
+                                           WidthBlocks);
+
         size_t const num_elts = config.channels * config.height * config.width;
 
-        FloatBuffer input_buf(num_elts);
+        FloatBuffer input_buf = create_small_negative_data(num_elts);
         FloatBuffer microkernel_buf(num_elts);
         FloatBuffer scalar_buf(1);
 
-        for (size_t ix = 0; ix < num_elts; ++ix)
-        {
-            input_buf[ix] = -0.5f + 0.01f * static_cast<float>((ix * 7U) % 101U);
-        }
 
         microkernel_buf = input_buf;
         compute_fused_softmax_microkernel_lazy(microkernel_buf, scalar_buf,
@@ -986,61 +951,43 @@ void measure_fused_softmax_microkernel_lazy_performance()
                                                WidthBlocks);
 
         small::test::TimingStats const stats =
-            time_softmax_trials(num_trials, runs_per_trial, [&]() {
-                microkernel_buf = input_buf;
+            time_softmax_trials(num_runs, num_trials, [&]() {
+                // microkernel_buf = input_buf;
                 compute_fused_softmax_microkernel_lazy(microkernel_buf,
                                                        scalar_buf,
                                                        ChannelBlocks,
                                                        config.height,
                                                        WidthBlocks);
             });
-        print_softmax_timing_row(config, num_trials, runs_per_trial, stats);
+        print_softmax_timing_row(config, num_trials, num_runs, stats);
     }
 }
 
 
 void measure_fused_softmax_microkernel_lazy_bespoke_performance()
 {
-    SoftmaxStageConfig const configs[] = {
-        {16, 48, 48},
-        {32, 24, 24},
-        {32, 48, 48},
-        {64, 24, 24},
-        {128, 12, 12},
-        {64, 12, 12},
-        {128, 6, 6},
-        {128, 24, 24},
-        {256, 12, 12},
-        {512, 12, 12},
-        {1024, 6, 6},
-        {16, 12, 12},
-        {32, 6, 6},
-        {16, 24, 24},
-    };
-
-    constexpr size_t num_trials = 10;
-    constexpr size_t runs_per_trial = 100;
+    constexpr size_t num_trials = 1000;
+    constexpr size_t num_runs = 100;
 
     std::cout << "\nfused lazy bespoke softmax stage ukernel performance\n";
-    std::cout << "\tC\tH\tW\ttrials\truns/trial\tt_min\tt_max\tt_avg_trim\tstd_dev_trim\n";
+    std::cout << "\tC\tH\tW\ttrials\truns\tt_min\tt_max\tt_avg_trim\tstd_dev_trim\n";
 
-    for (SoftmaxStageConfig const &config : configs)
+    for (SoftmaxStageConfig const &config : softmax_stage_configs)
     {
         TEST_ASSERT(config.channels % 16 == 0);
         TEST_ASSERT(config.width % 6 == 0);
 
         dim_t const ChannelBlocks = config.channels / 16;
         dim_t const WidthBlocks = config.width / 6;
+        run_fused_softmax_microkernel_lazy_bespoke(
+            ChannelBlocks, config.height, WidthBlocks);
+
         size_t const num_elts = config.channels * config.height * config.width;
 
-        FloatBuffer input_buf(num_elts);
+        FloatBuffer input_buf = create_small_negative_data(num_elts);
         FloatBuffer microkernel_buf(num_elts);
         FloatBuffer scalar_buf(1);
 
-        for (size_t ix = 0; ix < num_elts; ++ix)
-        {
-            input_buf[ix] = -0.5f + 0.01f * static_cast<float>((ix * 7U) % 101U);
-        }
 
         microkernel_buf = input_buf;
         compute_fused_softmax_microkernel_lazy_bespoke(
@@ -1048,98 +995,60 @@ void measure_fused_softmax_microkernel_lazy_bespoke_performance()
             WidthBlocks);
 
         small::test::TimingStats const stats =
-            time_softmax_trials(num_trials, runs_per_trial, [&]() {
-                microkernel_buf = input_buf;
+            time_softmax_trials(num_runs, num_trials, [&]() {
+                // microkernel_buf = input_buf;
                 compute_fused_softmax_microkernel_lazy_bespoke(
                     microkernel_buf, scalar_buf, ChannelBlocks,
                     config.height, WidthBlocks);
             });
-        print_softmax_timing_row(config, num_trials, runs_per_trial, stats);
+        print_softmax_timing_row(config, num_trials, num_runs, stats);
     }
 }
 
 
 void measure_small_softmax_performance()
 {
-    SoftmaxStageConfig const configs[] = {
-        {16, 48, 48},
-        {32, 24, 24},
-        {32, 48, 48},
-        {64, 24, 24},
-        {128, 12, 12},
-        {64, 12, 12},
-        {128, 6, 6},
-        {128, 24, 24},
-        {256, 12, 12},
-        {512, 12, 12},
-        {1024, 6, 6},
-        {16, 12, 12},
-        {32, 6, 6},
-        {16, 24, 24},
-    };
-
-    constexpr size_t num_trials = 10;
-    constexpr size_t runs_per_trial = 100;
+    constexpr size_t num_trials = 1000;
+    constexpr size_t num_runs = 100;
 
     std::cout << "\nsmall::SoftMax performance\n";
-    std::cout << "\tC\tH\tW\ttrials\truns/trial"
+    std::cout << "\tC\tH\tW\ttrials\truns"
               << "\tt_min\tt_max\tt_avg_trim\tstd_dev_trim\n";
 
-    for (SoftmaxStageConfig const &config : configs)
+    for (SoftmaxStageConfig const &config : softmax_stage_configs)
     {
         TEST_ASSERT(config.channels % 16 == 0);
         TEST_ASSERT(config.width % 6 == 0);
 
         size_t const num_elts = config.channels * config.height * config.width;
 
-        FloatBuffer input_buf(num_elts);
+        FloatBuffer input_buf = create_small_negative_data(num_elts);
         FloatBuffer softmax_buf(num_elts);
 
-        for (size_t ix = 0; ix < num_elts; ++ix)
-        {
-            input_buf[ix] = -0.5f + 0.01f * static_cast<float>((ix * 7U) % 101U);
-        }
 
         small::SoftMax(config.channels, config.height, config.width,
                        input_buf, softmax_buf);
 
         small::test::TimingStats const stats =
-            time_softmax_trials(num_trials, runs_per_trial, [&]() {
+            time_softmax_trials(num_runs, num_trials, [&]() {
                 small::SoftMax(config.channels, config.height, config.width,
                                input_buf, softmax_buf);
             });
-        print_softmax_timing_row(config, num_trials, runs_per_trial, stats);
+        print_softmax_timing_row(config, num_trials, num_runs, stats);
     }
 }
 
 void measure_softmax_microkernel_add_only_performance()
 {
-    SoftmaxStageConfig const configs[] = {
-        {16, 48, 48},
-        {32, 24, 24},
-        {32, 48, 48},
-        {64, 24, 24},
-        {128, 12, 12},
-        {64, 12, 12},
-        {128, 6, 6},
-        {128, 24, 24},
-        {256, 12, 12},
-        {512, 12, 12},
-        {1024, 6, 6},
-        {16, 12, 12},
-        {32, 6, 6},
-        {16, 24, 24},
-    };
-
-    constexpr size_t num_trials = 10;
-    constexpr size_t runs_per_trial = 100;
+    constexpr size_t num_trials = 1000;
+    constexpr size_t num_runs = 100;
 
     std::cout << "\nsoftmax OP_ADD-only ukernel performance\n";
-    std::cout << "\tC\tH\tW\ttrials\truns/trial"
+    std::cout << "\tC\tH\tW\ttrials\truns"
               << "\tstages_min\tstages_max\tstages_avg_trim\tstages_std_dev_trim"
               << "\tlazy_min\tlazy_max\tlazy_avg_trim\tlazy_std_dev_trim\n";
 
-    for (SoftmaxStageConfig const &config : configs)
+    for (SoftmaxStageConfig const &config : softmax_stage_configs)
     {
         TEST_ASSERT(config.channels % 16 == 0);
         TEST_ASSERT(config.width % 6 == 0);
@@ -1148,28 +1057,24 @@ void measure_softmax_microkernel_add_only_performance()
         dim_t const WidthBlocks = config.width / 6;
         size_t const num_elts = config.channels * config.height * config.width;
 
-        FloatBuffer input_buf(num_elts);
+        FloatBuffer input_buf = create_small_negative_data(num_elts);
         FloatBuffer exp_buf(num_elts);
         FloatBuffer scalar_buf(1);
 
-        for (size_t ix = 0; ix < num_elts; ++ix)
-        {
-            input_buf[ix] = -0.5f + 0.01f * static_cast<float>((ix * 7U) % 101U);
-        }
 
         exp_buf = input_buf;
-        compute_softmax_microkernel_exp_only(exp_buf, scalar_buf,
+        compute_softmax_microkernel_exp_only(exp_buf,
                                              ChannelBlocks, config.height,
                                              WidthBlocks);
 
         small::test::TimingStats const stage_stats =
-            time_softmax_trials(num_trials, runs_per_trial, [&]() {
+            time_softmax_trials(num_runs, num_trials, [&]() {
                 compute_softmax_microkernel_stages_add_only(
                     exp_buf, scalar_buf, ChannelBlocks, config.height,
                     WidthBlocks);
             });
         small::test::TimingStats const lazy_stats =
-            time_softmax_trials(num_trials, runs_per_trial, [&]() {
+            time_softmax_trials(num_runs, num_trials, [&]() {
                 compute_softmax_microkernel_lazy_add_only(
                     exp_buf, scalar_buf, ChannelBlocks, config.height,
                     WidthBlocks);
@@ -1179,7 +1084,7 @@ void measure_softmax_microkernel_add_only_performance()
                   << "\t" << config.height
                   << "\t" << config.width
                   << "\t" << num_trials
-                  << "\t" << runs_per_trial
+                  << "\t" << num_runs
                   << "\t" << stage_stats.min
                   << "\t" << stage_stats.max
                   << "\t" << stage_stats.trimmed_avg
@@ -1192,6 +1097,176 @@ void measure_softmax_microkernel_add_only_performance()
     }
 }
 
+void measure_softmax_microkernel_lazy_stages_performance()
+{
+    constexpr size_t num_trials = 1000;
+    constexpr size_t num_runs = 100;
+
+    std::cout << "\nlazy softmax microkernel stage performance\n";
+    std::cout << "\tC\tH\tW\ttrials\truns"
+              << "\texp_avg\tadd_avg\tmul_avg\n";
+
+    for (SoftmaxStageConfig const &config : softmax_stage_configs)
+    {
+        dim_t const ChannelBlocks = config.channels / FLOAT_C_ob;
+        dim_t const WidthBlocks = config.width / FLOAT_W_ob;
+        size_t const num_elts = config.channels * config.height * config.width;
+        FloatBuffer const input_buf = create_small_negative_data(num_elts);
+        FloatBuffer exp_buf = input_buf;
+        FloatBuffer scalar_buf(1);
+
+        compute_softmax_microkernel_exp_only(exp_buf,
+                                             ChannelBlocks, config.height,
+                                             WidthBlocks);
+
+        small::test::TimingStats const exp_stats =
+            time_softmax_trials(num_runs, num_trials, [&]() {
+                compute_softmax_microkernel_exp_only(
+                    exp_buf, ChannelBlocks, config.height, WidthBlocks);
+            });
+
+        exp_buf = input_buf;
+        compute_softmax_microkernel_exp_only(
+            exp_buf, ChannelBlocks, config.height, WidthBlocks);
+        small::test::TimingStats const add_stats =
+            time_softmax_trials(num_runs, num_trials, [&]() {
+                compute_softmax_microkernel_lazy_add_only(
+                    exp_buf, scalar_buf, ChannelBlocks, config.height, WidthBlocks);
+            });
+
+        compute_softmax_microkernel_lazy_add_only(
+            exp_buf, scalar_buf, ChannelBlocks, config.height, WidthBlocks);
+        scalar_buf[0] = 1.0f / scalar_buf[0];
+        FloatBuffer scaled_buf = exp_buf;
+        small::test::TimingStats const mul_stats =
+            time_softmax_trials(num_runs, num_trials, [&]() {
+                compute_softmax_microkernel_mul_only(
+                    scaled_buf, scalar_buf, ChannelBlocks, config.height, WidthBlocks);
+            });
+
+        std::cout << "\t" << config.channels
+                  << "\t" << config.height
+                  << "\t" << config.width
+                  << "\t" << num_trials
+                  << "\t" << num_runs
+                  << "\t" << exp_stats.trimmed_avg
+                  << "\t" << add_stats.trimmed_avg
+                  << "\t" << mul_stats.trimmed_avg
+                  << std::endl;
+    }
+}
+
+void measure_softmax_microkernel_mul_only_performance()
+{
+    constexpr size_t num_trials = 1000;
+    constexpr size_t num_runs = 100;
+
+    std::cout << "\nsoftmax OP_MUL-only ukernel performance\n";
+    std::cout << "\tC\tH\tW\ttrials\truns"
+              << "\tt_min\tt_max\tt_avg_trim\tstd_dev_trim\n";
+
+    for (SoftmaxStageConfig const &config : softmax_stage_configs)
+    {
+        dim_t const ChannelBlocks = config.channels / FLOAT_C_ob;
+        dim_t const WidthBlocks = config.width / FLOAT_W_ob;
+        size_t const num_elts = config.channels * config.height * config.width;
+        FloatBuffer const input_buf = create_small_negative_data(num_elts);
+        FloatBuffer exp_buf = input_buf;
+        FloatBuffer scalar_buf(1);
+
+        compute_softmax_microkernel_exp_only(
+            exp_buf, ChannelBlocks, config.height, WidthBlocks);
+        compute_softmax_microkernel_lazy_add_only(
+            exp_buf, scalar_buf, ChannelBlocks, config.height, WidthBlocks);
+        scalar_buf[0] = 1.0f / scalar_buf[0];
+        FloatBuffer mul_buf = exp_buf;
+
+        small::test::TimingStats const stats =
+            time_softmax_trials(num_runs, num_trials, [&]() {
+                compute_softmax_microkernel_mul_only(
+                    mul_buf, scalar_buf, ChannelBlocks, config.height, WidthBlocks);
+            });
+        print_softmax_timing_row(config, num_trials, num_runs, stats);
+    }
+}
+
+void measure_composed_softmax_microkernel_lazy_performance()
+{
+    constexpr size_t num_trials = 1000;
+    constexpr size_t num_runs = 100;
+
+    std::cout << "\ncomposed lazy softmax microkernel performance\n";
+    std::cout << "\tC\tH\tW\ttrials\truns"
+              << "\tt_min\tt_max\tt_avg_trim\tstd_dev_trim\n";
+
+    for (SoftmaxStageConfig const &config : softmax_stage_configs)
+    {
+        dim_t const ChannelBlocks = config.channels / FLOAT_C_ob;
+        dim_t const WidthBlocks = config.width / FLOAT_W_ob;
+        size_t const num_elts = config.channels * config.height * config.width;
+        FloatBuffer const input_buf = create_small_negative_data(num_elts);
+        FloatBuffer composed_buf = input_buf;
+        FloatBuffer scalar_buf(1);
+
+        small::test::TimingStats const stats =
+            time_softmax_trials(num_runs, num_trials, [&]() {
+                composed_buf = input_buf;
+                compute_composed_softmax_microkernel_lazy(
+                    composed_buf, scalar_buf, ChannelBlocks, config.height, WidthBlocks);
+            });
+        print_softmax_timing_row(config, num_trials, num_runs, stats);
+    }
+}
+
+void measure_softmax_microkernel_exp_only_performance()
+{
+    constexpr size_t num_trials = 1000;
+    constexpr size_t num_runs = 100;
+
+    std::cout << "\nsoftmax OP_EXP-only ukernel performance\n";
+    std::cout << "\tC\tH\tW\ttrials\truns"
+              << "\tt_min\tt_max\tt_avg_trim\tstd_dev_trim\n";
+
+    for (SoftmaxStageConfig const &config : softmax_stage_configs)
+    {
+        TEST_ASSERT(config.channels % 16 == 0);
+        TEST_ASSERT(config.width % 6 == 0);
+
+        dim_t const ChannelBlocks = config.channels / 16;
+        dim_t const WidthBlocks = config.width / 6;
+        size_t const num_elts = config.channels * config.height * config.width;
+
+        FloatBuffer input_buf = create_small_negative_data(num_elts);
+        FloatBuffer exp_buf = input_buf;
+        FloatBuffer scalar_buf(1);
+        std::vector<double> times;
+        times.reserve(num_runs);
+        small::Timer timer;
+
+        compute_softmax_microkernel_exp_only(exp_buf,
+                                             ChannelBlocks, config.height,
+                                             WidthBlocks);
+
+        for (size_t run = 0; run < num_runs; ++run)
+        {
+            exp_buf = input_buf;
+            timer.start();
+            for (size_t trial = 0; trial < num_trials; ++trial)
+            {
+                compute_softmax_microkernel_exp_only(
+                    exp_buf, ChannelBlocks, config.height,
+                    WidthBlocks);
+            }
+            timer.stop();
+            times.push_back(timer.elapsed() / static_cast<double>(num_trials));
+        }
+
+        small::test::TimingStats const stats =
+            small::test::summarize_times(std::move(times));
+        print_softmax_timing_row(config, num_trials, num_runs, stats);
+    }
+}
+
 #endif
 
 } // namespace float_detail
@@ -1199,30 +1274,25 @@ void measure_softmax_microkernel_add_only_performance()
 
 TEST_LIST = {
 #if !defined(QUANTIZED)
-    {"softmax microkernel stages 1x1",
-     small::float_detail::test_softmax_microkernel_stages_1x1},
-    {"softmax microkernel stages 2x3",
-     small::float_detail::test_softmax_microkernel_stages_2x3},
-    {"softmax microkernel stages Conv2D-compatible configs",
-     small::float_detail::test_softmax_microkernel_stages_conv2d_compatible_configs},
-    {"lazy softmax microkernel stages Conv2D-compatible configs",
-     small::float_detail::test_softmax_microkernel_lazy_conv2d_compatible_configs},
-    {"fused lazy softmax microkernel stages Conv2D-compatible configs",
-     small::float_detail::test_fused_softmax_microkernel_lazy_conv2d_compatible_configs},
-    {"fused lazy bespoke softmax microkernel stages Conv2D-compatible configs",
-     small::float_detail::test_fused_softmax_microkernel_lazy_bespoke_conv2d_compatible_configs},
-    {"softmax microkernel stages performance",
-     small::float_detail::measure_softmax_microkernel_stages_performance},
-    {"lazy softmax microkernel stages performance",
-     small::float_detail::measure_softmax_microkernel_lazy_performance},
-    {"fused lazy softmax microkernel stages performance",
-     small::float_detail::measure_fused_softmax_microkernel_lazy_performance},
-    {"fused lazy bespoke softmax microkernel stages performance",
-     small::float_detail::measure_fused_softmax_microkernel_lazy_bespoke_performance},
-    {"small SoftMax performance",
-     small::float_detail::measure_small_softmax_performance},
+    // {"small SoftMax performance",
+    //  small::float_detail::measure_small_softmax_performance},
+    // {"softmax microkernel stages performance",
+    //  small::float_detail::measure_softmax_microkernel_stages_performance},
+    // {"lazy softmax microkernel three-stage performance",
+    //  small::float_detail::measure_softmax_microkernel_lazy_stages_performance},
+    // {"composed lazy softmax microkernel performance",
+    //  small::float_detail::measure_composed_softmax_microkernel_lazy_performance},
+    // {"softmax OP_EXP-only microkernel performance",
+    //  small::float_detail::measure_softmax_microkernel_exp_only_performance},
     {"softmax OP_ADD-only microkernel performance",
      small::float_detail::measure_softmax_microkernel_add_only_performance},
+    // {"softmax OP_MUL-only microkernel performance",
+    //  small::float_detail::measure_softmax_microkernel_mul_only_performance},
+    // {"fused lazy softmax microkernel stages performance",
+    //  small::float_detail::measure_fused_softmax_microkernel_lazy_performance},
+    // {"fused lazy bespoke softmax microkernel stages performance",
+    //  small::float_detail::measure_fused_softmax_microkernel_lazy_bespoke_performance},
+
 #endif
     {NULL, NULL}
 };

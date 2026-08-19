@@ -96,13 +96,15 @@ std::vector<double> timed_trials(std::size_t trials, Callable &&run_once)
     times.reserve(trials);
 
     small::Timer timer;
+    timer.start();
     for (std::size_t trial = 0; trial < trials; ++trial)
     {
-        timer.start();
+      
         run_once();
-        timer.stop();
-        times.push_back(timer.elapsed());
+   
     }
+    timer.stop();
+    times.push_back(timer.elapsed()/trials);
 
     return times;
 }

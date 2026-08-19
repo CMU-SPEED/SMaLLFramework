@@ -62,7 +62,7 @@ namespace float_detail
     }                                                                   \
     else if constexpr (op_type == OP_SOFTSIGN)                           \
     {                                                                       \
-        FLOAT_SOFTSIGN_TILE_C(step, a_cur);                     \
+        FLOAT_COMPOSED_SOFTSIGN_TILE_C(step, a_cur);                     \
     }                                                                       \
     else if constexpr (op_type == OP_ABS)                                   \
     {                                                                       \
@@ -78,7 +78,7 @@ namespace float_detail
     }                                                                       \
     else if constexpr (op_type == OP_CELU)                                  \
     {                                                                       \
-        FLOAT_CELU_TILE_C(b_cur);                               \
+        FLOAT_CELU_TILE_C_UNROLLED(b_cur);                               \
     }                                                                       \
     else if constexpr (op_type == OP_FUSED_SLOPE_RELU)                      \
     {                                                                       \
@@ -88,10 +88,10 @@ namespace float_detail
     {                                                                       \
         FLOAT_FUSED_CELU_TILE_C(step, a_cur, b_cur, c_cur);     \
     }                                                                       \
-    else if constexpr (op_type == OP_SOFTMAX)                               \
+    else if constexpr (op_type == OP_FUSED_SOFTMAX)                         \
     {                                                                       \
-        FLOAT_SOFTMAX_TILE_C(step, a_cur, c_cur, d_cur);        \
-    }                                                                       \
+        FLOAT_FUSED_SOFTMAX_TILE_C(step, a_cur, b_cur,c_cur);                \
+    }                                                                       
 
 //****************************************************************************
 #define FLOAT_ABSTRACT_OP_END(step, op_type, op_class, a_cur, b_cur, c_cur, d_cur, W_elements, C_ob) \
@@ -188,7 +188,23 @@ namespace float_detail
     else if constexpr (op_type == OP_EXP)                               \
     {                                                                   \
         FLOAT_INPLACE_EXP_TILE_C ;                            \
-    }                                                      
+    }                                                                   \
+    else if constexpr (op_type == OP_MAX_POOL)                               \
+    {                                                                   \
+        FLOAT_MAX_TILE_C(step, b_cur);                            \
+    }                                                                   \
+    else if constexpr (op_type == OP_SOFTSIGN)                          \
+    {                                                                   \
+        FLOAT_INPLACE_SOFTSIGN_TILE_C;                       \
+    }                                                                   \
+    else if constexpr (op_type == OP_ABS)                               \
+    {                                                                   \
+        FLOAT_INPLACE_ABS_TILE_C;                            \
+    }                                                                   \
+    else if constexpr (op_type == OP_DIV)                               \
+    {                                                                   \
+        FLOAT_INPLACE_DIV_TILE_C(step, b_cur);                    \
+    }                                                                   \
 
 //****************************************************************************
 #define FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_END(step, op_type, op_class, b_cur, c_cur, W_elements, C_ob) \
@@ -237,7 +253,39 @@ namespace float_detail
     if constexpr (op_type == OP_ADD)                               \
     {                                                                       \
         FLOAT_ACCUM_END_C(step, a_cur, c_cur, W_elements, C_ob); \
+    }                                                                       \
+    else if constexpr (op_type == OP_MAX_POOL)                               \
+    {                                                                       \
+        FLOAT_MAX_END_C(step, a_cur, c_cur, W_elements, C_ob); \
     }                                                                       \    
+
+//****************************************************************************
+// Reduce the current full output tile to a scalar accumulated in scalar_cur[0].
+#define FLOAT_ABSTRACT_REDUCTION_OP_TILE(OP_TYPE, c_local, c_output_scalar)         \
+    if constexpr (OP_TYPE == OP_ADD)                                          \
+    {                                                                         \
+        FLOAT_INPLACE_ACCUM_TILE_C;                                           \
+        c_output_scalar[0] = 0; \
+    }                                                                         \
+    else if constexpr (OP_TYPE == OP_MAX_POOL)                                          \
+    {                                                                         \
+        FLOAT_INPLACE_MAX_TILE_C;                                           \
+        c_output_scalar[0] = c_local[0]; \
+    }                                                                         \
+    FLOAT_STORE_TILE_C(c_local);                                             \
+                                                                              \
+        for (dim_t c = 0; c < FLOAT_SIMD; ++c)                                \
+        {                                                                     \
+            if constexpr (OP_TYPE == OP_ADD)                                  \            
+            {                                                                 \
+            (c_output_scalar)[0] += (c_local)[c];                             \
+            }                                                                 \   
+            else if constexpr (OP_TYPE == OP_MAX_POOL)                             \                          
+            {                                                                 \
+            (c_output_scalar)[0] = (c_local[c]>c_output_scalar[0])?(c_local[c]): c_output_scalar[0];\
+            }                                                                 \
+    }                                                                         
+
 
 } // ns float_detail
 } // ns small
