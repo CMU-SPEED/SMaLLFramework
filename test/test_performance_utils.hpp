@@ -84,40 +84,6 @@ inline TimingStats summarize_times(std::vector<double> times,
     return stats;
 }
 
-template <typename Callable>
-std::vector<double> timed_trials(std::size_t trials, Callable &&run_once)
-{
-    if (trials == 0)
-    {
-        throw std::invalid_argument("timed_trials requires at least one trial");
-    }
-
-    std::vector<double> times;
-    times.reserve(trials);
-
-    small::Timer timer;
-    timer.start();
-    for (std::size_t trial = 0; trial < trials; ++trial)
-    {
-      
-        run_once();
-   
-    }
-    timer.stop();
-    times.push_back(timer.elapsed()/trials);
-
-    return times;
-}
-
-template <typename Callable>
-TimingStats time_trials(std::size_t trials,
-                        Callable &&run_once,
-                        bool trim_extremes = true)
-{
-    return summarize_times(
-        timed_trials(trials, std::forward<Callable>(run_once)),
-        trim_extremes);
-}
 
 } // namespace test
 } // namespace small

@@ -78,7 +78,8 @@ namespace float_detail
     }                                                                       \
     else if constexpr (op_type == OP_CELU)                                  \
     {                                                                       \
-        FLOAT_CELU_TILE_C_UNROLLED(b_cur);                               \
+        /*FLOAT_CELU_TILE_C_UNROLLED(b_cur);*/                               \
+        FLOAT_CELU_TILE_C(b_cur);\
     }                                                                       \
     else if constexpr (op_type == OP_FUSED_SLOPE_RELU)                      \
     {                                                                       \

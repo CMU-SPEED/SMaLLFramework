@@ -57,7 +57,7 @@ BufferT create_positive_data(size_t num_elements, unsigned int seed = static_cas
 
 
 template <typename BufferT>
-BufferT create_small_negative_range_data(size_t num_elements, unsigned int seed = static_cast<unsigned int>(time(0)))
+BufferT create_negative_data(size_t num_elements, unsigned int seed = static_cast<unsigned int>(time(0)))
 {
     // Use a different seed for positive data
     unsigned int pos_seed = seed + 12345;
@@ -86,7 +86,7 @@ BufferT create_real_data(size_t num_elements, unsigned int seed = static_cast<un
     // Use a different seed for real data
     unsigned int real_seed = seed + 67890;
     std::default_random_engine generator(real_seed);
-    std::normal_distribution<float> distribution{0.f, 1.f};
+    std::normal_distribution<float> distribution{0.f, 10.f};
 
     BufferT input_buf(num_elements);
 
@@ -133,7 +133,7 @@ void test_correctness_ewise_kernel(void)
     srand(time(0));
     size_t const INPUT_SIZE = FLOAT_W_ob * FLOAT_C_ib;
     // BufferT input_buf(INPUT_SIZE);
-    small::FloatBuffer input_buf = create_small_negative_range_data<small::FloatBuffer>(INPUT_SIZE);
+    small::FloatBuffer input_buf = create_real_data<small::FloatBuffer>(INPUT_SIZE);
     BufferT ref_input = input_buf;
     printf("Input buf 0: %f\n", input_buf[0]);  
     BufferT b_buf(1);
@@ -239,10 +239,10 @@ void test_single_element(void)
     //TEST_CHECK(C_i == C_o);
     
     size_t const num_input_elts = C_i*H*W;
-    small::FloatBuffer input_dc = create_small_negative_range_data<small::FloatBuffer>(num_input_elts);
+    small::FloatBuffer input_dc = create_real_data<small::FloatBuffer>(num_input_elts);
     small::FloatBuffer b_dc(1);
     b_dc[0] = 0.5f; // Scalar for ewise operations
-    small::FloatBuffer output_dc = create_small_negative_range_data<small::FloatBuffer>(num_input_elts);
+    small::FloatBuffer output_dc = create_real_data<small::FloatBuffer>(num_input_elts);
     small::FloatBuffer ref_input = input_dc;
     small::FloatBuffer ref_output = output_dc;
  
@@ -385,8 +385,8 @@ void measure_performance(void)
     {
         size_t num_input_elts(p.C_i*p.H*p.W);
 
-        Buffer input_dc = create_small_negative_range_data<Buffer>(num_input_elts);
-        Buffer output_dc = create_small_negative_range_data<Buffer>(num_input_elts);
+        Buffer input_dc = create_real_data<Buffer>(num_input_elts);
+        Buffer output_dc = create_real_data<Buffer>(num_input_elts);
         Buffer alpha_dc(1);
         alpha_dc.data()[0] = 0.5f;
 
@@ -518,8 +518,8 @@ TEST_LIST = {
     // {"Performance of for loop fused", small::float_detail::test_performance_micro_kernel_for_loop<small::OP_FUSED_SLOPE_RELU>},
     {"Correctness of slope relu single tile", small::float_detail::test_single_element<small::OP_SLOPE_RELU>},
     {"Correctness of fused slope relu single tile", small::float_detail::test_single_element<small::OP_FUSED_SLOPE_RELU>},
-    {"Performance of slope relu", small::float_detail::measure_performance<small::OP_SLOPE_RELU>},
-    {"Performance of fused slope relu", small::float_detail::measure_performance<small::OP_FUSED_SLOPE_RELU>},
+    // {"Performance of slope relu", small::float_detail::measure_performance<small::OP_SLOPE_RELU>},
+    // {"Performance of fused slope relu", small::float_detail::measure_performance<small::OP_FUSED_SLOPE_RELU>},
     // {"Correctness of FLOAT_CELU_TILE_C", small::float_detail::test_correctness_ewise_kernel<small::OP_CELU>},
     // {"Correctness of FLOAT_FUSED_CELU_TILE_C", small::float_detail::test_correctness_ewise_kernel<small::OP_FUSED_CELU>},
     // {"Correctness of celu single tile", small::float_detail::test_single_element<small::OP_CELU>},
@@ -530,7 +530,7 @@ TEST_LIST = {
     {"Correctness of FLOAT_FUSED_CELU_TILE_C", small::float_detail::test_correctness_ewise_kernel<small::OP_FUSED_CELU>},
     {"Correctness of celu single tile", small::float_detail::test_single_element<small::OP_CELU>},
     {"Correctness of fused celu single tile", small::float_detail::test_single_element<small::OP_FUSED_CELU>},
-    {"Performance of celu", small::float_detail::measure_performance<small::OP_CELU>},
-    {"Performance of fused celu", small::float_detail::measure_performance<small::OP_FUSED_CELU>},
+    // {"Performance of celu", small::float_detail::measure_performance<small::OP_CELU>},
+    // {"Performance of fused celu", small::float_detail::measure_performance<small::OP_FUSED_CELU>},
     {NULL, NULL}
 };

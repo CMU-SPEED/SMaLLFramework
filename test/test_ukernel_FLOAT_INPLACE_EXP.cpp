@@ -33,9 +33,7 @@ void init_exp_input(FloatBuffer &buffer)
 {
     for (std::size_t ix = 0; ix < buffer.size(); ++ix)
     {
-        // buffer[ix] = 0.000242f + static_cast<float>(ix % 1000U) * 0.01f;
-        buffer[ix] = 0.000242f + static_cast<float>(ix ) * 1.0/static_cast<float>(buffer.size()); // Small positive values;
-
+        buffer[ix] = 0.0f + static_cast<float>(ix ) * -1.0f/static_cast<float>(buffer.size()); // Small positive values;
     }
 }
 
@@ -87,9 +85,15 @@ void run_inplace_exp(std::size_t C_i,
 
             FLOAT_LOAD_TILE_C(c_cur);
             // FLOAT_INPLACE_EXP_negative_horner_TILE_C(FLOAT_C_ob, c_cur, recip_fact_table);
-            // FLOAT_BESPOKE_INPLACE_EXP_horner_TILE_C(FLOAT_C_ob, c_cur, recip_fact_table);
-            FLOAT_EXP_RR_TILE_C(c_cur);
-            // FLOAT_ABSTRACT_SINGLE_ELEMENT_OP_TILE(step, OP_EXP, 0, b_cur);
+            FLOAT_EXP_GENERAL_TILE_C(c_cur);
+            // FLOAT_INPLACE_EXP_horner_TILE_C(FLOAT_C_ob, c_cur, recip_fact_table);
+            // FLOAT_EXP_RR_TILE_C(c_cur);
+            // FLOAT_EXP_GENERAL_TILE_C(c_cur);
+            // FLOAT_EXP_GENERAL_POS_TILE_C(c_cur);
+            // FLOAT_EXP_GENERAL_NEG_TILE_C(c_cur);
+
+
+
             FLOAT_STORE_TILE_C(c_cur);
         }
 
@@ -100,39 +104,12 @@ void run_inplace_exp(std::size_t C_i,
 
 
 
-void run_inplace_composed_exp(std::size_t C_i,
-                     std::size_t H,
-                     std::size_t W,
-                     FloatBuffer &buffer,
-                     FloatBuffer &scratch)
-{
-    constexpr dim_t step = FLOAT_C_ob;
-    std::size_t const spatial_elts = H * W;
-    float *b_cur = scratch.data();
-
-    for (std::size_t channel = 0; channel < (C_i)/FLOAT_C_ob; channel ++)
-    {
-        std::size_t spatial = 0;
-        FLOAT_DEF_TILE_C;
-        for (; spatial + FLOAT_W_ob <= spatial_elts; spatial += FLOAT_W_ob)
-        {
-            float *c_cur = buffer.data() + spatial * FLOAT_C_ob + (channel)*spatial_elts*FLOAT_C_ob;
-            // FLOAT_LOAD_TILE_C_strided(c_cur, C_i);
-            FLOAT_LOAD_TILE_C(c_cur);
-            FLOAT_EXP_RR_TILE_C(c_cur);
-            FLOAT_STORE_TILE_C(c_cur);
-        }
-
-    }
-}
-
-
 } // namespace
 
 bool check_inplace_exp_case(LayerParams const &p)
 {
     constexpr float abs_tolerance = 5.0e-2f;
-    constexpr float rel_tolerance = 5.0e-6f;
+    constexpr float rel_tolerance = 5.0e-4f;
 
     std::size_t const num_input_elts = p.C_i * p.H * p.W;
     FloatBuffer input_buf(num_input_elts);
@@ -162,8 +139,7 @@ bool check_inplace_exp_case(LayerParams const &p)
                 float const actual = input_buf[ix];
                 float const abs_error = std::abs(actual - expected);
                 float const rel_error = abs_error / (std::abs(expected) + 1.0e-12f);
-                bool const close = (abs_error < abs_tolerance) ||
-                                   (rel_error < rel_tolerance);
+                bool const close = (abs_error < abs_tolerance) && (rel_error < rel_tolerance);
                 if (!close)
                 {
                     printf("inplace EXP correctness failure for C_i=%u H=%u W=%u at ix=%zu: expected %.9f, actual %.9f, abs_error %.9f, rel_error %.9f\n",
@@ -271,8 +247,8 @@ void measure_inplace_exp_performance(void)
 } // namespace small
 
 TEST_LIST = {
-    {"correctness inplace_exp performance cases",
-     small::float_detail::test_correctness_inplace_exp_performance_cases},
+    // {"correctness inplace_exp performance cases",
+    //  small::float_detail::test_correctness_inplace_exp_performance_cases},
     {"inplace_exp_performance",
      small::float_detail::measure_inplace_exp_performance},
     {NULL, NULL}

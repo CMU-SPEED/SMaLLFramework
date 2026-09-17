@@ -4,7 +4,7 @@ bench_softsign_cpu.py
 
 Benchmarks PyTorch softsign and (if available) an ONNX softsign model
 using onnxruntime (CPU only).
-Outputs times in microseconds (us).
+Outputs times in nanoseconds per SoftSign call (ns).
 """
 
 import os
@@ -20,40 +20,38 @@ except Exception:
 
 # Parameters: (C_i, H, W, k, s, padding, C_o) -- we only use C_i,H,W here
 params = [
-    (16, 48, 48, 1, 1, "PADDING_F", 16),
-    (32, 24, 24, 1, 1, "PADDING_F", 32),
+    (16, 48, 48, 1, 1, "PADDING_V", 16),
+    (32, 24, 24, 1, 1, "PADDING_V", 32),
 
-    (32, 48, 48, 1, 1, "PADDING_F", 32),
-    (64, 24, 24, 1, 1, "PADDING_F", 64),
-    (128, 12, 12, 1, 1, "PADDING_F", 128),
+    (32, 48, 48, 1, 1, "PADDING_V", 32),
+    (64, 24, 24, 1, 1, "PADDING_V", 64),
+    (128, 12, 12, 1, 1, "PADDING_V", 128),
 
-    (16, 48, 48, 1, 1, "PADDING_F", 32),
-    (32, 24, 24, 1, 1, "PADDING_F", 64),
-    (64, 12, 12, 1, 1, "PADDING_F", 128),
-    (128, 6, 6, 1, 1, "PADDING_F", 256),
+    (16, 48, 48, 1, 1, "PADDING_V", 32),
+    (32, 24, 24, 1, 1, "PADDING_V", 64),
+    (64, 12, 12, 1, 1, "PADDING_V", 128),
+    (128, 6, 6, 1, 1, "PADDING_V", 256),
 
-    (128, 24, 24, 1, 1, "PADDING_F", 128),
-    (256, 12, 12, 1, 1, "PADDING_F", 256),
+    (128, 24, 24, 1, 1, "PADDING_V", 128),
+    (256, 12, 12, 1, 1, "PADDING_V", 256),
 
-    (512, 12, 12, 1, 1, "PADDING_F", 512),
-    (1024, 6, 6, 1, 1, "PADDING_F", 1024),
+    (512, 12, 12, 1, 1, "PADDING_V", 512),
+    (1024, 6, 6, 1, 1, "PADDING_V", 1024),
 
-    (32, 208, 208, 1, 1, "PADDING_F", 64),
-    (64, 104, 104, 1, 1, "PADDING_F", 128),
-    (128, 52, 52, 1, 1, "PADDING_F", 256),
-    (256, 26, 26, 1, 1, "PADDING_F", 512),
-    (512, 13, 13, 1, 1, "PADDING_F", 1024),
-
-    (16, 12, 12, 1, 1, "PADDING_F", 16),
-    (32, 6, 6, 1, 1, "PADDING_F", 32),
-    (16, 24, 24, 1, 1, "PADDING_F", 16),
+    # (16, 12, 12, 1, 1, "PADDING_F", 16),
+    # (32, 6, 6, 1, 1, "PADDING_F", 32),
+    # (16, 24, 24, 1, 1, "PADDING_F", 16),
 ]
 
 num_threads_list = [1]
 num_runs = 100
+num_trials = 1000
+output_tile_width = 6
 
-# utility timers in microseconds
-def now_us():
+assert all(W % output_tile_width == 0 for _, _, W, _, _, _, _ in params)
+
+# utility timer in nanoseconds
+def now_ns():
     return time.perf_counter() * 1e9
 
 # Torch model
@@ -63,7 +61,7 @@ class SoftSignModule(torch.nn.Module):
 
 # Export ONNX
 def export_onnx_model(path="softsign_dynamic.onnx", opset=14):
-    dummy = torch.randn(1, 3, 8, 8, dtype=torch.float32)
+    dummy = torch.randn(1, 3, 6, 6, dtype=torch.float32)
     model = SoftSignModule().eval()
     torch.onnx.export(
         model,
@@ -91,7 +89,7 @@ def make_ort_session(onnx_path, num_threads):
 
 # PyTorch benchmark
 print("\nPyTorch softsign (CPU, float32)")
-print("\tC_i\tH\tW\tk\ts\tnthd\truns\tt_min(us)\tt_max(us)\tt_avg(us)")
+print("\tC_i\tH\tW\tk\ts\tnthd\truns\ttrials\tt_min(ns)\tt_max(ns)\tt_avg(ns)")
 
 device = torch.device("cpu")
 torch.set_num_threads(1)
@@ -104,28 +102,30 @@ for (C_i, H, W, k, s, pad, C_o) in params:
 
     # warmup
     with torch.no_grad():
-        _ = torch.nn.functional.softsign(input_t)
+        for _ in range(10):
+            _ = torch.nn.functional.softsign(input_t)
 
     tx, min_t, max_t = 0.0, float("inf"), 0.0
     for _ in range(num_runs):
-        t0 = now_us()
-        with torch.no_grad():
-            out = torch.nn.functional.softsign(input_t)
-            _ = out.cpu().numpy()  # ensure materialization
-        t1 = now_us()
-        dt = t1 - t0
+        t0 = now_ns()
+        for _ in range(num_trials):  # run num_trials times to reduce noise
+            with torch.no_grad():
+                out = torch.nn.functional.softsign(input_t)
+                _ = out.cpu().numpy()  # ensure materialization
+        t1 = now_ns()
+        dt = (t1 - t0) / num_trials
         tx += dt
         min_t, max_t = min(min_t, dt), max(max_t, dt)
 
-    avg = tx / num_runs
-    print("\t{:<4}\t{:<3}\t{:<3}\t{:<1}\t{:<1}\t{:<4}\t{:<4}\t{:.0f}\t\t{:.0f}\t\t{:.0f}".format(
-        C_i, H, W, k, s, 1, num_runs, min_t, max_t, avg
+    avg = (tx - max_t - min_t) / (num_runs - 2) if num_runs > 2 else tx / num_runs
+    print("\t{:<4}\t{:<3}\t{:<3}\t{:<1}\t{:<1}\t{:<4}\t{:<4}\t{:<6}\t{:.0f}\t\t{:.0f}\t\t{:.0f}".format(
+        C_i, H, W, k, s, 1, num_runs, num_trials, min_t, max_t, avg
     ))
 
 # ONNXRuntime benchmark
 if ORT_AVAILABLE:
     print("\nONNXRuntime softsign (CPU, float32)")
-    print("\tC_i\tH\tW\tk\ts\tnthd\truns\tt_min(us)\tt_max(us)\tt_avg(us)")
+    print("\tC_i\tH\tW\tk\ts\tnthd\truns\ttrials\tt_min(ns)\tt_max(ns)\tt_avg(ns)")
 
     onnx_path = "softsign_dynamic.onnx"
     export_onnx_model(onnx_path)
@@ -139,20 +139,23 @@ if ORT_AVAILABLE:
             input_np = rng.randn(1, C_i, H, W).astype(np.float32)
 
             # warmup
-            _ = sess.run(None, {inp_name: input_np})
+            for _ in range(10):
+                _ = sess.run(None, {inp_name: input_np})
 
             tx, min_t, max_t = 0.0, float("inf"), 0.0
             for _ in range(num_runs):
-                t0 = now_us()
-                _ = sess.run(None, {inp_name: input_np})
-                t1 = now_us()
-                dt = t1 - t0
+                t0 = now_ns()
+                for _ in range(num_trials):
+                    _ = sess.run(None, {inp_name: input_np})
+                t1 = now_ns()
+                dt = (t1 - t0) / num_trials
                 tx += dt
                 min_t, max_t = min(min_t, dt), max(max_t, dt)
 
-            avg = tx / num_runs
-            print("\t{:<4}\t{:<3}\t{:<3}\t{:<1}\t{:<1}\t{:<4}\t{:<4}\t{:.0f}\t\t{:.0f}\t\t{:.0f}".format(
-                C_i, H, W, k, s, nth, num_runs, min_t, max_t, avg
+            avg = (tx - max_t - min_t) / (num_runs - 2) if num_runs > 2 else tx / num_runs
+            print("\t{:<4}\t{:<3}\t{:<3}\t{:<1}\t{:<1}\t{:<4}\t{:<4}\t{:<6}\t{:.0f}\t\t{:.0f}\t\t{:.0f}".format(
+                C_i, H, W, k, s, nth, num_runs, num_trials, min_t, max_t, avg
             ))
+    print("num_threads_list:", num_threads_list)
 else:
     print("\nonnxruntime not available -> skipped ONNX benchmark. Install with `pip install onnxruntime` to enable it.")
