@@ -14,6 +14,7 @@
 
 #include <vector>
 #include <typeinfo>
+#include <memory>
 
 #include <small.h>
 #include <small/Tensor.hpp>
@@ -38,18 +39,18 @@ template <typename BufferT>
 class SequentialLayer : public Layer<BufferT>
 {
 public:
-    SequentialLayer(std::vector<Layer<BufferT>*> layers);
+    SequentialLayer(std::vector<std::unique_ptr<Layer<BufferT>*>> layers);
 
     virtual ~SequentialLayer()
     {
-        for (auto layer : m_layers)
-        {
-            delete layer;
-        }
-        for (auto tensor : m_tensors)
-        {
-            delete tensor;
-        }
+        // for (auto layer : m_layers)
+        // {
+        //     delete layer;
+        // }
+        // for (auto tensor : m_tensors)
+        // {
+        //     delete tensor;
+        // }
     }
 
     virtual void compute_output(
@@ -59,16 +60,16 @@ public:
 private:
     void allocate_tensors();
 
-    std::vector<Layer<BufferT>*>          m_layers;
-    mutable std::vector<Tensor<BufferT>*> m_tensors;
+    std::vector<std::unique_ptr<Layer<BufferT>*>>  m_layers;
+    mutable std::vector<Tensor<BufferT>*>          m_tensors;
 };
 
 //****************************************************************************
 template<class BufferT>
 SequentialLayer<BufferT>::SequentialLayer(
-    std::vector<Layer<BufferT>*> layers)
+    std::vector<std::unique_ptr<Layer<BufferT>*>> layers)
     : Layer<BufferT>(),
-      m_layers(layers)
+      m_layers(std::move(layers))
 {
     if (layers.size() < 2)
     {
